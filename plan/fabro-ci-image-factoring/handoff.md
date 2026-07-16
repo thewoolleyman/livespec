@@ -90,10 +90,11 @@ the self-hosted runner + baked image) are all functionally COMPLETE and live-exe
 Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
 **Phase 3 (fleet fan-out) is UNDERWAY — the RUNNER POOL now serves 6 of 8 repos (54 runners:
-9 × 6, all online, zero orphans). 2 of 8 repos are cut over + MERGED (`livespec` pilot,
-`livespec-driver-claude`); `livespec-driver-codex` is cut over and IN REVIEW
-([#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168), NOT yet merged — see
-below for its live-run result and the one real defect it surfaced).** The maintainer-only App-installation gate
+9 × 6, all online, zero orphans), and 3 of 8 repos are cut over + MERGED + PROVEN GREEN LIVE
+(`livespec` pilot, `livespec-driver-claude`, `livespec-driver-codex`).** driver-codex's cutover
+merged as [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168) — **59 pass / 0
+fail** on its own 9 self-hosted runners in `python-v0.43.2` (see below for the one real defect its
+live run surfaced, which merge + CI-green + review could not). The maintainer-only App-installation gate
 is CLEARED for ALL 8 fleet repos (granted via the authenticated browser 2026-07-16), and the
 2026-07-16 (cont.) session CONFIRMED the grants work end-to-end: all 4 newly-added repos minted
 JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-chosen
@@ -176,8 +177,9 @@ driver-codex cut over.**
 - **Host health under the first 6-repo load: NO breach.** 67 GiB RAM available (floor is 8 GiB),
   351 GB disk free (floor 20 GiB — note the ordered disk doubling has LANDED: 678 GB total),
   swap 0, load ~32 on 18 cores = the graceful oversubscription the 2026-07-12 load test predicted.
-- **`livespec-driver-codex` cut over — PR
-  [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168).** Moved: the `check`
+- **`livespec-driver-codex` cut over — MERGED + PROVEN GREEN LIVE
+  ([#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168); 59 pass / 0 fail / 1
+  skipped on its own 9 self-hosted runners, incl. the npm-sensitive `check-types`).** Moved: the `check`
   matrix (~56 targets), `check-doctor-static`, `check-red-green-replay` → `[self-hosted,
   local-ci]` in `python-v0.43.2`. Stayed hosted: `ci-green` (sole branch-protection context) +
   `export-telemetry` (Honeycomb ingest secret). Dropped the dead `merge_group`. Carried the full
@@ -213,7 +215,9 @@ driver-codex cut over.**
     before/after — `HOME=/github/home`: unfixed **1 failed/107 passed** → fixed **108 passed**;
     `HOME=/root`: **108 passed** both ways. NB the temptation was to set `HOME` in the workflow
     (a second env-var workaround beside `MISE_DATA_DIR`); that would have masked a genuine
-    test-isolation bug that bites anyone whose `HOME` != passwd home.
+    test-isolation bug that bites anyone whose `HOME` != passwd home. **Confirmed on the real
+    runner:** the re-run took all three formerly-failing jobs to `success` and the whole PR to
+    59 pass / 0 fail.
   - **Fleet sweep done — this one is driver-codex-SPECIFIC.** The defect needs BOTH ingredients (a
     scrubbed subprocess env AND a home-derived expectation); grepping all 6 clones found the pair
     only in driver-codex. (`livespec-dev-tooling` has a `env = {"PATH"...}` string hit, but it is a
