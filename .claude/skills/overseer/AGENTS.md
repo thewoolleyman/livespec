@@ -61,9 +61,13 @@ stateDiagram-v2
     state "evaluate(track) — one tick" as tick
 
     tick --> unassigned: is_unassigned
-    tick --> session_gone: session / pane gone
+    tick --> cGone: mapped session gone
     tick --> not_claude: not our Claude
     tick --> cBusy: live and ours
+
+    state cGone <<choice>>
+    cGone --> live_outside_tmux: live Claude, no tmux
+    cGone --> session_gone: no live Claude
 
     state cBusy <<choice>>
     cBusy --> working: busy
@@ -106,6 +110,7 @@ stateDiagram-v2
     danger: danger  ·  alerts NOT RESPONDING, never restarts
     winding_down: winding-down  ·  ACK, stop re-warning
     idle_ctx_left: idle-with-context-left  ·  one keep-going nudge
+    live_outside_tmux: live-outside-tmux  ·  unmanaged, not an alarm
 
     note right of idle_ctx_left
       One "keep going" nudge per idle episode. The daemon WRITES the
@@ -127,8 +132,15 @@ Every branch is a leaf: the tick ends there and the next tick re-enters
 `working → … → warned` (daemon injects the wrap-up) `→ winding-down` (session
 ACKs) `→ restarting` (session declares `ready`) `→` a fresh `working` after the
 respawn — each arrow driven by the SESSION's own declaration, never a daemon
-guess. `unassigned` / `session_gone` / `not_claude` are structural pre-checks
-(no live managed pane to read); `settling` is a one-tick "wait and re-read".
+guess. `unassigned` / `session_gone` / `live_outside_tmux` / `not_claude` are
+structural pre-checks (no live managed pane to read); `settling` is a one-tick
+"wait and re-read". The `cGone` choice splits the missing-tmux-session case: when
+the mapped tmux session is gone but a live Claude registry session for the topic
+is running with NO tmux pane (a bare SSH shell), the row is the informational
+`live-outside-tmux` (alive, but the daemon cannot capture/inject/respawn it) — NOT
+the alarming `session-gone`, and it is kept out of the `NEEDS YOU` block. A live
+session that resolves to a DIFFERENT tmux session stays `session-gone` (re-mapping
+is a separate concern; `_live_session_outside_tmux`).
 
 Reading notes: `threshold` = the track's `ctx_threshold` override, else the
 daemon-wide `warn_percent` (default 50). A malformed `.overseer-state` token is
@@ -398,7 +410,9 @@ for the marker's edge-triggered lifecycle.
   `settling`), yellow = idle (`idle`/`idle-with-context-left`) / waiting on a human
   (`blocked:human`) / low on context (`warned`/`danger`), red = broken
   (`session-gone`/`not-claude`), default (uncolored,
-  terminal white/gray) = `unassigned` and any unmapped status. Two invariants keep it
+  terminal white/gray) = `unassigned`, `live-outside-tmux` (informational — alive but
+  unmanaged, deliberately NOT tinted so it reads as neither healthy nor broken), and any
+  other unmapped status. Two invariants keep it
   safe: (a) the ANSI codes wrap the **already-padded whole line**, never a cell, so the
   column widths — still computed on plain-text `len` — stay aligned; and (b) color is
   emitted **only to a TTY** (`render` gates on `out.isatty()`), so a piped
