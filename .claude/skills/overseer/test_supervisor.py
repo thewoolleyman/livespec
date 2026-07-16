@@ -281,21 +281,75 @@ def test_blocked_marker_suppresses_injection(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def test_shell_pane_is_not_claude_never_pastes(tmp_path):
+def test_shell_pane_never_pastes(tmp_path):
     """A tracked session that dropped to a shell (pane_current_command != claude)
-    must read `not-claude` and get NO paste — even at low ctx with an idle-looking
-    old box in scrollback (B3: else the wrap-up executes in the shell and forges a
-    marker)."""
+    must get NO paste — even at low ctx with an idle-looking old box in scrollback
+    (B3: else the wrap-up executes in the shell and forges a marker).
+
+    This pins the SAFETY half only. The status LABEL such a pane earns is asserted
+    by the `exited to a shell` tests below (it is `session-gone`, not `not-claude`).
+    """
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     # Old idle box still on screen + a shell prompt; pane command is now zsh.
     fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="zsh")
-    sup = _sup(tmp_path, fake)
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # isolated + empty: no live Claude anywhere
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "not-claude"
+    assert view.status != "working"  # never mistaken for a live session
     assert not fake.has("paste")
     assert not fake.has("respawn")
+
+
+# --------------------------------------------------------------------------- #
+# A pane that EXITED to a shell is a track whose session ENDED — `session-gone`,
+# not the alarming `not-claude` (which means the mapping points at a FOREIGN
+# pane). The shipped daemon conflated the two: `not-claude` was designed as the
+# identity GATE for acts (correct, and unchanged) but was reused as the row
+# STATUS, so an ordinary finished track sat red in NEEDS YOU claiming a live tmux
+# mapping. Found live 2026-07-16 (fabro-ci-image-factoring → livespec1, a bare
+# zsh, no live Claude anywhere).
+# --------------------------------------------------------------------------- #
+
+
+def test_pane_exited_to_shell_is_session_gone(tmp_path):
+    """The mapped tmux session is ALIVE but its Claude EXITED, leaving a bare shell,
+    and no Claude for the topic is live anywhere → the track's session is GONE."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="zsh")
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # no live Claude for the topic
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+    assert not fake.has("paste")
+    assert not fake.has("respawn")
+
+
+def test_pane_exited_to_shell_with_live_claude_outside_tmux_is_live_outside_tmux(tmp_path):
+    """The pane dropped to a shell BUT the topic's Claude is alive OUTSIDE tmux.
+
+    The live-outside-tmux fallback was wired ONLY into the missing-tmux-session
+    branch, so this case reported `not-claude` and hid a live session behind an
+    alarm. Both no-managed-pane paths must consult it.
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="zsh")
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    # Live registry session for the topic whose pid walks up to NO tmux pane.
+    _write_session(sessions_dir, 100, name=topic, cwd=str(repo), status="busy")
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {100: "pt"})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "live-outside-tmux"
+    assert view.note is not None and "OUTSIDE tmux" in view.note
+    assert not fake.has("paste")
 
 
 def test_claude_pane_in_wrong_repo_is_not_claude(tmp_path):
