@@ -89,17 +89,23 @@ images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut
 the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
 Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**Phase 3 (fleet fan-out) is UNDERWAY — the RUNNER POOL now serves 6 of 8 repos (54 runners:
-9 × 6, all online, zero orphans), and 3 of 8 repos are cut over + MERGED + PROVEN GREEN LIVE
-(`livespec` pilot, `livespec-driver-claude`, `livespec-driver-codex`).** driver-codex's cutover
-merged as [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168) and is proven
-GREEN END-TO-END ON MASTER: run
-[29483319101](https://github.com/thewoolleyman/livespec-driver-codex/actions/runs/29483319101) —
-**60/60 jobs pass**, with the lane split exactly as designed on a real `push: master` event: **58
-jobs on `[self-hosted, local-ci]`** in `python-v0.43.2` (the whole `check` matrix +
-`check-doctor-static` + `check-red-green-replay`) and **2 on `ubuntu-latest`**
-(`export-telemetry`, `ci-green`). See below for the one real defect its live run surfaced, which
-merge + CI-green + review could not. The maintainer-only App-installation gate
+**Phase 3 (fleet fan-out) is NEARLY DONE — the RUNNER POOL serves 6 of 8 repos (54 runners: 9 × 6,
+all online, zero orphans), and ALL 5 PYTHON FLEET MEMBERS ARE CUT OVER.** Only the 2 GATED repos
+remain (the Rust console; the orchestrator's trust-tier decision). Per-repo results:
+
+| Repo | PR | Live proof |
+|---|---|---|
+| `livespec` (pilot) | #1255 | master 29393042872 — 63/66 in-image |
+| `livespec-driver-claude` | #183 | 59 pass / 0 fail |
+| `livespec-driver-codex` | [#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168) | **master [29483319101](https://github.com/thewoolleyman/livespec-driver-codex/actions/runs/29483319101) — 60/60**, 58 self-hosted / 2 hosted |
+| `livespec-dev-tooling` | [#419](https://github.com/thewoolleyman/livespec-dev-tooling/pull/419) | **master 29486162624 — 58/58, ZERO skips**; `check-types`/`check-coverage`/`check-lint` all RAN in-container; 54 self-hosted / 4 hosted |
+| `livespec-runtime` | [#237](https://github.com/thewoolleyman/livespec-runtime/pull/237) | **master 29487092182 — 57/57, ZERO skips**; `check-lint`/`check-types`/`check-coverage` all RAN in-container |
+| `livespec-orchestrator-git-jsonl` | [#297](https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/297) | **master 29488086244 — 59/59, ZERO skips**; `check-types`/`check-coverage`/`e2e-cli`/`acceptance` all RAN in-container; 56 self-hosted / 3 hosted. Green only after the GOTCHA #4 duplicate-`env` fix (below) |
+
+driver-codex's live run surfaced one real defect that merge + CI-green + review could not (below).
+**`livespec-runtime` ships NO auto-enable-merge workflow** (unlike the drivers, where
+`livespec-pr-bot` arms auto-merge) and allows **rebase only** — so its PR needed an explicit
+`gh pr merge --rebase`. Expect the same wherever that workflow is absent. The maintainer-only App-installation gate
 is CLEARED for ALL 8 fleet repos (granted via the authenticated browser 2026-07-16), and the
 2026-07-16 (cont.) session CONFIRMED the grants work end-to-end: all 4 newly-added repos minted
 JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-chosen
@@ -107,37 +113,94 @@ JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-
 live gap on the already-cut-over driver-claude), the stale-base worktree gotcha, and the
 per-repo disposition facts already gathered for the remaining repos.
 
-**Actionable next step — cut over the remaining 3 provisioned Python repos, SERIALLY**
-(`livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`). Their runners
-are ALREADY provisioned + online and their fork-PR approval is ALREADY tightened, so each is now
-a ci.yml-only change: derive the disposition from the repo's OWN workflow, apply the template,
-verify green live. Fire ONE matrix at a time (each is ~58 jobs through 9 slots ≈ 10 min; two at
-once re-oversubscribes). Then the two GATED repos: `livespec-console-beads-fabro` is RUST (uses
-the `python-rust` image, not `python-v0.43.2`, and a different check set) and
-`livespec-orchestrator-beads-fabro` hosts the PRIVILEGED gate-runner lane — adding a contained
-`local-ci` lane onto that host is a trust-tier decision to SURFACE to the maintainer before
-doing it. Loose ends: (a) the LEDGER-HYGIENE one — `.3`/`.4` blocked-by the intentionally-open
-`.1` (P-host), `.5` blocked-by `.3`/`.4`; all functionally done but ledger-OPEN; nothing
-technical blocked; (b) two NON-blocking Phase-2 perf follow-ons on `.5` (per-container-cold uv
-cache; durable mise-data-dir HOME fix); (c) the recreatability gap is now FILED as
+**ALL 5 PYTHON FLEET MEMBERS ARE NOW CUT OVER — only the 2 GATED repos remain.** The
+2026-07-16 (cont.) session cut over `livespec-driver-codex`, `livespec-dev-tooling`,
+`livespec-runtime` and `livespec-orchestrator-git-jsonl` on top of the already-done `livespec` +
+`livespec-driver-claude`.
+
+**Actionable next step — the TWO GATED repos, in this order:**
+1. **`livespec-console-beads-fabro` (RUST — do this one first; it is the simpler gate).** It uses
+   the **`python-rust`** image, NOT `python-v0.43.2`, and a different check set. **It has NO
+   runners yet**, so its cutover needs the FULL 4-step add-a-repo procedure (below), and step 2
+   is REAL work here: it is the ONE fleet repo still at **`first_time_contributors`** — tighten it
+   to `all_external_contributors` BEFORE registering its runners (no exposure today precisely
+   because it has no runners). Disposition facts already verified: no merge queue, `ci-green` the
+   sole required context, `merge_group` present in its ci.yml and therefore DEAD → drop.
+2. **`livespec-orchestrator-beads-fabro` — MAINTAINER GATE, do NOT self-start.** It hosts the
+   PRIVILEGED on-demand gate-runner lane, so adding a contained `local-ci` lane puts TWO trust
+   tiers on one repo's runners. That is a security-boundary decision the maintainer owns. NB its
+   fork-PR approval is already `all_external_contributors` and it currently registers **0 runners**
+   — correct-by-design (no privileged runner idles; the supervisor mints one single-use JIT runner
+   only for a queued gate run on a write-gated event).
+
+Loose ends: (a) the LEDGER-HYGIENE one — `.3`/`.4` blocked-by the intentionally-open `.1`
+(P-host), `.5` blocked-by `.3`/`.4`; all functionally done but ledger-OPEN; nothing technical
+blocked; (b) two NON-blocking Phase-2 perf follow-ons on `.5` (per-container-cold uv cache;
+durable mise-data-dir HOME fix); (c) the recreatability gap is now FILED as
 **`livespec-dev-tooling-s2t`** (P1) — the installed supervisor `--repos`/`--slots` diverge from
 the committed source unit. See NEXT ACTIONS.
 
-**Per-repo disposition facts already verified (2026-07-16 cont.) — reuse, do not re-derive.**
+**A PR's green does NOT prove a cutover — the MASTER run does (learned this session; applies to
+every remaining repo).** In the `setup`/`check-python`/`check-metadata` repos the cutover PR
+carries no `.py`, so `setup` sets `py_changed=false` and the ENTIRE `check-python` matrix
+short-circuits to skips on the PR. Those legs only ever run in-container on the **master run after
+merge**, where `setup` forces `py_changed=true` for push events. So verify the MASTER run, not just
+the PR — this is exactly how livespec's own Phase-2 cutover was proven (63/66 in-image on master),
+and dev-tooling's master run (58/58, `check-types`/`check-coverage`/`check-lint` all RUNNING not
+skipping) is what actually closed its live-exercise bar.
+
+**Per-repo disposition facts verified live (2026-07-16 cont.) — reuse, do not re-derive.**
 All of `livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`, `livespec-runtime`,
 `livespec-console-beads-fabro`: **no merge queue** (zero rulesets, `required_merge_queue: null`)
 and **`ci-green` is the SOLE required context** — so in every one, the `merge_group:` trigger is
 DEAD and must be dropped (keeping it is the exact routing hole the T9 audit forbids), and
-`ci-green` MUST stay `ubuntu-latest` so the gate is reportable host-down. Job-shape notes:
+`ci-green` MUST stay `ubuntu-latest` so the gate is reportable host-down.
+
+**THE FLEET IS GENUINELY NON-UNIFORM — the disposition doc is a TEMPLATE, not a fill-in, and this
+session proved it four times.** Every repo needed its shape read from its OWN workflow:
 - **`livespec-dev-tooling`** mirrors livespec's split (`setup` + `check-python` +
   `check-metadata`), PLUS a **`check-fleet-conformance` job that mints an App token via
   `actions/create-github-app-token@v1` — that job STAYS HOSTED** (App-token minting is on the
-  disposition template's stay-hosted list).
+  disposition template's stay-hosted list) and KEEPS its `mise-action` + `actions/cache` steps. A
+  blanket "replace every mise-action" edit would have been WRONG here.
 - **`livespec-orchestrator-git-jsonl`** adds two jobs beyond the usual set: `e2e-cli` (runs the
   hermetic `LIVESPEC_E2E_HARNESS: mock` tier) and `acceptance` (`just acceptance`). Both are
-  SECRET-FREE, so both move cleanly.
-- **`livespec-runtime`** is the plainest: `setup` / `check-python` / `check-metadata` /
-  `check-doctor-static` / `export-telemetry` / `ci-green`.
+  SECRET-FREE (verified by reading their steps), so both move. It also has **TWO** py-gated jobs
+  (`check-python` + `e2e-cli`) where the others have one, and 5 `mise-action` / 4 `actions/cache`
+  blocks.
+- **`livespec-runtime`** is the plainest (`setup` / `check-python` / `check-metadata` /
+  `check-doctor-static` / `export-telemetry` / `ci-green`) — but its `check-metadata` carries a
+  `needs: setup` that dev-tooling's does NOT, and it has 2 ungated `mise-action` but only 1
+  ungated `actions/cache` (its `check-doctor-static` has no cache step).
+- **`livespec-driver-codex`** has a single `check` matrix (like driver-claude) plus
+  `check-codex-skill-picker`, which **moves cleanly** — the recipe self-skips in CI unless
+  `LIVESPEC_REQUIRE_CODEX_TUI_PICKER=1`, so it needs no Codex CLI on the runner.
+
+**Method that worked (recommended for the remaining repos):** apply the cutover with a script that
+**asserts an expected occurrence count per replacement** and writes only at the end. It caught two
+of the shape differences above by FAILING LOUDLY (`FAIL [check-metadata runs-on]: expected 1, found
+0`) instead of silently half-applying a workflow. The reusable scripts are at
+`scratchpad/apply_cutover.py` (single-`check`-matrix repos) and `apply_cutover_split.py`
+(`setup`/`check-python`/`check-metadata` repos; takes ungated-mise / ungated-cache / py-mise /
+py-cache counts as argv).
+
+**GOTCHA #4 (NEW — a defect I SHIPPED to a branch; check for it on every remaining repo): a job
+that ALREADY has an `env:` block gets a DUPLICATE `env:` key, and `yaml.safe_load` HIDES it.**
+Inserting the standard `container:`/`env:` preamble after `runs-on:` is correct only for a job
+with no job-level `env:`. `livespec-orchestrator-git-jsonl`'s **`e2e-cli` already carried
+`env: {LIVESPEC_E2E_HARNESS: mock}`**, so the insert produced TWO `env:` keys in one job.
+Consequences, both bad:
+- **GitHub REJECTS the whole workflow at startup** — the run completes as `failure` with **ZERO
+  jobs** (`jobs=0`, no logs, `log not found`). That is the signature of a startup/parse failure,
+  NOT a job failure; do not go hunting for a failing check.
+- **A permissive parser silently keeps only the LAST block.** So `yaml.safe_load`-based validation
+  reports a perfectly healthy workflow — and had GitHub accepted it, `LIVESPEC_E2E_HARNESS: mock`
+  would have been DROPPED, silently turning the hermetic e2e tier into a live-harness run.
+**Fix:** MERGE the job's pre-existing keys into the single `env:` block (done, with a comment
+pinning why). **Validate with a DUPLICATE-KEY-STRICT loader, not `yaml.safe_load`** — a
+`SafeLoader` subclass whose mapping constructor rejects repeated keys. Swept all four of this
+session's cutovers with it: only `e2e-cli` was affected. Any future repo with a job-level `env:`
+(or any other key the preamble injects) needs the same care.
 
 **SESSION 2026-07-16 (cont.) — pool extended to 6 repos + a fork-PR approval SECURITY REPAIR +
 driver-codex cut over.**
@@ -182,6 +245,31 @@ driver-codex cut over.**
 - **Host health under the first 6-repo load: NO breach.** 67 GiB RAM available (floor is 8 GiB),
   351 GB disk free (floor 20 GiB — note the ordered disk doubling has LANDED: 678 GB total),
   swap 0, load ~32 on 18 cores = the graceful oversubscription the 2026-07-12 load test predicted.
+- **A REAL 3-REPO-OVERLAP MEASUREMENT — the 9-slot model's headroom claim is now OBSERVED, not
+  projected.** Later in the session an unplanned 3-repo overlap arose on its own (the v0.14.0
+  release fan-out firing `chore/bump-livespec-v0.14.0` CI on driver-claude + driver-codex, plus
+  another session's livespec branch): **27 concurrent jobs on 18 cores, load peaking ~80** — nearly
+  DOUBLE the 45 the 2026-07-12 load test reached. The host held exactly as the plan predicts:
+  **RAM 64 GiB available** (floor 8 — never approached), **swap si=0 so=0**, 345 GB disk free, and
+  **ZERO job failures across all three repos**. This directly confirms the maintainer's 9-slot
+  reasoning ("rarer 3+ overlaps briefly oversubscribe and the resource-health gate throttles") and
+  the superseding 2026-07-12 framing (RAM is a near-unreachable hard floor; CPU oversubscription
+  degrades softly — jobs queue, nothing crashes). **No PAUSE was warranted**: the hard signal
+  (memory) never moved; only the soft signal (sustained CPU saturation) did. Incidentally the
+  fan-out's bump PRs were themselves a free validation of the driver cutovers on their own runners.
+  - **Serialization caveat learned:** "fire one matrix at a time" is a rule for what YOU start; it
+    canNOT be enforced against the fan-out or other sessions, which fire matrices whenever a
+    release lands. Per `.ai/agent-disciplines.md` §"shared concurrency surface — never gate on
+    other runs", do NOT block your own cutover indefinitely waiting for an unrelated overlap to
+    drain; check the HARD signal (RAM/swap) and proceed. Also NB `busy` runner counts FLUCTUATE
+    (ephemeral runners deregister + re-mint between jobs), so a momentary dip is not a drained
+    pool — read run job-progress, not the busy count.
+- **FOUR repos cut over this session** (`livespec-driver-codex`, `livespec-dev-tooling`,
+  `livespec-runtime`, `livespec-orchestrator-git-jsonl`) — completing ALL 5 Python fleet members.
+  Each was derived from its OWN workflow (see the non-uniformity list above), routing-audited, and
+  verified on its MASTER run, not just its PR. Cleanup done: every cutover worktree removed, every
+  primary checkout refreshed to `origin/master` and clean. (Other sessions' worktrees under
+  `~/.worktrees/livespec/` and the `janitor-*` ones were left strictly alone.)
 - **`livespec-driver-codex` cut over — MERGED + PROVEN GREEN LIVE
   ([#168](https://github.com/thewoolleyman/livespec-driver-codex/pull/168); 59 pass / 0 fail / 1
   skipped on its own 9 self-hosted runners, incl. the npm-sensitive `check-types`).** Moved: the `check`
