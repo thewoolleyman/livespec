@@ -363,6 +363,30 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# The Status cell carries a session-authored NOTE (a `blocked:` reason, or the
+# live-outside-tmux detail) that can be arbitrarily long and multi-line. Rendered raw it
+# blew up the whole Status column (the column is sized to its widest cell) and broke row
+# alignment (maintainer 2026-07-16, after a 705-byte `blocked:` completion summary). So
+# the note is flattened to one line and elided in the TABLE; a longer, still-bounded
+# preview goes into the `NEEDS YOU` alert (whose full detail the operator reads in the
+# tracked pane the alert points at — so a preview is enough and a 705-byte dump is not).
+_MAX_NOTE_IN_TABLE = 48
+_MAX_REASON_IN_ALERT = 160
+
+
+def _elide(text: str, limit: int) -> str:
+    """``text`` flattened to a single line and truncated to ``limit`` chars with a
+    trailing ellipsis (the result is never longer than ``limit``).
+
+    ``" ".join(text.split())`` collapses every whitespace run — including newlines, which
+    would otherwise split a table row across lines — into single spaces.
+    """
+    flat = " ".join(text.split())
+    if len(flat) <= limit:
+        return flat
+    return flat[: limit - 1].rstrip() + "…"
+
+
 # --------------------------------------------------------------------------- #
 # View + per-track internal state.
 # --------------------------------------------------------------------------- #
@@ -1074,7 +1098,10 @@ class Supervisor:
                     topic=topic,
                     session=session,
                     pane=target,
-                    message=f"blocked on human: {detail} — answer it IN THAT PANE",
+                    message=(
+                        f"blocked on human: {_elide(detail, _MAX_REASON_IN_ALERT)} "
+                        "— answer it IN THAT PANE"
+                    ),
                 )
         elif not idle:
             # Pane present but not a verified idle-input state and not busy —
@@ -1447,9 +1474,13 @@ class Supervisor:
         header = ("Status", "Topic", "tmux", "Ctx%", "Repo")
         table = [header]
         for row in rows:
+            # Elide the session-authored note so an over-long / multi-line value cannot
+            # blow up the Status column width or break the row (the full note still
+            # reaches the NEEDS YOU block below).
+            note = _elide(row.note, _MAX_NOTE_IN_TABLE) if row.note else None
             table.append(
                 (
-                    row.status if not row.note else f"{row.status} ({row.note})",
+                    row.status if not note else f"{row.status} ({note})",
                     row.topic,
                     row.tmux or "—",
                     "—" if row.ctx is None else f"{row.ctx}%",
@@ -1501,7 +1532,9 @@ class Supervisor:
             return lines
         lines.append(f"NEEDS YOU ({len(attention)}):")
         for row in attention:
-            detail = f" — {row.note}" if row.note else ""
+            # Elide the note here too: a session can write an arbitrarily long `blocked:`
+            # reason, and the full text lives in the pane this line points at.
+            detail = f" — {_elide(row.note, _MAX_REASON_IN_ALERT)}" if row.note else ""
             coords = f"topic: {row.topic} | tmux: {row.tmux or '—'} | repo: {registry.repo_slug(row.repo)}"
             lines.append(f"  ! {coords} — {row.status}{detail}")
             if row.tmux:
