@@ -132,7 +132,20 @@ so it never fan-outs and silently rots. Measured 2026-07-16:
 CI and the sandbox are **FIVE releases apart**, and the gap WIDENS every release. That directly
 defeats the sentence this epic exists to deliver ("CI runs the SAME image the Fabro sandbox uses,
 collapsing the green-in-CI / red-in-sandbox drift") — today the drift is not collapsed, only
-RELOCATED. **Root cause verified empirically, not inferred** (`pin_autodiscovery.discover()` run
+RELOCATED.
+
+**Nuance that sets the urgency correctly (verified 2026-07-16): the drift is LATENT, not active —
+and the fix's first fan-out is LOW RISK.** The CI-relevant toolchain has NOT moved across those five
+releases: `python-v0.43.2` and `python-v0.48.1` both ship **Python 3.12.3 | uv 0.9.26 | just 1.36.0 |
+node v26.3.0** — identical. So nothing is silently broken TODAY; that is luck, not design, since
+nothing stops the next release from moving a tool and making it real. The urgency is therefore the
+AUTOMATION (stop the rot), NOT an emergency hand-bump. And the bump itself is already validated: run
+live in the sandbox tag against a real repo (`livespec-runtime` in `python-v0.48.1`), `mise install`
+returns exit 0 with **ZERO downloads** (so the `MISE_DATA_DIR` no-op property that redded livespec's
+first cutover still holds), `uv sync --all-groups` is clean, and `just check-lint` passes. **Do NOT
+hand-bump the six repos as a workaround** — once the pin format covers the `ci.yml` line the normal
+fan-out reconciles them and KEEPS them reconciled; a manual bump just re-rots on the next release,
+which is the actual bug. **Root cause verified empirically, not inferred** (`pin_autodiscovery.discover()` run
 against the live clones): `livespec` pins=5 **fabro-image pins found=0**; `livespec-runtime` pins=4
 **found=0**; `livespec-console-beads-fabro` pins=3 found=1 (its `workflow.toml` only). Per
 `contracts.md` §"Pin autodiscovery rules" the `fabro_sandbox_docker_image` format scans ONLY
