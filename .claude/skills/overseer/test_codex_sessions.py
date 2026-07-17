@@ -357,3 +357,44 @@ def test_map_codex_sessions_is_deterministic_across_sessions(tmp_path):
         ("s-one", "topic-a", "/data/projects/one"),
         ("s-two", "topic-b", "/data/projects/two"),
     ]
+
+
+# --------------------------------------------------------------------------- #
+# codex_by_tmux_session — the twin of claude_sessions.status_by_tmux_session, and the
+# LAST primitive the supervisor wiring needs. It is what lets a Codex track be
+# identified EXACTLY rather than by pane-command string-matching: tmux reports a codex
+# pane's command as `bun` (the launcher; the vendored codex binary is its child), and
+# `bun` is generic — any bun app would match. Keying identity off a live session map
+# instead is exact, self-correcting, and needs no stored `runtime` field.
+# --------------------------------------------------------------------------- #
+
+
+def test_codex_by_tmux_session_keys_live_sessions_by_their_tmux_session(tmp_path):
+    home = _index(tmp_path, [(_ID_A, "topic-a"), (_ID_B, "topic-b")])
+    host = _host(
+        comms={10: "codex", 20: "codex"},
+        cwds={10: "/data/projects/one", 20: "/data/projects/two"},
+        fds={10: [_rollout(_ID_A)], 20: [_rollout(_ID_B)]},
+    )
+    by = codex_sessions.codex_by_tmux_session(
+        {101: "s-one", 202: "s-two"}, codex_home=home, ppid_of={10: 101, 20: 202}.get, **host
+    )
+    assert set(by) == {"s-one", "s-two"}
+    assert by["s-one"].name == "topic-a"
+    assert by["s-one"].pid == 10
+    assert by["s-two"].name == "topic-b"
+
+
+def test_codex_by_tmux_session_is_empty_with_no_codex_running(tmp_path):
+    """The overwhelmingly common case — a fleet of Claude sessions and no codex at all.
+    Must be an empty map, never an error, so `evaluate` can key off it unconditionally."""
+    home = _index(tmp_path, [])
+    by = codex_sessions.codex_by_tmux_session({}, codex_home=home, **_host())
+    assert by == {}
+
+
+def test_codex_by_tmux_session_omits_sessions_outside_tmux(tmp_path):
+    home = _index(tmp_path, [(_ID_A, "topic-a")])
+    host = _host(comms={10: "codex"}, cwds={10: "/x"}, fds={10: [_rollout(_ID_A)]})
+    by = codex_sessions.codex_by_tmux_session({}, codex_home=home, ppid_of=lambda _p: None, **host)
+    assert by == {}

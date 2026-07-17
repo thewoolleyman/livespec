@@ -360,3 +360,46 @@ def map_codex_sessions(
             continue
         mapped.append((tmux_session, session.name, session.cwd))
     return mapped
+
+
+def codex_by_tmux_session(
+    pane_pid_to_session: dict[int, str],
+    *,
+    codex_home: str | os.PathLike[str] | None = None,
+    ppid_of: Callable[[int], int | None] = proc_ppid,
+    pids_of_comm: Callable[[str], list[int]] = proc_pids_of_comm,
+    cwd_of: Callable[[int], str | None] = proc_cwd,
+    fd_targets_of: Callable[[int], list[str]] = proc_fd_targets,
+) -> dict[str, CodexSession]:
+    """``{tmux_session: CodexSession}`` for every live NAMED codex session held in tmux.
+
+    The twin of :func:`claude_sessions.status_by_tmux_session`, and the per-tick map the
+    supervisor keys Codex behavior off — recomputed every tick like ``_claude_status``,
+    so it is always live and self-correcting.
+
+    **Why a map and not a pane-command predicate.** tmux reports a codex pane's
+    ``#{pane_current_command}`` as **`bun`**, NOT `codex`: the pane's foreground process
+    is the `bun` launcher and the vendored codex binary is its CHILD (verified live). And
+    `bun` is generic — ANY bun app would match it. So "is this pane Codex?" cannot be
+    answered honestly from the pane command. Membership in THIS map answers it exactly:
+    the session is in it only because a real codex process, holding a real rollout,
+    resolved to that tmux session this tick. It also needs no stored ``runtime`` field on
+    the mapping (nothing to migrate, nothing to drift).
+
+    A tmux session hosting more than one codex process keeps the FIRST by pid order —
+    deterministic, and the daemon drives one session per pane anyway.
+    """
+    by_session: dict[str, CodexSession] = {}
+    for session in read_live_codex_sessions(
+        codex_home=codex_home,
+        pids_of_comm=pids_of_comm,
+        cwd_of=cwd_of,
+        fd_targets_of=fd_targets_of,
+    ):
+        tmux_session = resolve_tmux_session(
+            session.pid, pane_pid_to_session=pane_pid_to_session, ppid_of=ppid_of
+        )
+        if tmux_session is None or tmux_session in by_session:
+            continue
+        by_session[tmux_session] = session
+    return by_session
