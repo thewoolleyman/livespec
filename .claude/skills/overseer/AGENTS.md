@@ -283,9 +283,33 @@ for the marker's edge-triggered lifecycle.
    - **`Codex Companion Task: …` threads are NOT filtered here** (38 of 69 index
      records) — they fail the "is this an ACTIVE plan topic?" test at adoption, so
      the noise filters itself and the module stays a pure, dumb join with no policy.
-   - **It NEVER reads a rollout's contents** — rollouts are full session transcripts.
-     The join needs only the filename + `/proc`. Keep it that way; if Ctx% is wired
-     later (the `token_count` events), read only those payloads, never a body.
+   - **The join NEVER reads a rollout's contents** — rollouts are full session
+     transcripts. It needs only the filename + `/proc`. The ONE function that opens a
+     body is `rollout_ctx_remaining` (below), which parses only `token_count` payloads
+     and extracts two integers — counters in an event envelope, never content.
+
+   **Codex Ctx% (`codex_sessions.rollout_ctx_remaining`; 2026-07-16).** Codex renders no
+   `Ctx: N% left` statusline, which was read as "Codex ctx is unknown → a Codex track can
+   never get the wrap-up". The premise is true; the conclusion does not follow — ctx comes
+   from the ROLLOUT: every `token_count` event carries `last_token_usage.total_tokens` +
+   `model_context_window`. Returns the same `int | None` remaining-% as
+   `signals.parse_ctx_remaining`, so it drops into the same slot, and is strictly MORE
+   reliable than the Claude path (a number from a file, not a regex over rendered terminal
+   text). This matters because the escalating wrap-up is the daemon's ONLY lever now that
+   nothing is force-killed — a wrap-up-less Codex track is a passenger that runs to
+   exhaustion. Four things not to regress:
+   - **`last_token_usage`, NOT `total_token_usage`.** The former is the current context
+     occupancy; the latter is the session's CUMULATIVE spend (104M in the sampled session,
+     ~400x the window) and would peg every session at 0% and wrap them all up instantly.
+   - **INTEGER arithmetic** — `int((1 - used / window) * 100)` is wrong at exactly the
+     boundaries that matter: 232560/258400 is exactly 90% used, but in binary floats it is
+     0.9000000000000000222, so it floors to 9 not 10 — and 50/40/30/20/10 ARE the bands.
+     Use `(window - used) * 100 // window`. Floor (never round) so a reading is never
+     optimistic; clamp at 0 for a compacted/overflowing session.
+   - **Tail-read** (`_CTX_TAIL_BYTES`, 256 KiB) — the daemon calls this EVERY TICK and
+     rollouts reach 16 MB here; measured ~5 ms regardless of size. Never load the file.
+   - **Fail-closed** — unreadable / no `token_count` / absent-or-zero window ⇒ None =
+     unknown, which the daemon already treats as "keep the last known, never a crossing".
 7. **THE CARDINAL RULE — never restart a session that has not declared itself
    `ready` (maintainer-declared 2026-07-14).** The session's own `ready`
    declaration in its state file (`signals.ready_valid`) is the **SOLE**
