@@ -146,14 +146,38 @@ same producer-rewrites-consumer-pin pattern, no new upstream→downstream edge. 
 long-standing "Autodiscovery gap" open decision.
 
 **Actionable next steps — TWO remain, and the first is now a concrete build, not a decision:**
-- **T10 cache-tiering — FILED as `livespec-dev-tooling-9mp` (P1), with the 2× measurement and the
-  non-negotiable trust-tiering constraint written into it.** The console's cutover is BUILT, GREEN
-  and WAITING on it (PR #250, held DRAFT). Highest-value remaining piece of Phase 3. Its acceptance
-  is concrete: un-draft #250 and get its self-hosted wall-clock ≤ the hosted warm-cache baseline
-  (~430s), with the PR lane proven unable to write the trusted cache. NB it also closes the known
-  per-container-cold `uv` follow-on on `.5` (`UV_CACHE_DIR` at a persistent mount) — the
-  provisioning script ALREADY creates `/home/ci-runner/.cache/uv` and `/home/ci-runner/.cargo/registry`
-  on the host; they are simply never mounted into the containers.
+- **T10 cache-tiering — FILED as `livespec-dev-tooling-9mp` (P1), with the 2× measurement, the
+  non-negotiable trust-tiering constraint, AND a design investigation written into it.** The
+  console's cutover is BUILT, GREEN and WAITING on it (PR #250, held DRAFT). Highest-value remaining
+  piece of Phase 3. Acceptance is concrete: un-draft #250 and get its self-hosted wall-clock ≤ the
+  hosted warm-cache baseline (~430s), with the PR lane proven unable to write the trusted cache. It
+  also closes the known per-container-cold `uv` follow-on on `.5` — the provisioning script ALREADY
+  creates `/home/ci-runner/.cache/uv` and `/home/ci-runner/.cargo/registry` on the host; they are
+  simply never mounted into the containers.
+  - **Design investigated 2026-07-16 — the obvious tiering design is UNSAFE; do not build it.**
+    Enforcement belongs in `ci-runner/sanitize-hook.js` (it already intercepts container creation and
+    strips the docker socket from `userMountVolumes`), NEVER in a workflow's `container: volumes:` —
+    that is attacker-controlled, since a fork PR edits its own `ci.yml`. The hook must also STRIP any
+    workflow-declared mount of the cache path, exactly as it strips `BAD_SOURCES` today.
+  - **The trap: the hook has NO trustworthy trust signal.** Verified on the live host — the
+    `Runner.Worker` process env carries only ONE `GITHUB_*` var, NOT `GITHUB_EVENT_NAME`/`REF`
+    (read `/proc/<worker>/environ` directly); and the `prepare_job` payload's
+    `args.environmentVariables` is the CONTAINER env the runner builds, which a workflow can
+    influence via job-level `env:` — so it is forgeable. Deriving a tier from it would hand a fork PR
+    a writable cache feeding master builds. **This is the same trap the privileged gate-runner
+    already documented: "a discrimination the runner LABEL alone cannot make."**
+  - **Recommended: a throwaway OVERLAY for EVERY job — no trust decision at create time, safe by
+    construction.** lowerdir = the persistent warm cache (READ-ONLY); upperdir = a per-job throwaway
+    discarded at `cleanup_job`; bind-mount the MERGED dir. Every job (trusted or not) reads the warm
+    cache and can only write to its own upper, so cargo still gets the writable registry it needs
+    while a PR job physically cannot mutate the shared lower. The plan already sanctions the wording
+    ("READ-ONLY **or throwaway overlay**"), and `fuse-overlayfs` is ALREADY installed by
+    `provision-ci-runner.sh`, so rootless overlay works today. Write-back becomes a separate TRUSTED
+    path (refresh the lower from a post-merge run or the supervisor) — never from the job container.
+    If a real tier decision is ever wanted, it must be made by the SUPERVISOR (which authenticates to
+    GitHub and verifies the event server-side) and passed out-of-band — the queue-watching mint
+    pattern the gate-runner already implements — not read from job env. Per-repo namespacing still
+    required; sccache stays trusted-tier-only or skipped initially (no input-integrity binding).
 - **The orchestrator's trust-tier decision** (item 2 below) — maintainer-owned.
 
 **Pool state: ALL 7 non-gated repos served — 63 runners (9 × 7), all online, zero orphans.** The
