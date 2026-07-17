@@ -193,211 +193,138 @@ daemon's table, not from a one-shot `list`.
 
 ## Resume command
 
-**The redesign, the display / detection-accuracy fixes, the 2026-07-16 trio above, and the
-row-correctness audit are complete, merged, and live-exercised.** PR #1293 (released
-0.15.1) and **PR #1295 (tmux=None + the `blocked:` void) are both MERGED to master**.
+**Codex detection is BUILT, WIRED, adversarially reviewed, and PROVEN LIVE. The row
+taxonomy is settled.** Everything below "Standing operational notes" is reference.
 
-**⚠ FIRST ACTION: RESPAWN THE DAEMON.** It is long-lived and keeps whatever code it
-started with, so it still carries PRE-#1293/#1295 code — until it is respawned the table
-keeps showing the old wrong rows (a `not-claude` row naming a dead `livespec1`, stale
-`blocked:` notes on working rows). The respawn command is in Standing operational notes;
-it was left to the maintainer because it kills the console's own top pane.
+### FIRST: land PR #1296, then RESPAWN THE DAEMON
 
-The ONE open ENGINEERING item is **Codex detection** — its READ LAYER IS BUILT (PR #1296);
-only the `supervisor.py` wiring remains. See the next section, which carries an ORDERING
-CONSTRAINT you must read before touching the identity gate.
+- **PR #1296** (`feat/overseer-codex-session-discovery`) was OPEN at hand-off, rebased
+  clean on master, 246 beside-tests green, auto-merge armed. **Confirm it merged.** It is
+  the whole Codex feature. If it did not merge, read its CI failure — do NOT rebuild it.
+- **Then respawn the daemon.** It keeps whatever code it started with, so the Codex rows
+  stay `unassigned` until it restarts. Command is in Standing operational notes below.
+  (It was respawned 2026-07-17 onto the session-gone fixes; it does NOT yet carry #1296.)
 
-### NEXT = Codex detection — the READ IS BUILT; only the WIRING remains
+### The state of things (2026-07-16/17)
 
-**Status 2026-07-16/17: the whole `codex_sessions.py` read layer is built, tested, and
-live-exercised (PR #1296).** What remains is a PURE `supervisor.py` change — no further
-primitives are needed. Read this sub-section first; the original design below it is
-still correct but describes the read as unbuilt.
+**MERGED:** #1291 (§4 corrections) · #1293 (exited-to-shell) · #1295 (tmux=None + void
+outlived `blocked:`) · #1298 (handoff) · #1299 (deleted `not-claude`).
 
-**Already built and merged/queued (PR #1296)** — `.claude/skills/overseer/codex_sessions.py`
-+ 26 beside-tests, every host coupling injected:
+**The row taxonomy is now settled, maintainer-declared — do not re-litigate it:**
 
-| function | what it gives you |
+| status | means |
 |---|---|
-| `read_live_codex_sessions()` | `[CodexSession(pid, name, cwd, session_id)]` — `name` IS the plan topic |
-| `map_codex_sessions(pane_pid_to_session)` | `[(tmux_session, name, cwd)]` — **the exact triple `claude_sessions.map_named_sessions` emits**, so ONE adopt path serves both runtimes |
-| `codex_by_tmux_session(pane_pid_to_session)` | `{tmux_session: CodexSession}` — **the per-tick map to key everything off**; twin of `_claude_status` / `status_by_tmux_session` |
-| `rollout_ctx_remaining(path)` | remaining-% as `int \| None` — **the same shape `signals.parse_ctx_remaining` returns**, so it drops into the same slot |
-| `proc_pids_of_comm` / `proc_cwd` / `proc_fd_targets` / `open_rollout_id` / `rollout_id` / `read_thread_names` | the injectable pieces |
+| `unassigned` | we have **NEVER** seen a session for this plan |
+| `session-gone` | it **WAS** assigned to something; now it is in no tmux. Red, in NEEDS YOU |
+| `live-outside-tmux` | a live Claude for the topic runs with NO tmux pane — alive but unmanageable |
 
-Live, right now, on the real host — these two are `unassigned` today and adoptable the
-moment the wiring lands:
+- **Neither names a tmux session** (`tmux=None`). The daemon lists PLANS, not panes: a
+  tmux name reaches the table only as a mapping row's column value, and naming a bare
+  terminal (`livespec1`) was the original complaint.
+- **The MAPPING ROW is the memory of "we have ever seen it"** — that is the ONLY thing
+  separating the two states, so a dead mapping is **KEPT, never pruned**. (I built pruning
+  first; the maintainer reversed it. Pruning would erase the evidence and silently demote
+  a died-on-us track to look like one that never started.)
+- **`not-claude` is DELETED. Do not reintroduce it.** It was the identity gate's return
+  value leaking into the UI — it named a check's output, not anything an operator needs.
+  The gate itself is unchanged and still guards every act.
+
+### Codex detection — what shipped (PR #1296)
+
+`codex_sessions.py` (the Codex twin of `claude_sessions`) + the `supervisor.py` wiring.
+Proven live on the real fleet, both tracks the maintainer named:
 
 ```
-tmux='livespec-dev-tooling'  name='rop-sweep-library-checks'    ctx=62% left
-tmux='livespec3'             name='rop-sweep-consumer-cleanup'  ctx=36% left   <-- PAST the 50% line
+BEFORE: unassigned  rop-sweep-library-checks     —                     —
+        unassigned  rop-sweep-consumer-cleanup   —                     —
+AFTER:  idle        rop-sweep-library-checks     livespec-dev-tooling  66%   (TUI 66%)
+        idle        rop-sweep-consumer-cleanup   livespec3             38%   (TUI 38%)
 ```
 
-**`rop-sweep-consumer-cleanup` is already past the wind-down line and getting no wrap-up.**
-That is the concrete cost of leaving this unwired, and the reason Ctx% mattered.
+**The join is exact, not a heuristic:** a codex process holds its own rollout file OPEN,
+and the FILENAME embeds the session id → `session_index.jsonl` → `thread_name` = the plan
+topic; `/proc/<pid>/cwd` = the repo. `resolve_tmux_session` was already runtime-agnostic.
 
-#### THE ORDERING CONSTRAINT — read before touching the identity gate
+**Five things that MUST NOT regress** (each pinned by a test; each cost real effort):
 
-**Today's state is already SAFE, and the danger is INTRODUCED by step 2.** The identity
-gate (`_pane_is_managed_claude`) rejects a codex pane, so a Codex track reads `not-claude`
-and returns BEFORE the busy / ready branches — it can never reach `_do_restart`. The
-moment the gate ACCEPTS codex panes, a Codex track that declares `ready` flows into
-`_do_restart` and is respawned with `claude --dangerously-skip-permissions -n <topic>`,
-which REPLACES the codex session with a claude one. Destructive.
+1. **Identity is PANE-scoped, not session-scoped** (`_is_codex_track` takes `target`).
+   Adversarial review found that session-scoping let ANY codex in a Claude track's tmux
+   session (e.g. `codex resume <topic>` spawned from that session's own Bash tool)
+   reclassify the live CLAUDE track as monitor-only — silently killing its wrap-up, its
+   NOT-RESPONDING alert and its restart, invisible in NEEDS YOU. Worst failure possible.
+   Identity needs BOTH the exact session-map hit AND the target pane's own command.
+2. **`start` fails closed on PROOF OF DEATH** (`if not signals.pane_is_shell(cmd)`), not
+   on "is it a live Claude?". The old test knew one runtime, so a live codex pane (`bun`)
+   failed it and got respawn-KILLED. Enumerating live runtimes does not scale; demand a
+   shell.
+3. **Ctx comes from each runtime's OWN statusline** — `parse_ctx_remaining` matches BOTH
+   `Ctx: N% left` (Claude) and `Context N% left` (Codex). An earlier cut computed Codex's
+   ctx from rollout `token_count` events and was WRONG by 2-4 points (62 vs 66, 36 vs 38)
+   because it reimplemented codex-rs's private occupancy formula (~12k baseline, reasoning
+   excluded). **Never reintroduce a local occupancy formula.** `codex_sessions.py` now
+   never reads a rollout body at all.
+4. **A Codex track is MONITOR-ONLY and is NEVER restarted with the claude command.**
+   `_do_restart` runs `claude --dangerously-skip-permissions -n <topic>`; aimed at a codex
+   pane it destroys the session. `test_an_ADOPTED_codex_track_declaring_ready_is_never_restarted`
+   is the guard — **verified to have teeth by sabotage** (disable the gate, it goes red).
+   Its predecessor went VACUOUS when Codex was wired and passed for the old reason; if you
+   change this area, re-sabotage to confirm the guard still bites.
+5. **Identity derives; nothing is stored.** No `runtime` field on the mapping. The pane
+   command for a codex pane is **`bun`** (the launcher; the codex binary is its child) and
+   `bun` matches any bun app — `pane_is_codex` is deliberately loose and MUST NEVER gate
+   alone.
 
-⇒ **Accepting codex panes and refusing to restart them are INSEPARABLE and MUST land in
-the same commit**, with the refusal tested (a Codex track that declares `ready` must not
-be restarted as claude). Never land adoption or the gate change alone.
+### OPEN — maintainer decisions (do NOT self-resolve)
 
-**The guard for this is ALREADY WRITTEN and green** (PR #1296,
-`test_a_codex_pane_is_never_restarted_even_when_it_declares_ready`). It asserts the
-INVARIANT — no respawn, no paste — never the mechanism, so it must keep passing through
-your change via the NEW runtime-aware restart gate rather than via the `not-claude` return
-that happens to catch it today. It is verified to have TEETH: widening the identity gate
-to accept `bun` (exactly your change) turns it RED, because the daemon really does respawn
-the codex pane. **If it goes red while you wire, that is the destructive bug, not a stale
-test — do not edit the test to make it pass.**
+1. **Codex restartable, or monitor-only?** Monitor-only shipped. `codex resume <topic>
+   "<kick>"` makes restart genuinely possible (kick as an ARGUMENT, reattaches the SAME
+   named session, so adoptability survives). Asked twice, unanswered.
+2. **Does `vps-info` belong in the fleet?** It has `plan/dolt-backup-missing-secret/` but
+   is absent from `.livespec-fleet-manifest.jsonc`, so it is unwatched. **Independently: a
+   live Claude session there is `waiting` on the human right now** (`tmux switch-client -t
+   vps-info`), invisible to the fleet view. Note its session is named `vps-info-7e`, not
+   the topic — so registering the repo alone would NOT adopt it.
 
-#### Wiring notes that will save the next session time
+### OPEN — known defects, NOT fixed (found by adversarial review)
 
-- **Derive the runtime; do NOT add a stored `runtime` field to the mapping.** A codex
-  pane's `#{pane_current_command}` is **`bun`, NOT `codex`** (verified live: tmux reports
-  the pane's foreground process, which is the `bun` launcher; the vendored codex binary is
-  its CHILD). So a `pane_is_codex` keyed on `bun` would false-positive on any bun app.
-  **`codex_by_tmux_session` already solves this** — membership in that per-tick map IS the
-  exact answer (a session is in it only because a real codex process holding a real
-  rollout resolved to that tmux session this tick), and the same lookup hands you the
-  `CodexSession` for ctx. Hold it in a `self._codex` field refreshed in `build_rows`,
-  mirroring `_refresh_claude_status` / `_claude_status` exactly. Live, exact,
-  self-correcting, no schema change, nothing to migrate. Proven live:
+1. **The codex `ready` alert arm is effectively DEAD CODE in the mainline flow.**
+   `ready_valid` needs an injection stamp; the ONLY stamp writer is the wrap-up branch,
+   which `elif is_codex:` makes unreachable for codex → no stamp → `ready` always False →
+   a codex session that declares `ready` renders plain `idle`, no alert, not attention.
+   The gate is still correct as defence-in-depth. Resolving this is entangled with open
+   decision #1.
+2. **Doc/code contradiction I introduced:** a comment (and AGENTS.md) claims the ctx read
+   "is what lets a Codex track receive the escalating wrap-up" — monitor-only means it
+   never does. Shipped v1 IS the passenger-runs-to-exhaustion behaviour, now with a
+   visible number. Fix the prose or the behaviour (see #1).
+3. **AGENTS.md is stale vs the shipped code** in several places the reviewers named: the
+   state diagram still has a `not_claude` node; the "not_claude is narrower… do not widen
+   it back" paragraph; the TOCTOU "still reports the flat not_claude" sentence; the colour
+   bullet; and `adopt_sessions`' docstring still says codex "are not adopted (a documented
+   gap)" directly above the code that adopts them.
+4. **Two codex sessions in one tmux session:** `codex_by_tmux_session` keeps first-by-pid,
+   so the second shadows the first → that track silently loses ctx + monitoring. Safe, but
+   a monitoring outage.
+5. **`recover_missing_sessions` is Claude-only** — a codex running outside tmux is
+   invisible, so startup recovery could launch a duplicate claude on a plan codex is
+   actively working.
+6. **The beside-tests now touch the REAL `/proc` and `~/.codex`** via default kwargs in
+   adopt/refresh. Deterministic today (tmp cwds cannot match fleet repos), but a real host
+   coupling in a unit suite.
+7. **`livespec-p9s0`** (ledger, P1, NOT overseer): the cross-repo wiring check reads
+   siblings' LOCAL clones, so a stale clone flaps phantom drift. Hit live this session and
+   worked around by fast-forwarding the clone.
 
-  ```
-  livespec3                 pane_cmd='bun'     is_codex=True    <-- a pane check would miss/over-match
-  livespec2                 pane_cmd='claude'  is_codex=False
-  livespec-autonomous-mode  pane_cmd='claude'  is_codex=False
-  ```
-- **`adopt` should take the triple, not grow a branch.** `map_codex_sessions` deliberately
-  emits `claude_sessions.map_named_sessions`'s shape: extract the common body of
-  `adopt_sessions` and feed it both sources, so the two runtimes cannot drift.
-- **Companion tasks filter themselves.** `Codex Companion Task: …` names fail the "is this
-  an ACTIVE plan topic?" test — no filter needed anywhere.
-- **Busy needs nothing new.** `has_active_subshell` is the runtime-agnostic fallback the
-  daemon already uses when `claude_status is None` — exactly the Codex case. VERIFY live.
-- **Ctx** — feed `rollout_ctx_remaining` in where `parse_ctx_remaining` is used for a codex
-  track (same `int | None` contract, so `_effective_ctx` and every band work unchanged).
-  The rollout path is `open_rollout_id`'s source fd; keep the ~5 ms tail read per tick.
-- **The one open MAINTAINER decision (do NOT self-resolve):** should a Codex track be
-  **restartable**, or **monitor-only**, in v1? The cardinal rule already answers the
-  safety half runtime-agnostically — never restart without a `ready` declaration, which a
-  Codex session writes to the same `.overseer-state`. `codex resume <topic> "<kick>"`
-  makes restart genuinely possible (it takes the kick as an ARGUMENT — no `send-keys`
-  paste — and reattaches the SAME named session, so adoptability survives). Monitor-only's
-  only argument is a smaller blast radius. Was asked and NOT yet answered; until it is,
-  build monitor-only and SURFACE a ready Codex track (notify-never-block) rather than
-  restarting it.
+### Method notes worth keeping
 
-The original design follows; it remains accurate except that it records the read as
-unbuilt and Ctx%/restart as unavailable (both corrected above and in `research/`).
-
-### The original BUILD-READY design (de-risked 2026-07-16)
-
-The daemon cannot see a Codex session: it discovers the plan (shows `unassigned`) but
-cannot map the running Codex session to it. The previous note called the topic↔session
-join "the hard part … no clean join." **That is now SOLVED** — the join is clean and
-exact (verified live 2026-07-16), so this is ready to build. Do it as its own focused
-session (a new worktree/PR), not inline.
-
-**The clean join (verified live):** a running codex process holds its rollout file OPEN,
-and the rollout filename embeds the session id, which `session_index.jsonl` maps to the
-`thread_name` = the plan topic.
-
-1. Enumerate running codex processes (`/proc/<pid>/comm == "codex"`; the binary is
-   `…/@openai/codex-linux-x64/…/bin/codex --dangerously-bypass-approvals-and-sandbox`).
-2. `/proc/<pid>/cwd` → the repo; scan `/proc/<pid>/fd/` for the open
-   `rollout-<ts>-<id>.jsonl` → extract `<id>`.
-3. `<id>` → `~/.codex/session_index.jsonl` → `thread_name`. (The rollout file's first
-   payload also carries `cwd`, as a cross-check.)
-4. If `thread_name` matches a discovered `plan/<topic>/` in that repo → adoptable.
-5. Walk `<pid>` up to a tmux pane PID → the tmux session (reuse
-   `claude_sessions.resolve_tmux_session`).
-
-Verified: pid in `livespec-dev-tooling` → open rollout id `019f6a11` → thread_name
-`rop-sweep-library-checks` → real `plan/rop-sweep-library-checks/`; likewise
-`rop-sweep-consumer-cleanup` in `livespec-orchestrator-beads-fabro`. Some threads are
-`"Codex Companion Task: …"` (sub-agent / one-shot codex runs), NOT plan topics — those
-simply fail step 4 and are correctly ignored, so the companion-task noise filters itself.
-
-**The four signals — what v1 needs:**
-
-1. **Adoption (NEW).** A `codex_sessions.py` mirroring `claude_sessions.py`:
-   `read_live_codex_sessions(...) -> [CodexSession(pid, cwd, thread_name)]` composing the
-   pid→open-fd→id→thread_name join, and a `map_codex_sessions` joining to tmux (reuse
-   `resolve_tmux_session`). Then `Supervisor.adopt_codex_sessions` (or fold into
-   `adopt_sessions`): for each live codex session whose `thread_name` is an ACTIVE plan
-   topic in a fleet repo and not already mapped → append a mapping that RECORDS THE
-   RUNTIME (claude vs codex) so `evaluate` can branch (see §4).
-2. **Identity gate (CHANGE).** `_pane_is_managed_claude` / `signals.pane_is_claude` accept
-   only `node`/`claude`. Add a Codex identity (`pane_is_codex` → `bun`/`codex`) and let the
-   gate accept the mapped session's runtime — a Codex-mapped session whose pane is
-   `bun`/`codex` is valid, not `not-claude`.
-3. **Busy (MOSTLY DONE).** The process-tree shell-walk (`has_active_subshell`) is the
-   runtime-agnostic FALLBACK the daemon already uses when `claude_status is None` — exactly
-   the Codex case (Codex is not in Claude's registry). Likely already fires for a busy
-   codex; VERIFY live (a codex running a tool spawns subprocesses).
-4. **Ctx% + restart (SAFETY-CRITICAL).** **The restart path MUST be gated Claude-only.**
-   `_do_restart` launches `claude --dangerously-skip-permissions -n <topic>`; running that
-   against a Codex pane would replace the codex session with a claude one — destructive and
-   wrong. The `ready` branch of `evaluate` must NOT reach the CURRENT `_do_restart` for a
-   codex-runtime track. Gate on the mapping's runtime marker, and TEST it explicitly (a
-   Codex track that declares `ready` must NOT restart it as claude). This is the one place a
-   bug is dangerous — get it right.
-
-   **Two corrections to this item's earlier reading — see
-   `research/codex-ctx-and-restart-evidence.md` for the live evidence.** Both EXPAND what a
-   Codex track can do; neither weakens the gate above, which stands as written.
-
-   - **Ctx% IS readable — it does not need the statusline.** True: Codex renders no
-     `Ctx: N% left`, so `parse_ctx_remaining` finds nothing. But ctx comes from the ROLLOUT
-     FILE THIS DESIGN ALREADY OPENS: its `token_count` events carry
-     `last_token_usage.total_tokens` + `model_context_window`, so
-     `ctx_left% = 1 − total_tokens / model_context_window` (verified: 35.8% left on a live
-     session). Read the LAST such record. This is a BETTER source than the Claude path — a
-     number from a file, not a regex over rendered terminal text. It matters because the
-     wrap-up is the daemon's core lever now that nothing is force-killed: a wrap-up-less
-     Codex track is a passenger that runs to exhaustion and wedges exactly like the original
-     bug. With ctx readable, a Codex track gets the escalation and declares
-     `ready`/`winding-down` like any other. (`token_count` payloads are counters, not
-     conversation content — parse those, ignore every other record type, per the secrets
-     caution below.)
-   - **Restart is POSSIBLE, so monitor-only is a v1 SCOPE CALL, not a property of Codex.**
-     `codex resume [SESSION_ID] [PROMPT]` takes *"Session id (UUID) or session name"* plus an
-     optional prompt, so the analogue is
-     `codex resume <topic> "read <repo>/plan/<topic>/handoff.md and follow it"` — cleaner
-     than the Claude path twice over: the kick is an ARGUMENT (no `send-keys` paste, no
-     paste-race), and `resume` reattaches the SAME named session so `thread_name` (hence
-     adoptability) survives by construction. The durable shape is therefore
-     **runtime-dispatched restart** — the gate SELECTS the command for the track's runtime —
-     with v1 free to leave the codex arm unimplemented. Identical safety today, without
-     baking "never" into the design.
-
-   **Precondition worth stating up front:** the index is sparse — only **67 of 259** rollout
-   files appear in `session_index.jsonl`, because only NAMED sessions are indexed; an
-   unnamed session carries no topic anywhere. Step 4 already fails those closed, so it costs
-   nothing, but it means Codex adoption depends on a naming convention exactly as Claude's
-   does via `claude -n <topic>`.
-
-**A Codex track** then adopts and shows `working` / `idle` / `blocked:human` like a Claude
-track (busy via the shell-walk; `blocked:` via the state file if the codex session writes
-one — the idle-nudge's `blocked:` escape already applies). Per the corrections above it CAN
-get the wrap-up (ctx is readable from the rollout); whether v1 also restarts it is the open
-scope call — until that arm exists, it is never restarted.
-
-**Code + tests + docs:** new `codex_sessions.py` + beside-tests; `supervisor.py` changes
-(adopt, identity gate, restart gate) + beside-tests; `AGENTS.md` (a Codex-adoption
-invariant + the monitor-only restart gate) and `SKILL.md`. Beside-tests are the ONLY gate:
-`uv run pytest .claude/skills/overseer/ -q`. **Secrets caution:** rollout `.jsonl` files
-contain session content — read only the filename (for the id) and the first payload's
-`cwd`; never dump rollout bodies.
+- **The beside-tests are the ONLY gate on this folder.** Always
+  `uv run pytest .claude/skills/overseer/ -q` before pushing.
+- **Sabotage your safety tests.** Both times a guard mattered here it was verified by
+  breaking the thing it guards and watching it go red. One guard was silently vacuous and
+  only sabotage revealed it.
+- **Adversarial review earns its keep on this daemon.** Three independent Fable reviewers
+  refuted the Codex work twice and produced the ctx numbers; every finding above with
+  "adversarial review" attached was something the author (me) missed.
 
 ### Standing operational notes (NOT open tasks)
 
