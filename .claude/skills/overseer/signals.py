@@ -67,7 +67,10 @@ def strip_ansi(text: str) -> str:
 # adversarial-review blocker #5).
 # --------------------------------------------------------------------------- #
 
-_CTX_RE = re.compile(r"Ctx:\s*(\d+)%\s*left")
+# Claude renders `Ctx: N% left`; Codex renders `Context N% left`. Both are the
+# RUNTIME'S OWN computed number, which is the whole point of reading it here rather
+# than recomputing occupancy ourselves — see the Codex note in `codex_sessions`.
+_CTX_RE = re.compile(r"(?:Ctx:|Context)\s*(\d+)%\s*left")
 
 # How many trailing non-empty rows to scan for the statusline. The live Claude
 # TUI renders the statusline as the SECOND-to-last row — a footer hint line

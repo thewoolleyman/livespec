@@ -310,3 +310,27 @@ def test_is_idle_input_rejects_prose_around_empty_prompt():
     # Guard: an empty `❯` between ordinary prose lines (no box borders) is NOT idle.
     prose = "● Read 1 file\n❯ \nSome narration line.\n"
     assert signals.is_idle_input(prose) is False
+
+
+def test_parse_ctx_reads_both_runtimes_own_statuslines():
+    """Each runtime renders ITS OWN computed context-left; the daemon reads that number
+    rather than recomputing occupancy.
+
+    Codex says `Context N% left`, Claude says `Ctx: N% left`. An earlier cut computed
+    Codex's ctx from its rollout's `token_count` events and was WRONG by 2-4 points
+    against Codex's own display (62 vs 66, 36 vs 38 — verified live 2026-07-17), because
+    that reimplements codex-rs's private occupancy formula (a ~12k baseline, reasoning
+    tokens excluded). Reading the runtime's own number cannot drift that way.
+    """
+    claude_pane = "\n".join(["irrelevant", "", "Ctx: 42% left", "? for shortcuts"])
+    codex_pane = "\n".join(
+        [
+            "irrelevant",
+            "",
+            "\u203a Find and fix a bug in @filename",
+            "",
+            "  gpt-5.5 high \u00b7 /data/projects/x \u00b7 Context 66% left \u00b7 some-topic",
+        ]
+    )
+    assert signals.parse_ctx_remaining(claude_pane) == 42
+    assert signals.parse_ctx_remaining(codex_pane) == 66

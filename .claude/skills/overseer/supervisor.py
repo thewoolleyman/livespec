@@ -822,20 +822,6 @@ class Supervisor:
             session, repo, topic
         )
 
-    def _codex_ctx(self, session: str | None) -> int | None:
-        """Remaining ctx% for a codex track, read from the rollout it holds open.
-
-        Fail-closed to None (= unknown), which the daemon already treats as "keep the
-        last known value and never count a threshold crossing".
-        """
-        live = self._codex.get(session or "")
-        if live is None:
-            return None
-        for target in codex_sessions.proc_fd_targets(live.pid):  # type: ignore[attr-defined]
-            if codex_sessions.rollout_id(target):
-                return codex_sessions.rollout_ctx_remaining(target)
-        return None
-
     def _pane_is_managed_claude(self, target: str, repo: str) -> bool:
         """True iff ``target``'s pane is a live Claude TUI whose cwd is inside ``repo``.
 
@@ -1196,16 +1182,10 @@ class Supervisor:
         # idle. This only ever sets the LABEL: every ACT is suppressed for a Codex track
         # below, so a wrong guess here can never paste or respawn.
         idle = (not busy) if is_codex else signals.is_idle_input(capture)
-        # Ctx%: Codex's statusline reads `Context N% left`, which the Claude-shaped
-        # `Ctx: N% left` scrape does not match — but the number is also in the rollout
-        # the session already holds open, which is the better source anyway
-        # (`token_count` events carry the occupancy and the window). Same `int | None`
-        # contract either way, so `_effective_ctx` and every band work unchanged. This is
-        # what lets a Codex track receive the escalating wrap-up, which is the daemon's
-        # ONLY lever now that nothing is force-killed — without it a Codex track is a
-        # passenger that runs to exhaustion and wedges (live 2026-07-16:
-        # rop-sweep-consumer-cleanup sat at 36%, past the wind-down line, un-nudged).
-        current_ctx = self._codex_ctx(session) if is_codex else signals.parse_ctx_remaining(capture)
+        # Ctx% is runtime-agnostic: `parse_ctx_remaining` matches BOTH statuslines
+        # (`Ctx: N% left` / `Context N% left`), so each runtime reports ITS OWN computed
+        # number and there is no occupancy formula here to get wrong.
+        current_ctx = signals.parse_ctx_remaining(capture)
         eff_ctx = self._effective_ctx(key, current_ctx)
 
         stamp = registry.read_injection_stamp(repo, topic, self.stamp_path)
