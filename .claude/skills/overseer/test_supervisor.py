@@ -367,21 +367,29 @@ def test_missing_tmux_session_also_never_names_a_tmux_session(tmp_path):
     assert view.tmux is None
 
 
-def test_foreign_pane_still_names_the_mismapped_tmux_session(tmp_path):
-    """The counter-case that keeps the rule honest: `not-claude` means the mapping
-    points at a live FOREIGN pane, and that pane is exactly what the operator must go
-    inspect — so it MUST still be named (and stay jumpable). The rule is "do not name a
-    session that isn't there", not "blank the column whenever something is wrong"."""
+def test_a_foreign_pane_is_session_gone_not_a_status_of_its_own(tmp_path):
+    """A live Claude in a DIFFERENT repo is not "not-claude" — from this plan's point of
+    view the fact is identical to a bare shell: its session is NOT IN THIS TMUX. The plan
+    was assigned to something once, so it is `session-gone`.
+
+    The mapping ROW is kept — it is the memory of having seen the session, which is what
+    separates `session-gone` from `unassigned` (maintainer-declared 2026-07-17: "KEEP
+    session-gone if you've ever seen the session, only use unassigned if you've never
+    seen it"). And no dead terminal is named: tmux is None.
+    """
     repo, topic = _make_plan(tmp_path)
     other = tmp_path / "elsewhere"
     other.mkdir()
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, other, capture=_idle_capture(ctx=40))  # live claude, wrong repo
-    sup = _sup(tmp_path, fake)
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "not-claude"
-    assert view.tmux == session
+    assert view.status == "session-gone"
+    assert view.tmux is None  # never name the pane it is wrongly pointed at
+    assert not fake.has("paste")  # the identity gate still guards every act
 
 
 def test_pane_exited_to_shell_with_live_claude_outside_tmux_is_live_outside_tmux(tmp_path):
@@ -406,21 +414,6 @@ def test_pane_exited_to_shell_with_live_claude_outside_tmux_is_live_outside_tmux
     assert not fake.has("paste")
 
 
-def test_claude_pane_in_wrong_repo_is_not_claude(tmp_path):
-    """The mapped session is a live Claude but its cwd is a DIFFERENT repo → the
-    identity gate's path check fails → `not-claude`, no act (B3 + B1 residual)."""
-    repo, topic = _make_plan(tmp_path)
-    other = tmp_path / "elsewhere"
-    other.mkdir()
-    session = registry.tmux_id(str(repo), topic)
-    fake = FakeTmux()
-    fake.serve(session, other, capture=_idle_capture(ctx=40))  # claude, but cwd=other repo
-    sup = _sup(tmp_path, fake)
-    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "not-claude"
-    assert not fake.has("paste")
-
-
 def test_identity_rechecked_before_acting_catches_shell(tmp_path):
     """Codex re-review #1: identity passes the TOP gate but the pane exits to a
     shell during the capture+settle window — the re-check immediately before
@@ -433,7 +426,10 @@ def test_identity_rechecked_before_acting_catches_shell(tmp_path):
     fake.cmds[session] = ["node", "zsh"]  # claude at top gate, shell at the re-check
     sup = _sup(tmp_path, fake)
     view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert view.status == "not-claude"
+    # `settling`: the pane changed UNDER US mid-tick — wait and re-read. The next tick's
+    # top gate classifies the settled truth. The SAFETY property (no paste into the
+    # shell) is what this test exists for and is unchanged.
+    assert view.status == "settling"
     assert not fake.has("paste")  # never pasted into the shell
 
 
@@ -2334,11 +2330,19 @@ def test_tty_render_tints_idle_and_waiting_rows_yellow(tmp_path):
 
 
 def test_tty_render_tints_broken_rows_red(tmp_path):
-    for status in ("session-gone", "not-claude"):
-        sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
-        view = supervisor.RowView(topic="br", repo="/r", tmux="s", ctx=None, status=status)
-        line = _row_line(_render_of(sup, [view]), "br")
-        assert line.startswith(_RED), status
+    """`session-gone` is still the "broken" red — a plan we have seen running is no
+    longer in any tmux. `not-claude` is DELETED and must never come back."""
+    sup = _sup(tmp_path, FakeTmux(), out=_TtyOut())
+    view = supervisor.RowView(topic="br", repo="/r", tmux=None, ctx=None, status="session-gone")
+    line = _row_line(_render_of(sup, [view]), "br")
+    assert line.startswith(_RED)
+
+
+def test_not_claude_is_gone_from_every_surface(tmp_path):
+    """One guard so the jargon cannot creep back via the colour map or attention list."""
+    assert "not-claude" not in supervisor._STATUS_COLOR
+    assert "not-claude" not in supervisor.ATTENTION_STATUSES
+    assert "session-gone" in supervisor.ATTENTION_STATUSES  # still attention
 
 
 def test_tty_render_leaves_unassigned_rows_uncolored(tmp_path):
@@ -2614,3 +2618,40 @@ def test_read_only_list_never_renames_the_window(tmp_path):
         sup.tick(act=False)
     assert fake.renames() == []
     assert fake.window_name is None
+
+
+def test_never_seen_is_unassigned_but_once_seen_is_session_gone(tmp_path):
+    """THE distinction between the two, maintainer-declared 2026-07-17:
+
+        "KEEP session-gone if you've ever seen the session, only use unassigned if
+         you've never seen it"
+
+    Both rows mean "no session here right now" — what separates them is whether we have
+    EVER seen one. The MAPPING ROW is exactly that memory (adopt writes it when it first
+    sees a session), which is why a dead mapping is KEPT, not pruned: pruning it would
+    erase the very evidence that distinguishes these two states and silently demote a
+    died-on-us track to look like one that never started.
+
+    Neither row names a tmux session: `unassigned` never had one, and `session-gone`
+    must not point at the bare terminal its session left behind.
+    """
+    repo, topic = _make_plan(tmp_path)
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    fake = FakeTmux()  # no tmux sessions exist at all
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+
+    # NEVER seen: a discovered plan with no mapping row.
+    never = registry.Track.make_unassigned(repo=str(repo), topic=topic)
+    never_view = sup.evaluate(never, act=True)
+    assert never_view.status == "unassigned"
+    assert never_view.tmux is None
+
+    # SEEN once: a mapping row exists, but the session is not in any tmux now.
+    session = registry.tmux_id(str(repo), topic)
+    gone_view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert gone_view.status == "session-gone"
+    assert gone_view.tmux is None
+
+    # The two are distinguishable ONLY by the mapping row, so it must survive.
+    assert never_view.status != gone_view.status
