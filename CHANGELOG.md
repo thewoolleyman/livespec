@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.3](https://github.com/thewoolleyman/livespec/compare/v0.15.2...v0.15.3) (2026-07-17)
+
+
+### Bug Fixes
+
+* **overseer:** delete not-claude; a pane that isn't ours is session-gone ([b9c0dae](https://github.com/thewoolleyman/livespec/commit/b9c0daeba5d0f1f11f3254b0986e744a0e803bc3))
+
 ## [0.15.2](https://github.com/thewoolleyman/livespec/compare/v0.15.1...v0.15.2) (2026-07-17)
 
 
