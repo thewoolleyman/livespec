@@ -221,6 +221,7 @@ still correct but describes the read as unbuilt.
 |---|---|
 | `read_live_codex_sessions()` | `[CodexSession(pid, name, cwd, session_id)]` — `name` IS the plan topic |
 | `map_codex_sessions(pane_pid_to_session)` | `[(tmux_session, name, cwd)]` — **the exact triple `claude_sessions.map_named_sessions` emits**, so ONE adopt path serves both runtimes |
+| `codex_by_tmux_session(pane_pid_to_session)` | `{tmux_session: CodexSession}` — **the per-tick map to key everything off**; twin of `_claude_status` / `status_by_tmux_session` |
 | `rollout_ctx_remaining(path)` | remaining-% as `int \| None` — **the same shape `signals.parse_ctx_remaining` returns**, so it drops into the same slot |
 | `proc_pids_of_comm` / `proc_cwd` / `proc_fd_targets` / `open_rollout_id` / `rollout_id` / `read_thread_names` | the injectable pieces |
 
@@ -254,9 +255,18 @@ be restarted as claude). Never land adoption or the gate change alone.
   pane's `#{pane_current_command}` is **`bun`, NOT `codex`** (verified live: tmux reports
   the pane's foreground process, which is the `bun` launcher; the vendored codex binary is
   its CHILD). So a `pane_is_codex` keyed on `bun` would false-positive on any bun app.
-  Derive codex identity EXACTLY instead, from a per-tick `{tmux_session: CodexSession}` map
-  built by `map_codex_sessions` — mirror `_refresh_claude_status` /
-  `_claude_status`. Live, exact, self-correcting, and no schema change or migration.
+  **`codex_by_tmux_session` already solves this** — membership in that per-tick map IS the
+  exact answer (a session is in it only because a real codex process holding a real
+  rollout resolved to that tmux session this tick), and the same lookup hands you the
+  `CodexSession` for ctx. Hold it in a `self._codex` field refreshed in `build_rows`,
+  mirroring `_refresh_claude_status` / `_claude_status` exactly. Live, exact,
+  self-correcting, no schema change, nothing to migrate. Proven live:
+
+  ```
+  livespec3                 pane_cmd='bun'     is_codex=True    <-- a pane check would miss/over-match
+  livespec2                 pane_cmd='claude'  is_codex=False
+  livespec-autonomous-mode  pane_cmd='claude'  is_codex=False
+  ```
 - **`adopt` should take the triple, not grow a branch.** `map_codex_sessions` deliberately
   emits `claude_sessions.map_named_sessions`'s shape: extract the common body of
   `adopt_sessions` and feed it both sources, so the two runtimes cannot drift.
