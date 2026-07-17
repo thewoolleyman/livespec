@@ -827,6 +827,55 @@ class Supervisor:
             return False
         return ready
 
+    def _void_stale_blocked(
+        self, track: registry.Track, blocked: str | None, *, generating: bool
+    ) -> str | None:
+        """Void a ``blocked:`` declaration the session has outlived. Returns it, or None.
+
+        A session that is GENERATING is, **by observation, not waiting on a human** — so a
+        ``blocked:`` declaration still on disk is provably false. This is NOT the daemon
+        making a semantic judgment (invariant 1): it is not guessing that the session is
+        unblocked, it is reading that the session is producing tokens, which is
+        incompatible with waiting for an answer.
+
+        Why it is needed: nothing else retires a ``blocked:``. ``_clear_state`` runs only
+        on the daemon's own restart path, so a pane replaced OUT-OF-BAND (a hand-restarted
+        session, a `/clear`) inherits its predecessor's declaration — found live
+        2026-07-16, where a fresh session rendered `working (awaiting maintainer next-step
+        decision — Codex…)`, a reason written by a session that no longer existed. Left
+        alone, the dead reason also fires a false ``blocked:human`` alert the moment the
+        session goes idle.
+
+        Two bounds keep it honest, each pinned by a test:
+
+        - **``generating``, not merely ``busy``.** A session busy ONLY via a live
+          ``Bash(run_in_background)`` command (Claude ``shell``) is sitting AT ITS PROMPT
+          and can legitimately be awaiting a human while a build runs — not provably
+          stale, so never voided however old. Only a real generation spinner or Claude
+          ``busy`` (actively generating / an in-process sub-agent) qualifies.
+        - **The same ``_MARKER_VOID_GRACE`` as ``ready`` (RB1).** The declaring turn's own
+          final text streams for 10-60s AFTER the write, so a young declaration must
+          survive its own busy tail — else every legitimate declaration is destroyed
+          before the pane ever goes idle.
+
+        An idle blocked session is never touched: it keeps its declaration and keeps
+        alerting, forever, until the session itself retracts it.
+        """
+        if blocked is None or not generating:
+            return blocked
+        state = signals.read_state(track.repo, track.topic)
+        if state is None or state.token != signals.STATE_BLOCKED:
+            return blocked  # unreadable, or no longer a block → leave it
+        age = self.now() - state.mtime
+        if age <= _MARKER_VOID_GRACE:
+            return blocked  # the declaring turn's own tail (RB1)
+        self._clear_state(track)
+        self._log(
+            f"voided stale blocked declaration for {track.repo}::{track.topic} "
+            f"(age {age:.0f}s > {_MARKER_VOID_GRACE:.0f}s grace; session resumed generating)"
+        )
+        return None
+
     def _write_idle_nudge_state(self, track: registry.Track) -> None:
         """Write the daemon-owned ``idle-with-context-left`` marker to the state file.
 
@@ -1117,6 +1166,18 @@ class Supervisor:
         # a changing pane is treated as `working` and skipped this tick.
         if busy:
             status = "working"
+            if act:
+                # A GENERATING session is not waiting on a human, so a `blocked:` it has
+                # outlived is provably dead — retire it before the note is derived, or the
+                # dead reason rides this row (it is the note default) and later fires a
+                # false `blocked:human`. Busy via a BACKGROUND SHELL alone does NOT qualify:
+                # that session is at its prompt and may genuinely still be waiting.
+                blocked = self._void_stale_blocked(
+                    track,
+                    blocked,
+                    generating=signals.is_busy(capture) or claude_status == "busy",
+                )
+                note = blocked if blocked else None  # re-derive: the default came from `blocked`
             # When the PANE itself looks idle, the row note explains WHY it is `working`,
             # or the operator would read the idle-looking pane and distrust the status.
             if not signals.is_busy(capture):

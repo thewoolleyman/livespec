@@ -575,6 +575,101 @@ def test_nudge_never_overwrites_a_session_declaration(tmp_path):
     assert state is not None and state.token == signals.STATE_BLOCKED
 
 
+# --------------------------------------------------------------------------- #
+# Voiding a stale `blocked:` declaration. A GENERATING session is, by observation,
+# not waiting on a human — so a `blocked:` it has outlived is provably false, and a
+# dead reason must not ride a `working` row nor fire a false `blocked:human` alert
+# when the session next goes idle. Found live 2026-07-16: a fresh overseer-rewrite
+# session rendered `working (awaiting maintainer next-step decision — Codex…)` — the
+# PREVIOUS session's declaration, inherited because the pane was replaced out-of-band
+# (so `_do_restart`'s `_clear_state` never ran).
+# --------------------------------------------------------------------------- #
+
+
+def test_stale_blocked_is_voided_when_the_session_resumes_generating(tmp_path):
+    """Past the grace + a real generation spinner ⇒ the declaration is provably dead."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_busy_capture())  # a real spinner: generating
+    sup = _sup(tmp_path, fake)
+    _declare(repo, topic, "blocked: a reason from a session that has moved on", mtime=800.0)
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert view.note is None  # the dead reason no longer rides the row
+    assert signals.read_state(str(repo), topic) is None  # voided
+
+
+def test_fresh_blocked_survives_the_declaring_turns_own_busy_tail(tmp_path):
+    """RB1, for `blocked` as for `ready`: the declaring turn's final text keeps streaming
+    for 10-60s AFTER the write, so a YOUNG declaration must survive a busy tick — else
+    every legitimate declaration is destroyed before the pane ever goes idle."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_busy_capture())
+    sup = _sup(tmp_path, fake)
+    _declare(repo, topic, "blocked: I need your call", mtime=1001.0)  # younger than the grace
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    state = signals.read_state(str(repo), topic)
+    assert state is not None and state.token == signals.STATE_BLOCKED  # survived
+
+
+def test_blocked_with_only_a_background_shell_is_never_voided(tmp_path):
+    """The counter-case that bounds the rule. A session busy ONLY via a live
+    `Bash(run_in_background)` command (Claude `shell`) is AT ITS PROMPT — it can be
+    genuinely waiting on a human while a build runs, so its declaration is NOT provably
+    stale and must survive however old it is. Only GENERATING voids."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # no spinner
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "shell"}  # busy via a background command only
+    _declare(repo, topic, "blocked: need your call", mtime=800.0)  # old, but NOT stale
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    state = signals.read_state(str(repo), topic)
+    assert state is not None and state.token == signals.STATE_BLOCKED  # survived
+
+
+def test_stale_blocked_is_voided_for_an_in_process_sub_agent(tmp_path):
+    """Claude `busy` with no spinner (an in-process Task sub-agent) is still GENERATING —
+    the session is working, not waiting — so a stale declaration is voided here too."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # pane looks idle
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "busy"}  # sub-agent running in-process
+    _declare(repo, topic, "blocked: stale", mtime=800.0)
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "working"
+    assert signals.read_state(str(repo), topic) is None  # voided
+
+
+def test_idle_blocked_session_is_never_voided(tmp_path):
+    """The load-bearing case: a session sitting blocked and NOT busy keeps its
+    declaration forever and keeps alerting. Voiding is scoped to "resumed generating"."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))
+    sup = _sup(tmp_path, fake)
+    sup._claude_status = {session: "waiting"}
+    _declare(repo, topic, "blocked: still waiting on you", mtime=800.0)
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"
+    state = signals.read_state(str(repo), topic)
+    assert state is not None and state.token == signals.STATE_BLOCKED
+
+
 def test_nudge_marker_is_not_an_attention_status():
     """`idle-with-context-left` is the daemon handling it, not a human hand-off — it must
     NOT appear in the NEEDS YOU block."""
