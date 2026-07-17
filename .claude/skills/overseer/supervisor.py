@@ -799,18 +799,40 @@ class Supervisor:
         second = signals.strip_ansi(self.tmux.capture_pane(target))
         return first == second
 
-    def _is_codex_track(self, session: str | None, repo: str, topic: str) -> bool:
-        """True iff ``session`` holds a live codex session for THIS plan, in THIS repo.
+    def _is_codex_track(
+        self, session: str | None, repo: str, topic: str, target: str | None = None
+    ) -> bool:
+        """True iff ``target``'s pane is a live codex session for THIS plan, in THIS repo.
 
-        Exact by construction: ``self._codex`` is rebuilt each tick from real codex
-        processes holding real rollouts, so this never guesses from the pane command
-        (which reports the generic `bun`). Both the topic and the repo must match, so a
-        codex session for a DIFFERENT plan in the same tmux is not mistaken for ours.
+        TWO conditions, and BOTH are load-bearing — one is exact but session-scoped, the
+        other pane-scoped but generic, and only together are they exact AND pane-scoped:
+
+        1. ``self._codex`` (rebuilt each tick from real codex processes holding real
+           rollouts) has a session for this tmux whose ``name`` is this topic and whose
+           cwd is in this repo. Never a guess — but keyed by tmux SESSION.
+        2. ``target``'s OWN pane command is codex-like. `bun` is far too generic to gate
+           on alone (any bun app matches), which is why (1) exists — but it is exactly
+           what makes this PANE-scoped.
+
+        **Why (2) was added (adversarial review, 2026-07-17).** With only (1) this was
+        session-scoped while the Claude identity gate is pane-scoped, so ANY codex process
+        resolving into a Claude track's tmux session — a `codex resume <topic>` spawned
+        from INSIDE that Claude session's own Bash tool, or a codex TUI opened in a second
+        window to dual-drive the same plan — reclassified the live CLAUDE track as codex.
+        It then went monitor-only and SILENTLY lost its wrap-up, its NOT-RESPONDING alert,
+        and its restart, while `idle` kept it out of NEEDS YOU entirely. A live Claude
+        track going quiet is the worst failure this daemon can have. The naming convention
+        this very change establishes ("codex threads named after plan topics") is what
+        makes the collision reachable, so this is not exotic.
         """
         live = self._codex.get(session or "")
         if live is None:
             return False
-        return live.name == topic and signals.path_in_repo(live.cwd, repo)  # type: ignore[attr-defined]
+        if not (live.name == topic and signals.path_in_repo(live.cwd, repo)):  # type: ignore[attr-defined]
+            return False
+        if target is None:
+            return True  # no pane to check against (callers that only have the mapping)
+        return signals.pane_is_codex(self.tmux.pane_current_command(target))
 
     def _pane_is_managed(self, target: str, repo: str, topic: str, session: str | None) -> bool:
         """The identity gate for EITHER runtime: is this pane OUR session, in OUR repo?
@@ -1173,7 +1195,7 @@ class Supervisor:
         codex_fallback = claude_status is None and bg_shell
         busy = signals.is_busy(capture) or claude_busy or codex_fallback
         gate = signals.is_structured_gate(capture)
-        is_codex = self._is_codex_track(session, repo, topic)
+        is_codex = self._is_codex_track(session, repo, topic, target)
         # `is_idle_input` knows CLAUDE's prompt: an EMPTY `❯` between two rules. Codex's
         # prompt is `› <placeholder text>` above its own statusline — never "empty", so it
         # can never match, and a Codex track would sit in `settling` FOREVER (a status
@@ -1304,7 +1326,7 @@ class Supervisor:
             # act is suppressed either way, and the next tick re-enters at the top gate,
             # which classifies the settled truth (`session-gone` if it really has gone).
             status = "settling"
-        elif ready and self._is_codex_track(session, repo, topic):
+        elif ready and self._is_codex_track(session, repo, topic, target):
             # THE SAFETY GATE. `_do_restart` launches
             # `claude --dangerously-skip-permissions -n <topic>`; aimed at a Codex pane it
             # REPLACES the codex session with a claude one, destroying a live session's
@@ -2010,12 +2032,21 @@ def _cmd_start(args: argparse.Namespace) -> int:
     )
     if io.session_exists(session) and not force:
         # Fail CLOSED (RB4): refuse to respawn-kill an existing session unless we
-        # POSITIVELY know it is not a live Claude. An unreadable
-        # `pane_current_command` (None) might be a live Claude mid-work, so treat
-        # unknown like Claude — a genuinely dead shell reports its shell name
-        # positively, so failing closed on None costs nothing.
+        # POSITIVELY know it is DEAD. Only a bare SHELL proves that — a dead session
+        # reports its shell name positively, so demanding proof costs nothing, while an
+        # unreadable `pane_current_command` (None) or ANY other program might be live
+        # work mid-flight.
+        #
+        # This asks "is it proven dead?", NOT "is it a live Claude?" (adversarial review,
+        # probe-proven, 2026-07-17). The old test was `cmd is None or pane_is_claude(cmd)`,
+        # which knew only ONE runtime: a live CODEX pane reports `bun`, failed the
+        # Claude test, and was treated exactly like a dead shell — so a bare `start`
+        # respawn-KILLED a live Codex TUI and replaced it with a claude one. The guard's
+        # own stated purpose was already "fail closed on anything unproven-dead"; it just
+        # enumerated the live runtimes instead of the dead one, which does not scale to a
+        # second runtime and never did.
         cmd = io.pane_current_command(session)
-        if cmd is None or signals.pane_is_claude(cmd):
+        if not signals.pane_is_shell(cmd):
             _upsert(track)
             print(
                 f"{repo}::{topic}: session {session} already running (or its identity is "

@@ -334,3 +334,23 @@ def test_parse_ctx_reads_both_runtimes_own_statuslines():
     )
     assert signals.parse_ctx_remaining(claude_pane) == 42
     assert signals.parse_ctx_remaining(codex_pane) == 66
+
+
+def test_pane_is_codex_is_loose_and_must_never_gate_alone():
+    """`bun` is the codex pane's foreground process (the launcher; the codex binary is
+    its child) — and it matches ANY bun app, so this predicate is deliberately loose and
+    is only ever used PAIRED with an exact live-session-map lookup."""
+    assert signals.pane_is_codex("bun") is True
+    assert signals.pane_is_codex("codex") is True
+    assert signals.pane_is_codex("node") is False  # a Claude pane is never codex
+    assert signals.pane_is_codex("zsh") is False
+    assert signals.pane_is_codex(None) is False
+
+
+def test_only_a_shell_proves_a_pane_is_dead():
+    """The rule `start`'s fail-closed guard relies on: proof of DEATH, not "not Claude".
+    Enumerating the live runtimes did not scale to a second one — a live codex pane
+    (`bun`) failed the Claude test and got respawn-killed."""
+    assert signals.pane_is_shell("zsh") is True
+    for live_or_unknown in ("node", "claude", "bun", "codex", "vim", None):
+        assert signals.pane_is_shell(live_or_unknown) is False

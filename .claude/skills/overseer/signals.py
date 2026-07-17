@@ -389,6 +389,23 @@ def pane_is_claude(pane_current_command: str | None) -> bool:
     return cmd in _CLAUDE_COMMANDS or "claude" in cmd
 
 
+def pane_is_codex(pane_current_command: str | None) -> bool:
+    """True if ``#{pane_current_command}`` could be a Codex TUI.
+
+    DELIBERATELY LOOSE, and safe only in combination. tmux reports a codex pane's
+    foreground process as `bun` (the launcher; the vendored `codex` binary is its child),
+    and `bun` matches ANY bun app — so this must NEVER gate anything on its own. Its only
+    caller pairs it with an exact live-session-map lookup: the map proves a real codex
+    session for this topic is in this tmux, and this proves the PANE in question is the
+    codex one rather than, say, a Claude pane in the same session.
+    """
+    cmd = (pane_current_command or "").strip().lower()
+    return cmd in _CODEX_COMMANDS
+
+
+_CODEX_COMMANDS = frozenset({"codex", "bun"})
+
+
 def pane_is_shell(pane_current_command: str | None) -> bool:
     """True if ``#{pane_current_command}`` is an interactive shell."""
     return (pane_current_command or "").strip().lower() in _SHELL_COMMANDS
