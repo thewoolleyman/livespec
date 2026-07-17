@@ -35,9 +35,12 @@ Thread opened 2026-07-07; reshaped + sliced 2026-07-17. Status is **derived from
 the ledger** — read it live via the read-first chain, do not trust any value
 copied here. Filed under epic `livespec-nrdk`:
 
-- **Slice A — spec contract. NOT a ledger item; NOT started.** The foundational
-  piece: route via `/livespec:propose-change` in
-  `livespec-orchestrator-beads-fabro`.
+- **Slice A — spec contract. Proposal FILED + independently reviewed + MERGED
+  (2026-07-17); NOT yet ratified.** The two-axis proposal
+  `SPECIFICATION/proposed_changes/factory-safe-by-default.md` is on
+  `livespec-orchestrator-beads-fabro` master (PR #722, merge `05bd7ac`), passed
+  the mandatory independent Fable review NO-BLOCKERS. **Remaining: ratify it via
+  `/livespec:revise`** (see Next actions). NOT a ledger item.
 - **Slice B — `bd-ib-fv6wse`** (bd-ib / livespec-orchestrator-beads-fabro tenant,
   `backlog`): the `factory_safety` field + admission gate reads it. Cross-repo →
   awaits groom. Blocked-in-prose on A.
@@ -58,19 +61,19 @@ epic by prose (the livespec-bj9x precedent).
 
 ## Next actions (in order)
 
-1. **Slice A — file the spec contract change (FOUNDATIONAL, do this first).**
-   Run `/livespec:propose-change` against `livespec-orchestrator-beads-fabro`'s
-   `SPECIFICATION` to codify: (a) the first-class `factory_safety` opt-out field
-   (3-reason enum `{needs-host-secrets, mutates-host-machinery,
-   needs-privileged-host}`, label-prefix encoded like the six existing prefixes),
-   (b) a CORRECTION of the false clause in `contracts.md` §"Admission valve
-   (ready → active)" (~L1362) claiming `admission_policy` "replaces the prior
-   host-only marker" — they are ORTHOGONAL axes (permission vs. runnability),
-   (c) the `ready → active` refusal keys on `factory_safety`, cross-referencing
-   the already-ratified "`--item` narrows-never-bypasses" rule (§"Dispatcher loop
-   invocation surface", ~L1265). Then the mandatory **independent Fable review**
-   (read-only) BEFORE `/livespec:revise` accepts it. Remember the
-   `tests/heading-coverage.json` co-edit if any `## ` heading changes.
+1. **Slice A — RATIFY the merged proposal (FOUNDATIONAL, do this first).** The
+   proposal is filed, independently reviewed (NO-BLOCKERS), and merged; the
+   independent-review precondition for accept is already satisfied. Run
+   `/livespec:revise` against `livespec-orchestrator-beads-fabro` to process
+   `proposed_changes/factory-safe-by-default.md` into a `history/vNNN/` snapshot.
+   Applying it MUST carry the co-edits the proposal's finding 3 names: the new
+   `## Scenario 48` in `scenarios.md` AND the paired `tests/heading-coverage.json`
+   TODO+reason entry (a new `## ` heading), both in the same revise
+   `resulting_files[]`. Revise decisions are per-file; the proposal's stem/topic
+   is `factory-safe-by-default`. (The proposal's replace-targets were verified
+   byte-exact vs live HEAD, and finding 1 items (3)/(4) — the state-semantics
+   `blocked` distinction and the spec.md glossary label add — are specified in
+   prose; draft their exact wording at revise time.)
 2. **After A ratifies: groom then dispatch B, then C.** `/livespec-orchestrator-beads-fabro:groom bd-ib-fv6wse`
    to cut B's cross-repo ready slices (runtime field first, then beads-fabro
    store/gate, then git-jsonl codec pop — the bj9x foundational-first order), then
