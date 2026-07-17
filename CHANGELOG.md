@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.2](https://github.com/thewoolleyman/livespec/compare/v0.15.1...v0.15.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **overseer:** a track with no live session must not name a tmux session ([55271b8](https://github.com/thewoolleyman/livespec/commit/55271b8115d099cf823403c51d709f64a5a783e9))
+* **overseer:** void a blocked declaration the session has outlived ([1c450ef](https://github.com/thewoolleyman/livespec/commit/1c450ef0805b085590494f20136411d20ca8683b))
+
 ## [0.15.1](https://github.com/thewoolleyman/livespec/compare/v0.15.0...v0.15.1) (2026-07-16)
 
 
