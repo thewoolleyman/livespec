@@ -922,7 +922,7 @@ class Supervisor:
                 return live
         return None
 
-    def _no_managed_pane_row(self, *, repo: str, topic: str, session: str) -> RowView:
+    def _no_managed_pane_row(self, *, repo: str, topic: str) -> RowView:
         """The row for a track with NO live managed pane: ``live-outside-tmux`` or ``session-gone``.
 
         The single home for "this track has no pane we can drive". Reached two ways —
@@ -937,6 +937,22 @@ class Supervisor:
         pane to capture / inject / respawn). That is the informational
         ``live-outside-tmux``, NOT the alarming ``session-gone`` — the operator should
         not be told finished-looking work was lost when it is merely out of reach.
+
+        **Both rows report ``tmux=None``, and that is the point of the helper**
+        (maintainer-declared 2026-07-16: "it shouldn't display the session name; the
+        session doesn't exist in that panel anymore"). The ``tmux`` cell means *the tmux
+        session HOLDING this track* — an assertion about a live session, not a record of
+        the mapping. Every row reaching here has no session in that tmux session: it is
+        gone outright, or it survives holding only a bare shell, or the Claude is alive
+        somewhere outside tmux entirely. Naming it anyway rendered a live-looking
+        ``livespec1`` for a track whose session had exited — the mapping is still in the
+        store, and ``session-gone`` already says "this WAS mapped and is now dead", so
+        nothing is lost by leaving the cell empty. ``_alert`` degrades on its own
+        (``no live tmux session``, no jump command — there is nowhere to jump).
+
+        This is NOT "blank the column whenever something is wrong": ``not-claude`` (a
+        live FOREIGN pane) deliberately still names its session, because that pane is
+        exactly what the operator must go inspect.
         """
         live = self._live_session_outside_tmux(repo, topic)
         if live is not None:
@@ -946,12 +962,12 @@ class Supervisor:
             return RowView(
                 topic=topic,
                 repo=repo,
-                tmux=session,
+                tmux=None,
                 ctx=None,
                 status="live-outside-tmux",
                 note=note,
             )
-        return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="session-gone")
+        return RowView(topic=topic, repo=repo, tmux=None, ctx=None, status="session-gone")
 
     def evaluate(self, track: registry.Track, *, act: bool) -> RowView:
         """Derive a track's status and (when ``act``) perform its side effects.
@@ -975,7 +991,7 @@ class Supervisor:
             # SSH shell), which the tmux-only daemon cannot capture, inject, or respawn.
             # Distinguish that live-but-unmanageable case from a genuinely gone track so
             # the operator is not falsely alarmed that finished-looking work was lost.
-            return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
+            return self._no_managed_pane_row(repo=repo, topic=topic)
 
         # Resolve the pane id ONCE and target every subsequent pane op by it (RB3).
         # A pane id is exact and never prefix/fnmatch-matched, so if the tracked
@@ -985,7 +1001,7 @@ class Supervisor:
         # `respawn-pane -k` killing it. Stable across respawn.
         target = self.tmux.pane_id(session)
         if target is None:
-            return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
+            return self._no_managed_pane_row(repo=repo, topic=topic)
 
         # Identity gate (B3): the mapped session exists, but before reading its pane
         # for any ACT we confirm it is really OUR Claude in OUR repo — never
@@ -1006,7 +1022,7 @@ class Supervisor:
             # the SAME no-managed-pane path the missing-session branch uses, so the two
             # cannot drift; only (b) keeps the `not-claude` alarm.
             if signals.pane_is_shell(self.tmux.pane_current_command(target)):
-                return self._no_managed_pane_row(repo=repo, topic=topic, session=session)
+                return self._no_managed_pane_row(repo=repo, topic=topic)
             return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
 
         capture = self.tmux.capture_pane(target)

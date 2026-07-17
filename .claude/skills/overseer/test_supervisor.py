@@ -330,6 +330,60 @@ def test_pane_exited_to_shell_is_session_gone(tmp_path):
     assert not fake.has("respawn")
 
 
+def test_no_managed_pane_row_never_names_a_tmux_session(tmp_path):
+    """The `tmux` cell means "the tmux session holding this track" — so a track with
+    NO session there must not name one (maintainer-declared 2026-07-16: "it shouldn't
+    display the session name; the session doesn't exist in that panel anymore").
+
+    A leftover MAPPING to a tmux session that now holds a bare shell is not a session:
+    rendering `livespec1` there asserted a live session that did not exist. The cell
+    goes empty (like `unassigned`); `session-gone` alone carries "this WAS mapped and
+    is now dead", and `_alert` degrades to "no live tmux session" with no jump command
+    (there is nowhere to jump).
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="zsh")
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+    assert view.tmux is None
+
+
+def test_missing_tmux_session_also_never_names_a_tmux_session(tmp_path):
+    """Same rule via the other route into the helper — the mapped tmux session is gone
+    outright, so there is even less of a session to name."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session never added → session_exists False
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+    assert view.tmux is None
+
+
+def test_foreign_pane_still_names_the_mismapped_tmux_session(tmp_path):
+    """The counter-case that keeps the rule honest: `not-claude` means the mapping
+    points at a live FOREIGN pane, and that pane is exactly what the operator must go
+    inspect — so it MUST still be named (and stay jumpable). The rule is "do not name a
+    session that isn't there", not "blank the column whenever something is wrong"."""
+    repo, topic = _make_plan(tmp_path)
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, other, capture=_idle_capture(ctx=40))  # live claude, wrong repo
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "not-claude"
+    assert view.tmux == session
+
+
 def test_pane_exited_to_shell_with_live_claude_outside_tmux_is_live_outside_tmux(tmp_path):
     """The pane dropped to a shell BUT the topic's Claude is alive OUTSIDE tmux.
 
