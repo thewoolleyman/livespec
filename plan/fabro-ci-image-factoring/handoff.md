@@ -118,14 +118,80 @@ per-repo disposition facts already gathered for the remaining repos.
 `livespec-runtime` and `livespec-orchestrator-git-jsonl` on top of the already-done `livespec` +
 `livespec-driver-claude`.
 
+**⚠ READ FIRST — THE EPIC'S HEADLINE CLAIM IS CURRENTLY FALSE: CI does NOT run the sandbox's image.
+Filed as `livespec-dev-tooling-xb7` (P1).** The cutover introduced a NEW pin surface — the
+`container: image:` tag in `.github/workflows/ci.yml` — that **bump-pin autodiscovery cannot see**,
+so it never fan-outs and silently rots. Measured 2026-07-16:
+
+| Surface | Image | Auto-bumped? |
+|---|---|---|
+| Python repos' **sandbox** (`livespec-orchestrator-beads-fabro` `.claude-plugin/.fabro/workflows/implement-work-item/workflow.toml`) | `python-v0.48.1` | **YES** |
+| Python repos' **CI** (`ci.yml` `container: image:`, all 6 cut-over repos) | `python-v0.43.2` | **NO** |
+| Console's **sandbox** (`.fabro/workflows/implement-work-item/workflow.toml`) | `python-rust-v0.48.2` | **YES** |
+
+CI and the sandbox are **FIVE releases apart**, and the gap WIDENS every release. That directly
+defeats the sentence this epic exists to deliver ("CI runs the SAME image the Fabro sandbox uses,
+collapsing the green-in-CI / red-in-sandbox drift") — today the drift is not collapsed, only
+RELOCATED. **Root cause verified empirically, not inferred** (`pin_autodiscovery.discover()` run
+against the live clones): `livespec` pins=5 **fabro-image pins found=0**; `livespec-runtime` pins=4
+**found=0**; `livespec-console-beads-fabro` pins=3 found=1 (its `workflow.toml` only). Per
+`contracts.md` §"Pin autodiscovery rules" the `fabro_sandbox_docker_image` format scans ONLY
+`workflow.toml`'s `docker =` line; in `.github/workflows/*.yml` it scans ONLY `uses:` refs — never a
+`container: image:` line. **Fix:** extend that pin format to also discover the `ci.yml` image line,
+reusing the existing prefix-preserving `fabro_image_pin_rewrite` (it already rewrites only `vX.Y.Z`
+and keeps the `python-`/`python-rust-` prefix the layer split depends on), then one fan-out
+reconciles every repo. NOT a No-Circular-Dependency violation: bump-pin is the fan-out tool and
+ALREADY scans consumers' `.github/workflows/*.yml` (`uses:`) and their `workflow.toml` (docker) —
+same producer-rewrites-consumer-pin pattern, no new upstream→downstream edge. This closes the plan's
+long-standing "Autodiscovery gap" open decision.
+
 **Actionable next step — the TWO GATED repos, in this order:**
-1. **`livespec-console-beads-fabro` (RUST — do this one first; it is the simpler gate).** It uses
-   the **`python-rust`** image, NOT `python-v0.43.2`, and a different check set. **It has NO
-   runners yet**, so its cutover needs the FULL 4-step add-a-repo procedure (below), and step 2
-   is REAL work here: it is the ONE fleet repo still at **`first_time_contributors`** — tighten it
-   to `all_external_contributors` BEFORE registering its runners (no exposure today precisely
-   because it has no runners). Disposition facts already verified: no merge queue, `ci-green` the
-   sole required context, `merge_group` present in its ci.yml and therefore DEAD → drop.
+1. **`livespec-console-beads-fabro` (RUST) — NOT mechanical repetition; it has a REAL unresolved
+   dependency (the cargo cache). Investigated 2026-07-16; findings below.**
+   - **Image: pin it to `python-rust-v0.48.2`** — the tag its OWN sandbox `workflow.toml` uses.
+     Do NOT copy the Python repos' `python-v0.43.2` (that would bake in the `xb7` drift above).
+     Verified in-image: rustc/cargo/clippy/rustfmt **1.92.0**, matching its `rust-toolchain.toml`.
+   - **Its 4 extra cargo tools are NOT baked** — `cargo-nextest`, `cargo-llvm-cov`, `cargo-deny`,
+     `cargo-machete` are absent from the image (verified), so the three `taiki-e/install-action`
+     steps MUST STAY. They are a per-run download tax the image does not remove (a candidate for
+     baking into `python-rust` later — worth its own item).
+   - **The cargo cache looked like a blocker; MEASUREMENT DISSOLVED IT — delete `actions/cache`
+     like every other repo. T10 is NOT a prerequisite for the console.** The worry was real on its
+     face: the console's `actions/cache` covers `~/.cargo/registry`, `~/.cargo/git` AND `target`,
+     and its hosted per-job times (last master run) are the fleet's most expensive —
+     `check-coverage` **418s**, `check-deps` **288s**, `check-nextest` **281s**, `check-clippy`
+     **53s**, `check-test` **48s** — with clippy fast only because the cache is hot. Deleting the
+     cache costs SECONDS for a Python repo's `uv`, but a cold Rust build is minutes, ×5 Rust jobs.
+     **So it was measured, in the real `python-rust-v0.48.2` image on this host, cloning the real
+     console workspace:**
+
+     | Target | GitHub-hosted, WARM cache | This host, COLD (no cache at all) |
+     |---|---|---|
+     | `cargo clippy --workspace --all-targets` | 53s | **37s** |
+
+     A COLD build on this box BEATS a WARM-cached build on a GitHub runner, because the host has
+     ~5–9× the parallelism (the plan's own arithmetic: "591 ÷ 18 ≈ 33 s floor — matches/beats
+     GitHub"). The dependency compile that the cache exists to skip costs only ~37s here. NB
+     `check-coverage`/`check-nextest` build under DIFFERENT profiles (llvm-cov instrumentation,
+     nextest), so the warm cache barely helps them even today — which is why they are 418s/281s
+     WITH a cache. **Recommendation: option (a) — delete `actions/cache`, same as every other
+     repo.** Rejected: (b) keeping `actions/cache` on the self-hosted lane (it still works, but it
+     means network restore/save of a multi-GB cache FROM this host every run — precisely the cost
+     co-locating removes, and it fights the 10 GB/repo cap); (c) gating on T10 first (unnecessary —
+     and note T10 is not free: the plan calls trust-tiering **non-negotiable**, so a naive cache
+     mount would let a fork/PR job poison the cache feeding master builds; do T10 for its own sake,
+     not as a console blocker). **This is the "research before gating" discipline earning its keep —
+     the blocker was surfaced, measured, and dissolved rather than escalated.** Caveat honestly
+     stated: the 37s figure was taken while the host was NOT under a 27–36-job overlap, and
+     `check-coverage`/`check-nextest` were not individually cold-measured (they need cargo-llvm-cov
+     / cargo-nextest, which the image does not bake).
+   - **Security step is REAL work here:** it is the ONE fleet repo still at
+     **`first_time_contributors`** — tighten to `all_external_contributors` BEFORE registering its
+     runners (no exposure today precisely because it has 0 runners).
+   - Other disposition facts verified: no merge queue, `ci-green` the sole required context,
+     `merge_group` present in its ci.yml and therefore DEAD → drop; jobs are one `check` matrix
+     (8 Rust targets + `check-baseline` (pure-Python/uv) + `check-plugin-resolution`) plus
+     `check-doctor-static` (carries the `github.workspace` HOST-path bug → use `$GITHUB_WORKSPACE`).
 2. **`livespec-orchestrator-beads-fabro` — MAINTAINER GATE, do NOT self-start.** It hosts the
    PRIVILEGED on-demand gate-runner lane, so adding a contained `local-ci` lane puts TWO trust
    tiers on one repo's runners. That is a security-boundary decision the maintainer owns. NB its
