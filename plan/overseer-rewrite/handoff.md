@@ -194,14 +194,93 @@ daemon's table, not from a one-shot `list`.
 ## Resume command
 
 **The redesign, the display / detection-accuracy fixes, the 2026-07-16 trio above, and the
-row-correctness audit are complete and live-exercised.** PR #1293 is merged (released
-0.15.1); **PR #1295 (tmux=None + the `blocked:` void) was open at hand-off — confirm it
-merged, then RESPAWN THE DAEMON**, which still carries pre-fix code until then (see
-Standing operational notes for the respawn command). The ONE open ENGINEERING item is
-**Codex detection — now BUILD-READY** (design below); pick it up in a fresh focused
-session.
+row-correctness audit are complete, merged, and live-exercised.** PR #1293 (released
+0.15.1) and **PR #1295 (tmux=None + the `blocked:` void) are both MERGED to master**.
 
-### NEXT = Codex detection — BUILD-READY design (de-risked 2026-07-16)
+**⚠ FIRST ACTION: RESPAWN THE DAEMON.** It is long-lived and keeps whatever code it
+started with, so it still carries PRE-#1293/#1295 code — until it is respawned the table
+keeps showing the old wrong rows (a `not-claude` row naming a dead `livespec1`, stale
+`blocked:` notes on working rows). The respawn command is in Standing operational notes;
+it was left to the maintainer because it kills the console's own top pane.
+
+The ONE open ENGINEERING item is **Codex detection** — its READ LAYER IS BUILT (PR #1296);
+only the `supervisor.py` wiring remains. See the next section, which carries an ORDERING
+CONSTRAINT you must read before touching the identity gate.
+
+### NEXT = Codex detection — the READ IS BUILT; only the WIRING remains
+
+**Status 2026-07-16/17: the whole `codex_sessions.py` read layer is built, tested, and
+live-exercised (PR #1296).** What remains is a PURE `supervisor.py` change — no further
+primitives are needed. Read this sub-section first; the original design below it is
+still correct but describes the read as unbuilt.
+
+**Already built and merged/queued (PR #1296)** — `.claude/skills/overseer/codex_sessions.py`
++ 26 beside-tests, every host coupling injected:
+
+| function | what it gives you |
+|---|---|
+| `read_live_codex_sessions()` | `[CodexSession(pid, name, cwd, session_id)]` — `name` IS the plan topic |
+| `map_codex_sessions(pane_pid_to_session)` | `[(tmux_session, name, cwd)]` — **the exact triple `claude_sessions.map_named_sessions` emits**, so ONE adopt path serves both runtimes |
+| `rollout_ctx_remaining(path)` | remaining-% as `int \| None` — **the same shape `signals.parse_ctx_remaining` returns**, so it drops into the same slot |
+| `proc_pids_of_comm` / `proc_cwd` / `proc_fd_targets` / `open_rollout_id` / `rollout_id` / `read_thread_names` | the injectable pieces |
+
+Live, right now, on the real host — these two are `unassigned` today and adoptable the
+moment the wiring lands:
+
+```
+tmux='livespec-dev-tooling'  name='rop-sweep-library-checks'    ctx=62% left
+tmux='livespec3'             name='rop-sweep-consumer-cleanup'  ctx=36% left   <-- PAST the 50% line
+```
+
+**`rop-sweep-consumer-cleanup` is already past the wind-down line and getting no wrap-up.**
+That is the concrete cost of leaving this unwired, and the reason Ctx% mattered.
+
+#### THE ORDERING CONSTRAINT — read before touching the identity gate
+
+**Today's state is already SAFE, and the danger is INTRODUCED by step 2.** The identity
+gate (`_pane_is_managed_claude`) rejects a codex pane, so a Codex track reads `not-claude`
+and returns BEFORE the busy / ready branches — it can never reach `_do_restart`. The
+moment the gate ACCEPTS codex panes, a Codex track that declares `ready` flows into
+`_do_restart` and is respawned with `claude --dangerously-skip-permissions -n <topic>`,
+which REPLACES the codex session with a claude one. Destructive.
+
+⇒ **Accepting codex panes and refusing to restart them are INSEPARABLE and MUST land in
+the same commit**, with the refusal tested (a Codex track that declares `ready` must not
+be restarted as claude). Never land adoption or the gate change alone.
+
+#### Wiring notes that will save the next session time
+
+- **Derive the runtime; do NOT add a stored `runtime` field to the mapping.** A codex
+  pane's `#{pane_current_command}` is **`bun`, NOT `codex`** (verified live: tmux reports
+  the pane's foreground process, which is the `bun` launcher; the vendored codex binary is
+  its CHILD). So a `pane_is_codex` keyed on `bun` would false-positive on any bun app.
+  Derive codex identity EXACTLY instead, from a per-tick `{tmux_session: CodexSession}` map
+  built by `map_codex_sessions` — mirror `_refresh_claude_status` /
+  `_claude_status`. Live, exact, self-correcting, and no schema change or migration.
+- **`adopt` should take the triple, not grow a branch.** `map_codex_sessions` deliberately
+  emits `claude_sessions.map_named_sessions`'s shape: extract the common body of
+  `adopt_sessions` and feed it both sources, so the two runtimes cannot drift.
+- **Companion tasks filter themselves.** `Codex Companion Task: …` names fail the "is this
+  an ACTIVE plan topic?" test — no filter needed anywhere.
+- **Busy needs nothing new.** `has_active_subshell` is the runtime-agnostic fallback the
+  daemon already uses when `claude_status is None` — exactly the Codex case. VERIFY live.
+- **Ctx** — feed `rollout_ctx_remaining` in where `parse_ctx_remaining` is used for a codex
+  track (same `int | None` contract, so `_effective_ctx` and every band work unchanged).
+  The rollout path is `open_rollout_id`'s source fd; keep the ~5 ms tail read per tick.
+- **The one open MAINTAINER decision (do NOT self-resolve):** should a Codex track be
+  **restartable**, or **monitor-only**, in v1? The cardinal rule already answers the
+  safety half runtime-agnostically — never restart without a `ready` declaration, which a
+  Codex session writes to the same `.overseer-state`. `codex resume <topic> "<kick>"`
+  makes restart genuinely possible (it takes the kick as an ARGUMENT — no `send-keys`
+  paste — and reattaches the SAME named session, so adoptability survives). Monitor-only's
+  only argument is a smaller blast radius. Was asked and NOT yet answered; until it is,
+  build monitor-only and SURFACE a ready Codex track (notify-never-block) rather than
+  restarting it.
+
+The original design follows; it remains accurate except that it records the read as
+unbuilt and Ctx%/restart as unavailable (both corrected above and in `research/`).
+
+### The original BUILD-READY design (de-risked 2026-07-16)
 
 The daemon cannot see a Codex session: it discovers the plan (shows `unassigned`) but
 cannot map the running Codex session to it. The previous note called the topic↔session
