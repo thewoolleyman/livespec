@@ -81,17 +81,39 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-15 — Phases 0, 1 AND 2 are now
-functionally DONE).** The plan is anchored by the **beads epic `livespec-3lev`**
+**State (fresh-session entry point, updated 2026-07-16 — Phases 0, 1 AND 2 DONE; Phase 3 is 6/8
+cut over).** The plan is anchored by the **beads epic `livespec-3lev`**
 (`livespec` tenant) with per-phase children `.1`–`.8` (`.8` = Phase 5, the closing
 efficiency report). **Phase 0 (the local self-hosted runner), Phase 1 (baked layered
 images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut over to
 the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
-Phase 2's cutover is proven GREEN end-to-end on master (see SESSION 2026-07-15 below).
 
-**Phase 3 (fleet fan-out) is NEARLY DONE — the RUNNER POOL serves 6 of 8 repos (54 runners: 9 × 6,
-all online, zero orphans), and ALL 5 PYTHON FLEET MEMBERS ARE CUT OVER.** Only the 2 GATED repos
-remain (the Rust console; the orchestrator's trust-tier decision). Per-repo results:
+---
+## ▶ START HERE — the next two actions, in order
+
+**1. BUILD T10 cache-tiering (`livespec-dev-tooling-9mp`, P1).** It is fully designed AND the design
+is PROVEN on this host; it is the only thing blocking the last repo. A ready-to-cut-over console PR
+([console#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250)) sits GREEN
+but held DRAFT behind it, because without a cache the Rust matrix is a **2.06× regression** (883s vs
+the ~430s hosted baseline). Read §"1. `livespec-console-beads-fabro` (RUST)" below for the full
+design, the live overlay proof, the implementation shape, and the trap to avoid. Acceptance:
+un-draft #250 and get its wall-clock ≤ ~430s, with a PR-lane job proven unable to write the lower.
+
+**2. SURFACE the orchestrator trust-tier decision to the maintainer (do NOT self-start).**
+`livespec-orchestrator-beads-fabro` is the last repo and is MAINTAINER-GATED — see §2 below.
+
+Also open, neither blocking: **`livespec-dev-tooling-xb7`** (P1 — the `ci.yml` image tag is an
+unmanaged pin; CI is 5 releases behind the sandbox. **De-risked: the drift is LATENT** — toolchains
+are identical — **and the fan-out is validated**, so this is "stop the rot", not an emergency) and
+**`livespec-dev-tooling-s2t`** (P1 — the supervisor's repo list is hand-edited systemd state).
+
+**Pool: 7 of 8 repos served — 63 runners (9 × 7), all online, zero orphans.** All 8 fleet repos are
+at `all_external_contributors` (the strictest fork-PR approval tier) — **no repo has runners without
+the hardened gate.** The console HAS its 9 runners already; only its ci.yml is un-merged.
+
+---
+
+**Phase 3 per-repo results — 6 of 8 CUT OVER + MERGED + proven on their MASTER runs:**
 
 | Repo | PR | Live proof |
 |---|---|---|
@@ -113,12 +135,7 @@ JIT runners with zero 403s. The runner-slot model is **9 per repo** (maintainer-
 live gap on the already-cut-over driver-claude), the stale-base worktree gotcha, and the
 per-repo disposition facts already gathered for the remaining repos.
 
-**ALL 5 PYTHON FLEET MEMBERS ARE NOW CUT OVER — only the 2 GATED repos remain.** The
-2026-07-16 (cont.) session cut over `livespec-driver-codex`, `livespec-dev-tooling`,
-`livespec-runtime` and `livespec-orchestrator-git-jsonl` on top of the already-done `livespec` +
-`livespec-driver-claude`.
-
-**⚠ READ FIRST — THE EPIC'S HEADLINE CLAIM IS CURRENTLY FALSE: CI does NOT run the sandbox's image.
+**⚠ THE EPIC'S HEADLINE CLAIM IS CURRENTLY FALSE: CI does NOT run the sandbox's image.
 Filed as `livespec-dev-tooling-xb7` (P1).** The cutover introduced a NEW pin surface — the
 `container: image:` tag in `.github/workflows/ci.yml` — that **bump-pin autodiscovery cannot see**,
 so it never fan-outs and silently rots. Measured 2026-07-16:
@@ -158,7 +175,7 @@ ALREADY scans consumers' `.github/workflows/*.yml` (`uses:`) and their `workflow
 same producer-rewrites-consumer-pin pattern, no new upstream→downstream edge. This closes the plan's
 long-standing "Autodiscovery gap" open decision.
 
-**Actionable next steps — TWO remain, and the first is now a concrete build, not a decision:**
+**Detail on the two remaining actions (summarised in ▶ START HERE at the top):**
 - **T10 cache-tiering — FILED as `livespec-dev-tooling-9mp` (P1), with the 2× measurement, the
   non-negotiable trust-tiering constraint, AND a design investigation written into it.** The
   console's cutover is BUILT, GREEN and WAITING on it (PR #250, held DRAFT). Highest-value remaining
@@ -407,7 +424,8 @@ pre-existing repo went to 9 online + 9 offline, while the console (units never s
 sweep the offline registrations (54 swept this time). This does NOT contradict GOTCHA #1 (the
 mint-leak) — that leak came from missing instance dirs making units FAIL instantly in a tight
 re-mint loop, which is a different mechanism and still requires steps 3→4 in order.
-- **Pool is now 6 repos × 9 = 54 runners, all online, zero orphans.** Added
+- **Pool went to 6 repos × 9 = 54 runners at this point in the session** (the console was added
+  later the same day, taking it to the current 7 × 9 = 63) — all online, zero orphans. Added
   `livespec-driver-codex`, `livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`,
   `livespec-runtime` in ONE provisioning pass + ONE supervisor restart (host was quiescent: 0
   in-progress runs). No mint-leak — steps 3→4 in order, exactly as the gotcha below prescribes.
