@@ -35,15 +35,18 @@ Thread opened 2026-07-07; reshaped + sliced 2026-07-17. Status is **derived from
 the ledger** — read it live via the read-first chain, do not trust any value
 copied here. Filed under epic `livespec-nrdk`:
 
-- **Slice A — spec contract. Proposal FILED + independently reviewed + MERGED
-  (2026-07-17); NOT yet ratified.** The two-axis proposal
-  `SPECIFICATION/proposed_changes/factory-safe-by-default.md` is on
-  `livespec-orchestrator-beads-fabro` master (PR #722, merge `05bd7ac`), passed
-  the mandatory independent Fable review NO-BLOCKERS. **Remaining: ratify it via
-  `/livespec:revise`** (see Next actions). NOT a ledger item.
+- **Slice A — spec contract. COMPLETE + RATIFIED (2026-07-17).** The two-axis
+  model is live spec on `livespec-orchestrator-beads-fabro` master:
+  `/livespec:propose-change` filed it (PR #722), independent Fable review passed
+  NO-BLOCKERS, and `/livespec:revise` ratified it into
+  `SPECIFICATION/history/v040/` (PR #733). The `factory_safety` field, the
+  admission_policy-vs-factory_safety two-axis correction, the `ready → active`
+  admission refusal, `## Scenario 48`, and the heading-coverage entry are all
+  landed. Nothing left on A.
 - **Slice B — `bd-ib-fv6wse`** (bd-ib / livespec-orchestrator-beads-fabro tenant,
-  `backlog`): the `factory_safety` field + admission gate reads it. Cross-repo →
-  awaits groom. Blocked-in-prose on A.
+  `backlog`): the `factory_safety` field + admission gate reads it. Cross-repo.
+  **Now UNBLOCKED** — its "A ratifies" prose-blocker is satisfied; ready to
+  groom. This is the next action.
 - **Slice C — `bd-ib-i6wfum`** (bd-ib tenant, `backlog`, `depends_on` B): the
   host-only needs-attention kind. Awaits B + groom.
 - **Slice D — capability-widening (move #3): stays under `z2ctra`**, coordinated
@@ -61,25 +64,25 @@ epic by prose (the livespec-bj9x precedent).
 
 ## Next actions (in order)
 
-1. **Slice A — RATIFY the merged proposal (FOUNDATIONAL, do this first).** The
-   proposal is filed, independently reviewed (NO-BLOCKERS), and merged; the
-   independent-review precondition for accept is already satisfied. Run
-   `/livespec:revise` against `livespec-orchestrator-beads-fabro` to process
-   `proposed_changes/factory-safe-by-default.md` into a `history/vNNN/` snapshot.
-   Applying it MUST carry the co-edits the proposal's finding 3 names: the new
-   `## Scenario 48` in `scenarios.md` AND the paired `tests/heading-coverage.json`
-   TODO+reason entry (a new `## ` heading), both in the same revise
-   `resulting_files[]`. Revise decisions are per-file; the proposal's stem/topic
-   is `factory-safe-by-default`. (The proposal's replace-targets were verified
-   byte-exact vs live HEAD, and finding 1 items (3)/(4) — the state-semantics
-   `blocked` distinction and the spec.md glossary label add — are specified in
-   prose; draft their exact wording at revise time.)
-2. **After A ratifies: groom then dispatch B, then C.** `/livespec-orchestrator-beads-fabro:groom bd-ib-fv6wse`
-   to cut B's cross-repo ready slices (runtime field first, then beads-fabro
-   store/gate, then git-jsonl codec pop — the bj9x foundational-first order), then
-   dispatch each ready slice **factory-side via the Dispatcher drain or
-   `/livespec-orchestrator-beads-fabro:drive --action impl:<id>`** — never
-   in-session implement. Repeat for C once B lands.
+1. **Slice B — groom, then factory-dispatch (DO THIS FIRST; A is done).** Slice A
+   is ratified (v040), so B is unblocked. Run
+   `/livespec-orchestrator-beads-fabro:groom bd-ib-fv6wse` to cut B's cross-repo
+   ready slices in the bj9x foundational-first order: (1) the `factory_safety`
+   field on the shared `livespec_runtime` `WorkItem`, (2) the beads-fabro store
+   encode/decode of the `factory-safety:` label + REPLACE the `is_host_only_item`
+   title/description regex (`commands/_dispatcher_host_only.py`) with a field read
+   (and fix its refusal message, which points at the retired "livespec-implementer
+   dispatch path"), (3) the git-jsonl codec pop for parity. **Also realize the
+   v040 spec**: the admission valve MUST refuse a non-null-`factory_safety` item
+   before any sandbox launch, and the doctor invariant asserting the admission
+   check set (contracts.md §"Work-item beads-issue mapping" invariants block) must
+   be updated in lockstep. Then dispatch each ready slice **factory-side via the
+   Dispatcher drain or `/livespec-orchestrator-beads-fabro:drive --action
+   impl:<id>`** — never in-session implement. Migration: existing items marked by
+   the old prose `host-only` regex must not silently lose classification (migrate
+   them to the field or keep the regex as a read-fallback).
+2. **Slice C — after B lands: groom + dispatch `bd-ib-i6wfum`** (host-only
+   needs-attention kind), same factory-dispatch route.
 3. **Slice D stays under `z2ctra`** — no action here beyond the recorded
    coordination; the capability-widening work is driven from that item.
 
