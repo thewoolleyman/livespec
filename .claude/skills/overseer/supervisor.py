@@ -103,7 +103,9 @@ DANGER_CTX_REMAINING = 20
 # `unassigned` is deliberately NOT here: a discovered plan with no session is startable,
 # not stuck, and there are dozens of them — including them would bury the handful of rows
 # that genuinely want the operator, which is the exact failure this block exists to fix.
-ATTENTION_STATUSES = ("blocked:human", "danger", "session-gone", "not-claude")
+# `session-gone` IS attention: a plan we have seen running is no longer in any tmux,
+# and the operator decides whether to restart or unassign it. `not-claude` is gone.
+ATTENTION_STATUSES = ("blocked:human", "danger", "session-gone")
 
 # Claude's registry `status` values (`~/.claude/sessions/<pid>.json`) that mean the session
 # is doing work — the AUTHORITATIVE busy signal for an adopted Claude session. `busy` =
@@ -144,7 +146,6 @@ _STATUS_COLOR = {
     "danger": _ANSI_YELLOW,
     "blocked:human": _ANSI_YELLOW,
     "session-gone": _ANSI_RED,
-    "not-claude": _ANSI_RED,
 }
 
 
@@ -1056,23 +1057,25 @@ class Supervisor:
         # for any ACT we confirm it is really OUR Claude in OUR repo — never
         # keystroke into a shell / wrong session / human split-pane.
         if not self._pane_is_managed_claude(target, repo):
-            # WHY this splits rather than reporting a flat `not-claude`: the gate above
-            # is an ACT guard (never keystroke into a pane not proven ours) and stays
-            # exactly that. But its answer is not a row STATUS — "not our Claude" has
-            # two causes the operator must not confuse:
-            #   (a) our Claude EXITED, leaving the pane at a bare shell — the ordinary
-            #       end of a track's life, and
-            #   (b) the mapping points at a genuinely FOREIGN pane (another program, a
-            #       Claude in a different repo) — a real mis-mapping to go fix.
-            # Reporting both as `not-claude` left finished tracks sitting red in
-            # NEEDS YOU claiming a live tmux mapping (livespec1, live 2026-07-16), and
-            # skipped the live-outside-tmux fallback entirely — hiding a Claude that
-            # was alive in a non-tmux terminal behind an alarm. A shell pane routes to
-            # the SAME no-managed-pane path the missing-session branch uses, so the two
-            # cannot drift; only (b) keeps the `not-claude` alarm.
-            if signals.pane_is_shell(self.tmux.pane_current_command(target)):
-                return self._no_managed_pane_row(repo=repo, topic=topic)
-            return RowView(topic=topic, repo=repo, tmux=session, ctx=None, status="not-claude")
+            # The gate stays exactly what it was — an ACT guard (never keystroke into a
+            # pane not proven ours). What changed is that its answer is no longer a row
+            # STATUS of its own. Whether the pane is a bare shell (our session exited) or
+            # something foreign, the fact for the operator is identical and simple: this
+            # track's session is NOT IN THIS TMUX. It was assigned to something once, so
+            # it is `session-gone` — never `unassigned`, which is reserved for a plan
+            # whose session we have NEVER seen (maintainer-declared 2026-07-17: "KEEP
+            # session-gone if you've ever seen the session, only use unassigned if you've
+            # never seen it"). The MAPPING ROW is precisely that memory of having seen it,
+            # which is why it is kept rather than pruned.
+            #
+            # `not-claude` is DELETED (maintainer-declared 2026-07-17: "What the hell is
+            # not-claude?"). It was this gate's return value leaking into the UI — it named
+            # a check's output, not anything an operator needs — and it made a bare
+            # terminal (`livespec1`) look like a tracked pane while no OTHER bare terminal
+            # appears at all. The daemon lists PLANS, not panes: a tmux name reaches the
+            # table only as a mapping's column value, and `_no_managed_pane_row` already
+            # reports `tmux=None` so no dead terminal is named.
+            return self._no_managed_pane_row(repo=repo, topic=topic)
 
         capture = self.tmux.capture_pane(target)
         # A pane can show an empty prompt yet still be running a
@@ -1227,7 +1230,12 @@ class Supervisor:
             # the pane could have exited to a shell (or cd'd out of the repo). Re-
             # verify identity IMMEDIATELY before any act, so a wrap-up is never
             # pasted into — nor a respawn aimed at — a pane no longer proven ours.
-            status = "not-claude"
+            #
+            # `settling` (a one-tick "wait and re-read"), NOT a status of its own: the
+            # pane changed UNDER US mid-tick, which is exactly what settling means. The
+            # act is suppressed either way, and the next tick re-enters at the top gate,
+            # which classifies the settled truth (`session-gone` if it really has gone).
+            status = "settling"
         elif ready:
             # The session DECLARED `ready`. This is the ONLY path to a restart — the
             # daemon never infers it (maintainer 2026-07-14).
