@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.16.0](https://github.com/thewoolleyman/livespec/compare/v0.15.3...v0.16.0) (2026-07-17)
+
+
+### Features
+
+* **overseer:** codex_by_tmux_session — the per-tick map the wiring keys off ([4ad2f9d](https://github.com/thewoolleyman/livespec/commit/4ad2f9d50d292adade21cd2997c033caa813da09))
+* **overseer:** codex_sessions — the exact pid-&gt;topic join for Codex discovery ([0cdef80](https://github.com/thewoolleyman/livespec/commit/0cdef803175c1752a59dbb4fe520e97dd900a74f))
+* **overseer:** map_codex_sessions — the adopt-shaped triple for Codex ([773992e](https://github.com/thewoolleyman/livespec/commit/773992ec84bf304ff2c7b342feb20367528344bd))
+* **overseer:** read Codex Ctx% from the rollout's token_count events ([bca644c](https://github.com/thewoolleyman/livespec/commit/bca644cd8f22a7c4df7db82aff5810d7cc1c5427))
+* **overseer:** wire Codex detection — adopt, identity, ctx, monitor-only restart ([c7ea7db](https://github.com/thewoolleyman/livespec/commit/c7ea7dbe209f6a83ad7d664af43a45c210d15282))
+
+
+### Bug Fixes
+
+* **overseer:** read Codex ctx from its OWN statusline, not a reimplemented formula ([82adf67](https://github.com/thewoolleyman/livespec/commit/82adf677078ca94b932600a19de9ab6d988076ad))
+* **overseer:** two REFUTATIONS from adversarial review — pane-scoped codex identity, fail-closed start ([3f27afe](https://github.com/thewoolleyman/livespec/commit/3f27afe8d242996a484e912e7b46b13494564f96))
+
 ## [0.15.3](https://github.com/thewoolleyman/livespec/compare/v0.15.2...v0.15.3) (2026-07-17)
 
 
