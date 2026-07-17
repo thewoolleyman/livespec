@@ -148,13 +148,58 @@ Three daemon improvements landed this day, each restarted into the live
   daemon.log line (`_MAX_REASON_IN_ALERT`, 160). Full reason stays in the pane the jump
   command points at. See `AGENTS.md` render bullet.
 
+## Row-correctness audit (2026-07-16) — every daemon line verified against ground truth
+
+The maintainer reported `livespec1` as broken ("it doesn't even have an active claude but
+it has data in its line") and asked that **every** line's status be double-checked. All 6
+non-`unassigned` rows were verified against ground truth (`#{pane_current_command}` + the
+Claude registry). **Two real bugs, both fixed; one false alarm, corrected.**
+
+| Row | Daemon said | Ground truth | Verdict |
+|---|---|---|---|
+| autonomous-mode | `working` 68% | pane `claude`, registry `busy` | correct |
+| **fabro-ci-image-factoring** | **`not-claude`, tmux=livespec1** | **bare `zsh`, no live Claude** | **BUG — fixed** |
+| ledger-status-conformance | `working (background shell)` | pane `claude`, registry `shell` | correct |
+| **overseer-rewrite** | `working` + `blocked:` note | pane `claude`, registry `busy` | **BUG — stale note, fixed** |
+| **codex-credential-broker** | `working` + `blocked:` note | pane `claude`, registry `busy` | same bug |
+| codex-factory-telemetry | `working`, ctx `—` | pane `claude`, registry `busy` | **NOT a bug — see below** |
+
+**Bug 1 — an exited-to-shell track (PR #1293, merged; PR #1295).** `not-claude` was
+designed as the identity GATE for acts and is correct as that, but its answer was reused
+as the row STATUS — conflating "our Claude EXITED to a bare shell" (the ordinary end of
+every track) with "the mapping points at a FOREIGN pane" (a real mis-mapping). It also
+skipped the live-outside-tmux fallback (wired only into the missing-tmux-session branch),
+hiding a Claude alive outside tmux behind an alarm. Both no-managed-pane paths now route
+through `_no_managed_pane_row`, and such a row reports **`tmux=None`** — the cell asserts
+*the tmux session HOLDING this track*, and there is none (maintainer-declared: "it
+shouldn't display the session name; the session doesn't exist in that panel anymore").
+`not-claude` narrows to the foreign-pane case and deliberately KEEPS naming its session
+(that pane is what the operator must inspect) — pinned so the rule cannot be over-applied.
+
+**Bug 2 — an outlived `blocked:` declaration (PR #1295).** Nothing retired a `blocked:`:
+`_clear_state` runs only on the daemon's OWN restart path, so a pane replaced out-of-band
+inherits its predecessor's declaration (this very track rendered a reason written by a
+session that no longer existed), and the dead reason later fires a false `blocked:human`.
+Now voided when the session is GENERATING past the RB1 grace — an observation (it is
+producing tokens) not a semantic judgment. See `AGENTS.md` §"Stale-`blocked` voiding" for
+the two bounds that MUST NOT be widened (`generating` ≠ `busy`; the grace).
+
+**The false alarm — `Ctx: —` is NOT a daemon bug.** A one-shot
+`supervisor.py list` renders `—` for a track whose ctx the DAEMON shows fine (it read 83%
+at the same moment). `_effective_ctx` keeps the last-known ctx in **per-instance**
+`_inject[key].last_ctx`, so a FRESH process has no history and renders `—` until it reads
+the statusline itself. Nothing is wrong; do not "fix" it. Read ctx from the running
+daemon's table, not from a one-shot `list`.
+
 ## Resume command
 
-**The redesign, the display / detection-accuracy fixes, and the 2026-07-16 trio above are
-complete, merged, and live-exercised.** The daemon in the `livespec-overseer` top pane
-was respawned onto master carrying all of them (2026-07-16). The ONE open ENGINEERING
-item is **Codex detection — now BUILD-READY** (design below); pick it up in a fresh
-focused session.
+**The redesign, the display / detection-accuracy fixes, the 2026-07-16 trio above, and the
+row-correctness audit are complete and live-exercised.** PR #1293 is merged (released
+0.15.1); **PR #1295 (tmux=None + the `blocked:` void) was open at hand-off — confirm it
+merged, then RESPAWN THE DAEMON**, which still carries pre-fix code until then (see
+Standing operational notes for the respawn command). The ONE open ENGINEERING item is
+**Codex detection — now BUILD-READY** (design below); pick it up in a fresh focused
+session.
 
 ### NEXT = Codex detection — BUILD-READY design (de-risked 2026-07-16)
 
