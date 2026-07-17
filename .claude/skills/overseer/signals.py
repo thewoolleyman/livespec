@@ -29,12 +29,15 @@ __all__ = [
     "STATE_TOKENS",
     "STATE_WINDING_DOWN",
     "TrackState",
+    "codex_prompt_present",
     "input_box_ready",
     "is_busy",
+    "is_codex_idle_input",
     "is_idle_input",
     "is_structured_gate",
     "marker_dir",
     "pane_is_claude",
+    "pane_is_codex",
     "pane_is_shell",
     "parse_ctx_remaining",
     "path_in_repo",
@@ -152,10 +155,14 @@ def is_busy(capture_text: str) -> bool:
     return bool(_BUSY_ACTIVE_RE.search(text))
 
 
-# The permission-prompt / picker cursor: a `❯` immediately before a numbered
-# option (`❯ 1.`), present in both the Claude permission dialog and the
-# AskUserQuestion picker. Best-effort; documented markers.
-_GATE_CURSOR_RE = re.compile(r"❯\s*\d+\.")
+# The permission-prompt / picker cursor: a `❯` (Claude) or `›` (Codex) immediately
+# before a numbered option (`❯ 1.` / `› 1.`), present in the Claude permission dialog,
+# the AskUserQuestion picker, AND Codex's approval / directory-trust picker (verified
+# live 2026-07-17: `› 1. Yes, continue` / `  2. No, quit`). BOTH glyphs are load-bearing
+# — a Codex track is now a full citizen that gets the wrap-up pasted in, so a Codex
+# picker MUST suppress injection or the paste would type into the `1/2` chooser.
+# Best-effort; documented markers.
+_GATE_CURSOR_RE = re.compile(r"[❯›]\s*\d+\.")
 
 
 def is_structured_gate(capture_text: str) -> bool:
@@ -248,6 +255,48 @@ def input_box_ready(capture_text: str) -> bool:
     this stays False until an Enter lands).
     """
     return _input_box_present(capture_text)
+
+
+# The Codex TUI renders a DIFFERENT idle shape from Claude's `❯`-between-rules box: a
+# `›` input line sitting above its statusline (`model · cwd · Context N% left · <name>`),
+# with a grey ROTATING placeholder when the box is empty — indistinguishable from typed
+# text in an ANSI-stripped capture. So Codex idle detection is STRUCTURAL (a `›` prompt +
+# a Codex statusline, not busy, not a picker), never Claude's cleared-`❯` check, and a
+# Codex submit is confirmed by the pane going BUSY, not by an emptied box (see
+# supervisor `_submit_prompt`). Verified live 2026-07-17 (codex-cli 0.144.5).
+_CODEX_STATUSLINE_RE = re.compile(r"Context\s+\d+%\s+left")
+
+
+def codex_prompt_present(capture_text: str) -> bool:
+    """True if the pane is a live Codex TUI sitting at its input prompt.
+
+    Structural + glyph-anchored: a ``›`` input line AND a Codex statusline
+    (``… · Context N% left · …``) among the visible rows, independent of the rotating
+    placeholder wording. It is present whether the box is empty OR holds text (the
+    placeholder problem above), so it asserts only "a Codex TUI is here"; idle-ness adds
+    not-busy + not-gate (:func:`is_codex_idle_input`).
+    """
+    text = strip_ansi(capture_text)
+    if not _CODEX_STATUSLINE_RE.search(text):
+        return False
+    return any(line.lstrip().startswith("›") for line in text.splitlines())
+
+
+def is_codex_idle_input(capture_text: str) -> bool:
+    """The Codex analogue of :func:`is_idle_input`: a Codex prompt that is neither busy
+    nor a structured gate.
+
+    STRUCTURAL, never the coarse "not busy" — so a Codex approval / directory-trust
+    picker (``› 1.``, caught by :func:`is_structured_gate`) or a booting / blank pane is
+    NOT read as idle and can never be keystroked into. This matters because a Codex track
+    is now a full citizen: an over-loose idle read would paste the wrap-up into a Codex
+    gate.
+    """
+    if is_busy(capture_text):
+        return False
+    if is_structured_gate(capture_text):
+        return False
+    return codex_prompt_present(capture_text)
 
 
 # --------------------------------------------------------------------------- #

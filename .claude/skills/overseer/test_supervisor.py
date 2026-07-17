@@ -141,7 +141,10 @@ class FakeTmux:
         self.calls.append(("respawn", session, cwd, command))
         if not self.respawn_ok:
             return False
-        self.cmds[session] = "node"  # a fresh Claude TUI is now live
+        # Model the runtime the command launches so the post-respawn identity await
+        # (`_await_pane`) matches: a `codex resume …` respawn yields a codex pane (`bun`,
+        # the launcher), any other command a fresh Claude TUI (`node`).
+        self.cmds[session] = "bun" if command.startswith("codex") else "node"
         self.paths[session] = cwd
         self.sessions.add(session)
         return True
@@ -194,6 +197,27 @@ def _idle_capture(ctx=None, body="", *, topic=None):
 def _busy_capture(ctx=None):
     """An actively-generating pane: the real spinner above the (idle-shaped) box."""
     return f"● response\n{_SPINNER}\n" + _idle_capture(ctx)
+
+
+# The REAL live idle Codex TUI shape (verified 2026-07-17, codex-cli 0.144.5): a `›`
+# input line above the Codex statusline `model · cwd · Context N% left · <name>` — NOT
+# Claude's empty-`❯`-between-rules box. An UNNAMED session shows its UUID where a named
+# one shows the thread_name; here we render the topic (a named session).
+def _codex_idle_capture(ctx=None, *, topic="topic"):
+    status = "  gpt-5.5 high · /x/repo"
+    if ctx is not None:
+        status += f" · Context {ctx}% left"
+    status += f" · {topic}"
+    return f"● prior response\n› Write tests for @filename\n{status}\n"
+
+
+def _codex_busy_capture(ctx=None):
+    """An actively-generating Codex pane: `esc to interrupt` (what `is_busy` matches) —
+    the signal `_submit_prompt(expect_codex=True)` confirms a Codex submit by."""
+    status = "  gpt-5.5 high · /x/repo"
+    if ctx is not None:
+        status += f" · Context {ctx}% left"
+    return f"● response\n◦ Working (1s • esc to interrupt)\n› Write tests for @filename\n{status}\n"
 
 
 # Legacy alias kept for readability in tests that predate the real-shape fixtures.
@@ -2657,88 +2681,167 @@ def test_never_seen_is_unassigned_but_once_seen_is_session_gone(tmp_path):
     # The two are distinguishable ONLY by the mapping row, so it must survive.
     assert never_view.status != gone_view.status
 
+
 # --------------------------------------------------------------------------- #
 # Codex restart safety — a FORWARD guard, deliberately written BEFORE the wiring.
 # --------------------------------------------------------------------------- #
 
 
-def test_a_codex_pane_is_never_restarted_even_when_it_declares_ready(tmp_path):
-    """A Codex pane must NEVER be respawned with the claude command. Ever.
+def test_an_UNADOPTED_codex_looking_pane_is_never_restarted(tmp_path):
+    """A `bun` pane NOT proven to be a live codex session (absent from `_codex`) is
+    `session-gone`, and is never restarted or keystroked — even declaring `ready`.
 
-    `_do_restart` launches `claude --dangerously-skip-permissions -n <topic>`. Aimed at a
-    Codex pane it REPLACES the codex session with a claude one — destroying a live
-    session's process. This is the one place in the daemon where a bug is destructive
-    rather than merely wrong.
-
-    **Why this test exists now, before Codex is wired.** Today it passes for a reason that
-    is about to change: the identity gate rejects a codex pane (`bun` is not `claude`), so
-    `evaluate` returns at `not-claude` BEFORE the ready branch and `_do_restart` is
-    unreachable. That is precisely why Codex tracks are safe RIGHT NOW — and precisely why
-    the danger is INTRODUCED by the wiring: the moment the gate ACCEPTS codex panes, a
-    Codex track that declares `ready` flows straight into `_do_restart`.
-
-    So this asserts the INVARIANT (no respawn, no paste), never the mechanism (`not-claude`)
-    — it must keep passing through the wiring via the new runtime-aware restart gate, not
-    via the identity gate that happens to catch it today. If you find yourself editing this
-    test to make the wiring pass, STOP: you are removing the guard, not satisfying it.
+    Any codex ACT (wrap-up, restart) requires the per-tick `_codex` map to prove a real
+    codex session for THIS topic in THIS repo resolves to this pane; `bun` alone is far too
+    generic to act on (any bun app reports `bun`). With the map empty, `_pane_is_managed`
+    rejects the pane and evaluation returns `session-gone` BEFORE any act branch. This
+    guards the loose-`pane_is_codex` footgun — the adopted case (a real restart, via the
+    codex command) is covered by the two sibling tests below.
     """
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     # A real codex pane: tmux reports `bun` (the launcher), NOT `codex` — the vendored
     # binary is its child. Verified live 2026-07-16 on tmux session `livespec3`.
-    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="bun")
+    fake.serve(session, repo, capture=_codex_idle_capture(ctx=40), cmd="bun")
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir()
-    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
-    # `ready` is the SOLE restart authorization — for a CLAUDE track. It must not
-    # authorize anything for a Codex one.
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})  # _codex EMPTY: not adopted
     _declare(repo, topic, "ready")
     with contextlib.redirect_stderr(_io.StringIO()):
-        sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"  # unadopted `bun` pane is not ours to act on
+    assert not fake.has("respawn")  # no restart of a pane we cannot prove is codex
     assert not fake.has("paste")  # and nothing keystroked into it either
 
 
-def test_an_ADOPTED_codex_track_declaring_ready_is_never_restarted(tmp_path):
-    """THE destructive case, exercised through the REAL wired path.
+def _adopt_codex_ready(tmp_path):
+    """A codex track adopted in `_codex`, at a valid `ready`, on an idle Codex pane.
 
-    Its sibling above (`test_a_codex_pane_is_never_restarted_even_when_it_declares_ready`)
-    went VACUOUS the moment Codex was wired: with `_codex` empty, `_is_codex_track` is
-    False, so the `bun` pane fails `_pane_is_managed` and returns `session-gone` long
-    before the ready branch — it passed for the OLD reason and would not have caught a
-    broken gate. Verified by sabotaging the gate: it still passed. This test is the one
-    with teeth (sabotage the gate and it goes red).
-
-    Here the track IS adopted as Codex — `_codex` holds a live CodexSession for this tmux
-    session, exactly as `_refresh_codex_sessions` builds each tick — so `_pane_is_managed`
-    ACCEPTS the pane and evaluation reaches the ready branch. That is the branch where
-    `_do_restart` would fire `claude --dangerously-skip-permissions -n <topic>` at a live
-    Codex pane and destroy it.
+    The shared fixture for the two restart-routing guards below: a `bun` pane showing the
+    real idle Codex shape, a live CodexSession in the map (as `_refresh_codex_sessions`
+    builds each tick), and a genuinely-valid `ready` (stamp + newer marker) so evaluation
+    reaches the restart branch — the branch where a runtime-misrouted restart would fire
+    the claude command at a codex pane.
     """
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="bun")  # a codex pane
+    fake.serve(session, repo, capture=_codex_idle_capture(ctx=40), cmd="bun")  # a codex pane
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir()
     sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
-    # Adopted as Codex: this is what `_refresh_codex_sessions` produces for a live session.
+    session_id = "019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+    sup._codex = {
+        session: codex_sessions.CodexSession(
+            pid=4242, name=topic, cwd=str(repo), session_id=session_id
+        )
+    }
+    assert sup._is_codex_track(session, str(repo), topic, session)  # the precondition holds
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=1001.0)  # the SOLE restart authorization
+    return repo, topic, session, session_id, fake, sup
+
+
+def test_an_adopted_codex_track_declaring_ready_is_restarted_with_the_codex_command(tmp_path):
+    """A Codex track is now a FULL CITIZEN (maintainer-declared 2026-07-17): its own `ready`
+    IS honoured — but via `codex resume <id>`, NEVER the claude launch command.
+
+    This replaces the former monitor-only refusal. `_do_restart` runtime-dispatches: a Codex
+    track routes to `_do_codex_restart`, which respawns `codex resume <session-id> "<kick>"`
+    (reattaches the SAME rollout → adoptability survives; the kick auto-submits). The
+    destructive bug this daemon can have is aiming `claude -n <topic>` at a codex pane; the
+    routing prevents it and its sibling below pins it by sabotage.
+    """
+    repo, topic, session, session_id, fake, sup = _adopt_codex_ready(tmp_path)
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "restarting"  # its own `ready` is honoured, not refused
+    respawns = [c for c in fake.calls if c[0] == "respawn"]
+    assert len(respawns) == 1
+    command = respawns[0][3]
+    assert command.startswith("codex resume ")  # the CODEX command, not claude
+    assert session_id in command  # resumes the SAME session by id → adoptability survives
+    assert not fake.has("paste")  # the kick is the resume ARGUMENT — no separate paste
+
+
+def test_a_codex_ready_restart_never_issues_the_claude_command(tmp_path):
+    """THE sabotage-target guard: no respawn for a Codex `ready` track may carry the claude
+    launch command. Aimed at a codex pane, `claude --dangerously-skip-permissions -n <topic>`
+    REPLACES the codex session with a claude one and destroys it — the one destructive bug
+    here.
+
+    Teeth: reroute the restart to the claude command (delete the `is_codex=is_codex` on
+    `_do_restart`, or the `if is_codex:` dispatch inside it) and this goes RED, because the
+    respawn command becomes `claude …`. The claude launch string must appear in NO respawn.
+    """
+    repo, topic, session, _session_id, fake, sup = _adopt_codex_ready(tmp_path)
+    claude_command = supervisor.Supervisor._launch_command(_mapped_track(repo, topic, session))
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    respawn_commands = [c[3] for c in fake.calls if c[0] == "respawn"]
+    assert respawn_commands  # it WAS restarted (full citizen)...
+    assert claude_command not in respawn_commands  # ...but NEVER with the claude command
+    assert not any("claude" in c for c in respawn_commands)  # belt-and-suspenders
+
+
+def test_a_codex_track_below_threshold_gets_the_escalating_wrapup(tmp_path):
+    """A Codex track below its wind-down threshold receives the SAME escalating wrap-up a
+    Claude track does — the change that makes Codex a full citizen. Monitor-only left a
+    Codex track a passenger that ran to context exhaustion; now the daemon's only lever
+    reaches it too.
+
+    The Codex submit is confirmed by the pane going BUSY after Enter (`is_busy`), not by a
+    cleared `❯` box (Codex has none). The capture frames model that: idle for the main read
+    + the settle pair, then busy after the paste's Enter.
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    # frames: [main, settle-1, settle-2 (== settle-1 → settled), post-Enter (busy → submitted)]
+    fake.serve(
+        session,
+        repo,
+        capture=[_codex_idle_capture(ctx=40)] * 3 + [_codex_busy_capture(ctx=40)],
+        cmd="bun",
+    )
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     sup._codex = {
         session: codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
         )
     }
-    assert sup._is_codex_track(session, str(repo), topic)  # the precondition really holds
-    # A GENUINELY VALID `ready`: the stamp is what makes `ready_valid` true, and without
-    # it the row is merely `idle` and never reaches the restart branch at all — which is
-    # how the first version of this test fooled itself.
-    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
-    _arm_ready_marker(repo, topic, mtime=1001.0)  # the SOLE restart authorization
     with contextlib.redirect_stderr(_io.StringIO()):
         view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
-    assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
-    assert view.status == "blocked:human"  # reported, not silently ignored (invariant 8)
+    assert view.status == "warned"  # below threshold, above danger → warned (not idle)
+    assert fake.has("paste")  # the wrap-up reached the Codex track
+    assert "wind" in " ".join(fake.paste_texts()).lower()  # it IS the wrap-up text
+
+
+def test_a_codex_approval_gate_suppresses_the_wrapup(tmp_path):
+    """A Codex approval / directory-trust picker (`› 1.`) must SUPPRESS the wrap-up — the
+    paste would otherwise type into the `1/2` chooser. The extended gate-cursor regex
+    (`[❯›]`) is what catches the `›` cursor Codex uses (Claude uses `❯`).
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    gate = "Do you trust the contents of this directory?\n› 1. Yes, continue\n  2. No, quit\n  Context 40% left · topic\n"
+    fake.serve(session, repo, capture=gate, cmd="bun")
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    sup._codex = {
+        session: codex_sessions.CodexSession(
+            pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+        )
+    }
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "blocked:human"  # a gate, not idle
+    assert not fake.has("paste")  # nothing keystroked into the picker
 
 
 def test_a_claude_pane_keeps_its_wrapup_when_codex_shares_its_tmux_session(tmp_path):

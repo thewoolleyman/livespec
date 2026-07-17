@@ -61,8 +61,7 @@ stateDiagram-v2
     state "evaluate(track) — one tick" as tick
 
     tick --> unassigned: is_unassigned
-    tick --> cGone: no managed pane
-    tick --> not_claude: foreign pane
+    tick --> cGone: no managed pane (gone / foreign / shell)
     tick --> cBusy: live and ours
 
     state cGone <<choice>>
@@ -105,7 +104,7 @@ stateDiagram-v2
     working: working  ·  voids stale ready + blocked
     blocked_human: blocked:human  ·  alerts operator
     settling: settling  ·  wait, re-read next tick
-    restarting: restarting  ·  _do_restart (ONLY restart path)
+    restarting: restarting  ·  _do_restart (ONLY path; runtime-dispatched claude/codex)
     warned: warned  ·  injects escalating wrap-up
     danger: danger  ·  alerts NOT RESPONDING, never restarts
     winding_down: winding-down  ·  ACK, stop re-warning
@@ -132,9 +131,15 @@ Every branch is a leaf: the tick ends there and the next tick re-enters
 `working → … → warned` (daemon injects the wrap-up) `→ winding-down` (session
 ACKs) `→ restarting` (session declares `ready`) `→` a fresh `working` after the
 respawn — each arrow driven by the SESSION's own declaration, never a daemon
-guess. `unassigned` / `session_gone` / `live_outside_tmux` / `not_claude` are
-structural pre-checks (no live managed pane to read); `settling` is a one-tick
-"wait and re-read". The `cGone` choice splits the no-managed-pane case: when there
+guess. `unassigned` / `session_gone` / `live_outside_tmux` are structural pre-checks
+(no live managed pane to read); `settling` is a one-tick "wait and re-read". The
+diagram is drawn Claude-first, but **a Codex track is a full citizen
+(maintainer-declared 2026-07-17)** and flows through the SAME branches with
+runtime-appropriate mechanics: `is_codex_idle_input` (not Claude's `❯` box) drives its
+`idle`, the wrap-up and keep-going nudge are pasted with a Codex submit-verify (the pane
+goes busy, not an emptied `❯` box), and `restarting` dispatches to `codex resume <id>`
+rather than the claude launch command (see invariant 7 and the load-bearing mechanics).
+The `cGone` choice splits the no-managed-pane case: when there
 is no pane the daemon can drive but a live Claude registry session for the topic is
 running with NO tmux pane (a bare SSH shell), the row is the informational
 `live-outside-tmux` (alive, but the daemon cannot capture/inject/respawn it) — NOT
@@ -142,24 +147,23 @@ the alarming `session-gone`, and it is kept out of the `NEEDS YOU` block. A live
 session that resolves to a DIFFERENT tmux session stays `session-gone` (re-mapping
 is a separate concern; `_live_session_outside_tmux`).
 
-**`cGone` is reached TWO ways, and they must answer identically
-(`_no_managed_pane_row`; 2026-07-16).** Either the mapped tmux session is gone, or
-it survives but its Claude **exited to a bare shell** — the ordinary end of a
-track's life. Both are the same fact about the track (no pane to drive), so both
-route through the one helper; only tmux housekeeping differs. **`not_claude` is
-therefore narrower than "not our Claude"** — it means the mapping points at a
-genuinely FOREIGN pane (another program, a Claude in a different repo): a real
-mis-mapping to go fix. Do not widen it back. The identity gate
-(`_pane_is_managed_claude`) is unchanged and still governs every ACT — the split is
-about what the operator is TOLD, never about relaxing the gate; a shell pane is
-still never pasted into. **Why it matters:** reporting an exited-to-shell track as
-`not_claude` left finished tracks sitting red in `NEEDS YOU` claiming a live tmux
-mapping (found live 2026-07-16: `fabro-ci-image-factoring` → `livespec1`, a bare
-zsh), and it skipped the live-outside-tmux fallback entirely — hiding a Claude that
-was alive outside tmux behind an alarm. The one-tick TOCTOU re-check before acting
-still reports the flat `not_claude`: it is a transient race guard ("no longer proven
-ours" is exactly right there), and the next tick re-enters at the top gate and
-renders the settled label.
+**`cGone` is reached THREE ways, and they must answer identically
+(`_no_managed_pane_row`; 2026-07-16).** The mapped tmux session is gone; OR it survives
+but its Claude **exited to a bare shell** (the ordinary end of a track's life); OR the
+mapping points at a genuinely FOREIGN pane (another program, a Claude in a different
+repo). All three are the same fact about the track — no pane the daemon can drive — so
+all three route through the one helper (`session-gone`, or `live-outside-tmux` when a
+live session for the topic runs with no tmux pane); only tmux housekeeping differs.
+**`not_claude` is DELETED (maintainer-declared 2026-07-17: "What the hell is
+not-claude?").** It was the identity gate's return value leaking into the UI — it named a
+check's output, not anything an operator needs — and it made a bare terminal (`livespec1`)
+look like a tracked pane. Do NOT reintroduce it. The identity gate (`_pane_is_managed`,
+covering BOTH runtimes) is unchanged and still governs every ACT — the change was purely
+what the operator is TOLD, never a relaxation; a shell / foreign pane is still never
+pasted into. **Why it mattered:** reporting an exited-to-shell track as `not-claude` left
+finished tracks sitting red in `NEEDS YOU` claiming a live tmux mapping (found live
+2026-07-16: `fabro-ci-image-factoring` → `livespec1`, a bare zsh), and it skipped the
+live-outside-tmux fallback entirely — hiding a Claude alive outside tmux behind an alarm.
 
 Reading notes: `threshold` = the track's `ctx_threshold` override, else the
 daemon-wide `warn_percent` (default 50). A malformed `.overseer-state` token is
@@ -167,7 +171,9 @@ surfaced as a row note and treated as **no declaration** (fail-closed) — it
 changes no branch. Two act-only guards are folded for clarity: `cStream →
 working` (drawn) skips a tick when an "idle" frame is still streaming, and an
 identical post-settle identity re-check (not drawn) routes a pane that has
-exited to a shell straight to `not_claude`. The `cRoom` choice guards the
+exited to a shell to `settling` (a one-tick "the pane changed under us"; the next
+tick re-enters at the top gate and renders the settled `session-gone`). The `cRoom`
+choice guards the
 `idle-with-context-left` nudge: an idle session ABOVE threshold reaches it, and
 takes the `idle_ctx_left` leg only when it is not `waiting` on a human and has
 made no declaration of its own (or already carries the marker — so the nudge is
@@ -253,11 +259,13 @@ for the marker's edge-triggered lifecycle.
    daemon never re-adopted after the prompt cleared"). It maps to the bare session
    name (`tmux == session`), never double-adds, and — distinct from invariant 5's
    `auto_link`, which links only the repo-qualified `<repo-slug>--<topic>` sessions
-   the daemon itself launches. Codex sessions are NOT in Claude's registry, so they
-   are not adopted YET — but the READ they need now exists: `codex_sessions.py`
-   (see the next bullet). Wiring it into `adopt` is the remaining step.
-   (Per-session pane reads — `pane_id`/`pane_current_command`/`pane_current_path` —
-   go through `list-panes`, not the flaky-for-detached-sessions `display-message`.)
+   the daemon itself launches. **Codex sessions ARE adopted the same tick, through the
+   SAME code path** (`adopt_sessions` sums `claude_sessions.map_named_sessions(...)` +
+   `codex_sessions.map_codex_sessions(...)`, both emitting the `(tmux, name, cwd)` triple)
+   — they are not in Claude's registry, but `codex_sessions.py` supplies the equivalent
+   join (see the next bullet). (Per-session pane reads —
+   `pane_id`/`pane_current_command`/`pane_current_path` — go through `list-panes`, not the
+   flaky-for-detached-sessions `display-message`.)
 
    **Codex session discovery (`codex_sessions.py`; 2026-07-16).** The Codex twin of
    `claude_sessions`, returning the same `pid` / `name` (= the plan topic) / `cwd`
@@ -284,32 +292,22 @@ for the marker's edge-triggered lifecycle.
      records) — they fail the "is this an ACTIVE plan topic?" test at adoption, so
      the noise filters itself and the module stays a pure, dumb join with no policy.
    - **The join NEVER reads a rollout's contents** — rollouts are full session
-     transcripts. It needs only the filename + `/proc`. The ONE function that opens a
-     body is `rollout_ctx_remaining` (below), which parses only `token_count` payloads
-     and extracts two integers — counters in an event envelope, never content.
+     transcripts. `codex_sessions.py` needs only the filename + `/proc`; it opens NO
+     rollout body at all. (Keep it that way — see the Ctx% note.)
 
-   **Codex Ctx% (`codex_sessions.rollout_ctx_remaining`; 2026-07-16).** Codex renders no
-   `Ctx: N% left` statusline, which was read as "Codex ctx is unknown → a Codex track can
-   never get the wrap-up". The premise is true; the conclusion does not follow — ctx comes
-   from the ROLLOUT: every `token_count` event carries `last_token_usage.total_tokens` +
-   `model_context_window`. Returns the same `int | None` remaining-% as
-   `signals.parse_ctx_remaining`, so it drops into the same slot, and is strictly MORE
-   reliable than the Claude path (a number from a file, not a regex over rendered terminal
-   text). This matters because the escalating wrap-up is the daemon's ONLY lever now that
-   nothing is force-killed — a wrap-up-less Codex track is a passenger that runs to
-   exhaustion. Four things not to regress:
-   - **`last_token_usage`, NOT `total_token_usage`.** The former is the current context
-     occupancy; the latter is the session's CUMULATIVE spend (104M in the sampled session,
-     ~400x the window) and would peg every session at 0% and wrap them all up instantly.
-   - **INTEGER arithmetic** — `int((1 - used / window) * 100)` is wrong at exactly the
-     boundaries that matter: 232560/258400 is exactly 90% used, but in binary floats it is
-     0.9000000000000000222, so it floors to 9 not 10 — and 50/40/30/20/10 ARE the bands.
-     Use `(window - used) * 100 // window`. Floor (never round) so a reading is never
-     optimistic; clamp at 0 for a compacted/overflowing session.
-   - **Tail-read** (`_CTX_TAIL_BYTES`, 256 KiB) — the daemon calls this EVERY TICK and
-     rollouts reach 16 MB here; measured ~5 ms regardless of size. Never load the file.
-   - **Fail-closed** — unreadable / no `token_count` / absent-or-zero window ⇒ None =
-     unknown, which the daemon already treats as "keep the last known, never a crossing".
+   **Codex Ctx% comes from the STATUSLINE, NOT the rollout (2026-07-16, corrected).**
+   Codex renders `Context N% left` in its statusline (verified live) — its OWN computed
+   number — and `signals.parse_ctx_remaining` reads it exactly as it reads Claude's
+   `Ctx: N% left` (`_CTX_RE` matches BOTH forms), so Codex needs NO ctx code of its own.
+   An earlier cut computed ctx from the rollout's `token_count` events
+   (`rollout_ctx_remaining`) and was **WRONG by 2–4 points** against Codex's own display,
+   because it reimplemented codex-rs's private occupancy formula (subtracts a ~12k
+   baseline, excludes reasoning tokens) — an internal that drifts with any Codex release.
+   That function was REMOVED; `codex_sessions.py` reads no rollout body. **Never
+   reintroduce a local occupancy formula.** This matters because the escalating wrap-up is
+   the daemon's ONLY lever now that nothing is force-killed — and a Codex track now
+   RECEIVES that wrap-up (and is restarted on `ready`) as a full citizen; it is no longer
+   a monitor-only passenger (see invariant 7 and the load-bearing mechanics below).
 7. **THE CARDINAL RULE — never restart a session that has not declared itself
    `ready` (maintainer-declared 2026-07-14).** The session's own `ready`
    declaration in its state file (`signals.ready_valid`) is the **SOLE**
@@ -336,7 +334,8 @@ for the marker's edge-triggered lifecycle.
    daemon-side judgment that ends in a respawn, STOP: you are reintroducing it.
 
    The restart **mechanics** are unchanged and still required — only the **trigger**
-   moved to the session's declaration:
+   moved to the session's declaration. `_do_restart` is **RUNTIME-DISPATCHED**
+   (`is_codex` selects the arm); the Claude arm is:
 
    - **(a) exit + restart** — the ATOMIC `respawn-pane -k` (kill the pane's process
      and launch the new one in a single tmux op), NOT a `/exit` followed by a scrape
@@ -353,6 +352,19 @@ for the marker's edge-triggered lifecycle.
      (`default_resume` + `_submit_prompt`). A `claude "<prompt>"` argv only
      PRE-FILLS the box without submitting — which is why the resume line is pasted
      after launch rather than passed on the command line.
+
+   **The Codex arm (`_do_codex_restart`) is the ONE place the destructive bug lives,
+   and the dispatch is what prevents it.** `claude -n <topic>` aimed at a codex pane
+   would REPLACE the codex session with a claude one; so a Codex track respawns
+   `codex resume <session-id> "<resume line>"` (`_codex_launch_command`) instead —
+   NEVER the claude command. It is SIMPLER than the Claude arm (proven live 2026-07-17):
+   `codex resume` takes the kick as an ARGUMENT and AUTO-SUBMITS it, so there is no
+   separate paste (no `_submit_prompt`) and no fresh-TUI submit race; and it resumes by
+   the exact UUID, which reattaches the SAME rollout so the `thread_name` — hence
+   adoptability — survives by construction. The await polls `pane_is_codex`
+   (`_await_pane`) not `pane_is_claude`. The sabotage-verified guard test
+   (`…never_issues_the_claude_command`) pins that the routing holds; if you touch this
+   area, re-sabotage (route codex → the claude command) and confirm it goes red.
 
    The abrupt kill is safe **because of** the declaration: the session asserted it
    is at a clean stopping point, and `respawn-pane -k` replaces the PROCESS — every
@@ -481,7 +493,7 @@ for the marker's edge-triggered lifecycle.
   the list by hue — green = actively working (`working`/`winding-down`/`restarting`/
   `settling`), yellow = idle (`idle`/`idle-with-context-left`) / waiting on a human
   (`blocked:human`) / low on context (`warned`/`danger`), red = broken
-  (`session-gone`/`not-claude`), default (uncolored,
+  (`session-gone` — `not-claude` is DELETED, no longer a status), default (uncolored,
   terminal white/gray) = `unassigned`, `live-outside-tmux` (informational — alive but
   unmanaged, deliberately NOT tinted so it reads as neither healthy nor broken), and any
   other unmapped status. Two invariants keep it
@@ -512,17 +524,30 @@ for the marker's edge-triggered lifecycle.
   Claude TUI takes the whole blob as ONE pasted input that cannot fragment into
   separate submitted prompts. `send-keys -l` typing a multi-line payload would
   fragment it — do not.
-- **Bracketed-paste submission (`_submit_prompt`) — verified-submit loop.** Paste
-  (`load-buffer` + `paste-buffer -p`, single- or multi-line, atomic — never type
-  a payload key-by-key), then re-send `Enter` until the empty box returns
-  (`signals.input_box_ready`), up to `_SUBMIT_MAX_ENTERS`. Verified live
-  (2026-07-13): on a STEADY idle session a single `Enter` submits; but a
-  freshly-`respawn`-ed session is often still drawing its welcome/news screen when
-  the first `Enter` arrives and DROPS it, leaving the resume line un-submitted and
-  the auto-restart stalled. The verify loop fixes that (an extra `Enter` on an
-  already-empty prompt is a harmless no-op). Note: this is NOT the old
-  `send-keys -l` key-by-key-typing collapse problem — the paste is always atomic;
-  it is purely fresh-TUI submit TIMING.
+- **Bracketed-paste submission (`_submit_prompt`) — verified-submit loop, RUNTIME-AWARE.**
+  Paste (`load-buffer` + `paste-buffer -p`, single- or multi-line, atomic — never type a
+  payload key-by-key), then re-send `Enter` until submission is CONFIRMED, up to
+  `_SUBMIT_MAX_ENTERS`. Verified live (2026-07-13): on a STEADY idle session a single
+  `Enter` submits; but a freshly-`respawn`-ed session is often still drawing its
+  welcome/news screen when the first `Enter` arrives and DROPS it, leaving the payload
+  un-submitted. The verify loop fixes that (an extra `Enter` on an already-empty prompt is
+  a harmless no-op). The confirm signal is **runtime-specific** (`expect_codex`) because
+  the two TUIs render differently: **Claude** confirms on the empty `❯` box returning
+  (`signals.input_box_ready`); **Codex** confirms on the pane going BUSY
+  (`signals.is_busy` — Codex's `esc to interrupt` / `Working …`), because Codex has no
+  `❯` box and its empty box shows a grey rotating PLACEHOLDER indistinguishable from typed
+  text in an ANSI-stripped capture, so "box cleared" is not usable; "the model started
+  responding" is (verified live 2026-07-17, busy within ~1s of Enter). This is NOT the old
+  `send-keys -l` key-by-key collapse — the paste is always atomic; it is submit TIMING.
+- **Codex idle / gate detection is STRUCTURAL, and its own (`signals.is_codex_idle_input`
+  / `codex_prompt_present`; 2026-07-17).** A Codex track is a full citizen that gets the
+  wrap-up pasted in and is restarted on `ready`, so its idle read must be as safe as
+  Claude's `is_idle_input`, not the coarse "not busy". Codex idle = a `›` input line above
+  its statusline (`… · Context N% left · …`), not busy, and NOT a picker — so a booting
+  pane or a Codex approval/directory-trust picker is never keystroked into. That picker
+  uses a `›` cursor (`› 1.`), NOT Claude's `❯`, which is why `is_structured_gate`'s cursor
+  regex accepts BOTH glyphs (`[❯›]`); reverting it to `❯`-only lets a wrap-up paste into
+  the Codex chooser (sabotage-verified by `test_a_codex_approval_gate_suppresses_the_wrapup`).
 - **Anchored, fail-closed Ctx% parse (`signals.parse_ctx_remaining`).** Scan only
   the last FEW non-empty pane rows (`_CTX_TAIL_ROWS`), ANSI-stripped, taking the
   LAST `Ctx: N% left` match. The statusline is the SECOND-to-last row — a footer
