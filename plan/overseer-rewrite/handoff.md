@@ -249,6 +249,15 @@ which REPLACES the codex session with a claude one. Destructive.
 the same commit**, with the refusal tested (a Codex track that declares `ready` must not
 be restarted as claude). Never land adoption or the gate change alone.
 
+**The guard for this is ALREADY WRITTEN and green** (PR #1296,
+`test_a_codex_pane_is_never_restarted_even_when_it_declares_ready`). It asserts the
+INVARIANT — no respawn, no paste — never the mechanism, so it must keep passing through
+your change via the NEW runtime-aware restart gate rather than via the `not-claude` return
+that happens to catch it today. It is verified to have TEETH: widening the identity gate
+to accept `bun` (exactly your change) turns it RED, because the daemon really does respawn
+the codex pane. **If it goes red while you wire, that is the destructive bug, not a stale
+test — do not edit the test to make it pass.**
+
 #### Wiring notes that will save the next session time
 
 - **Derive the runtime; do NOT add a stored `runtime` field to the mapping.** A codex
