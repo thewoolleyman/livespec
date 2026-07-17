@@ -124,3 +124,67 @@ Two facts worth having alongside §4's companion-task note:
 - **The companion/real split is 38/31**, not overwhelmingly companion: the 31 real names
   include `autonomous-mode`, `ledger-status-conformance`, `console-specification-drafting`,
   `cloud-local-memory-cleanup`, plus §4's two `rop-sweep-*`.
+
+## 2026-07-17 — the full-citizen decision, and the TUI mechanics PROVEN LIVE
+
+**Maintainer decision (2026-07-17):** open decision #1 is answered — Codex tracks become
+**full citizens**: they receive the escalating wrap-up AND are auto-restarted on their own
+`ready`, exactly like Claude tracks. Monitor-only is retired. This section records the live
+proof the restart+wrap-up mechanics actually work, gathered on a THROWAWAY unnamed session
+(`019f7191-0752-79f3-9429-a940adc1d828`) in a scratch cwd so the real daemon could never
+adopt it. Method: `codex-cli 0.144.5`, a real TUI in a detached tmux session, `/proc` +
+`tmux capture-pane`.
+
+**Correction to Correction 1 (superseded by shipped code).** The rollout-`token_count`
+occupancy source above was TRIED and REJECTED: it was wrong by 2–4 points vs Codex's own
+display (it reimplements codex-rs's private occupancy formula). The shipped `codex_sessions.py`
+reads NO rollout body; ctx comes from the STATUSLINE (`Context N% left`), parsed by the same
+`signals.parse_ctx_remaining` (its `_CTX_RE` already matches both `Ctx:` and `Context`). Do
+not reintroduce a local occupancy formula. This section supersedes Correction 1's mechanism;
+its *conclusion* (a Codex track CAN get the wrap-up) stands and is now implemented.
+
+**What was proven (each an observation on the live throwaway):**
+
+1. **Fleet codex tracks are plain interactive codex TUIs.** The `@zed-industries/codex-acp`
+   string seen once in a `tmux capture -S` was STALE SCROLLBACK from that tmux session's
+   history, not the live process. The live process tree is `zsh → bun → codex → node`; the
+   pane renders a `›` input box above a statusline `model · cwd · Context N% left · <name>`.
+
+2. **`codex resume <SESSION_ID> "<kick>"` reattaches the SAME session** — the open rollout id
+   is IDENTICAL before and after the respawn (`019f7191-…` both times; codex appends to the
+   same rollout). So a NAMED session keeps its name (same index record) → the daemon
+   **re-adopts it after restart, by construction.** Resume by the exact UUID (which the daemon
+   holds as `CodexSession.session_id`), NOT by name: "UUIDs take precedence", and a name could
+   be ambiguous or drop to a picker. Adoptability survives. ✓
+
+3. **The kick ARGUMENT auto-submits.** Unlike `claude "<prompt>"` (pre-fill only), `codex
+   resume <id> "<kick>"` submits the kick immediately — the pane went straight to
+   `› <kick>` (submitted) → `◦ Working (…· esc to interrupt)`. So the Codex restart needs NO
+   separate paste-the-resume-line step: the respawn command carries and submits it.
+
+4. **A busy Codex pane shows `esc to interrupt`**, which `signals.is_busy` already matches.
+   So busy detection works for Codex with no change.
+
+5. **Bracketed-paste + Enter into a live idle Codex TUI SUBMITS** (the wrap-up mechanism):
+   the pasted text moved from the `›` box to a submitted message and the pane went busy. The
+   verify signal for a Codex submit is "the pane went busy after Enter" (`is_busy`), NOT
+   Claude's cleared-`❯`-box (`input_box_ready`) — Codex has no `❯` and its empty box shows a
+   grey rotating PLACEHOLDER indistinguishable from real text in a plain (ANSI-stripped)
+   capture.
+
+6. **Codex idle/gate detection differs and must be structural.** Codex idle = a `›` input line
+   + a `Context N% left` statusline, not busy, not a picker. Codex's approval/trust picker uses
+   `› 1.`/`› 2.` (a `›` cursor, NOT Claude's `❯`), so `is_structured_gate`'s cursor regex must
+   accept BOTH glyphs or a wrap-up could be pasted into a Codex picker. A first-ever launch in
+   an untrusted cwd shows a `Do you trust the contents…` gate; a restart RESUMES an
+   already-trusted dir, so no trust gate appears on the restart path.
+
+7. **An UNNAMED session shows its UUID** where a named one shows the thread_name, and is
+   absent from `session_index.jsonl` — correctly invisible to adoption (confirms the naming
+   precondition).
+
+**Net:** the Codex restart is actually SIMPLER than Claude's (kick auto-submits; no paste
+race), and re-adoptability is guaranteed by id-preservation. The safety gate is preserved by
+ROUTING: a codex-runtime track restarts via `codex resume <id>`, and the claude launch command
+(`claude --dangerously-skip-permissions -n <topic>`) must NEVER be aimed at a codex pane — the
+one destructive bug, pinned by a sabotage-verified test.

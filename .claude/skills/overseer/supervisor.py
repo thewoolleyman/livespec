@@ -644,10 +644,12 @@ class Supervisor:
         spawn. A ``(repo, topic)`` already mapped is left untouched (no double-add).
         Returns the newly-adopted Tracks.
 
-        Codex sessions are NOT in Claude's registry, so they are not adopted (a
-        documented gap; codex would need its own session store read). Distinct from
-        :meth:`auto_link`, which links only the repo-qualified ``<repo-slug>--<topic>``
-        session the daemon itself launches.
+        Codex sessions are NOT in Claude's registry, but they ARE adopted through the
+        SAME path: this method sums ``claude_sessions.map_named_sessions`` +
+        ``codex_sessions.map_codex_sessions`` (below), both emitting the same
+        ``(tmux, name, cwd)`` triple, so a live NAMED codex session is adopted exactly
+        like a Claude one. Distinct from :meth:`auto_link`, which links only the
+        repo-qualified ``<repo-slug>--<topic>`` session the daemon itself launches.
         """
         watch = self._resolve_watch()
         active: dict[str, set[str]] = {}
@@ -819,11 +821,13 @@ class Supervisor:
         resolving into a Claude track's tmux session — a `codex resume <topic>` spawned
         from INSIDE that Claude session's own Bash tool, or a codex TUI opened in a second
         window to dual-drive the same plan — reclassified the live CLAUDE track as codex.
-        It then went monitor-only and SILENTLY lost its wrap-up, its NOT-RESPONDING alert,
-        and its restart, while `idle` kept it out of NEEDS YOU entirely. A live Claude
-        track going quiet is the worst failure this daemon can have. The naming convention
-        this very change establishes ("codex threads named after plan topics") is what
-        makes the collision reachable, so this is not exotic.
+        The consequence is now DESTRUCTIVE, not merely quiet: a Codex track is a full
+        citizen (2026-07-17), so a misclassified Claude track would be restarted on its
+        `ready` via `codex resume` — the WRONG-runtime respawn that destroys the live
+        Claude session — and its wrap-up would be submit-verified as Codex (waiting for a
+        busy pane that a Claude submit need not produce). Pane-scoping (2) closes it. The
+        naming convention this very change establishes ("codex threads named after plan
+        topics") is what makes the collision reachable, so this is not exotic.
         """
         live = self._codex.get(session or "")
         if live is None:
@@ -989,7 +993,13 @@ class Supervisor:
             self._log(f"could not clear idle-nudge marker for {track.repo}::{track.topic}: {exc}")
 
     def _nudge_idle_with_context(
-        self, track: registry.Track, target: str, eff_ctx: int, threshold: int
+        self,
+        track: registry.Track,
+        target: str,
+        eff_ctx: int,
+        threshold: int,
+        *,
+        is_codex: bool = False,
     ) -> None:
         """Send the single "keep going" nudge to an idle session that still has context
         left, and — only if the paste lands — write the ``idle-with-context-left`` marker
@@ -999,10 +1009,13 @@ class Supervisor:
         from stopping early, not below it to wind one down. The marker is written AFTER a
         successful submit (as ``_maybe_inject`` marks its bands only on success), so a
         failed paste re-nudges next tick rather than silently marking the episode handled.
+
+        ``is_codex`` selects the runtime-appropriate submit verification (a Codex submit is
+        confirmed by the pane going busy, not by a cleared ``❯`` box).
         """
         repo, topic = track.repo, track.topic
         message = idle_nudge_message(remaining=eff_ctx, threshold=threshold, repo=repo, topic=topic)
-        if self._submit_prompt(target, message):
+        if self._submit_prompt(target, message, expect_codex=is_codex):
             self._write_idle_nudge_state(track)
             self._log(
                 f"nudged idle-with-context-left {repo}::{topic} "
@@ -1197,13 +1210,14 @@ class Supervisor:
         gate = signals.is_structured_gate(capture)
         is_codex = self._is_codex_track(session, repo, topic, target)
         # `is_idle_input` knows CLAUDE's prompt: an EMPTY `❯` between two rules. Codex's
-        # prompt is `› <placeholder text>` above its own statusline — never "empty", so it
-        # can never match, and a Codex track would sit in `settling` FOREVER (a status
-        # that means "transient, re-read next tick"). For Codex the busy signal is the
-        # honest one we have: the runtime-agnostic process-tree shell-walk. Not-busy ⇒
-        # idle. This only ever sets the LABEL: every ACT is suppressed for a Codex track
-        # below, so a wrong guess here can never paste or respawn.
-        idle = (not busy) if is_codex else signals.is_idle_input(capture)
+        # prompt is a `›` line above its statusline (`… · Context N% left · …`), so it
+        # needs its own STRUCTURAL detector (`is_codex_idle_input`) — NOT the coarse
+        # "not busy". A Codex track is now a full citizen that gets the wrap-up pasted in
+        # and is restarted on `ready`, so this gate is load-bearing: an over-loose idle
+        # read would let a booting pane or a Codex approval/trust picker (`› 1.`) be
+        # keystroked into. Structural idle keeps that impossible (a picker is a gate; a
+        # blank/booting pane has no `›`+statusline shape → `settling`, re-read next tick).
+        idle = signals.is_codex_idle_input(capture) if is_codex else signals.is_idle_input(capture)
         # Ctx% is runtime-agnostic: `parse_ctx_remaining` matches BOTH statuslines
         # (`Ctx: N% left` / `Context N% left`), so each runtime reports ITS OWN computed
         # number and there is no occupancy formula here to get wrong.
@@ -1326,55 +1340,26 @@ class Supervisor:
             # act is suppressed either way, and the next tick re-enters at the top gate,
             # which classifies the settled truth (`session-gone` if it really has gone).
             status = "settling"
-        elif ready and self._is_codex_track(session, repo, topic, target):
-            # THE SAFETY GATE. `_do_restart` launches
-            # `claude --dangerously-skip-permissions -n <topic>`; aimed at a Codex pane it
-            # REPLACES the codex session with a claude one, destroying a live session's
-            # process. This is the one place in the daemon where a bug is destructive
-            # rather than merely wrong, so a Codex track is MONITOR-ONLY: its `ready`
-            # NEVER reaches `_do_restart`.
-            #
-            # It is not ignored, though — notify-never-block (invariant 8): the session
-            # did its part and declared, so the operator is handed the coordinates and
-            # restarts it themselves. `codex resume <topic> "<kick>"` makes an automatic
-            # Codex restart genuinely possible (it takes the kick as an ARGUMENT and
-            # reattaches the SAME named session), but WHETHER to do that is the
-            # maintainer's call and is not self-resolved here; until it is answered this
-            # arm stays unimplemented and the refusal stands.
-            status = "blocked:human"
-            if act:
-                self._alert(
-                    repo=repo,
-                    topic=topic,
-                    session=session,
-                    pane=target,
-                    message=(
-                        "Codex track declared `ready` — the daemon will NOT restart it "
-                        "(restarting a Codex pane with the claude command would destroy "
-                        "the session). Restart it yourself in that pane"
-                    ),
-                )
         elif ready:
             # The session DECLARED `ready`. This is the ONLY path to a restart — the
-            # daemon never infers it (maintainer 2026-07-14).
+            # daemon never infers it (maintainer 2026-07-14). RUNTIME-DISPATCHED: for a
+            # Codex track `_do_restart` routes to `codex resume <id>`, NEVER the claude
+            # launch command — aiming `claude -n <topic>` at a codex pane would REPLACE
+            # the codex session with a claude one and destroy it. That routing (not a
+            # separate monitor-only refusal) is what preserves the one place a bug here is
+            # destructive rather than merely wrong; the sabotage-verified guard test pins
+            # it. A Codex track is now a full citizen (maintainer-declared 2026-07-17):
+            # it is restarted on its own `ready` exactly like a Claude one.
             status = "restarting"
             if act:
-                self._do_restart(track, target)
-        elif is_codex:
-            # MONITOR-ONLY (the design's v1, and the maintainer's open call). Everything
-            # below this point ACTS — the wrap-up paste and the idle nudge — and their
-            # mechanics are Claude-TUI-shaped (`_submit_prompt` waits for Claude's input
-            # box to clear). Aimed at Codex they would type into an unknown state. So a
-            # Codex track is reported, never keystroked. Its ctx is still shown so the
-            # operator can watch it approach the line and wind it down by hand.
-            status = "idle"
+                self._do_restart(track, target, is_codex=is_codex)
         elif eff_ctx is not None and eff_ctx <= threshold:
             # A FRESH `winding-down` ACK buys patience: the session heard us and is
             # wrapping up, so stop re-warning (never keystroke into a session that is
             # actively winding down). A STALE ACK resumes escalating — an ACK must not
             # become an infinite stall — but still never authorizes an act.
             if act and not acked:
-                self._maybe_inject(track, target, eff_ctx, threshold)
+                self._maybe_inject(track, target, eff_ctx, threshold, is_codex=is_codex)
             if acked:
                 status = "winding-down"
             elif eff_ctx <= DANGER_CTX_REMAINING:
@@ -1408,7 +1393,9 @@ class Supervisor:
             if has_context_left and not waiting_on_human and (declared is None or nudged_already):
                 status = "idle-with-context-left"
                 if act and not nudged_already:
-                    self._nudge_idle_with_context(track, target, eff_ctx, threshold)
+                    self._nudge_idle_with_context(
+                        track, target, eff_ctx, threshold, is_codex=is_codex
+                    )
             else:
                 status = "idle"
 
@@ -1480,7 +1467,13 @@ class Supervisor:
         )
 
     def _maybe_inject(
-        self, track: registry.Track, target: str, eff_ctx: int, threshold: int
+        self,
+        track: registry.Track,
+        target: str,
+        eff_ctx: int,
+        threshold: int,
+        *,
+        is_codex: bool = False,
     ) -> None:
         """Escalating, spam-proof wrap-up injection: warn once per crossed band.
 
@@ -1496,6 +1489,10 @@ class Supervisor:
         writes still has ``mtime > at`` and certifies, and re-warns never reset the
         notified bands. On a paste failure that OPENED the round, the just-opened
         round is rolled back (stamp cleared) so the next tick retries cleanly (B5).
+
+        ``is_codex`` selects the runtime-appropriate submit verification — this is the
+        change that makes the escalating wrap-up (the daemon's ONLY lever now that
+        nothing is force-killed) reach a Codex track, not just a Claude one.
         """
         repo, topic = track.repo, track.topic
         bands = sorted({threshold} | {b for b in (40, 30, 20, 10) if b < threshold}, reverse=True)
@@ -1509,7 +1506,7 @@ class Supervisor:
             # mtime > at. Only on opening — a re-warn preserves the round's at.
             registry.write_injection_stamp(repo, topic, self.now(), self.stamp_path)
         message = wrapup_message(remaining=eff_ctx, repo=repo, topic=topic)
-        if self._submit_prompt(target, message):
+        if self._submit_prompt(target, message, expect_codex=is_codex):
             for b in due:
                 registry.add_notified_band(repo, topic, b, self.stamp_path)
             self._log(f"injected wrap-up into {repo}::{topic} (ctx {eff_ctx}%, bands {due})")
@@ -1525,8 +1522,8 @@ class Supervisor:
                 message="wrap-up injection FAILED (paste did not land); will retry",
             )
 
-    def _do_restart(self, track: registry.Track, target: str) -> None:
-        """Atomic restart: respawn → wait Claude → resume → close the round.
+    def _do_restart(self, track: registry.Track, target: str, *, is_codex: bool = False) -> None:
+        """Atomic restart, RUNTIME-DISPATCHED: respawn → wait for the TUI → resume → close.
 
         ``target`` is the resolved pane id (RB3), STABLE across the respawn.
 
@@ -1535,6 +1532,12 @@ class Supervisor:
         no other path to a restart — it never decides a session is done (maintainer
         2026-07-14). The abrupt ``respawn-pane -k`` is safe precisely BECAUSE of that
         declaration: the session asserted it is at a clean stopping point.
+
+        **The one destructive bug this daemon can have** is aiming the CLAUDE launch
+        command at a Codex pane — it would REPLACE the codex session with a claude one.
+        ``is_codex`` routes a Codex track to :meth:`_do_codex_restart` (``codex resume``)
+        so the claude command is never issued to a codex pane; the sabotage-verified
+        guard test (``…never issues the claude command``) pins that the routing holds.
 
         Every tmux step is a HARD GATE (B5). If ``respawn-pane`` fails, or the pane
         never becomes a live Claude, the daemon SURFACES the failure and RETURNS
@@ -1547,6 +1550,9 @@ class Supervisor:
         also pops the in-memory inject state (RB2), so the redundant explicit pop below
         is belt-and-suspenders.
         """
+        if is_codex:
+            self._do_codex_restart(track, target)
+            return
         if not self.tmux.respawn_pane(target, track.repo, self._launch_command(track)):
             self._alert(
                 repo=track.repo,
@@ -1556,7 +1562,7 @@ class Supervisor:
                 message="restart respawn FAILED; keeping the ready declaration so it retries",
             )
             return
-        if not self._await_claude(target):
+        if not self._await_pane(target, signals.pane_is_claude):
             self._alert(
                 repo=track.repo,
                 topic=track.topic,
@@ -1578,9 +1584,60 @@ class Supervisor:
         self._inject.pop(_key(track.repo, track.topic), None)
         self._log(f"restarted {track.repo}::{track.topic} (pane {target})")
 
+    def _do_codex_restart(self, track: registry.Track, target: str) -> None:
+        """Atomic restart of a CODEX track: respawn with ``codex resume <id> "<kick>"``.
+
+        The Codex analogue of the Claude restart, and SIMPLER (proven live 2026-07-17):
+        ``codex resume`` takes the kick as an ARGUMENT and AUTO-SUBMITS it, so there is
+        no separate resume-line paste and no fresh-TUI submit race. It resumes the SAME
+        session by its exact UUID — codex appends to the same rollout, so the
+        ``thread_name`` (hence adoptability) survives the restart by construction. Resume
+        by UUID, never by name: "UUIDs take precedence", and a name could be ambiguous or
+        drop to a picker.
+
+        The session id comes from the live per-tick Codex map (``self._codex``); if the
+        session vanished between the map refresh and here, the declaration is KEPT and the
+        restart retried next tick (B5), exactly like a failed respawn.
+        """
+        session = self._session_of(track)
+        live = self._codex.get(session)
+        if live is None:
+            self._alert(
+                repo=track.repo,
+                topic=track.topic,
+                session=session,
+                pane=target,
+                message="codex session vanished before restart; keeping the ready declaration",
+            )
+            return
+        resume = track.resume or default_resume(track.repo, track.topic)
+        command = self._codex_launch_command(live.session_id, resume)
+        if not self.tmux.respawn_pane(target, track.repo, command):
+            self._alert(
+                repo=track.repo,
+                topic=track.topic,
+                session=session,
+                pane=target,
+                message="restart respawn FAILED; keeping the ready declaration so it retries",
+            )
+            return
+        if not self._await_pane(target, signals.pane_is_codex):
+            self._alert(
+                repo=track.repo,
+                topic=track.topic,
+                session=session,
+                pane=target,
+                message="respawned pane never became Codex; keeping the ready declaration",
+            )
+            return
+        # The kick was submitted BY the `codex resume` argument — no separate paste step.
+        self._clear_state(track)
+        self._inject.pop(_key(track.repo, track.topic), None)
+        self._log(f"restarted (codex) {track.repo}::{track.topic} (pane {target})")
+
     @staticmethod
     def _launch_command(track: registry.Track) -> str:
-        """The (re)start command: ``claude --dangerously-skip-permissions -n <topic>``.
+        """The Claude (re)start command: ``claude --dangerously-skip-permissions -n <topic>``.
 
         ``--dangerously-skip-permissions`` is REQUIRED (maintainer 2026-07-14): a
         (re)started track must resume AUTONOMOUSLY. Without it the fresh session
@@ -1589,37 +1646,62 @@ class Supervisor:
         (topic shell-quoted, defensive) sets the session's display name; the resume
         line (read the handoff) is pasted AFTER launch, since a ``claude "<prompt>"``
         argv only pre-fills without submitting.
+
+        This is the Claude-ONLY command — it must NEVER be aimed at a codex pane (it would
+        destroy the session). ``_do_restart`` dispatches a Codex track to
+        :meth:`_codex_launch_command` instead.
         """
         return f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
 
-    def _await_claude(self, target: str) -> bool:
-        """Poll ``#{pane_current_command}`` until it is a live Claude TUI, bounded.
+    @staticmethod
+    def _codex_launch_command(session_id: str, resume: str) -> str:
+        """The Codex (re)start command: ``codex resume <session-id> "<resume line>"``.
 
-        ``target`` is the resolved pane id. Never scrape the ``❯`` prompt glyph
-        (ambiguous shell/Claude); wait on the process identity (design). Returns
-        False if it never became Claude.
+        Resume by the exact UUID (never the name — "UUIDs take precedence" and a name can
+        be ambiguous / drop to a picker), which reattaches the SAME rollout so the
+        ``thread_name`` survives (adoptability). The resume line is the kick and is passed
+        as the PROMPT argument, which Codex auto-submits (verified live 2026-07-17) — so
+        unlike the Claude path there is no separate paste. Both fields are shell-quoted.
+        """
+        return f"codex resume {shlex.quote(session_id)} {shlex.quote(resume)}"
+
+    def _await_pane(self, target: str, is_ready: Callable[[str | None], bool]) -> bool:
+        """Poll ``#{pane_current_command}`` until ``is_ready(cmd)``, bounded.
+
+        ``target`` is the resolved pane id. Never scrape the ``❯``/``›`` prompt glyph
+        (ambiguous shell/TUI); wait on the process identity (design). ``is_ready`` is the
+        runtime predicate — :func:`signals.pane_is_claude` for a Claude restart,
+        :func:`signals.pane_is_codex` for a Codex one. Returns False if it never became
+        that runtime.
         """
         for _ in range(_RESTART_POLL_MAX):
-            if signals.pane_is_claude(self.tmux.pane_current_command(target)):
+            if is_ready(self.tmux.pane_current_command(target)):
                 return True
             self.sleep(_RESTART_POLL_INTERVAL)
         return False
 
-    def _submit_prompt(self, target: str, text: str) -> bool:
-        """Bracketed-paste a payload, then submit it — re-sending Enter until the
-        input box clears. Returns True iff the paste LANDED and the box CLEARED.
-        ``target`` is the resolved pane id (RB3).
+    def _submit_prompt(self, target: str, text: str, *, expect_codex: bool = False) -> bool:
+        """Bracketed-paste a payload, then submit it — re-sending Enter until it lands.
+        Returns True iff the paste LANDED and the submit is CONFIRMED. ``target`` is the
+        resolved pane id (RB3).
 
         The paste is atomic (never fragments — blocker #2). A SINGLE Enter is
         enough on a steady idle session, but a freshly-`respawn`-ed session is
         often still drawing its welcome/news screen when the Enter arrives, and
         that first Enter is dropped — leaving the resume line un-submitted and the
-        auto-restart stalled (verified live 2026-07-13). So we verify: after each
-        Enter, confirm the empty `❯` box is back (`signals.input_box_ready`,
-        which does NOT require not-busy, so a now-working pane also reads
-        submitted); re-send up to `_SUBMIT_MAX_ENTERS` times. An extra Enter on an
-        already-empty prompt is a harmless no-op (Claude never submits an empty
-        message).
+        auto-restart stalled (verified live 2026-07-13). So we verify after each Enter
+        and re-send up to `_SUBMIT_MAX_ENTERS` times; an extra Enter on an already-empty
+        prompt is a harmless no-op (neither TUI submits an empty message).
+
+        The confirm signal is RUNTIME-SPECIFIC because the two TUIs render differently:
+
+        - **Claude** — the empty `❯` box returns (`signals.input_box_ready`, which does
+          NOT require not-busy, so a now-working pane also reads submitted).
+        - **Codex** (`expect_codex`) — the pane goes BUSY (`signals.is_busy` matches
+          Codex's `esc to interrupt` / `Working …`). Codex has no `❯` box and its empty
+          box shows a grey rotating PLACEHOLDER indistinguishable from typed text in an
+          ANSI-stripped capture, so "box cleared" is not a usable signal; "the model
+          started responding" is (verified live 2026-07-17 — busy within ~1s of Enter).
 
         Returning a bool (B5): callers must know whether the payload actually
         went in. A failed ``bracketed_paste`` is a hard False — WITHOUT it the box
@@ -1633,7 +1715,11 @@ class Supervisor:
         for _ in range(_SUBMIT_MAX_ENTERS):
             self.tmux.send_keys(target, "Enter")
             self.sleep(_SUBMIT_POLL)
-            if signals.input_box_ready(self.tmux.capture_pane(target)):
+            capture = self.tmux.capture_pane(target)
+            submitted = (
+                signals.is_busy(capture) if expect_codex else signals.input_box_ready(capture)
+            )
+            if submitted:
                 return True
         return False
 
@@ -1690,7 +1776,7 @@ class Supervisor:
             return False
         if not self.tmux.respawn_pane(target, track.repo, self._launch_command(track)):
             return False
-        if not self._await_claude(target):
+        if not self._await_pane(target, signals.pane_is_claude):
             return False
         resume = track.resume or default_resume(track.repo, track.topic)
         return self._submit_prompt(target, resume)
