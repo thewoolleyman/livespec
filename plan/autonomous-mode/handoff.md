@@ -65,6 +65,68 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-17 (cont. 20): THE ENTIRE MVP BUILD IS COMPLETE — orchestrator + console halves all merged + spec-ratified through rigorous independent Fable/code review; ONLY Stage-2 (hands-on live-TUI validation + maintainer acceptance) remains
+
+### RESUME HERE — only Stage-2 is left; everything else is built, reviewed, merged
+Drive multiple real fleet work-items end-to-end SOLELY through the LIVE console TUI
+(`console-autonomous-mode` tmux, launched with `just tui` from a repo checkout), exercising
+the NEW surface (individual selection, broad move, the 3 per-item cap overrides + `clear`,
+resolve-blocked, approve/accept/reject), parking in `acceptance`. VALIDATE the whole workflow
+YOURSELF FIRST (standing directive: do NOT ask for acceptance until self-validated), THEN the
+maintainer accepts via the TUI. Then cut the console release (merge PR #246) to publish the
+binary deliverable.
+
+### Stage-2 environment state (verified 2026-07-17)
+- Cockpit tmux `console-autonomous-mode` is ALIVE (2 windows; the `orch` window runs a live
+  orchestrator-tenant TUI on the OLD pre-CONSOLE-C binary — real items across all lanes:
+  backlog 24 / pending-approval 1 / ready 1 / acceptance 1 (bd-ib-86k) / blocked 4 / done 182).
+  MUST relaunch with the NEW binary (`just tui` rebuilds+runs) to get the new surface.
+- Fresh console binary already built this session at
+  `/data/projects/livespec-console-beads-fabro/target/release/livespec-console-beads-fabro`
+  (from master 14ec65d). tmux = `/usr/bin/tmux` 3.5a.
+- Orchestrator 0.43.0 (0f9a87f) released WITH the new actions; console shells the orchestrator
+  drive CLI at runtime. Prior Stage-2 ran the console binary from the ORCHESTRATOR checkout so
+  it targets that tenant + the new drive.py — do the same; VERIFY the new actions resolve live.
+- Console release DELIVERABLE: release-please PR **#246** (release 0.2.0) is OPEN/pending — cut
+  it AFTER Stage-2 validation to publish the standalone binary the maintainer required.
+
+### What landed this session (all MERGED, all independently reviewed)
+- **Orchestrator (livespec-orchestrator-beads-fabro), released 0.43.0:** ORCH-A = 3 named
+  per-cap override verbs (`set-merge-on-review-cap`/`set-review-fix-cap`/`set-acceptance-rework-cap`,
+  each `:true|false|clear` or `:<int>|clear`; `clear` = clear-to-inherit) + ORCH-B = guarded
+  `move:<id>:backlog|ready|blocked|active` (refuses done/acceptance/pending-approval; source
+  unguarded; ship-guard). Core PR #707/0.42.0 (auto-merged pre-review — flag 1); clear-to-inherit
+  + spec-ratification PR #716 (bbe673b); release 0f9a87f. Spec **v039** enumerates all TEN
+  human-valve actions (added `resolve-blocked`) + the config family; Fable review (orch-spec-review)
+  closed 2 count-fidelity blockers. Actions are fake-tested only — NOT live-exercised (that's Stage-2).
+- **Console (livespec-console-beads-fabro):** PR #248 (foundation, 822d4a7) selection + guarded
+  moves + 2 valves + settings-doc (Fable review fixed an operator-safety modal-target blocker);
+  CONSOLE-C PR #253 (9a76de0) broad-move picker + 3 override keys g/f/k + `clear` + backfilled the
+  whole W7 spec surface (spec **v023**, vocab "eight commands/seven 1:1"; Fable closed 2 blockers,
+  code review NO-BLOCKERS); W6+#26 PR #254 (14ec65d) completeness check (crate
+  console-completeness-check, in just check + CI) enforcing API⇒Settings⇒help⇒docs + #26 settings-doc
+  path fix (spec **v024**); code review caught + closed a real staleness-blindness blocker via a
+  pin-stamp (fixture carries captured_at_pin; check fails FIRST on compat.pinned drift). Release
+  pipeline (#21) done earlier.
+
+### Pending non-blocking flags/follow-ups (surface to maintainer; none block Stage-2)
+1. Both orch + console repos AUTO-MERGE any green PR via livespec-pr-bot — used DRAFT PRs to hold
+   review-gated work. Decide whether manual PRs should be exempt.
+2. SYSTEMIC GATE GAP: gates enforce spec→impl but NOT impl→spec; code shipped ahead of spec in BOTH
+   repos (orch #707's 4 actions; console #248's whole W7 surface), caught only by the next amendment's
+   drift sweep. Both backfilled. `detect-impl-gaps` exists but isn't gating — consider making it gate.
+3. move source-breadth: orchestrator move is source-unguarded (allows re-open-done — spec-consistent,
+   orch contracts.md:1853 "ALLOWED but DISCOURAGED"); console picker narrows out done-item moves.
+   Decide if the ORCHESTRATOR move should also be source-guarded.
+4. move:active bypasses wip_cap (cap binds only the Dispatcher). Note only.
+5. TO FILE (orch follow-up, from W6 review): config-manifest should emit its own version so W6's
+   pin-stamp can cross-check the actual drive binary, not just .livespec.jsonc's pin.
+6. bd-ib-6t4 (orch, filed): add `fabro validate` to just check/janitor/CI.
+
+### Agents (all released / idle): orch-drive-actions (ORCH done, cleaned up, signed off);
+w5w7-item-interaction (console build PR #248/#253/#254 done, cleaned up, released); pr248-review /
+console-spec-review / orch-spec-review (reviewers, idle).
+
 ## SESSION UPDATE — 2026-07-16 (cont. 19): orchestrator epic O0–O10 ALL DONE (O5/O6/O8/O9/O10 finished this session; O9 live-exercised + accepted) — BUT the MVP is NOT done: the CONSOLE half + docs + binary release + Stage-2 acceptance were LOST in a compaction and remain; a new verbatim-requirements capture landed so they are never lost again
 
 **Read this first — a correction, not a victory lap.** A compaction mid-session
