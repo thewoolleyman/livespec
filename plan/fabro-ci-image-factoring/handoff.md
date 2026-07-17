@@ -145,9 +145,15 @@ ALREADY scans consumers' `.github/workflows/*.yml` (`uses:`) and their `workflow
 same producer-rewrites-consumer-pin pattern, no new upstream→downstream edge. This closes the plan's
 long-standing "Autodiscovery gap" open decision.
 
-**Actionable next step — the TWO GATED repos, in this order:**
-1. **`livespec-console-beads-fabro` (RUST) — NOT mechanical repetition; it has a REAL unresolved
-   dependency (the cargo cache). Investigated 2026-07-16; findings below.**
+**Actionable next step — ONLY the orchestrator's trust-tier decision remains (item 2 below).
+`livespec-console-beads-fabro` was DONE 2026-07-16** — 4-step procedure executed (approval
+tightened → 9 runners provisioned + online → supervisor `--repos` → cutover
+[#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250)). **The runner pool
+now serves ALL 7 non-gated repos: 63 runners (9 × 7), all online, zero orphans.** The console's
+findings are kept below because they are the reference for any future Rust/non-uniform member.
+
+1. **`livespec-console-beads-fabro` (RUST) — DONE. It was NOT mechanical repetition; findings kept
+   as the Rust reference. Investigated + executed 2026-07-16.**
    - **Image: pin it to `python-rust-v0.48.2`** — the tag its OWN sandbox `workflow.toml` uses.
      Do NOT copy the Python repos' `python-v0.43.2` (that would bake in the `xb7` drift above).
      Verified in-image: rustc/cargo/clippy/rustfmt **1.92.0**, matching its `rust-toolchain.toml`.
@@ -168,6 +174,8 @@ long-standing "Autodiscovery gap" open decision.
      | Target | GitHub-hosted, WARM cache | This host, COLD (no cache at all) |
      |---|---|---|
      | `cargo clippy --workspace --all-targets` | 53s | **37s** |
+     | `cargo test --workspace` | 48s | **35s** |
+     | (incremental rebuild, for reference) | — | 8s |
 
      A COLD build on this box BEATS a WARM-cached build on a GitHub runner, because the host has
      ~5–9× the parallelism (the plan's own arithmetic: "591 ÷ 18 ≈ 33 s floor — matches/beats
@@ -298,7 +306,32 @@ driver-codex cut over.**
      /data/projects/livespec-dev-tooling/ci-runner/provision-ci-runner.sh` (idempotent; accepts
      MULTIPLE slugs in one pass — all 4 were provisioned in a single invocation).
   4. **Supervisor `--repos`** — edit `/etc/systemd/system/ci-runner-supervisor.service`,
-     `daemon-reload`, `restart` while quiescent; verify 9 online per repo.
+     `daemon-reload`, `restart`; verify 9 online per repo. **You do NOT need to wait for
+     quiescence — that earlier instruction was WRONG (disproved 2026-07-16, see below).**
+
+**CORRECTION — "restart the supervisor only when the host is quiescent" is FALSE; a restart does
+NOT red in-flight jobs.** Every earlier session (and the 3-step procedure above) carried the claim
+that a restart with `KillMode=control-group` would kill running jobs, so the fan-out kept waiting
+for a quiet host. On a shared box running other sessions' PRs plus release fan-outs, that quiet
+moment may never come — it was blocking real work for no reason. **Two independent proofs:**
+- **Structural:** the supervisor's cgroup is `/system.slice/ci-runner-supervisor.service`; the
+  runner units live at `/system.slice/system-runner.slice/runner@<inst>.service` — **siblings**, so
+  `KillMode=control-group` cannot reach them. The supervisor script has no `ExecStop` and never
+  stops a runner: `run_one()` only ever `systemctl start "$unit"` then
+  `while systemctl is-active …; do sleep 5; done`.
+- **Empirical:** captured three busy runners' MainPIDs (3380859 / 3381008 / 3380607), restarted the
+  supervisor, and re-read them — **identical PIDs, still `active`**. The in-flight jobs were
+  untouched, and the 3 queued livespec runs finished normally.
+**What a restart DOES cost: exactly one wasted mint per ALREADY-ACTIVE slot.** `systemctl start` on
+an active unit is a no-op, so the freshly-minted JIT config is never consumed and lands as an
+`offline` orphan. That is the real explanation of the "9 online + 9 offline per repo" pattern the
+earlier session logged as a mystery: **the 9 online were the SURVIVING listeners; the 9 offline were
+the wasted mints** — not a kill-and-remint. Observed again exactly on adding the console: every
+pre-existing repo went to 9 online + 9 offline, while the console (units never started, so
+`systemctl start` really started them) came up **9 online / 0 offline**. So: restart freely, then
+sweep the offline registrations (54 swept this time). This does NOT contradict GOTCHA #1 (the
+mint-leak) — that leak came from missing instance dirs making units FAIL instantly in a tight
+re-mint loop, which is a different mechanism and still requires steps 3→4 in order.
 - **Pool is now 6 repos × 9 = 54 runners, all online, zero orphans.** Added
   `livespec-driver-codex`, `livespec-dev-tooling`, `livespec-orchestrator-git-jsonl`,
   `livespec-runtime` in ONE provisioning pass + ONE supervisor restart (host was quiescent: 0
