@@ -19,6 +19,7 @@ import json
 import os
 from pathlib import Path
 
+import codex_sessions
 import pytest
 import registry
 import signals
@@ -2697,3 +2698,44 @@ def test_a_codex_pane_is_never_restarted_even_when_it_declares_ready(tmp_path):
         sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
     assert not fake.has("paste")  # and nothing keystroked into it either
+
+
+def test_an_ADOPTED_codex_track_declaring_ready_is_never_restarted(tmp_path):
+    """THE destructive case, exercised through the REAL wired path.
+
+    Its sibling above (`test_a_codex_pane_is_never_restarted_even_when_it_declares_ready`)
+    went VACUOUS the moment Codex was wired: with `_codex` empty, `_is_codex_track` is
+    False, so the `bun` pane fails `_pane_is_managed` and returns `session-gone` long
+    before the ready branch — it passed for the OLD reason and would not have caught a
+    broken gate. Verified by sabotaging the gate: it still passed. This test is the one
+    with teeth (sabotage the gate and it goes red).
+
+    Here the track IS adopted as Codex — `_codex` holds a live CodexSession for this tmux
+    session, exactly as `_refresh_codex_sessions` builds each tick — so `_pane_is_managed`
+    ACCEPTS the pane and evaluation reaches the ready branch. That is the branch where
+    `_do_restart` would fire `claude --dangerously-skip-permissions -n <topic>` at a live
+    Codex pane and destroy it.
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="bun")  # a codex pane
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    # Adopted as Codex: this is what `_refresh_codex_sessions` produces for a live session.
+    sup._codex = {
+        session: codex_sessions.CodexSession(
+            pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+        )
+    }
+    assert sup._is_codex_track(session, str(repo), topic)  # the precondition really holds
+    # A GENUINELY VALID `ready`: the stamp is what makes `ready_valid` true, and without
+    # it the row is merely `idle` and never reaches the restart branch at all — which is
+    # how the first version of this test fooled itself.
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _arm_ready_marker(repo, topic, mtime=1001.0)  # the SOLE restart authorization
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
+    assert view.status == "blocked:human"  # reported, not silently ignored (invariant 8)
