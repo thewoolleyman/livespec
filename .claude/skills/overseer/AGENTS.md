@@ -254,9 +254,38 @@ for the marker's edge-triggered lifecycle.
    name (`tmux == session`), never double-adds, and — distinct from invariant 5's
    `auto_link`, which links only the repo-qualified `<repo-slug>--<topic>` sessions
    the daemon itself launches. Codex sessions are NOT in Claude's registry, so they
-   are not adopted (a documented gap; codex would need its own session-store read).
+   are not adopted YET — but the READ they need now exists: `codex_sessions.py`
+   (see the next bullet). Wiring it into `adopt` is the remaining step.
    (Per-session pane reads — `pane_id`/`pane_current_command`/`pane_current_path` —
    go through `list-panes`, not the flaky-for-detached-sessions `display-message`.)
+
+   **Codex session discovery (`codex_sessions.py`; 2026-07-16).** The Codex twin of
+   `claude_sessions`, returning the same `pid` / `name` (= the plan topic) / `cwd`
+   shape so adoption can treat both runtimes uniformly. Codex keeps no pid-keyed
+   registry, which is why this looked like the hard part — but a running codex
+   process **holds its own rollout file OPEN**, and the rollout FILENAME embeds the
+   session id, which `session_index.jsonl` maps to the `thread_name`:
+   `pid --comm=="codex"--> /proc/<pid>/fd/* --> rollout-<ts>-<id>.jsonl --> id
+   --index--> thread_name`, with `/proc/<pid>/cwd` giving the repo. **Exact, not a
+   heuristic** — no cwd+recency guessing. `claude_sessions.resolve_tmux_session` is
+   already runtime-agnostic and joins the pid to its tmux session unchanged.
+   Load-bearing details, each pinned by a beside-test:
+   - **Only NAMED sessions are indexed** (67 of 259 rollouts, live) — an unnamed
+     session carries no topic anywhere and is dropped. Codex adoption depends on a
+     naming convention exactly as Claude's does via `claude -n <topic>`. This is the
+     one real precondition; it is not a defect to engineer around.
+   - **`comm == "codex"`, and an open rollout is REQUIRED.** The `bun` launcher is
+     the codex process's PARENT and holds NO rollout fd, so the fd requirement
+     excludes it structurally.
+   - **No `procStart` liveness check is needed** (unlike Claude's registry, whose
+     files outlive their process): the pid came from a `/proc` scan this instant and
+     must still hold an open rollout — a fd cannot go stale.
+   - **`Codex Companion Task: …` threads are NOT filtered here** (38 of 69 index
+     records) — they fail the "is this an ACTIVE plan topic?" test at adoption, so
+     the noise filters itself and the module stays a pure, dumb join with no policy.
+   - **It NEVER reads a rollout's contents** — rollouts are full session transcripts.
+     The join needs only the filename + `/proc`. Keep it that way; if Ctx% is wired
+     later (the `token_count` events), read only those payloads, never a body.
 7. **THE CARDINAL RULE — never restart a session that has not declared itself
    `ready` (maintainer-declared 2026-07-14).** The session's own `ready`
    declaration in its state file (`signals.ready_valid`) is the **SOLE**
