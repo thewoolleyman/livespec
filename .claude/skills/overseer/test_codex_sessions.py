@@ -299,3 +299,61 @@ def test_ctx_survives_a_partial_first_line_from_the_tail_seek(tmp_path):
     filler = '{"type": "response_item", "payload": {"text": "%s"}}' % ("y" * 900)
     path = _write_rollout(tmp_path, [filler] * 3000 + [_token_count(129200)])
     assert codex_sessions.rollout_ctx_remaining(path, tail_bytes=1234) == 50
+
+
+# --------------------------------------------------------------------------- #
+# map_codex_sessions — the twin of claude_sessions.map_named_sessions, emitting the
+# SAME (tmux_session, name, cwd) triple so `adopt` can consume either runtime through
+# one code path instead of growing a parallel Codex branch.
+# --------------------------------------------------------------------------- #
+
+
+def test_map_codex_sessions_emits_the_same_triple_as_the_claude_twin(tmp_path):
+    home = _index(tmp_path, [(_ID_A, "topic-a")])
+    host = _host(
+        comms={4242: "codex"},
+        cwds={4242: "/data/projects/livespec"},
+        fds={4242: [_rollout(_ID_A)]},
+    )
+    mapped = codex_sessions.map_codex_sessions(
+        codex_home=home,
+        pane_pid_to_session={9000: "livespec3"},
+        ppid_of={4242: 9000}.get,  # the codex pid's parent IS the pane pid
+        **host,
+    )
+    assert mapped == [("livespec3", "topic-a", "/data/projects/livespec")]
+
+
+def test_map_codex_sessions_omits_a_session_not_inside_tmux(tmp_path):
+    """Mirrors the Claude twin: a codex session running outside tmux (a bare SSH shell)
+    has no pane to drive, so it is omitted rather than mapped to nothing."""
+    home = _index(tmp_path, [(_ID_A, "topic-a")])
+    host = _host(
+        comms={4242: "codex"}, cwds={4242: "/data/projects/livespec"}, fds={4242: [_rollout(_ID_A)]}
+    )
+    mapped = codex_sessions.map_codex_sessions(
+        codex_home=home,
+        pane_pid_to_session={},  # no tmux panes at all
+        ppid_of=lambda _p: None,
+        **host,
+    )
+    assert mapped == []
+
+
+def test_map_codex_sessions_is_deterministic_across_sessions(tmp_path):
+    home = _index(tmp_path, [(_ID_A, "topic-a"), (_ID_B, "topic-b")])
+    host = _host(
+        comms={20: "codex", 10: "codex"},
+        cwds={10: "/data/projects/one", 20: "/data/projects/two"},
+        fds={10: [_rollout(_ID_A)], 20: [_rollout(_ID_B)]},
+    )
+    mapped = codex_sessions.map_codex_sessions(
+        codex_home=home,
+        pane_pid_to_session={101: "s-one", 202: "s-two"},
+        ppid_of={10: 101, 20: 202}.get,
+        **host,
+    )
+    assert mapped == [  # pid order, like the Claude twin's sorted-registry order
+        ("s-one", "topic-a", "/data/projects/one"),
+        ("s-two", "topic-b", "/data/projects/two"),
+    ]
