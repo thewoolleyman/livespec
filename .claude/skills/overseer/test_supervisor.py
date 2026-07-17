@@ -2655,3 +2655,45 @@ def test_never_seen_is_unassigned_but_once_seen_is_session_gone(tmp_path):
 
     # The two are distinguishable ONLY by the mapping row, so it must survive.
     assert never_view.status != gone_view.status
+
+# --------------------------------------------------------------------------- #
+# Codex restart safety — a FORWARD guard, deliberately written BEFORE the wiring.
+# --------------------------------------------------------------------------- #
+
+
+def test_a_codex_pane_is_never_restarted_even_when_it_declares_ready(tmp_path):
+    """A Codex pane must NEVER be respawned with the claude command. Ever.
+
+    `_do_restart` launches `claude --dangerously-skip-permissions -n <topic>`. Aimed at a
+    Codex pane it REPLACES the codex session with a claude one — destroying a live
+    session's process. This is the one place in the daemon where a bug is destructive
+    rather than merely wrong.
+
+    **Why this test exists now, before Codex is wired.** Today it passes for a reason that
+    is about to change: the identity gate rejects a codex pane (`bun` is not `claude`), so
+    `evaluate` returns at `not-claude` BEFORE the ready branch and `_do_restart` is
+    unreachable. That is precisely why Codex tracks are safe RIGHT NOW — and precisely why
+    the danger is INTRODUCED by the wiring: the moment the gate ACCEPTS codex panes, a
+    Codex track that declares `ready` flows straight into `_do_restart`.
+
+    So this asserts the INVARIANT (no respawn, no paste), never the mechanism (`not-claude`)
+    — it must keep passing through the wiring via the new runtime-aware restart gate, not
+    via the identity gate that happens to catch it today. If you find yourself editing this
+    test to make the wiring pass, STOP: you are removing the guard, not satisfying it.
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    # A real codex pane: tmux reports `bun` (the launcher), NOT `codex` — the vendored
+    # binary is its child. Verified live 2026-07-16 on tmux session `livespec3`.
+    fake.serve(session, repo, capture=_idle_capture(ctx=40), cmd="bun")
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    # `ready` is the SOLE restart authorization — for a CLAUDE track. It must not
+    # authorize anything for a Codex one.
+    _declare(repo, topic, "ready")
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
+    assert not fake.has("paste")  # and nothing keystroked into it either
