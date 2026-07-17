@@ -145,15 +145,24 @@ ALREADY scans consumers' `.github/workflows/*.yml` (`uses:`) and their `workflow
 same producer-rewrites-consumer-pin pattern, no new upstream→downstream edge. This closes the plan's
 long-standing "Autodiscovery gap" open decision.
 
-**Actionable next step — ONLY the orchestrator's trust-tier decision remains (item 2 below).
-`livespec-console-beads-fabro` was DONE 2026-07-16** — 4-step procedure executed (approval
-tightened → 9 runners provisioned + online → supervisor `--repos` → cutover
-[#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250)). **The runner pool
-now serves ALL 7 non-gated repos: 63 runners (9 × 7), all online, zero orphans.** The console's
-findings are kept below because they are the reference for any future Rust/non-uniform member.
+**Actionable next steps — TWO remain, and the first is now a concrete build, not a decision:**
+- **T10 cache-tiering — FILED as `livespec-dev-tooling-9mp` (P1), with the 2× measurement and the
+  non-negotiable trust-tiering constraint written into it.** The console's cutover is BUILT, GREEN
+  and WAITING on it (PR #250, held DRAFT). Highest-value remaining piece of Phase 3. Its acceptance
+  is concrete: un-draft #250 and get its self-hosted wall-clock ≤ the hosted warm-cache baseline
+  (~430s), with the PR lane proven unable to write the trusted cache. NB it also closes the known
+  per-container-cold `uv` follow-on on `.5` (`UV_CACHE_DIR` at a persistent mount) — the
+  provisioning script ALREADY creates `/home/ci-runner/.cache/uv` and `/home/ci-runner/.cargo/registry`
+  on the host; they are simply never mounted into the containers.
+- **The orchestrator's trust-tier decision** (item 2 below) — maintainer-owned.
 
-1. **`livespec-console-beads-fabro` (RUST) — DONE. It was NOT mechanical repetition; findings kept
-   as the Rust reference. Investigated + executed 2026-07-16.**
+**Pool state: ALL 7 non-gated repos served — 63 runners (9 × 7), all online, zero orphans.** The
+console's runners are provisioned and its fork-PR approval tightened, so **all 8 fleet repos are now
+at `all_external_contributors`** — no repo has runners without the hardened gate.
+
+1. **`livespec-console-beads-fabro` (RUST) — cutover BUILT + GREEN but BLOCKED on T10; PR #250 held
+   DRAFT. NOT mechanical repetition. Investigated + executed 2026-07-16; keep as the Rust
+   reference.**
    - **Image: pin it to `python-rust-v0.48.2`** — the tag its OWN sandbox `workflow.toml` uses.
      Do NOT copy the Python repos' `python-v0.43.2` (that would bake in the `xb7` drift above).
      Verified in-image: rustc/cargo/clippy/rustfmt **1.92.0**, matching its `rust-toolchain.toml`.
@@ -161,38 +170,52 @@ findings are kept below because they are the reference for any future Rust/non-u
      `cargo-machete` are absent from the image (verified), so the three `taiki-e/install-action`
      steps MUST STAY. They are a per-run download tax the image does not remove (a candidate for
      baking into `python-rust` later — worth its own item).
-   - **The cargo cache looked like a blocker; MEASUREMENT DISSOLVED IT — delete `actions/cache`
-     like every other repo. T10 is NOT a prerequisite for the console.** The worry was real on its
-     face: the console's `actions/cache` covers `~/.cargo/registry`, `~/.cargo/git` AND `target`,
-     and its hosted per-job times (last master run) are the fleet's most expensive —
-     `check-coverage` **418s**, `check-deps` **288s**, `check-nextest` **281s**, `check-clippy`
-     **53s**, `check-test` **48s** — with clippy fast only because the cache is hot. Deleting the
-     cache costs SECONDS for a Python repo's `uv`, but a cold Rust build is minutes, ×5 Rust jobs.
-     **So it was measured, in the real `python-rust-v0.48.2` image on this host, cloning the real
-     console workspace:**
+   - **⛔ THE CARGO CACHE IS A REAL BLOCKER — the console is GATED ON T10 cache-tiering. Its
+     cutover PR ([#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250)) is
+     GREEN (12/12) but is held as a DRAFT because it is a 2× REGRESSION. Do not merge it until T10
+     lands.** This entry documents a wrong turn in full, because the wrong answer is seductive:
+     - The console's `actions/cache` covers `~/.cargo/registry`, `~/.cargo/git` AND `target`, and
+       its hosted jobs are the fleet's priciest (`check-coverage` 418s, `check-deps` 288s,
+       `check-nextest` 281s, `check-clippy` 53s), with clippy fast only because the cache is warm.
+     - **The seductive (WRONG) measurement.** A cold `cargo clippy --workspace` in the real
+       `python-rust-v0.48.2` image on this host took **37s vs 53s** warm-cached on GitHub; cold
+       `cargo test` **35s vs 48s**. Conclusion drawn: "a cold build on 18 cores beats a warm-cached
+       build on a 2–4 core runner, so delete the cache like everywhere else." That number was REAL
+       but UNREPRESENTATIVE — it had all 18 cores to ITSELF.
+     - **The live run refuted it.** The matrix runs **10 CONCURRENT jobs, each cold-rebuilding the
+       SAME dependency graph**. Redundant compiles contend and everything slows:
 
-     | Target | GitHub-hosted, WARM cache | This host, COLD (no cache at all) |
-     |---|---|---|
-     | `cargo clippy --workspace --all-targets` | 53s | **37s** |
-     | `cargo test --workspace` | 48s | **35s** |
-     | (incremental rebuild, for reference) | — | 8s |
+       | | Wall-clock |
+       |---|---|
+       | Hosted, warm cache (last 3 master runs) | 427s / 424s / 448s |
+       | Self-hosted, cold (PR #250) | **883s — 2.06× SLOWER** |
 
-     A COLD build on this box BEATS a WARM-cached build on a GitHub runner, because the host has
-     ~5–9× the parallelism (the plan's own arithmetic: "591 ÷ 18 ≈ 33 s floor — matches/beats
-     GitHub"). The dependency compile that the cache exists to skip costs only ~37s here. NB
-     `check-coverage`/`check-nextest` build under DIFFERENT profiles (llvm-cov instrumentation,
-     nextest), so the warm cache barely helps them even today — which is why they are 418s/281s
-     WITH a cache. **Recommendation: option (a) — delete `actions/cache`, same as every other
-     repo.** Rejected: (b) keeping `actions/cache` on the self-hosted lane (it still works, but it
-     means network restore/save of a multi-GB cache FROM this host every run — precisely the cost
-     co-locating removes, and it fights the 10 GB/repo cap); (c) gating on T10 first (unnecessary —
-     and note T10 is not free: the plan calls trust-tiering **non-negotiable**, so a naive cache
-     mount would let a fork/PR job poison the cache feeding master builds; do T10 for its own sake,
-     not as a console blocker). **This is the "research before gating" discipline earning its keep —
-     the blocker was surfaced, measured, and dissolved rather than escalated.** Caveat honestly
-     stated: the 37s figure was taken while the host was NOT under a 27–36-job overlap, and
-     `check-coverage`/`check-nextest` were not individually cold-measured (they need cargo-llvm-cov
-     / cargo-nextest, which the image does not bake).
+       | Job | hosted warm | self-hosted cold |
+       |---|---|---|
+       | `check-coverage` | 418s | **874s** |
+       | `check-nextest` | 281s | **779s** |
+       | `check-deps` | 288s | **682s** |
+       | `check-clippy` | 53s | **223s** |
+       | `check-format` | 21s | **211s** |
+
+       Note `check-format` runs NO build at all and still went 21s → 211s: it was simply STARVED by
+       the nine concurrent cargo builds. **The cache's value was never "skip ONE dep build" — it was
+       "skip TEN".** A single-build benchmark is the wrong experiment for a fan-out matrix; that is
+       the lesson to carry, and it is why this is the ONE repo where the Python playbook does not
+       transfer (a Python repo's cold `uv` costs seconds, so ×10 is still nothing).
+     - **Correct fix = T10, the plan's actual design** ("Rust deps → persistent `~/.cargo/registry`
+       dir"; "Rust compilation → sccache + persistent `target/` — **trusted-tier only**"): a
+       persistent local cargo/`target` dir mounted into the job container removes the redundant
+       compiles AND the network. **Rejected:** keeping `actions/cache` on the self-hosted lane — it
+       works, but network restore/save of a multi-GB cache FROM this host every run is precisely the
+       cost co-locating exists to remove, and it fights the 10 GB/repo cap. **T10 is not free:** the
+       plan calls trust-tiering **non-negotiable**, so a naive mount would let a fork/PR job poison
+       the cache feeding master builds — it needs the read-only/overlay-for-PR,
+       write-back-only-from-trusted-branch split.
+     - **Everything else in #250 is proven and rides along once T10 lands** — baked
+       `python-rust-v0.48.2`, routing (+ negative control), `merge_group` drop, the `taiki-e` steps,
+       `$GITHUB_WORKSPACE`. Its 9 runners are provisioned + online and its fork-PR approval is
+       tightened, so ONLY the cache question is open.
    - **Security step is REAL work here:** it is the ONE fleet repo still at
      **`first_time_contributors`** — tighten to `all_external_contributors` BEFORE registering its
      runners (no exposure today precisely because it has 0 runners).
