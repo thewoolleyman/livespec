@@ -167,8 +167,11 @@ live-outside-tmux fallback entirely — hiding a Claude alive outside tmux behin
 
 Reading notes: `threshold` = the track's `ctx_threshold` override, else the
 daemon-wide `warn_percent` (default 50). A malformed `.overseer-state` token is
-surfaced as a row note and treated as **no declaration** (fail-closed) — it
-changes no branch. Two act-only guards are folded for clarity: `cStream →
+surfaced as a row note and treated as **no declaration** (fail-closed) — it never
+authorizes an ACT (restart / injection), though it is not inert: the `BAD state file`
+note puts the row in `NEEDS YOU`, and (being a non-null `declared`) it suppresses the
+keep-going nudge on an idle-above-threshold session, which then renders plain `idle`
+(both the safe direction). Two act-only guards are folded for clarity: `cStream →
 working` (drawn) skips a tick when an "idle" frame is still streaming, and an
 identical post-settle identity re-check (not drawn) routes a pane that has
 exited to a shell to `settling` (a one-tick "the pane changed under us"; the next
@@ -356,15 +359,31 @@ for the marker's edge-triggered lifecycle.
    **The Codex arm (`_do_codex_restart`) is the ONE place the destructive bug lives,
    and the dispatch is what prevents it.** `claude -n <topic>` aimed at a codex pane
    would REPLACE the codex session with a claude one; so a Codex track respawns
-   `codex resume <session-id> "<resume line>"` (`_codex_launch_command`) instead —
-   NEVER the claude command. It is SIMPLER than the Claude arm (proven live 2026-07-17):
-   `codex resume` takes the kick as an ARGUMENT and AUTO-SUBMITS it, so there is no
-   separate paste (no `_submit_prompt`) and no fresh-TUI submit race; and it resumes by
-   the exact UUID, which reattaches the SAME rollout so the `thread_name` — hence
-   adoptability — survives by construction. The await polls `pane_is_codex`
-   (`_await_pane`) not `pane_is_claude`. The sabotage-verified guard test
+   `codex resume --dangerously-bypass-approvals-and-sandbox <session-id> "<resume line>"`
+   (`_codex_launch_command`) instead — NEVER the claude command. The
+   `--dangerously-bypass-approvals-and-sandbox` flag is the codex twin of the Claude arm's
+   REQUIRED `--dangerously-skip-permissions` (maintainer-declared 2026-07-17): without it
+   the resumed session uses codex's default INTERACTIVE approval and stalls at a `› 1.`
+   approval picker on its first tool call, so the restart is not hands-off (codex documents
+   the flag as "solely for externally-sandboxed environments", which this local-only host
+   is). It is otherwise SIMPLER than the Claude arm (proven live 2026-07-17): `codex resume`
+   takes the kick as an ARGUMENT and AUTO-SUBMITS it, so there is no separate paste (no
+   `_submit_prompt`) and no fresh-TUI submit race; and it resumes by the exact UUID, which
+   reattaches the SAME rollout so the `thread_name` — hence adoptability — survives by
+   construction. The await polls `pane_is_codex` (`_await_pane`) not `pane_is_claude`, and
+   the round is closed (`_clear_state`) only after the await CONFIRMS the codex pane came up
+   — a failed respawn or await keeps the `ready` marker so the restart retries (B5, pinned
+   by the codex marker-kept tests). The sabotage-verified guard test
    (`…never_issues_the_claude_command`) pins that the routing holds; if you touch this
    area, re-sabotage (route codex → the claude command) and confirm it goes red.
+
+   **Reboot recovery is Claude-ONLY (documented gap).** `recover_missing_sessions` (startup
+   only) always launches the claude command, so a mapped CODEX track that died while the
+   daemon was DOWN would be recreated as claude (rollout orphaned) — non-destructive (only
+   ABSENT sessions are recreated), and unavoidable under the runtime-derived-live design (a
+   dead codex has no live rollout fd, so its id is unknown at recovery). While the daemon is
+   UP, the per-tick restart path above DOES dispatch by runtime. See the
+   `recover_missing_sessions` docstring.
 
    The abrupt kill is safe **because of** the declaration: the session asserted it
    is at a clean stopping point, and `respawn-pane -k` replaces the PROCESS — every
@@ -707,8 +726,9 @@ for the marker's edge-triggered lifecycle.
 
 ## Build / toolchain facts
 
-- **Stdlib-only Python, host-only.** No third-party imports; four modules
-  (`registry.py`, `signals.py`, `tmuxio.py`, `supervisor.py`) plus beside-tests.
+- **Stdlib-only Python, host-only.** No third-party imports; six modules
+  (`registry.py`, `signals.py`, `tmuxio.py`, `supervisor.py`, plus the session
+  readers `claude_sessions.py` and `codex_sessions.py`) plus beside-tests.
   Precedent for host-only Python under `.claude/`:
   `.claude/hooks/livespec_footgun_guard.py`. Stdlib-only is now **load-bearing
   for the invocation surface too**: the `overseerd` executable carries a
@@ -717,7 +737,9 @@ for the marker's edge-triggered lifecycle.
   the shebang launch (there is no project sync to satisfy it).
 - **Invocation surface (daemon vs module split; 2026-07-13).** Two homes:
   - **`overseerd`** — the dedicated daemon **executable** (uv shebang above +
-    `chmod +x`). Run it with NO args/options/subcommands (`overseerd`): it calls
+    `chmod +x`). Run it with NO subcommands; its ONE option is `--warn-percent N`
+    (an int in [1, 99], the daemon-wide default wind-down threshold — a per-track
+    `ctx_threshold` override still wins; `overseer-start` threads it through). It calls
     `supervisor.run_daemon()`, which watches the whole fleet. It pins its own dir
     onto `sys.path` so `import supervisor` (and supervisor's siblings) resolve
     from any cwd. This is the ONLY thing the `/overseer` skill launches in the top
@@ -729,9 +751,10 @@ for the marker's edge-triggered lifecycle.
     no business being a subcommand of a track CLI). The skill invokes it as
     `uv run --no-project python .claude/skills/overseer/supervisor.py <cmd>` — a
     module invoked from the skill, never a supported bare `python3` path.
-  There are **no config knobs** anywhere: store (`~/.livespec-overseer.jsonl`) and
-  injection-stamp (`~/.livespec-overseer-stamps.json`) paths are hard-coded via
-  the `registry` defaults, and the watch-set is the whole fleet read from
+  Beyond `--warn-percent`, there are **no config knobs**: store
+  (`~/.livespec-overseer.jsonl`) and injection-stamp
+  (`~/.livespec-overseer-stamps.json`) paths are hard-coded via the `registry`
+  defaults, and the watch-set is the whole fleet read from
   `.livespec-fleet-manifest.jsonc` (resolved relative to the module file, so it
   works from any cwd) — no `--store` / `--stamp` / `--repos` / `--repos-only` /
   `--manifest`, and `overseerd` takes no `--interval` / `--once` / `--recover`

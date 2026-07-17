@@ -130,7 +130,8 @@ WINDOW_NAME = "overseer"
 #   green  = actively working (working / winding-down / restarting / settling)
 #   yellow = idle, waiting on a human (`blocked:human`), or low on context
 #            (`warned` / `danger`)
-#   red    = broken: the session is gone or the pane is no longer Claude
+#   red    = broken: the session is gone (`session-gone` — the only red status;
+#            `not-claude` was deleted)
 #   default (uncolored — terminal white/gray) = `unassigned`, and any unmapped status
 _ANSI_RESET = "\x1b[0m"
 _ANSI_GREEN = "\x1b[32m"
@@ -1067,12 +1068,13 @@ class Supervisor:
     def _no_managed_pane_row(self, *, repo: str, topic: str) -> RowView:
         """The row for a track with NO live managed pane: ``live-outside-tmux`` or ``session-gone``.
 
-        The single home for "this track has no pane we can drive". Reached two ways —
-        the mapped tmux session is gone, or it survives but its Claude exited to a
-        shell — which must answer identically: both are the same fact about the track,
-        and only the tmux housekeeping differs. Keeping one path also keeps the
+        The single home for "this track has no pane we can drive". Reached THREE ways —
+        the mapped tmux session is gone; or it survives but its session exited to a bare
+        shell; or the pane is a genuinely FOREIGN one (fails the identity gate) — all of
+        which must answer identically: they are the same fact about the track (no pane to
+        drive), and only the tmux housekeeping differs. Keeping one path also keeps the
         live-outside-tmux fallback from being wired into just one of them (it was, and
-        the shell case reported a live session as ``not-claude``).
+        the shell case reported a live session as the now-deleted ``not-claude``).
 
         A Claude for the same plan may still be running in a NON-tmux terminal (a bare
         SSH shell): alive and working, but unmanageable by this tmux-only daemon (no
@@ -1092,9 +1094,10 @@ class Supervisor:
         nothing is lost by leaving the cell empty. ``_alert`` degrades on its own
         (``no live tmux session``, no jump command — there is nowhere to jump).
 
-        This is NOT "blank the column whenever something is wrong": ``not-claude`` (a
-        live FOREIGN pane) deliberately still names its session, because that pane is
-        exactly what the operator must go inspect.
+        (The former ``not-claude`` status — which named a foreign pane's session — was
+        DELETED, 2026-07-17; a foreign pane now routes here like any other no-managed-pane
+        case and reports ``tmux=None``. The identity gate itself is unchanged and still
+        governs every act.)
         """
         live = self._live_session_outside_tmux(repo, topic)
         if live is not None:
@@ -1655,15 +1658,29 @@ class Supervisor:
 
     @staticmethod
     def _codex_launch_command(session_id: str, resume: str) -> str:
-        """The Codex (re)start command: ``codex resume <session-id> "<resume line>"``.
+        """The Codex (re)start command:
+        ``codex resume --dangerously-bypass-approvals-and-sandbox <session-id> "<resume>"``.
+
+        ``--dangerously-bypass-approvals-and-sandbox`` is the codex twin of the Claude
+        path's REQUIRED ``--dangerously-skip-permissions`` (maintainer-declared 2026-07-17):
+        without it the resumed session uses codex's default INTERACTIVE approval policy and
+        stalls at a ``› 1.`` approval picker on its first tool call — the daemon would
+        (correctly) report `blocked:human` and the "auto-restart" would not be hands-off.
+        Codex documents the flag as "intended solely for environments that are externally
+        sandboxed", which this local-only overseer host is (the whole fleet already runs
+        `claude --dangerously-skip-permissions`).
 
         Resume by the exact UUID (never the name — "UUIDs take precedence" and a name can
         be ambiguous / drop to a picker), which reattaches the SAME rollout so the
         ``thread_name`` survives (adoptability). The resume line is the kick and is passed
         as the PROMPT argument, which Codex auto-submits (verified live 2026-07-17) — so
-        unlike the Claude path there is no separate paste. Both fields are shell-quoted.
+        unlike the Claude path there is no separate paste. Fields are shell-quoted; the
+        flag precedes the positional ``SESSION_ID``/``PROMPT`` per ``codex resume``'s usage.
         """
-        return f"codex resume {shlex.quote(session_id)} {shlex.quote(resume)}"
+        return (
+            "codex resume --dangerously-bypass-approvals-and-sandbox "
+            f"{shlex.quote(session_id)} {shlex.quote(resume)}"
+        )
 
     def _await_pane(self, target: str, is_ready: Callable[[str | None], bool]) -> bool:
         """Poll ``#{pane_current_command}`` until ``is_ready(cmd)``, bounded.
@@ -1702,6 +1719,11 @@ class Supervisor:
           box shows a grey rotating PLACEHOLDER indistinguishable from typed text in an
           ANSI-stripped capture, so "box cleared" is not a usable signal; "the model
           started responding" is (verified live 2026-07-17 — busy within ~1s of Enter).
+          Caveat (adversarial review 2026-07-17): the Codex confirm reads `is_busy` over
+          the whole capture, so a payload the daemon PASTES must not itself contain a
+          busy-marker substring (`esc to interrupt`, `· Ns ·`, `↓ N tokens`, `(running`),
+          or an UNSUBMITTED payload sitting in the composer would false-read as submitted.
+          The current wrap-up / nudge / resume texts are all clear of these; keep them so.
 
         Returning a bool (B5): callers must know whether the payload actually
         went in. A failed ``bracketed_paste`` is a hard False — WITHOUT it the box
@@ -1736,6 +1758,18 @@ class Supervisor:
         the repo (:meth:`_launch_command`), and pastes the resume line. Not a
         per-tick action (a session the user deliberately
         kills should not be revived every 10s). Returns the recovered names.
+
+        KNOWN LIMITATION — reboot recovery is Claude-ONLY (documented gap, not a bug).
+        It always launches the CLAUDE command, so a mapped CODEX track whose session died
+        would be recreated as a Claude one (its rollout orphaned). This is non-destructive
+        — the ``session_exists`` gate below means only a genuinely ABSENT session is ever
+        recreated, so no live codex is killed — but it does not honour the full-citizen
+        story. It is also unavoidable under the runtime-derived-live design: a dead codex
+        process is absent from ``self._codex``, so its session id is unknown at recovery
+        time (there is no live rollout fd to read). A future fix would look the topic up in
+        the codex session store by ``thread_name``; until then, a codex track that dies
+        while the daemon is DOWN is best re-launched by the operator. (While the daemon is
+        UP, the per-tick restart path — which DOES dispatch by runtime — handles it.)
         """
         recovered: list[str] = []
         for track in registry.read_mapping(self.store_path):

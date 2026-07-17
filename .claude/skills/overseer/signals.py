@@ -443,10 +443,13 @@ def pane_is_codex(pane_current_command: str | None) -> bool:
 
     DELIBERATELY LOOSE, and safe only in combination. tmux reports a codex pane's
     foreground process as `bun` (the launcher; the vendored `codex` binary is its child),
-    and `bun` matches ANY bun app — so this must NEVER gate anything on its own. Its only
-    caller pairs it with an exact live-session-map lookup: the map proves a real codex
-    session for this topic is in this tmux, and this proves the PANE in question is the
-    codex one rather than, say, a Claude pane in the same session.
+    and `bun` matches ANY bun app — so this must NEVER gate anything on its own. Two
+    callers, both safe: `_is_codex_track` pairs it with an exact live-session-map lookup
+    (the map proves a real codex session for this topic is in this tmux; this proves the
+    PANE is the codex one, not a Claude pane in the same session); and `_do_codex_restart`
+    uses it only as the `_await_pane` predicate DIRECTLY AFTER it respawned `codex resume`
+    into that exact pane — so "did the codex process come up?" is all it needs to answer,
+    and the identity was already established before the restart.
     """
     cmd = (pane_current_command or "").strip().lower()
     return cmd in _CODEX_COMMANDS

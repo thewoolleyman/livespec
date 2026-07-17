@@ -1,11 +1,12 @@
 #!/usr/bin/env -S uv run --script --no-project
 """overseerd — the dedicated overseer daemon executable.
 
-Run it with NO arguments, options, or subcommands: it starts the deterministic
-supervisor daemon watching every livespec fleet member. The file IS the daemon —
-there is nothing else to type. (Track management — list / add / remove / unassign
-/ start — is the supervisor MODULE, invoked one-shot from the ``/overseer`` skill,
-NOT this executable.)
+Run it with NO subcommands: it starts the deterministic supervisor daemon watching
+every livespec fleet member. Its ONE option is ``--warn-percent N`` (int in [1, 99],
+the daemon-wide default wind-down threshold; a per-track ``ctx_threshold`` still wins).
+The file IS the daemon — there is nothing else to type. (Track management — list / add
+/ remove / unassign / start — is the supervisor MODULE, invoked one-shot from the
+``/overseer`` skill, NOT this executable.)
 
 Path discovery is self-contained so it "just works" from any working directory:
   * this script's own directory is pinned onto ``sys.path`` below, so

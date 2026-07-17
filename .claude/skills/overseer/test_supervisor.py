@@ -50,6 +50,9 @@ class FakeTmux:
         self.on_paste = None  # callback(session, text) for stamp-before-paste checks
         self.paste_ok = True  # set False to model a failed bracketed paste (B5)
         self.respawn_ok = True  # set False to model a failed respawn (B5)
+        # set False to model a codex respawn whose pane never becomes a live codex TUI
+        # (so `_await_pane(pane_is_codex)` fails) — the Codex-restart await-fail leg.
+        self.respawn_yields_codex = True
         self.new_session_ok = True  # set False to model a failed new-session (Codex #3)
         self.pane_pids = {}  # {pane_pid: session} for the registry→tmux adopt join
         # Per-session pane PID (the login shell) fed to has_active_subshell. Defaults
@@ -143,8 +146,13 @@ class FakeTmux:
             return False
         # Model the runtime the command launches so the post-respawn identity await
         # (`_await_pane`) matches: a `codex resume …` respawn yields a codex pane (`bun`,
-        # the launcher), any other command a fresh Claude TUI (`node`).
-        self.cmds[session] = "bun" if command.startswith("codex") else "node"
+        # the launcher), any other command a fresh Claude TUI (`node`). A codex respawn
+        # with `respawn_yields_codex=False` comes up non-codex (`node`), modeling the
+        # await-fail leg.
+        if command.startswith("codex") and self.respawn_yields_codex:
+            self.cmds[session] = "bun"
+        else:
+            self.cmds[session] = "node"
         self.paths[session] = cwd
         self.sessions.add(session)
         return True
@@ -2762,7 +2770,48 @@ def test_an_adopted_codex_track_declaring_ready_is_restarted_with_the_codex_comm
     command = respawns[0][3]
     assert command.startswith("codex resume ")  # the CODEX command, not claude
     assert session_id in command  # resumes the SAME session by id → adoptability survives
+    # Autonomy parity with the Claude path's `--dangerously-skip-permissions`: without this
+    # the resumed codex stalls at an interactive approval picker and the restart is not
+    # hands-off (maintainer-declared 2026-07-17).
+    assert "--dangerously-bypass-approvals-and-sandbox" in command
     assert not fake.has("paste")  # the kick is the resume ARGUMENT — no separate paste
+    # THE ROUND IS CLOSED on success — and this is the high-consequence property. The await
+    # (`_await_pane(pane_is_codex)`, which needs FakeTmux to model the respawn as a codex
+    # pane) must succeed AND `_clear_state` must delete the marker, or a stale `ready` would
+    # respawn-KILL the just-resumed codex EVERY tick — a destructive loop. Pin both: the
+    # state file is gone, and a SECOND tick issues no second respawn.
+    assert signals.read_state(str(repo), topic) is None
+    fake.calls.clear()
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert not fake.has("respawn")  # no re-restart of the session we just resumed
+
+
+def test_a_codex_restart_keeps_the_ready_marker_when_the_respawn_fails(tmp_path):
+    """B5 for the Codex arm: a failed `respawn-pane` must NOT clear the `ready` marker —
+    the certification is preserved so the next tick retries, never silently destroyed
+    (the Codex twin of `test_restart_keeps_marker_when_respawn_fails`).
+    """
+    repo, topic, session, _session_id, fake, sup = _adopt_codex_ready(tmp_path)
+    fake.respawn_ok = False  # the atomic respawn fails
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert signals.read_state(str(repo), topic) is not None  # marker KEPT for retry
+    assert signals.read_state(str(repo), topic).token == signals.STATE_READY
+
+
+def test_a_codex_restart_keeps_the_ready_marker_when_the_pane_never_becomes_codex(tmp_path):
+    """B5 for the Codex arm: if the respawned pane never becomes a live Codex TUI
+    (`_await_pane(pane_is_codex)` fails), the round is NOT closed — the `ready` marker is
+    kept so the restart retries. Models the await-fail leg the success test's runtime
+    modeling otherwise hides.
+    """
+    repo, topic, session, _session_id, fake, sup = _adopt_codex_ready(tmp_path)
+    fake.respawn_yields_codex = False  # respawn succeeds but the pane comes up non-codex
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert signals.read_state(str(repo), topic) is not None  # marker KEPT for retry
+    assert signals.read_state(str(repo), topic).token == signals.STATE_READY
 
 
 def test_a_codex_ready_restart_never_issues_the_claude_command(tmp_path):
