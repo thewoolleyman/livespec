@@ -1,5 +1,16 @@
 # Handoff — the overseer never restarts a session that has not declared itself ready
 
+**LATEST (2026-07-17): Codex tracks are FULL CITIZENS — shipped, merged, and live.**
+PR #1308 (commits `31fb34cb` + `c1aed0a4`) retired monitor-only: a Codex track now gets
+the escalating wrap-up AND is auto-restarted on its own `ready` via
+`codex resume --dangerously-bypass-approvals-and-sandbox <id>` (never the claude command).
+Proven live on a throwaway Codex TUI, wired-functions live-exercised, both Fable reviews
+clean (no blockers), daemon respawned onto the merged code and the new Codex gate
+detection confirmed live. The `livespec-overseer` daemon (top pane) is running this code
+as of 2026-07-17 21:11. See OPEN decision #1 and known-defects #1–#3 below (all RESOLVED),
+and `research/codex-ctx-and-restart-evidence.md` §"2026-07-17". The cardinal rule and the
+5 must-not-regress properties were independently re-verified intact.
+
 **Status (2026-07-14): the CURRENT design.** It SUPERSEDES the "non-negotiable
 force-restart" that briefly shipped earlier the same day (PRs #1219 / #1221) — that
 force-restart was itself a **severe bug** and has been removed. **HOLD on archive still
@@ -276,38 +287,49 @@ topic; `/proc/<pid>/cwd` = the repo. `resolve_tmux_session` was already runtime-
 
 ### OPEN — maintainer decisions (do NOT self-resolve)
 
-1. **Codex restartable, or monitor-only?** Monitor-only shipped. `codex resume <topic>
-   "<kick>"` makes restart genuinely possible (kick as an ARGUMENT, reattaches the SAME
-   named session, so adoptability survives). Asked twice, unanswered.
+1. **Codex restartable, or monitor-only? — RESOLVED 2026-07-17: FULL CITIZEN, shipped
+   (PR #1308, merged; commits `31fb34cb` + `c1aed0a4`).** Monitor-only is RETIRED. A Codex
+   track now receives the escalating wrap-up AND is auto-restarted on its own `ready` via
+   `codex resume --dangerously-bypass-approvals-and-sandbox <session-id> "<kick>"`
+   (`_do_codex_restart` / `_codex_launch_command`) — NEVER the claude command (the one
+   destructive bug, pinned by a sabotage-verified guard). The autonomy flag is the codex
+   twin of the Claude path's `--dangerously-skip-permissions` (maintainer-chosen full
+   bypass). Proven live first on a throwaway Codex TUI (`codex resume` reattaches the SAME
+   session — rollout id preserved → re-adoptable — and auto-submits the kick), then the
+   wired functions live-exercised, then the daemon respawned onto the merged code and the
+   new Codex gate detection confirmed live (`codex-yolo-sandbox` correctly reported
+   `blocked:human` at a `›` picker). Two independent Fable reviews: no blockers. See
+   `research/codex-ctx-and-restart-evidence.md` §"2026-07-17".
 2. **Does `vps-info` belong in the fleet?** It has `plan/dolt-backup-missing-secret/` but
    is absent from `.livespec-fleet-manifest.jsonc`, so it is unwatched. **Independently: a
    live Claude session there is `waiting` on the human right now** (`tmux switch-client -t
    vps-info`), invisible to the fleet view. Note its session is named `vps-info-7e`, not
    the topic — so registering the repo alone would NOT adopt it.
 
-### OPEN — known defects, NOT fixed (found by adversarial review)
+### OPEN — known defects (defects #1–#3 RESOLVED by the full-citizen change 2026-07-17)
 
-1. **The codex `ready` alert arm is effectively DEAD CODE in the mainline flow.**
-   `ready_valid` needs an injection stamp; the ONLY stamp writer is the wrap-up branch,
-   which `elif is_codex:` makes unreachable for codex → no stamp → `ready` always False →
-   a codex session that declares `ready` renders plain `idle`, no alert, not attention.
-   The gate is still correct as defence-in-depth. Resolving this is entangled with open
-   decision #1.
-2. **Doc/code contradiction I introduced:** a comment (and AGENTS.md) claims the ctx read
-   "is what lets a Codex track receive the escalating wrap-up" — monitor-only means it
-   never does. Shipped v1 IS the passenger-runs-to-exhaustion behaviour, now with a
-   visible number. Fix the prose or the behaviour (see #1).
-3. **AGENTS.md is stale vs the shipped code** in several places the reviewers named: the
-   state diagram still has a `not_claude` node; the "not_claude is narrower… do not widen
-   it back" paragraph; the TOCTOU "still reports the flat not_claude" sentence; the colour
-   bullet; and `adopt_sessions`' docstring still says codex "are not adopted (a documented
-   gap)" directly above the code that adopts them.
-4. **Two codex sessions in one tmux session:** `codex_by_tmux_session` keeps first-by-pid,
-   so the second shadows the first → that track silently loses ctx + monitoring. Safe, but
-   a monitoring outage.
-5. **`recover_missing_sessions` is Claude-only** — a codex running outside tmux is
-   invisible, so startup recovery could launch a duplicate claude on a plan codex is
-   actively working.
+1. **RESOLVED (PR #1308).** ~~The codex `ready` alert arm is effectively DEAD CODE~~ — the
+   wrap-up now reaches codex (the `elif is_codex:` monitor-only branch is gone), so it
+   writes the injection stamp and `ready_valid` becomes reachable for a codex track; its
+   `ready` now drives a real `codex resume` restart, not a plain `idle`.
+2. **RESOLVED (PR #1308).** ~~Doc/code contradiction (ctx read "lets a Codex track receive
+   the wrap-up" but monitor-only means it never does)~~ — a Codex track NOW receives the
+   wrap-up, so the claim is true; the passenger-runs-to-exhaustion behaviour is retired.
+3. **RESOLVED (PR #1308).** ~~AGENTS.md stale vs shipped code~~ — audited against the
+   shipped code (Fable-reviewed): the `not_claude` node/paragraphs/TOCTOU/colour bullet are
+   corrected (deleted-status), the Codex-ctx section rewritten (statusline, not the removed
+   `rollout_ctx_remaining`), and the `adopt_sessions` docstring fixed (codex IS adopted).
+   The `--warn-percent`/"four modules" pre-existing inaccuracies were fixed too.
+4. **Two codex sessions in one tmux session (STILL OPEN):** `codex_by_tmux_session` keeps
+   first-by-pid, so the second shadows the first → that track silently loses ctx +
+   monitoring. Safe, but a monitoring outage.
+5. **`recover_missing_sessions` is Claude-only (STILL OPEN, now DOCUMENTED):** startup
+   recovery re-launches the CLAUDE command, so a codex track that died while the daemon was
+   DOWN would be recreated as claude (rollout orphaned) — non-destructive (only ABSENT
+   sessions are recreated), unavoidable under runtime-derived-live (a dead codex has no
+   live rollout id at recovery). Documented in the `recover_missing_sessions` docstring; a
+   real fix needs a codex-session-store lookup by `thread_name`. While the daemon is UP the
+   per-tick restart path DOES dispatch by runtime.
 6. **The beside-tests now touch the REAL `/proc` and `~/.codex`** via default kwargs in
    adopt/refresh. Deterministic today (tmp cwds cannot match fleet repos), but a real host
    coupling in a unit suite.
