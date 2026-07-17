@@ -174,6 +174,21 @@ long-standing "Autodiscovery gap" open decision.
     ("READ-ONLY **or throwaway overlay**"), and `fuse-overlayfs` is ALREADY installed by
     `provision-ci-runner.sh`, so rootless overlay works today. Write-back becomes a separate TRUSTED
     path (refresh the lower from a post-merge run or the supervisor) — never from the job container.
+  - **PROVEN ON THE LIVE HOST 2026-07-16 — this is verified, not theoretical.** An unprivileged probe
+    run AS `ci-runner` (the real job user, in none of docker/sudo/dolt) demonstrated every required
+    property end-to-end: overlay **mounted unprivileged**; the job **read the warm lower**; the job
+    **could write** (cargo needs this) and the write landed in the **upper**; the **lower was
+    UNCHANGED** — so a fork/PR job physically cannot poison the shared cache; unmount discarded the
+    upper. **Write-back-only-from-trusted-branch therefore holds BY CONSTRUCTION rather than by
+    policy**, which is exactly why this design has no forgeable signal: it makes no tier decision at
+    all. (`fusermount3 3.17.4`, already on the host — no new dependency.)
+  - **Implementation shape** (recorded on `9mp`): `prepare_job` → per-repo-namespaced
+    `lower=/home/ci-runner/cache/<reposlug>/{cargo,uv}` + per-job upper/work → `fuse-overlayfs` →
+    INJECT the merged dir into `args.container.userMountVolumes`, and STRIP any workflow-declared
+    mount under the cache root (same shape as the existing `BAD_SOURCES` filter, so a fork PR cannot
+    mount it itself); `cleanup_job` → `fusermount -u` + discard upper. Point `CARGO_HOME`/
+    `UV_CACHE_DIR` at the target EXPLICITLY — do not rely on `~` expansion, given the documented HOME
+    misalignment (steps run with `HOME=/github/home` while the image bakes tools under `/root`).
     If a real tier decision is ever wanted, it must be made by the SUPERVISOR (which authenticates to
     GitHub and verifies the event server-side) and passed out-of-band — the queue-watching mint
     pattern the gate-runner already implements — not read from job env. Per-repo namespacing still
