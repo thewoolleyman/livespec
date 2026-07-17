@@ -2739,3 +2739,37 @@ def test_an_ADOPTED_codex_track_declaring_ready_is_never_restarted(tmp_path):
         view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert not fake.has("respawn")  # THE property: no `claude -n` aimed at a codex pane
     assert view.status == "blocked:human"  # reported, not silently ignored (invariant 8)
+
+
+def test_a_claude_pane_keeps_its_wrapup_when_codex_shares_its_tmux_session(tmp_path):
+    """A live CLAUDE track must NOT be reclassified as codex just because a codex process
+    resolves into the same tmux SESSION (adversarial review, 2026-07-17).
+
+    Reachable, not exotic: `resolve_tmux_session` walks pid ancestry, so a `codex resume
+    <topic>` launched from INSIDE this Claude session's own Bash tool lands in its tmux
+    session — and the naming convention this work establishes is "codex threads named
+    after plan topics", so the name matches the track's topic exactly.
+
+    When `_is_codex_track` was session-scoped (while the Claude identity gate is
+    pane-scoped) this Claude track went monitor-only and SILENTLY lost its wrap-up, its
+    NOT-RESPONDING alert, and its restart — and `idle` kept it out of NEEDS YOU, so
+    nothing surfaced. A live Claude track going quiet is the worst failure this daemon
+    can have.
+    """
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    # A PROVEN live Claude pane (`node`), below its wind-down threshold => must be warned.
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))
+    sup = _sup(tmp_path, fake)
+    # ...while a codex session for the SAME topic sits in the SAME tmux session.
+    sup._codex = {
+        session: codex_sessions.CodexSession(
+            pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+        )
+    }
+    assert not sup._is_codex_track(session, str(repo), topic, fake.pane_id(session))  # pane is node
+    with contextlib.redirect_stderr(_io.StringIO()):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "warned"  # the Claude track is still supervised...
+    assert fake.has("paste")  # ...and still gets the wrap-up, the daemon's only lever
