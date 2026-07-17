@@ -27,11 +27,11 @@ live. An unnamed session carries no topic anywhere, so it cannot be joined to a 
 and is dropped. That is a naming convention to adopt, exactly as Claude adoption
 depends on ``claude -n <topic>`` — not a defect and not a heuristic to invent around.
 
-**Secrets caution — this module NEVER reads a rollout's contents.** Rollout ``.jsonl``
-files are full session transcripts. The join needs only the FILENAME (for the id) and
-``/proc``, so nothing here opens one. Keep it that way: if a later need arises (e.g.
-the ``token_count`` events that carry Ctx%), read only the specific metadata payloads
-and never dump a body.
+**Secrets caution.** Rollout ``.jsonl`` files are full session transcripts. The JOIN
+never opens one — it needs only the FILENAME (for the id) and ``/proc``. Exactly ONE
+function reads a body, :func:`rollout_ctx_remaining`, and it parses only ``token_count``
+payloads to extract two integers: counters in an event envelope, never conversation
+content. Keep that the only exception, and keep it that narrow.
 
 Stdlib-only, like every module in this folder. Every host coupling (``/proc`` reads)
 is injected so the beside-tests run with no codex process and no real ``~/.codex``.
@@ -50,7 +50,7 @@ from pathlib import Path
 # which already hosts the runtime-agnostic readers used for Codex (`has_active_subshell`
 # — the Codex busy fallback — is built on them). Reusing it beats duplicating a reader
 # into a sibling module.
-from claude_sessions import proc_comm
+from claude_sessions import proc_comm, proc_ppid, resolve_tmux_session
 
 # `#{pane_current_command}` / `/proc/<pid>/comm` for a real Codex TUI. The launcher is
 # `bun` (`~/.bun/bin/codex`), which EXECS the vendored binary; verified live, the `bun`
@@ -322,3 +322,41 @@ def read_live_codex_sessions(
             continue
         out.append(CodexSession(pid=pid, name=name, cwd=cwd, session_id=session_id))
     return out
+
+
+def map_codex_sessions(
+    pane_pid_to_session: dict[int, str],
+    *,
+    codex_home: str | os.PathLike[str] | None = None,
+    ppid_of: Callable[[int], int | None] = proc_ppid,
+    pids_of_comm: Callable[[str], list[int]] = proc_pids_of_comm,
+    cwd_of: Callable[[int], str | None] = proc_cwd,
+    fd_targets_of: Callable[[int], list[str]] = proc_fd_targets,
+) -> list[tuple[str, str, str]]:
+    """``[(tmux_session, name, cwd)]`` for every live NAMED codex session held in tmux.
+
+    The exact twin of :func:`claude_sessions.map_named_sessions`, emitting the SAME
+    triple on purpose: ``adopt`` can then consume either runtime through ONE code path
+    instead of growing a parallel Codex branch that could drift from the Claude one.
+
+    Composes :func:`read_live_codex_sessions` with
+    :func:`claude_sessions.resolve_tmux_session` — which is already runtime-agnostic
+    (it walks a pid up to a tmux pane pid and cares nothing for what the process is),
+    so Codex needs no tmux-joining code of its own. A live session not inside any tmux
+    pane is omitted: there is no pane to capture, inject, or respawn. Order follows the
+    ``/proc`` pid scan, so the mapping is deterministic.
+    """
+    mapped: list[tuple[str, str, str]] = []
+    for session in read_live_codex_sessions(
+        codex_home=codex_home,
+        pids_of_comm=pids_of_comm,
+        cwd_of=cwd_of,
+        fd_targets_of=fd_targets_of,
+    ):
+        tmux_session = resolve_tmux_session(
+            session.pid, pane_pid_to_session=pane_pid_to_session, ppid_of=ppid_of
+        )
+        if tmux_session is None:
+            continue
+        mapped.append((tmux_session, session.name, session.cwd))
+    return mapped
