@@ -64,6 +64,13 @@ _ROLLOUT_RE = re.compile(
     r"rollout-.*-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$"
 )
 
+# How much of a rollout's tail to read when looking for the newest `token_count`.
+# Rollouts reach 16 MB on this host and the daemon reads them every tick, so the whole
+# file is never loaded. `token_count` events are frequent (773 in the sampled session,
+# one per turn), so the newest is far inside this window; a rollout whose last turn
+# somehow exceeds it simply reads unknown, which is the documented safe degradation.
+_CTX_TAIL_BYTES = 262_144
+
 
 @dataclass(frozen=True, kw_only=True)
 class CodexSession:
@@ -157,6 +164,94 @@ def open_rollout_id(
         if found is not None:
             return found
     return None
+
+
+def rollout_ctx_remaining(
+    path: str | os.PathLike[str], *, tail_bytes: int = _CTX_TAIL_BYTES
+) -> int | None:
+    """Remaining context %, from the rollout's LAST ``token_count`` event. None = unknown.
+
+    The Codex twin of :func:`signals.parse_ctx_remaining`, returning the same
+    ``int | None`` remaining-% so it drops into the same slot — and it is strictly MORE
+    reliable than the Claude path: a number read from a file, not a regex over rendered
+    terminal text that a repaint can mangle.
+
+    Codex renders no ``Ctx: N% left`` statusline, which was read as "Codex ctx is
+    unknown → a Codex track can never get the wrap-up". The premise is true and the
+    conclusion does not follow: every ``token_count`` event carries both halves ::
+
+        {"type": "token_count",
+         "info": {"last_token_usage": {"total_tokens": 165818},
+                  "model_context_window": 258400}}       ->  ~35% left
+
+    ``last_token_usage`` is the CURRENT context occupancy (the last request's input —
+    i.e. the whole conversation — plus its output). NOT ``total_token_usage``, which is
+    the session's cumulative spend (104M in the sampled session, ~400x the window) and
+    would peg every session at 0% and wrap them all up instantly.
+
+    **Tail-read, because the daemon calls this every tick** and rollouts reach 16 MB on
+    this host — the whole file is never loaded. ``token_count`` events are frequent (773
+    in the sampled session), so the newest sits far inside even a small window. Seeking
+    to a byte offset lands mid-record, so the truncated leading line is simply skipped as
+    unparsable.
+
+    Fail-closed everywhere (unreadable file, no ``token_count``, absent/zero window, bad
+    types): ``None`` = unknown, which the daemon already treats as "keep the last known
+    value and NEVER count a threshold crossing". Usage above the window clamps to 0
+    rather than going negative.
+
+    Secrets: this touches a rollout BODY, unlike the rest of this module. It parses ONLY
+    ``token_count`` payloads and extracts two integers — counters in an event envelope,
+    never conversation content. Keep it that way.
+    """
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - tail_bytes))
+            blob = handle.read()
+    except OSError:
+        return None
+    for line in reversed(blob.decode("utf-8", errors="replace").splitlines()):
+        remaining = _ctx_from_token_count_line(line)
+        if remaining is not None:
+            return remaining
+    return None
+
+
+def _ctx_from_token_count_line(line: str) -> int | None:
+    """Remaining % from ONE rollout line if it is a usable ``token_count``, else None."""
+    if '"token_count"' not in line:
+        return None  # cheap reject: skip json.loads on the ~99% that are not token_count
+    try:
+        record = json.loads(line)
+    except ValueError:
+        return None  # unparsable (e.g. the tail seek's truncated first line)
+    if not isinstance(record, dict):
+        return None
+    payload = record.get("payload")
+    if not isinstance(payload, dict) or payload.get("type") != "token_count":
+        return None
+    info = payload.get("info")
+    if not isinstance(info, dict):
+        return None
+    window = info.get("model_context_window")
+    last = info.get("last_token_usage")
+    if not isinstance(window, int) or window <= 0 or not isinstance(last, dict):
+        return None
+    used = last.get("total_tokens")
+    if not isinstance(used, int) or used < 0:
+        return None
+    # INTEGER arithmetic, deliberately — `int((1 - used / window) * 100)` is wrong at
+    # exactly the boundaries that matter. 232560/258400 is exactly 90% used, but in
+    # binary floats it is 0.9000000000000000222, so the remainder floors to 9 instead of
+    # 10 — and 50/40/30/20/10 ARE the escalation bands, so every exact band boundary
+    # would read one low. `(window - used) * 100 // window` is exact.
+    #
+    # Floor (rather than round) so a reading is never optimistic: a track is warned a
+    # hair early rather than a hair late. Clamp at 0 — a compacted/overflowing session
+    # has none left, not a negative amount.
+    return max(0, (window - used) * 100 // window)
 
 
 def read_thread_names(codex_home: str | os.PathLike[str]) -> dict[str, str]:
