@@ -102,7 +102,7 @@ stateDiagram-v2
     cBand --> danger: eff_ctx ≤ 20
     cBand --> warned: otherwise
 
-    working: working  ·  voids stale ready
+    working: working  ·  voids stale ready + blocked
     blocked_human: blocked:human  ·  alerts operator
     settling: settling  ·  wait, re-read next tick
     restarting: restarting  ·  _do_restart (ONLY restart path)
@@ -555,6 +555,28 @@ for the marker's edge-triggered lifecycle.
   declaring turn's own tail (final text streaming + stop hooks) legitimately keeps
   the pane busy for a while right after the write, and voiding on ANY busy would
   destroy every legitimate declaration before the pane ever went idle (RB1).
+- **Stale-`blocked` voiding (`_void_stale_blocked`; 2026-07-16).** Nothing else retires a
+  `blocked:`. `_clear_state` runs only on the daemon's own restart path, so a pane replaced
+  OUT-OF-BAND (a hand-restarted session, a `/clear`) INHERITS its predecessor's declaration
+  — found live: a fresh `overseer-rewrite` session rendered `working (awaiting maintainer
+  next-step decision — Codex…)`, a reason written by a session that no longer existed. Left
+  alone the dead reason also fires a false `blocked:human` the moment the session goes idle.
+  So a `blocked:` is voided when the session is **GENERATING** and the declaration is past
+  `_MARKER_VOID_GRACE`. **This is not the daemon judging semantics (invariant 1):** it does
+  not guess the session is unblocked, it observes that the session is PRODUCING TOKENS,
+  which is incompatible with waiting for an answer. Two bounds, each pinned by a test —
+  widen neither:
+  - **`generating`, not merely `busy`.** Busy via a live `Bash(run_in_background)` command
+    alone (Claude `shell`) means the session is AT ITS PROMPT and may legitimately be
+    awaiting a human while a build runs → never voided, however old. Only a real generation
+    spinner (`is_busy`) or Claude `busy` (generating / in-process sub-agent) qualifies.
+  - **The same RB1 grace as `ready`.** The declaring turn's own final text streams 10–60s
+    AFTER the write, so a young declaration must survive its own busy tail.
+  An IDLE blocked session is never touched: it keeps its declaration and keeps alerting
+  until the session itself retracts it. Note the note-default coupling — `note` defaults to
+  the blocked reason, so the void runs BEFORE the note is derived and the note is re-derived
+  after; the reason only ever reached a `working` row via the spinner path anyway (the
+  shell / sub-agent branches overwrite the note), which is exactly the provably-stale case.
 - **The `winding-down` ACK (`_ACK_STALE_AFTER`).** A FRESH `winding-down` (≤ 900s
   old) suppresses further wrap-up injections — the daemon must never keystroke into
   a session that is actively wrapping up — and shows as the `winding-down` row
