@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import IO
 
 import claude_sessions
+import codex_sessions
 import registry
 import signals
 import tmuxio
@@ -496,6 +497,11 @@ class Supervisor:
     # cannot see. Empty for Codex sessions (not in Claude's registry) and in direct-
     # `evaluate` beside-tests that don't set it.
     _claude_status: dict[str, str] = field(default_factory=dict, init=False)
+    # {tmux_session: CodexSession} for every live NAMED codex session, recomputed each
+    # tick beside _claude_status. Membership IS the exact answer to "is this pane
+    # Codex?" — the pane command says `bun` (the launcher), which is too generic to
+    # trust. Typed loosely to keep the dataclass free of a codex_sessions import cycle.
+    _codex: dict[str, object] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         if self.out is None:
@@ -648,12 +654,23 @@ class Supervisor:
         for repo, topic, _ in registry.discover_plans(watch):
             active.setdefault(repo, set()).add(topic)
         existing = {(t.repo, t.topic) for t in registry.read_mapping(self.store_path)}
+        pane_pids = self.tmux.pane_pid_sessions()
+        # BOTH runtimes, through ONE path. `codex_sessions.map_codex_sessions` emits the
+        # same `(tmux_session, name, cwd)` triple as its Claude twin precisely so adoption
+        # never grows a parallel Codex branch that could drift. Codex sessions are absent
+        # from Claude's registry, so without this they are invisible: the plan is
+        # discovered and shows `unassigned` while a real session runs in its tmux
+        # (maintainer-reported live 2026-07-17: rop-sweep-library-checks in
+        # `livespec-dev-tooling`, rop-sweep-consumer-cleanup in `livespec3`).
+        #
+        # `Codex Companion Task: …` threads filter themselves out below: their names are
+        # not active plan topics, so they fail the same test any non-topic name fails.
         mapped = claude_sessions.map_named_sessions(
             self._sessions_dir(),
-            self.tmux.pane_pid_sessions(),
+            pane_pids,
             ppid_of=self.ppid_of,
             starttime_of=self.starttime_of,
-        )
+        ) + codex_sessions.map_codex_sessions(pane_pids, ppid_of=self.ppid_of)
         adopted: list[registry.Track] = []
         for session, name, cwd in mapped:
             repo = next((r for r in watch if signals.path_in_repo(cwd, r)), None)
@@ -685,6 +702,22 @@ class Supervisor:
             else claude_sessions.default_sessions_dir()
         )
 
+    def _refresh_codex_sessions(self) -> None:
+        """Recompute this tick's ``{tmux_session: CodexSession}`` map (read-only).
+
+        The Codex twin of :meth:`_refresh_claude_status`, and the ONLY honest way to ask
+        "is this pane Codex?": tmux reports a codex pane's ``#{pane_current_command}`` as
+        **`bun`** (the launcher; the vendored codex binary is its child), and `bun` is
+        generic — any bun app matches it. Membership in this map is exact: a session is in
+        it only because a real codex process, holding a real rollout, resolved to that
+        tmux session THIS tick. Derived live, so it needs no stored ``runtime`` field on
+        the mapping and cannot drift. Fail-soft to an empty map (no codex running is the
+        overwhelmingly common case).
+        """
+        self._codex = codex_sessions.codex_by_tmux_session(
+            self.tmux.pane_pid_sessions(), ppid_of=self.ppid_of
+        )
+
     def _refresh_claude_status(self) -> None:
         """Recompute this tick's ``{tmux_session: claude_status}`` map (read-only).
 
@@ -700,6 +733,7 @@ class Supervisor:
             ppid_of=self.ppid_of,
             starttime_of=self.starttime_of,
         )
+        self._refresh_codex_sessions()
 
     def build_rows(self, *, act: bool = True) -> list[registry.Track]:
         """Discovery ⋈ mapping (the tick's row set).
@@ -764,6 +798,43 @@ class Supervisor:
         self.sleep(_SETTLE_DELAY)
         second = signals.strip_ansi(self.tmux.capture_pane(target))
         return first == second
+
+    def _is_codex_track(self, session: str | None, repo: str, topic: str) -> bool:
+        """True iff ``session`` holds a live codex session for THIS plan, in THIS repo.
+
+        Exact by construction: ``self._codex`` is rebuilt each tick from real codex
+        processes holding real rollouts, so this never guesses from the pane command
+        (which reports the generic `bun`). Both the topic and the repo must match, so a
+        codex session for a DIFFERENT plan in the same tmux is not mistaken for ours.
+        """
+        live = self._codex.get(session or "")
+        if live is None:
+            return False
+        return live.name == topic and signals.path_in_repo(live.cwd, repo)  # type: ignore[attr-defined]
+
+    def _pane_is_managed(self, target: str, repo: str, topic: str, session: str | None) -> bool:
+        """The identity gate for EITHER runtime: is this pane OUR session, in OUR repo?
+
+        Claude via the pane's own process identity; Codex via the live per-tick session
+        map (`bun` is too generic to gate on). Fail-closed: anything unproven is not ours.
+        """
+        return self._pane_is_managed_claude(target, repo) or self._is_codex_track(
+            session, repo, topic
+        )
+
+    def _codex_ctx(self, session: str | None) -> int | None:
+        """Remaining ctx% for a codex track, read from the rollout it holds open.
+
+        Fail-closed to None (= unknown), which the daemon already treats as "keep the
+        last known value and never count a threshold crossing".
+        """
+        live = self._codex.get(session or "")
+        if live is None:
+            return None
+        for target in codex_sessions.proc_fd_targets(live.pid):  # type: ignore[attr-defined]
+            if codex_sessions.rollout_id(target):
+                return codex_sessions.rollout_ctx_remaining(target)
+        return None
 
     def _pane_is_managed_claude(self, target: str, repo: str) -> bool:
         """True iff ``target``'s pane is a live Claude TUI whose cwd is inside ``repo``.
@@ -1056,7 +1127,7 @@ class Supervisor:
         # Identity gate (B3): the mapped session exists, but before reading its pane
         # for any ACT we confirm it is really OUR Claude in OUR repo — never
         # keystroke into a shell / wrong session / human split-pane.
-        if not self._pane_is_managed_claude(target, repo):
+        if not self._pane_is_managed(target, repo, topic, session):
             # The gate stays exactly what it was — an ACT guard (never keystroke into a
             # pane not proven ours). What changed is that its answer is no longer a row
             # STATUS of its own. Whether the pane is a bare shell (our session exited) or
@@ -1116,8 +1187,25 @@ class Supervisor:
         codex_fallback = claude_status is None and bg_shell
         busy = signals.is_busy(capture) or claude_busy or codex_fallback
         gate = signals.is_structured_gate(capture)
-        idle = signals.is_idle_input(capture)
-        current_ctx = signals.parse_ctx_remaining(capture)
+        is_codex = self._is_codex_track(session, repo, topic)
+        # `is_idle_input` knows CLAUDE's prompt: an EMPTY `❯` between two rules. Codex's
+        # prompt is `› <placeholder text>` above its own statusline — never "empty", so it
+        # can never match, and a Codex track would sit in `settling` FOREVER (a status
+        # that means "transient, re-read next tick"). For Codex the busy signal is the
+        # honest one we have: the runtime-agnostic process-tree shell-walk. Not-busy ⇒
+        # idle. This only ever sets the LABEL: every ACT is suppressed for a Codex track
+        # below, so a wrong guess here can never paste or respawn.
+        idle = (not busy) if is_codex else signals.is_idle_input(capture)
+        # Ctx%: Codex's statusline reads `Context N% left`, which the Claude-shaped
+        # `Ctx: N% left` scrape does not match — but the number is also in the rollout
+        # the session already holds open, which is the better source anyway
+        # (`token_count` events carry the occupancy and the window). Same `int | None`
+        # contract either way, so `_effective_ctx` and every band work unchanged. This is
+        # what lets a Codex track receive the escalating wrap-up, which is the daemon's
+        # ONLY lever now that nothing is force-killed — without it a Codex track is a
+        # passenger that runs to exhaustion and wedges (live 2026-07-16:
+        # rop-sweep-consumer-cleanup sat at 36%, past the wind-down line, un-nudged).
+        current_ctx = self._codex_ctx(session) if is_codex else signals.parse_ctx_remaining(capture)
         eff_ctx = self._effective_ctx(key, current_ctx)
 
         stamp = registry.read_injection_stamp(repo, topic, self.stamp_path)
@@ -1224,7 +1312,7 @@ class Supervisor:
         elif act and not self._pane_settled(target):
             # One frame looks idle, but the pane is actively changing (streaming).
             status = "working"
-        elif act and not self._pane_is_managed_claude(target, repo):
+        elif act and not self._pane_is_managed(target, repo, topic, session):
             # TOCTOU re-check (Codex re-review #1): the identity gate ran at the top
             # of the tick, but capturing + the settle delay opened a window in which
             # the pane could have exited to a shell (or cd'd out of the repo). Re-
@@ -1236,12 +1324,48 @@ class Supervisor:
             # act is suppressed either way, and the next tick re-enters at the top gate,
             # which classifies the settled truth (`session-gone` if it really has gone).
             status = "settling"
+        elif ready and self._is_codex_track(session, repo, topic):
+            # THE SAFETY GATE. `_do_restart` launches
+            # `claude --dangerously-skip-permissions -n <topic>`; aimed at a Codex pane it
+            # REPLACES the codex session with a claude one, destroying a live session's
+            # process. This is the one place in the daemon where a bug is destructive
+            # rather than merely wrong, so a Codex track is MONITOR-ONLY: its `ready`
+            # NEVER reaches `_do_restart`.
+            #
+            # It is not ignored, though — notify-never-block (invariant 8): the session
+            # did its part and declared, so the operator is handed the coordinates and
+            # restarts it themselves. `codex resume <topic> "<kick>"` makes an automatic
+            # Codex restart genuinely possible (it takes the kick as an ARGUMENT and
+            # reattaches the SAME named session), but WHETHER to do that is the
+            # maintainer's call and is not self-resolved here; until it is answered this
+            # arm stays unimplemented and the refusal stands.
+            status = "blocked:human"
+            if act:
+                self._alert(
+                    repo=repo,
+                    topic=topic,
+                    session=session,
+                    pane=target,
+                    message=(
+                        "Codex track declared `ready` — the daemon will NOT restart it "
+                        "(restarting a Codex pane with the claude command would destroy "
+                        "the session). Restart it yourself in that pane"
+                    ),
+                )
         elif ready:
             # The session DECLARED `ready`. This is the ONLY path to a restart — the
             # daemon never infers it (maintainer 2026-07-14).
             status = "restarting"
             if act:
                 self._do_restart(track, target)
+        elif is_codex:
+            # MONITOR-ONLY (the design's v1, and the maintainer's open call). Everything
+            # below this point ACTS — the wrap-up paste and the idle nudge — and their
+            # mechanics are Claude-TUI-shaped (`_submit_prompt` waits for Claude's input
+            # box to clear). Aimed at Codex they would type into an unknown state. So a
+            # Codex track is reported, never keystroked. Its ctx is still shown so the
+            # operator can watch it approach the line and wind it down by hand.
+            status = "idle"
         elif eff_ctx is not None and eff_ctx <= threshold:
             # A FRESH `winding-down` ACK buys patience: the session heard us and is
             # wrapping up, so stop re-warning (never keystroke into a session that is
