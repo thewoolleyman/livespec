@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0](https://github.com/thewoolleyman/livespec/compare/v0.16.0...v0.17.0) (2026-07-17)
+
+
+### Features
+
+* **overseer:** Codex tracks are full citizens — escalating wrap-up + codex-resume restart ([31fb34c](https://github.com/thewoolleyman/livespec/commit/31fb34cba44a453868d7730b0947c6c10ca0d2af))
+
+
+### Bug Fixes
+
+* **overseer:** address both Fable reviews — codex autonomy flag, restart round-closing teeth, doc accuracy ([c1aed0a](https://github.com/thewoolleyman/livespec/commit/c1aed0a406596c36bc3221bcb7f7bc20dca1165d))
+
 ## [0.16.0](https://github.com/thewoolleyman/livespec/compare/v0.15.3...v0.16.0) (2026-07-17)
 
 
