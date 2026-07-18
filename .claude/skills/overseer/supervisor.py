@@ -541,6 +541,19 @@ class Supervisor:
     # background work).
     children_of: Callable[[int], list[int]] = claude_sessions.proc_children
     comm_of: Callable[[int], str | None] = claude_sessions.proc_comm
+    # Codex session-discovery seams (default: real /proc scan + ~/.codex; the beside-tests
+    # inject fakes). Unlike Claude — whose candidate pids come from the injected registry
+    # dir (`sessions_dir`) — Codex discovers its pids by a live `/proc` `comm==codex` scan
+    # and reads `~/.codex/session_index.jsonl` for the topic, so its host coupling is a
+    # DISTINCT reader set. It MUST be injectable or every adopt/refresh test would read the
+    # host's real /proc and ~/.codex (test-isolation defect #6). `codex_home=None` means the
+    # codex_sessions functions resolve the real `~/.codex` themselves, so it is threaded
+    # through as-is (no `_sessions_dir`-style helper needed). `ppid_of` (the tmux-join walk)
+    # is shared with the Claude seam above.
+    codex_home: str | os.PathLike[str] | None = None
+    codex_pids_of_comm: Callable[[str], list[int]] = codex_sessions.proc_pids_of_comm
+    codex_fd_targets_of: Callable[[int], list[str]] = codex_sessions.proc_fd_targets
+    codex_cwd_of: Callable[[int], str | None] = codex_sessions.proc_cwd
     # Startup gate: `<repo>/tmp/overseer/` MUST be gitignored (the overseer only
     # writes temp files, never tracked ones). Injectable so tests fake the check.
     gitignore_check: Callable[[str], bool] = default_gitignore_check
@@ -748,7 +761,14 @@ class Supervisor:
             pane_pids,
             ppid_of=self.ppid_of,
             starttime_of=self.starttime_of,
-        ) + codex_sessions.map_codex_sessions(pane_pids, ppid_of=self.ppid_of)
+        ) + codex_sessions.map_codex_sessions(
+            pane_pids,
+            codex_home=self.codex_home,
+            ppid_of=self.ppid_of,
+            pids_of_comm=self.codex_pids_of_comm,
+            cwd_of=self.codex_cwd_of,
+            fd_targets_of=self.codex_fd_targets_of,
+        )
         # Detect (repo, topic) claimed by MORE THAN ONE live session this tick. Re-pointing
         # such a track would FLIP-FLOP between the sessions' tmux ids every tick — two store
         # rewrites + two "re-pointed" log lines forever (review SF1) — since which one "wins"
@@ -824,7 +844,12 @@ class Supervisor:
         codex running is the overwhelmingly common case).
         """
         self._codex = codex_sessions.codex_by_tmux_session(
-            self.tmux.pane_pid_sessions(), ppid_of=self.ppid_of
+            self.tmux.pane_pid_sessions(),
+            codex_home=self.codex_home,
+            ppid_of=self.ppid_of,
+            pids_of_comm=self.codex_pids_of_comm,
+            cwd_of=self.codex_cwd_of,
+            fd_targets_of=self.codex_fd_targets_of,
         )
 
     def _refresh_claude_status(self) -> None:
