@@ -1,5 +1,34 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
+> **SESSION 11 (2026-07-18) — close-out reconciliation + trigger fixes; thread ARCHIVED. No open work.**
+>
+> After the SESSION 10 close-out note merged (livespec core PR #1314), the
+> maintainer flagged recurring "bd-guard failure" emails from Honeycomb over the
+> prior ~3 days and asked to confirm they were transient noise before closing.
+> Investigated in the `livespec` env / `bd-guard` dataset:
+>   - **They were noise — the telemetry-stalled trigger firing on host-idle.**
+>     Across 5 days there are only 3 `guard.warned=true` events total (2 test
+>     probes + 1 *pre-flip* real `--status done` that passed through in warn
+>     mode); in the last 3 days, exactly ONE — the deliberate `zzz-flip-probe`.
+>     **Zero legitimate workflows were ever blocked.** The recurring mail was
+>     `VrKJu9hrgr` (telemetry stalled) tripping whenever the host had no `bd`
+>     traffic for 60 min (normal idle); the pipeline self-recovered every time
+>     and is healthy (both triggers currently green).
+>   - **Two trigger fixes landed (Honeycomb, `livespec` env):**
+>     1. `nak9miYrs14` (raw-op-BLOCKED alert) had lost BOTH recipients — its
+>        `updated_at` matched the SESSION-9 description edit, so that
+>        `update_trigger` call inadvertently cleared them (the API drops
+>        recipients on a partial update that omits them). **Restored** both team
+>        emails — without this, a genuine fail-mode block would have paged nobody.
+>        LESSON: always re-pass `recipients` on any Honeycomb `update_trigger`.
+>     2. `VrKJu9hrgr` (telemetry-stalled) **widened 1h → 8h** (frequency raised
+>        1h→2h to satisfy Honeycomb's duration ≤ 4×frequency rule) so normal
+>        host-idle no longer false-alarms; a sustained dead pipeline still does.
+>   - **This thread is now ARCHIVED** to `plan/archive/ledger-status-conformance/`
+>     (moved out of the active `plan/` set). The two durable triggers remain the
+>     standing safety net; external/upstream waits (beads #4738, a #4536-carrying
+>     release) are unchanged and do not block closure.
+
 > **SESSION 10 (2026-07-18) — ✅ TRACK CLOSED. Post-flip observation window is conclusively clean; nothing left to watch.**
 >
 > The SESSION 9 flip (bd-guard host-wide `fail` mode) has now run ~2.85 days
