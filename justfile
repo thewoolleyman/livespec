@@ -200,6 +200,8 @@ check:
         check-partition-completeness
         check-pbt-coverage-pure-modules
         check-per-file-coverage
+        check-plan-thread-anchor-declared
+        check-plan-thread-epic-parity
         check-plugin-resolution
         check-primary-checkout-commit-refuse-hook-installed
         check-private-calls
@@ -1065,3 +1067,9 @@ check-self-hosted-routing:
 
 check-source-trees-scoped-to-consumer:
     uv run python -m livespec_dev_tooling.checks.source_trees_scoped_to_consumer
+
+check-plan-thread-anchor-declared:
+    uv run python -m livespec_dev_tooling.checks.plan_thread_anchor_declared
+
+check-plan-thread-epic-parity:
+    uv run python -m livespec_dev_tooling.checks.plan_thread_epic_parity
