@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.4](https://github.com/thewoolleyman/livespec/compare/v0.17.3...v0.17.4) (2026-07-18)
+
+
+### Bug Fixes
+
+* **overseer:** key the live codex map by (tmux, name) so two can share a tmux session ([a24e3e1](https://github.com/thewoolleyman/livespec/commit/a24e3e134f83a493d7d97be91c60bc9cf86920dc))
+
 ## [0.17.3](https://github.com/thewoolleyman/livespec/compare/v0.17.2...v0.17.3) (2026-07-18)
 
 
