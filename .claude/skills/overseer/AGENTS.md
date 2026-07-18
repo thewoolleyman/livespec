@@ -951,6 +951,191 @@ daemon exercises the full inject → declare → restart cycle live only when a 
 track naturally reaches it (its steady-state job); the deterministic tests own that
 coverage, and hand-spaced ticks would mask the timing anyway.
 
+## Recovering + restoring sessions after a reboot or tmux crash/kill
+
+When the tmux server dies (a crash, a `kill-server`, a host reboot) every tracked
+pane's Claude process dies with it. This is the runbook to bring the tracks back
+**with their prior conversations intact** — the exact procedure, plus the three
+launch commands that are WRONG for it, each learned the hard way (2026-07-18: two
+consecutive wrong relaunches before the right one).
+
+### What survives the crash, and what does not
+
+| Survives (on disk) | Dies with the tmux server |
+|---|---|
+| The JSONL mapping `~/.livespec-overseer.jsonl` — one row per assigned track (topic ↔ tmux name ↔ repo ↔ handoff ↔ resume line). | Every tmux session / window / pane (no `tmux-resurrect` / `tmux-continuum` is installed — a server death loses the whole layout). |
+| Each Claude session's **conversation transcript**: `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, where `<cwd-slug>` is the repo path with every `/` rewritten to `-` (e.g. `/data/projects/livespec` → `-data-projects-livespec`). | Claude Code's pid-keyed live registry `~/.claude/sessions/<pid>.json` (keyed by the now-dead pid). |
+| Each plan's `plan/<topic>/handoff.md`. | The daemon process + its in-memory round state. |
+
+The transcript is what makes a TRUE resume possible: the tmux pane is gone, but the
+conversation was streamed to disk continuously, so it can be re-attached by session
+id. Nothing in tmux persists — the only durable identity is that transcript file.
+
+### The daemon does NOT do this for you
+
+`overseerd` is **surface-only** — it never auto-spawns a session (invariant 3), and
+its startup `recover_missing_sessions` deliberately relaunches with the LAUNCH
+command + a handoff paste, **not** `--resume` (see invariant 7 and the
+`recover_missing_sessions` docstring). So the built-in recovery restores a *handoff
+re-read*, never the *live conversation*. Restoring the actual conversations is this
+**manual, human-driven** procedure. (SKILL.md's "Cold-start / crash recovery"
+section describes the `start`-based path, which is the handoff-re-read one; THIS
+section is the conversation-restore one, and they are different outcomes.)
+
+### The three launch commands that are WRONG (each was tried and failed)
+
+1. **`claude -n <topic>`** — a BRAND-NEW session. `-n` only sets the display name;
+   there is no resume. This is the overseer's OWN `_launch_command`, correct ONLY
+   when *followed by a paste* of the handoff resume line. With nothing pasted you
+   get a fresh, context-free session — the tracks lose all their state.
+2. **`claude --resume` with NO value** — opens the interactive picker and leaves
+   every pane stuck on it. `--resume` resumes directly ONLY when given a session id;
+   bare `--resume` is by definition the picker.
+3. **`claude --continue`** — resumes the single most-recent conversation in the cwd.
+   WRONG whenever a repo holds more than one track (e.g. `livespec` holds ~6): every
+   pane would race for the same one conversation. And right after a botched attempt
+   the "most recent in cwd" is your own junk session, not the real one.
+
+### The RIGHT command
+
+```
+claude --resume <session-id> --dangerously-skip-permissions -n <topic>
+```
+
+- `--resume <session-id>` re-attaches THAT exact conversation, no picker.
+- `--dangerously-skip-permissions` — required so the resumed session is autonomous
+  (the whole fleet runs with it; without it the session stalls on its first
+  permission prompt).
+- `-n <topic>` — keeps the display name equal to the plan topic, which is what the
+  daemon adopts on (`names_by_tmux_session`); belt-and-suspenders, since the resumed
+  transcript already carries the topic as its `customTitle`.
+
+### Step-by-step
+
+**0. Re-establish the daemon top pane.** From the bottom (Claude) `/overseer` pane,
+re-run `.claude/skills/overseer/overseer-start` (idempotent; splits the daemon pane,
+re-attaches to the surviving mapping, adopts sessions).
+
+**1. Read the surviving mapping** — it is the recipe (which topics, which tmux names,
+which repos):
+```
+cat ~/.livespec-overseer.jsonl
+```
+
+**2. List the live tmux sessions and note which to LEAVE ALONE.** Never respawn a
+session a human is actively using (e.g. a crash-investigation shell). Confirm the
+current set first:
+```
+command tmux list-sessions -F '#{session_name}'
+```
+
+**3. Compute topic → correct session-id.** The transcript filename is the id; the
+`-n <topic>` name is stored inside as `customTitle` (also `agentName`); `sessionId`
+repeats it. THE TRAP: your own fresh/junk relaunches and picker respawns ALSO carry
+`customTitle=<topic>`, so "most recent with this title" can select junk. Filter by
+SIZE (real pre-crash conversations are hundreds of KB to several MB; a fresh/junk
+session is a few KB) and take the most-recent above the threshold. This snippet
+prints the candidates so you can eyeball them:
+```
+python3 - <<'EOF'
+import json, os, glob, time
+now = time.time()
+# {cwd-slug: [topics]} — fill from the mapping read in step 1.
+TARGETS = {
+    "-data-projects-livespec": ["fabro-ci-image-factoring", "autonomous-mode"],
+    "-data-projects-livespec-orchestrator-beads-fabro": ["codex-factory-telemetry"],
+    "-data-projects-livespec-dev-tooling": ["fleet-plan-lifecycle-enforcement"],
+}
+base = os.path.expanduser("~/.claude/projects")
+def title_of(path):
+    ct = None
+    with open(path, encoding="utf-8", errors="ignore") as fh:
+        for i, line in enumerate(fh):
+            if i > 25:
+                break
+            try:
+                o = json.loads(line)
+            except Exception:
+                continue
+            if isinstance(o, dict) and o.get("customTitle"):
+                ct = o["customTitle"]
+    return ct
+for slug, topics in TARGETS.items():
+    d = os.path.join(base, slug)
+    recs = [(f, title_of(f), os.path.getsize(f), os.path.getmtime(f))
+            for f in glob.glob(d + "/*.jsonl")]
+    for t in topics:
+        cands = sorted([r for r in recs if r[1] == t and r[2] > 100_000],
+                       key=lambda r: r[3], reverse=True)
+        print(f"\n### {slug} :: {t}  ({len(cands)} real candidate(s))")
+        for f, ct, sz, mt in cands[:4]:
+            print(f"   {os.path.basename(f)[:-6]}  {sz/1e6:6.2f}MB  {(now-mt)/60:6.1f}min ago")
+EOF
+```
+The top row per topic is the one to resume. CROSS-CHECK it before trusting it:
+`claude --resume` (the picker) shows each conversation's size + age + PR number; the
+chosen transcript's size/age must match the picker row for that topic. The correct
+target is the one last-written **at the crash moment** — every crash-time session
+shares roughly the same mtime, which clusters them apart from older, larger
+predecessors carrying the same title.
+
+**4. Canary ONE pane first.** Do not batch all of them at once — a wrong command
+wastes every pane. Respawn one and confirm the actual conversation loaded:
+```
+command tmux respawn-pane -k -c <repo> -t <tmux-name> \
+  "claude --resume <session-id> --dangerously-skip-permissions -n <topic>"
+sleep 15
+command tmux capture-pane -p -t <tmux-name> | tail -30
+```
+SUCCESS looks like the prior conversation's tail + an empty `❯` box + a statusline
+reading `── <topic> ──` and `Ctx: N% left`. FAILURE looks like the picker (`Search…`
+/ `show all projects`), a fresh welcome banner, or the wrong topic. A big
+conversation can take 10–25s to render — wait and re-capture before judging it
+failed (`#{pane_current_command}` == `claude` while the screen is still blank means
+it is still loading, not broken).
+
+**5. Batch the rest** once the canary is verified — one
+`respawn-pane -k … --resume <id> … -n <topic>` per remaining track, each with its
+own computed id.
+
+**6. Verify all.** Each pane's statusline names its own topic and shows no picker;
+the daemon re-adopts each within a tick.
+
+### Two post-resume states are BOTH correct
+
+- **Small sessions** load straight to an empty `❯` prompt — ready to continue.
+- **Large sessions** (high token count) show Claude's own guard first:
+  `Resume from summary (recommended) / Resume full session as-is / Don't ask me
+  again`. That is the "compact or resume" choice — leave it for the human; do NOT
+  keystroke a selection.
+
+While a picker OR that resume-choice prompt is open, the daemon reads the pane as a
+structured gate and classifies it `blocked:human`, so it will not inject or restart
+it. That self-heals the moment the human answers.
+
+### tmux gotchas that bit during this procedure
+
+- **Use `command tmux`, never bare `tmux`.** A zsh `tmux` function shim errors
+  `zsh: command not found: _zsh_tmux_plugin_run`; `command tmux` bypasses it (the
+  same reason `tmuxio.py` shells out with an argv list rather than a shell string).
+- **`respawn-pane -t` wants the BARE session name**, e.g. `-t livespec1` — NOT the
+  `=name` exact-match form. `=livespec1` works for `has-session` / `list-panes` but
+  `respawn-pane` rejects it with `can't find pane`. Bare exact names are unambiguous
+  as long as no other session name is a prefix-extension of it.
+- **Fresh session vs. existing pane.** If the tmux session is GONE, recreate it
+  first (`command tmux new-session -d -s <name> -c <repo>`), then `respawn-pane -k …`
+  — this mirrors the daemon's own `new_session` + `respawn_pane` split, so the shell
+  / env behavior matches what works in production. If the pane already exists (e.g. a
+  prior wrong-command attempt), `respawn-pane -k …` alone replaces it.
+
+### Known gap worth closing
+
+The overseer's own `start` / `recover_missing_sessions` never uses `--resume` — it
+relaunches fresh + pastes a handoff. If native "restore the live conversation after
+a crash" is wanted, that is where it would go: a `--resume <id>` arm that looks the
+topic's id up by `customTitle` in `~/.claude/projects/<cwd-slug>/` (the exact
+computation step 3 automates). Until then, this manual runbook is the procedure.
+
 ## Pointers
 
 - `design.md` (beside the plan at `plan/overseer-rewrite/`) — the hardened
