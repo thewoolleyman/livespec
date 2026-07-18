@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.2](https://github.com/thewoolleyman/livespec/compare/v0.17.1...v0.17.2) (2026-07-18)
+
+
+### Bug Fixes
+
+* emit seed refusal diagnostics ([84176a1](https://github.com/thewoolleyman/livespec/commit/84176a17d5f088d66db0a5a103e34a57142898f0))
+
 ## [0.17.1](https://github.com/thewoolleyman/livespec/compare/v0.17.0...v0.17.1) (2026-07-18)
 
 
