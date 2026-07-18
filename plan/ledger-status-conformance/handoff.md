@@ -1,5 +1,96 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
+> **SESSION 12 (2026-07-18) — REOPENED. Close the create-drift hole: guard-enforce `bd create` → `backlog`. Implementation + autonomous rollout.**
+>
+> **Why reopened:** the SESSION-11 close correctly found no *legit workflow was
+> blocked*, but left create-side drift OPEN as a known gap. The maintainer
+> (2026-07-18) pushed on "why is this still drifting if the wrapper is on the
+> PATH?" — exposing a real, closable gap:
+>   - The guard passes `bd create` through UNCHANGED (create is out of scope).
+>     beads v1.0.5 `bd create` hardcodes `open` — NO `--status` flag (that is the
+>     unreleased #4536), NO `status.default` config (the stalled #4738). So EVERY
+>     `bd create` through the guard still lands `open`, from any caller (raw OR
+>     the store's own two-step create).
+>   - This bit a real dispatch this session: the codex-factory-telemetry session
+>     filed 5 slices via raw `bd create`; they landed `open` — non-conformant AND
+>     not `ready` — so the dispatcher's readiness gate rejected them.
+>
+> **Decision (maintainer-directed):** stop relying on after-the-fact healing;
+> make the guard force EVERY qualifying `bd create` to land `backlog`, so no `bd`
+> mechanism can introduce a non-lifecycle status. The earlier "the wrapper can't
+> tell a raw create from the store's two-step create" objection was the WRONG
+> lens: you do NOT distinguish — you fix ALL creates uniformly. The store's own
+> follow-up `update --status <final>` then just overwrites `backlog` with the
+> real intended status (a harmless no-op-or-correct); nothing breaks.
+>
+> **THE CHANGE — `livespec-orchestrator-beads-fabro`, `bd-guard/`:**
+>   - `bd-guard.sh` today: scans argv → sets `violated`/`_bdg_op`; fail-mode
+>     blocks (exit 3); else passthrough `"$REAL" "$@"`. `create` never trips a
+>     violation → falls to passthrough. That passthrough tail is the seam.
+>   - ADD a create-enforcement path: for a QUALIFYING create (subcommand
+>     `create`/`new`/`q`) NOT already carrying a lifecycle `--status`/`-s`, after
+>     the real create SUCCEEDS (exit 0), capture the new id and run
+>     `"$REAL" update <id> --status backlog`. A guard-side two-step (v1.0.5 has no
+>     atomic create-with-status).
+>   - **id capture is clean, not brittle:** `bd create --silent` prints ONLY the
+>     id (`--json` gives structured output). Recommended: run the create with
+>     stdout captured to a tempfile, print it to the user (preserve normal output
+>     + exit code), then parse the id and do the follow-up. Implementer MUST
+>     confirm the exact id format against a real create and cover it with a test.
+>   - **EXCLUDE from forcing** (pass through untouched): `--type=event` (audit
+>     event beads), `--ephemeral`, batch (`--file`/`--graph` → many ids; skip, or
+>     set backlog on ALL created ids), `--dry-run`, and any create already
+>     carrying a lifecycle `--status` (future-proofs for when #4536 ships).
+>   - **Fail-open:** if the follow-up `update` fails (dolt hiccup), the item
+>     strands at `open` — the SAME window the store's two-step already has; the
+>     normalizer stays the backstop. Do NOT fail the create on a follow-up error.
+>   - The 5 existing mutation-channel blocks (`update --claim`, non-lifecycle
+>     `--status`, `reopen`, `ready --claim`, `defer`) are UNCHANGED. With create
+>     added, the guard covers EVERY non-lifecycle-introducing channel.
+>
+> **HERMETIC TESTS (required, `bd-guard/test/`, harness stubs real bd via
+> `LIVESPEC_BD_REAL`):** prove (a) qualifying create → follow-up
+> `update --status backlog` fires with the captured id; (b) normal output + exit
+> code preserved; (c) `--type=event`/`--ephemeral`/`--file`/`--graph`/`--dry-run`
+> do NOT trigger the follow-up; (d) a create already carrying `--status
+> <lifecycle>` is NOT overridden; (e) a follow-up-update failure does NOT change
+> the create's exit code (fail-open); (f) the 5 existing block/warn behaviors are
+> unchanged. Full `just check` green. (Wrapper is SHELL → the red-green-replay
+> `.py` ritual does not apply to it; any `.py` helper/test still follows repo
+> discipline.)
+>
+> **ROLLOUT (autonomous):**
+>   1. Land the impl PR in `livespec-orchestrator-beads-fabro` (auto-merges on
+>      green). Code merge has ZERO blast radius until the host is reinstalled.
+>   2. Adversarial (Fable) review of the merged change BEFORE host reinstall —
+>      blast radius of the reinstall is the WHOLE fleet's `bd create`.
+>   3. `sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/install.sh`.
+>      Rollback: `sudo .../bd-guard/rollback.sh`.
+>   4. LIVE-VERIFY (below). If it fails → `rollback.sh` + fix-forward.
+>
+> **LIVE-VERIFY (done means):**
+>   - A real throwaway `bd create` (title `zzz-create-enforce-probe-DELETEME`)
+>     through the reinstalled guard lands **`backlog`, not `open`** — then close/
+>     clean the probe.
+>   - The store capture/groom flow still files conformant items (spot-check).
+>   - `--type=event` / batch / `--ephemeral` creates still behave (no wrong
+>     backlog forcing).
+>   - `bd --version` passthrough intact; 8-member fleet survey stays 0 drift; both
+>     Honeycomb triggers unaffected; telemetry still flows.
+>
+> **RETIREMENT (unchanged):** the store two-step AND the guard create-enforcement
+> are BOTH v1.0.5 stopgaps. Once beads ships #4536 (`bd create --status`) they
+> collapse to single-step; once #4738 (`status.default`) lands + is adopted in
+> each `.beads/`, create is atomically conformant and this enforcement can retire.
+> Both remain upstream-pending (#4738 OPEN/stalled since 07-12; latest beads
+> release still v1.1.0). The store two-step STAYS meanwhile (it protects
+> environments the guard isn't installed in — CI, fresh clones).
+>
+> **STATE AT REOPEN (verified this session):** guard `fail` host-wide; both
+> triggers fixed + paging (S11); fleet healed to 0 drift; ~24.8k guarded ops with
+> 0 legit blocks. This S12 work ADDS create-enforcement; the 5 existing blocks are
+> untouched.
+
 > **SESSION 11 (2026-07-18) — close-out reconciliation + trigger fixes; thread ARCHIVED. No open work.**
 >
 > After the SESSION 10 close-out note merged (livespec core PR #1314), the
