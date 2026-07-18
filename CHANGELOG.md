@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.3](https://github.com/thewoolleyman/livespec/compare/v0.17.2...v0.17.3) (2026-07-18)
+
+
+### Bug Fixes
+
+* **overseer:** annotate the tmux column with the track runtime ([467e9cb](https://github.com/thewoolleyman/livespec/commit/467e9cb3d817ec511119633058ccb03179b14eb2))
+
 ## [0.17.2](https://github.com/thewoolleyman/livespec/compare/v0.17.1...v0.17.2) (2026-07-18)
 
 
