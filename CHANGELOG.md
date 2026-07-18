@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/thewoolleyman/livespec/compare/v0.17.0...v0.17.1) (2026-07-18)
+
+
+### Bug Fixes
+
+* **overseer:** self-healing resume-submit + Claude name-gate/re-point + idle-nudge 1h floor ([cf52b66](https://github.com/thewoolleyman/livespec/commit/cf52b669cff918b0cb03ded91ae8fa5bd06bfaa8))
+
 ## [0.17.0](https://github.com/thewoolleyman/livespec/compare/v0.16.0...v0.17.0) (2026-07-17)
 
 
