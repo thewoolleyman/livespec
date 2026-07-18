@@ -1,144 +1,106 @@
-# rop-sweep-fleet-policy — audit ROP enforcement fleet-wide, set the BLE policy, fix the scaffold drift
+# rop-sweep-fleet-policy — core slice DONE; full-ROP + BLE backfill epic is next
 
-**Part of the `rop-sweep-*` coordinated set (do these ASAP, together).** Sibling
-plans, findable fleet-wide via `plan/rop-sweep-*`:
-- **`rop-sweep-consumer-cleanup`** (in `livespec-orchestrator-beads-fabro`) — the
-  drifted consumer's local catch-up.
-- **`rop-sweep-library-checks`** (in `livespec-dev-tooling`) — config-drive the 6
-  scope-hardcoded checks + add a drift-guardrail check.
-
-**Not started — a drafted plan for a fresh session.** Authored 2026-07-16. This is
-the `livespec` core slice: the fleet-universal concerns that are neither one
-consumer's cleanup nor the shared check code — the discipline text, the
-enforcement audit across all consumers, the lint policy, and the scaffold fix that
-**prevents** the drift the other two plans clean up and detect.
+**Status: the core slice is implemented in livespec PR
+[#1321](https://github.com/thewoolleyman/livespec/pull/1321) (branch
+`rop-sweep-fleet-policy-core`).** The two sibling `rop-sweep-*` plans already
+merged before this slice ran. What remains is the fleet **backfill epic** (below),
+which the "full ROP everywhere" decision expanded into.
 
 ---
 
-## Why a core slice exists
+## Landscape at execution time (2026-07-18)
 
-The trigger was one consumer's blind-except bulkheads, and the mechanical fixes
-split cleanly into "this consumer" (`rop-sweep-consumer-cleanup`) and "the shared
-check library" (`rop-sweep-library-checks`). What is left is genuinely
-fleet-universal and lives in core:
+The audit found the coordination had already advanced since this plan was drafted
+(2026-07-16):
 
-1. **The discipline is core's** — `SPECIFICATION/constraints.md` already mandates
-   the `returns` railway (`:65` lists `Result`/`IOResult`/`@safe`/`@impure_safe`/
-   `bind`/`lash`; `:147` "Everywhere else stays on the railway"; `:34` "the railway
-   requires unconditional importability"). But the *observability* half of the
-   rule — the part this whole thread turned on — is not written down anywhere
-   normative.
-2. **No one has audited whether every consumer actually enforces it.** I deeply
-   audited only `beads-fabro`. The same dormancy could exist elsewhere.
-3. **The drift is preventable at scaffold time** — and prevention belongs in core's
-   consumer template, not in any single consumer.
+- **`rop-sweep-consumer-cleanup` — MERGED** in `livespec-orchestrator-beads-fabro`
+  (commit `3d2ff13`): that repo now vendors `returns`, enables ruff `BLE`, and
+  routed its expected failures through effects. Zero product blind-catches.
+- **`rop-sweep-library-checks` — MERGED** in `livespec-dev-tooling` (plan archived
+  `0b0125e`): shipped `livespec_dev_tooling/checks/source_trees_scoped_to_consumer.py`,
+  the drift **detection** guardrail (fails on a `missing` declared path or a
+  non-`livespec` consumer retaining core's `.claude-plugin/scripts/livespec` scope).
 
----
+Per-repo ROP audit (product code = the `source_trees` package, excluding synced
+`.claude/` host-machinery hooks):
 
-## Part A — audit ROP enforcement across every consumer
+| Repo | product blind-catches | `returns` | `BLE` | `reportUnusedCallResult` | on railway |
+|---|---|---|---|---|---|
+| `livespec` (core) | 0 | yes | **no** | yes | full (reference) |
+| `livespec-orchestrator-beads-fabro` | 0 | yes | yes | yes | full (cleaned up) |
+| `livespec-orchestrator-git-jsonl` | 0 | **no** | **no** | yes | **not on railway** |
+| `livespec-runtime` | 1 (documented `retry.py`) | **no** | **no** | yes | **not on railway** |
+| `livespec-driver-claude` / `-codex` | 0 (fail-open hooks) | no (n/a) | **no** | **no** | hook-only |
+| `livespec-dev-tooling` | few (fail-open, noqa'd) | **no** | **no** | yes | library (special) |
+| `livespec-console-beads-fabro` | — (Rust) | — | — | — | zero-Python exemption |
 
-Known state (verified for three repos; the rest need the same pass):
+## Maintainer decisions (2026-07-18)
 
-| Repo | `except Exception` | `source_trees` scope | `returns` vendored | Verdict |
-| --- | --- | --- | --- | --- |
-| `livespec` (core) | 0 | correct (own pkg) | yes, used | full railway — the reference |
-| `livespec-orchestrator-git-jsonl` | 0 | correct (own pkg) | **no** | clean of blind-catches, but **not** on the railway (lighter convention) |
-| `livespec-orchestrator-beads-fabro` | 10 files / 13 sites | ✗ core's `livespec` | no | drifted — `rop-sweep-consumer-cleanup` |
-| `livespec-console-beads-fabro` | — | no scripts package yet | — | N/A until it has one (must scaffold correctly) |
+1. **Fleet bar = "flat: full ROP everywhere"** — every Python-carrying fleet repo
+   vendors `returns` and is on the railway, INCLUDING the thin driver plugins
+   (stronger than the tiered recommendation; chosen with the "forces the railway
+   onto hook-only code" trade-off stated).
+2. **ruff `BLE` = "add to template + backfill fleet."**
 
-**Action:** run the beads-fabro-style dormancy audit against **every** consumer
-(git-jsonl, console, and any others), producing a per-repo list of DORMANT /
-WARN-only / correctly-enforced checks. git-jsonl is the important case: its config
-is correct, yet it has not vendored `returns`, so it may be satisfying
-"no blind catch" without being on the railway at all — decide whether the fleet
-target is "no `except Exception`" (met) or "full ROP with `returns`" (not met).
-That decision sets the bar for every consumer.
+## What the core slice landed (PR #1321)
 
----
-
-## Part B — write the observability rule into the spec
-
-The corrected guidance from this thread must become normative, not live only in a
-plan. Add to `SPECIFICATION/constraints.md` (or non-functional-requirements) the
-observability rule:
-
-- Observability/side-effects are `.map(tap(effect))` pass-through steps.
-- **Unexpected** failures propagate to the supervisor; "the call can throw" is
-  never itself a reason to catch (everything can throw). Only a **named, expected**
-  failure a path deliberately tolerates rides the railway, via a **narrowed**
-  `@impure_safe(exceptions=(…))` — never a blanket lift.
-- A critical downstream step is protected from an observability failure by
-  **ordering** (commit before the tap), not by catching.
-
-This is the rule that distinguishes ROP-done-right from a relocated bulkhead; core
-is where it becomes binding on the whole fleet.
-
----
-
-## Part C — the lint / type policy (belt-and-suspenders)
-
-- **Ruff `BLE` (flake8-blind-except) is off in all three repos checked.** Even
-  where `no_except_outside_io` bans `try/except` structurally, `BLE001` is a
-  cheap, direct ban on the exact `except Exception` construct. Decide whether the
-  shared config the consumer template emits should `select` `"BLE"` fleet-wide.
-- **`reportUnusedCallResult = "error"`** (pyright) is the load-bearing guardrail
-  against silently discarding a `Result`/`IOResult` (`constraints.md:65` — there is
-  no pyright plugin for `returns`, so this diagnostic *is* the enforcement). Audit
-  that every consumer's `[tool.pyright]` sets it; a consumer that vendors `returns`
-  without it can drop Results silently.
+- **Spec (nfr.md, revise v165)** — accepted after an independent Fable-model
+  NO-BLOCKERS review:
+  - §"ROP composition": the **observability pass-through-tap rule** (Part B) —
+    side-effects are value-preserving `.map`/`tap` steps, never a reason to catch;
+    "the call can throw" is never itself a reason to lift; a critical step is
+    protected from an observability failure by **ordering**, not catching.
+  - §"Linter rule set": ruff **`BLE`** added to the enumerated set (27 → 28).
+  - §"Shared content provenance": the **full-ROP fleet+adopter-wide bar** (sibling
+    to the red-green-replay bullet). The only permitted broad `except Exception`
+    is a single outermost boundary — a CLI supervisor bug-catcher OR a
+    never-wedge-the-agent hook's fail-open pass-through (grounded in
+    `contracts.md`'s hook fail-open discipline). Sole exemption: zero-first-party-
+    Python (the Rust console).
+- **Template (`templates/orchestrator-plugin/…pyproject.toml.jinja`)** —
+  - **Part D (prevention):** now EMITS a `[tool.livespec_dev_tooling]` block with
+    `source_trees` parameterized to the consumer's own package. Root cause of the
+    beads-fabro dormancy: `load_config` falls back to core's `livespec` layout
+    ONLY when the block is absent, so an omitted/hand-written block silently
+    scoped the ROP checks at a package the consumer lacks. Emitting the block is
+    prevention; `source_trees_scoped_to_consumer` is detection.
+  - **Part C:** adds ruff `BLE` to the template select.
 
 ---
 
-## Part D — fix the scaffold template (prevent future drift)
+## NEXT: the full-ROP + BLE backfill epic
 
-The root cause of `beads-fabro`'s drift: its `[tool.livespec_dev_tooling]` block
-was set to core's `livespec` layout and never re-pointed at its own package. The
-consumer scaffold template lives here:
-`templates/orchestrator-plugin/{% if ecosystem == 'python' %}pyproject.toml{% endif %}.jinja`
-(+ `templates/orchestrator-plugin/copier.yml`).
+Bring existing off-railway repos up to the new bar. Each repo backfills ITSELF
+(its own pyproject + its own catch-auditing), so the per-repo work-items belong in
+each repo's OWN beads tenant. **Filing is intentionally left to the maintainer's
+consent-gated `capture-work-item` workflow** (per-tenant, per-item-consented by
+design) rather than hand-filed — raw `bd` risks non-conforming records the ledger
+checks reject, and there is no bare create-CLI.
 
-**Fix:** ensure the template emits a `[tool.livespec_dev_tooling]` block whose
-source-tree paths are **parameterized by the consumer's package name** (a copier
-variable), so a freshly scaffolded consumer points at its own package, not
-`livespec`. This is the *prevention* half; `rop-sweep-library-checks`'s
-drift-guardrail is the *detection* half. Together they make this class of drift
-impossible to introduce silently. Confirm the current template state first —
-whether it omits the block (consumers hand-write it, which is how the drift
-entered) or hardcodes `livespec` — and fix accordingly.
+Per-repo work-items (design record: nfr.md §"Shared content provenance" fleet-bar
+bullet + §"Linter rule set" BLE; this handoff):
 
----
+1. **`livespec` (core)** — add `"BLE"` to pyproject `[tool.ruff.lint].select`.
+   `.claude/hooks/**` + `.claude/skills/overseer/**` are already ruff-excluded, but
+   the legit supervisor bug-catcher(s) (`commands/*/main`, doctor `run_static.py`)
+   need `# noqa: BLE001 — <reason>`. Verify `just check` green.
+2. **`livespec-orchestrator-git-jsonl`** — vendor `dry-python/returns`; put product
+   logic on the Result/IOResult railway; add `"BLE"`. Largest slice (clean of
+   blind-catches today but never adopted the railway).
+3. **`livespec-runtime`** — narrow `livespec_runtime/cross_repo/retry.py:49`'s broad
+   `except Exception` to named expected transport exceptions (it currently converts
+   bugs → None/UNKNOWN by documented design — the exact anti-pattern the Part B
+   observability rule targets); add `"BLE"`; decide vendoring `returns` (library).
+4. **`livespec-driver-claude`** — add `"BLE"` + `reportUnusedCallResult = "error"`;
+   fail-open hooks keep `# noqa: BLE001 — fail-open by contract`; decide vendoring
+   `returns` (hook bodies are minimal — the fail-open handler IS the single boundary).
+5. **`livespec-driver-codex`** — same as driver-claude.
+6. **`livespec-dev-tooling`** — add `"BLE"`; audit its own product catches
+   (`green_token.py`, `agent_hooks/*`, `install_no_shadow_ledger.py`) — narrow or
+   noqa each; it already has `reportUnusedCallResult`.
+7. **`livespec-console-beads-fabro`** — N/A (Rust, zero first-party Python = the
+   sole spec exemption). The fixed template scaffolds it correctly when it gains Python.
 
-## Coordination / sequence
-
-1. **Core (this plan):** land the spec observability rule (Part B) + the template
-   fix (Part D); decide the BLE / pyright policy (Part C); run the fleet audit
-   (Part A).
-2. **`rop-sweep-library-checks` (dev-tooling):** land the config-driven checks +
-   drift-guardrail; the guardrail then enforces Part D's intent on existing repos.
-3. **`rop-sweep-consumer-cleanup` (beads-fabro):** the drifted consumer catches up;
-   its Phase 3 consumes the dev-tooling fix.
-
-The three are independent to *start* but interlock: Part D + the drift-guardrail
-prevent recurrence, the library fix unblocks the consumer's Phase 3, and the audit
-may surface more consumers needing their own cleanup slice.
-
-## Decisions for the implementing session
-
-1. **Fleet target bar:** "no `except Exception`" (git-jsonl already meets) vs
-   "full ROP with vendored `returns`" (only core meets). Recommend the latter as
-   the stated target, phased.
-2. **Ruff `BLE` fleet policy:** add to the shared template (recommended) vs leave
-   to `no_except_outside_io` alone.
-3. **Template fix shape:** parameterize an emitted block (recommended) vs document
-   a required post-scaffold manual step (rejected — that is exactly what drifted).
-
-## Evidence / references (file:line — this repo)
-
-- ROP mandate: `SPECIFICATION/constraints.md:65` (`returns` primitives +
-  `reportUnusedCallResult`), `:147` ("stays on the railway"), `:34`.
-- Consumer scaffold template: `templates/orchestrator-plugin/…pyproject.toml….jinja`,
-  `templates/orchestrator-plugin/copier.yml`, `copier.yml`.
-- The drifted consumer + its inventory: `rop-sweep-consumer-cleanup` in
-  `livespec-orchestrator-beads-fabro`.
-- The shared-check fixes this depends on / enables: `rop-sweep-library-checks` in
-  `livespec-dev-tooling`.
+Sequencing: independent per-repo self-contained slices. `git-jsonl` (item 2) is the
+heaviest (railway adoption). Each closes with `just check` green + the repo's
+`/livespec:doctor`.
