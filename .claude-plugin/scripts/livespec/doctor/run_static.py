@@ -224,6 +224,6 @@ def main(*, argv: list[str] | None = None) -> int:
         case Success(namespace):
             return _orchestrate(namespace=namespace)
         case Failure(LivespecError() as err):
-            return err.exit_code
+            return cli.emit_livespec_failure(command="doctor-static", err=err)
         case _:
             assert_never(unwrapped)

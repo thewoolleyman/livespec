@@ -82,16 +82,14 @@ from livespec.commands._revise_validation import (
 from livespec.commands._revise_validation import (
     _validate_resulting_files_targets_exist as _validate_resulting_files_targets_exist,
 )
-from livespec.errors import HelpRequestedError, LivespecError, UsageError
-from livespec.io import cli, fs, structlog_facade
+from livespec.errors import LivespecError, UsageError
+from livespec.io import cli, fs
 from livespec.io import git as io_git
 from livespec.parse import jsonc
 from livespec.validate import revise_input as validate_revise_input_module
 
 __all__: list[str] = ["build_parser", "main"]
 
-
-_log = structlog_facade.get_logger(name=__name__)
 
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 _REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
@@ -164,16 +162,8 @@ def _pattern_match_io_result(
     match unwrapped:
         case Success(_):
             return 0
-        case Failure(HelpRequestedError() as err):
-            return err.exit_code
         case Failure(LivespecError() as err):
-            _log.error(
-                message="revise failed",
-                error_type=type(err).__name__,
-                error=str(err),
-                exit_code=err.exit_code,
-            )
-            return err.exit_code
+            return cli.emit_livespec_failure(command="revise", err=err)
         case _:
             assert_never(unwrapped)
 

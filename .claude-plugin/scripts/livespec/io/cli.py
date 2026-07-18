@@ -32,9 +32,13 @@ import argparse
 
 from returns.io import IOResult, impure_safe
 
-from livespec.errors import HelpRequestedError, UsageError
+from livespec.errors import HelpRequestedError, LivespecError, UsageError
+from livespec.io import streams, structlog_facade
 
-__all__: list[str] = ["parse_argv"]
+__all__: list[str] = ["emit_livespec_failure", "parse_argv"]
+
+
+_log = structlog_facade.get_logger(name=__name__)
 
 
 @impure_safe(exceptions=(argparse.ArgumentError, SystemExit))  # pyright: ignore[reportArgumentType]
@@ -72,6 +76,31 @@ def parse_argv(
     the canonical pattern in `livespec/parse/jsonc.py`.
     """
     return _raw_parse_argv(parser=parser, argv=argv).alt(_ParseErrorMapper())
+
+
+def emit_livespec_failure(
+    *,
+    command: str,
+    err: LivespecError,
+) -> int:
+    """Emit the stderr diagnostic for a supervisor failure and return its exit code.
+
+    Help requests are argparse's successful short-circuit and have already
+    written their help text to stdout, so they intentionally remain quiet on
+    stderr. Every other expected domain failure emits the human-readable error
+    through the current stderr stream and one structured JSON log line before
+    the supervisor returns the mapped exit code.
+    """
+    if isinstance(err, HelpRequestedError):
+        return err.exit_code
+    _ = streams.write_stderr(text=f"{err}\n")
+    _log.error(
+        message=f"{command} failed",
+        error_type=type(err).__name__,
+        error=str(err),
+        exit_code=err.exit_code,
+    )
+    return err.exit_code
 
 
 class _ParseErrorMapper:
