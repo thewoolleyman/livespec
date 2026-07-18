@@ -193,7 +193,7 @@ def main(*, argv: list[str] | None = None) -> int:
             )
             return propose_change.main(argv=delegated_argv)
         case Failure(LivespecError() as err):
-            return err.exit_code
+            return cli.emit_livespec_failure(command="critique", err=err)
         case _:
             assert_never(unwrapped)
 

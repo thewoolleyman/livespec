@@ -144,7 +144,7 @@ def _pattern_match_io_result(
         case Success(_):
             return 0
         case Failure(LivespecError() as err):
-            return err.exit_code
+            return cli.emit_livespec_failure(command="resolve-template", err=err)
         case _:
             assert_never(unwrapped)
 

@@ -120,6 +120,6 @@ def main(*, argv: list[str] | None = None) -> int:
         case Success(_):
             return 0
         case Failure(LivespecError() as err):
-            return err.exit_code
+            return cli.emit_livespec_failure(command="next", err=err)
         case _:
             assert_never(unwrapped)

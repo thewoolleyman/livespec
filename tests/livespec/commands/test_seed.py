@@ -1899,6 +1899,7 @@ def test_seed_module_declares_hkt_erosion_pragma() -> None:
 def test_seed_main_refuses_with_precondition_when_main_spec_target_exists(
     *,
     tmp_path: Path,
+    capsys: object,
 ) -> None:
     """Re-seed refusal: an existing payload-declared target → exit 3, untouched.
 
@@ -1907,7 +1908,14 @@ def test_seed_main_refuses_with_precondition_when_main_spec_target_exists(
     fire before ANY write — a re-run of seed against an already-seeded
     project must not clobber the live spec tree (found live 2026-07-04
     against the seeded resume adopter repo; ledger bug livespec-igls).
+
+    Per the `LivespecError` envelope contract, the supervisor must also
+    emit the refusal diagnostic on stderr so the driver prose can surface
+    the offending path instead of reporting a silent exit 3.
     """
+    import pytest
+
+    assert isinstance(capsys, pytest.CaptureFixture)
     project_root = tmp_path / "proj"
     spec_dir = project_root / "SPECIFICATION"
     spec_dir.mkdir(parents=True)
@@ -1918,7 +1926,11 @@ def test_seed_main_refuses_with_precondition_when_main_spec_target_exists(
     exit_code = seed.main(
         argv=["--seed-json", str(payload_path), "--project-root", str(project_root)],
     )
+    captured = capsys.readouterr()
     assert exit_code == 3
+    assert captured.out == ""
+    assert "idempotency" in captured.err
+    assert str(existing) in captured.err
     assert existing.read_text(encoding="utf-8") == original_content
     assert not (
         project_root / ".livespec.jsonc"
