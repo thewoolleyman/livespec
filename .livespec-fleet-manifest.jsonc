@@ -64,6 +64,18 @@
     // the full target profile up front per the register-first birth procedure;
     // all wiring (GitHub repo, .livespec.jsonc, credential_wrapper, spec seed,
     // beads tenant) is DEFERRED to the onboarding pass.
-    { "repo": "resume", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "pinned" }
+    { "repo": "resume", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "pinned" },
+    // homelab: greenfield Git-governed control plane for an AI-driven NixOS
+    // homelab (registered 2026-07-18) — built livespec-first from a seed repo,
+    // like resume (contrast: openbrain adopted the workflow as an existing
+    // brownfield app). First adopter on the `released` posture: it tracks the
+    // moving livespec release channel and carries the session-currency updater
+    // hook, so the fleet-conformance currency sweep holds it current (bound
+    // only for `released` adopters, per non-functional-requirements.md §"Fleet
+    // membership contract" → "Adopters"). Declares the full target profile up
+    // front per the register-first birth procedure; all wiring (.livespec.jsonc
+    // via seed, credential_wrapper, GitHub App, beads tenant, per-tenant Fabro
+    // server) is DEFERRED to the post-seed onboarding pass.
+    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" }
   ]
 }
