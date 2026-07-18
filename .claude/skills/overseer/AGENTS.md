@@ -872,6 +872,21 @@ for the marker's edge-triggered lifecycle.
   Deliberately kept lightweight (a manual pre-push run, no CI wiring) to preserve
   the "outside the product gates" design — the discipline lives here, in the
   developer's hands, not in a gate.
+- **Codex discovery is seam-injected end-to-end, so the suite is hermetic even
+  with a live codex on the host (test-isolation, 2026-07-18).** `codex_sessions` was
+  already injectable at the FUNCTION level, but the `Supervisor` only threaded
+  `ppid_of` into it — so `adopt_sessions` / `_refresh_codex_sessions` still read the
+  real `/proc` `comm==codex` scan and the real `~/.codex/session_index.jsonl`, a host
+  coupling in a unit suite (a running codex could in principle perturb a test). The
+  `Supervisor` now carries `codex_home` + `codex_pids_of_comm` / `codex_fd_targets_of`
+  / `codex_cwd_of` fields (default real, mirroring the Claude `sessions_dir` + `/proc`
+  seams) and threads ALL of them into BOTH codex call sites. The beside-tests' `_sup`
+  factory defaults `codex_pids_of_comm` to an empty scan + `codex_home` to a
+  non-existent dir, so no adopt/refresh test touches real host state (with an empty
+  pid scan the fd/cwd readers are never reached). A codex-behavior test injects the
+  seams to SIMULATE a session end-to-end
+  (`test_refresh_and_adopt_route_codex_through_injected_seams`) — the proof the
+  threading holds; sabotage either call site's seams and it goes red.
 - **Adding a `.py` here?** Keep it stdlib-only. The ruff `**` exclude covers new
   files automatically, but new beside-tests must be run manually (they will not
   be collected by `just check`'s product suite).

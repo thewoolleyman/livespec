@@ -259,6 +259,13 @@ def _sup(tmp_path, fake, **kwargs):
     kwargs.setdefault("out", _io.StringIO())
     kwargs.setdefault("now", lambda: 1000.0)  # overridable: pass now=lambda: clock["t"]
     kwargs.setdefault("sleep", lambda _s: None)
+    # Hermetic Codex discovery by default (#6): an empty `/proc` scan + a non-existent
+    # `~/.codex` so adopt/refresh touch NO real host state, and the suite stays green with
+    # a live codex on the host. With `pids_of_comm` returning [], the fd/cwd readers are
+    # never reached, so they need no fake. A codex-behavior test overrides these to inject
+    # a simulated session (see test_refresh_and_adopt_route_codex_through_injected_seams).
+    kwargs.setdefault("codex_home", str(tmp_path / "codex-home-none"))
+    kwargs.setdefault("codex_pids_of_comm", lambda _comm: [])
     return supervisor.Supervisor(
         tmux=fake,
         store_path=str(tmp_path / "map.jsonl"),
@@ -1738,6 +1745,72 @@ def test_adopt_is_continuous_across_ticks(tmp_path):
     sup.build_rows(act=True)
     rows = {(r.repo, r.topic): r.tmux for r in registry.read_mapping(sup.store_path)}
     assert rows.get((os.path.normpath(str(repo)), topic)) == "s1"
+
+
+# --------------------------------------------------------------------------- #
+# Codex discovery is fully injectable (#6): adopt + refresh route through the
+# Supervisor's codex seams, never the real /proc scan or ~/.codex — so the suite
+# is hermetic even with a live codex on the host.
+# --------------------------------------------------------------------------- #
+
+
+def test_refresh_and_adopt_route_codex_through_injected_seams(tmp_path):
+    """`adopt_sessions` and `_refresh_codex_sessions` must drive Codex discovery through the
+    INJECTED seams (`codex_home` / `codex_pids_of_comm` / `codex_fd_targets_of` /
+    `codex_cwd_of`), never `codex_sessions`' real `/proc` scan + `~/.codex`. We wire the
+    seams to a fully-simulated codex process — pid 9000, holding a rollout whose id the
+    injected `~/.codex` index names for our topic — and assert BOTH paths discover it. That
+    is impossible unless every reader is the injected one (pid 9000 is not a real process),
+    so it proves the threading AND that no real host state is read. Sabotage-verify: drop
+    any seam from either supervisor call site and the discovery goes empty."""
+    repo, topic = _make_plan(tmp_path, topic="cx")
+    fake = FakeTmux()
+    fake.pane_pids = {7001: "livespec-cx"}  # the codex pid's pane-pid ancestor → this tmux
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # no claude registry files → the claude side contributes nothing
+    # An injected ~/.codex whose index names our fake session-id for the topic.
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    (codex_home / "session_index.jsonl").write_text(
+        json.dumps({"id": sid, "thread_name": topic}) + "\n", encoding="utf-8"
+    )
+    # Injected /proc seams describing ONE live codex process (pid 9000) in this repo,
+    # each recording its calls so we can assert the injected readers are the ones hit.
+    hits = {"pids": [], "fd": [], "cwd": []}
+
+    def _pids(comm):
+        hits["pids"].append(comm)
+        return [9000] if comm == codex_sessions.CODEX_COMM else []
+
+    def _fd(pid):
+        hits["fd"].append(pid)
+        return [f"/proc/{pid}/fd/rollout-2026-07-18T00-00-00-{sid}.jsonl"] if pid == 9000 else []
+
+    def _cwd(pid):
+        hits["cwd"].append(pid)
+        return str(repo) if pid == 9000 else None
+
+    sup = _adopt_sup(
+        tmp_path,
+        fake,
+        sessions_dir,
+        {9000: 7001},  # ppid_of: pid 9000's parent is the pane pid 7001 (→ resolves to tmux)
+        {},
+        watch_repos=[str(repo)],
+        codex_home=str(codex_home),
+        codex_pids_of_comm=_pids,
+        codex_fd_targets_of=_fd,
+        codex_cwd_of=_cwd,
+    )
+
+    adopted = sup.adopt_sessions()
+    assert [(t.topic, t.tmux) for t in adopted] == [(topic, "livespec-cx")]
+    assert hits["pids"] and hits["fd"] and hits["cwd"]  # the injected readers were the ones hit
+
+    sup._refresh_codex_sessions()
+    live = sup._codex.get(("livespec-cx", topic))
+    assert live is not None and live.session_id == sid
 
 
 # --------------------------------------------------------------------------- #
