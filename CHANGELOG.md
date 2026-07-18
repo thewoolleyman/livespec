@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.6](https://github.com/thewoolleyman/livespec/compare/v0.17.5...v0.17.6) (2026-07-18)
+
+
+### Bug Fixes
+
+* **overseer:** thread codex discovery seams through the Supervisor (defect [#6](https://github.com/thewoolleyman/livespec/issues/6)) ([ae2b96f](https://github.com/thewoolleyman/livespec/commit/ae2b96f23b24ac905e285aed1f1a827f6f321d15))
+
 ## [0.17.5](https://github.com/thewoolleyman/livespec/compare/v0.17.4...v0.17.5) (2026-07-18)
 
 
