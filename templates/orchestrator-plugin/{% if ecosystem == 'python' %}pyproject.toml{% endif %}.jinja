@@ -61,6 +61,26 @@ dev = [
 livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v0.28.0" }
 
 # ---------------------------------------------------------------------------
+# livespec-dev-tooling layout — the source-tree roles the shared checks
+# (the ROP / blind-except, coverage, AST-shape, and mirror-pairing checks)
+# scan. This block MUST be present and MUST point at THIS plugin's package.
+# livespec-dev-tooling's config loader falls back to livespec CORE's own
+# `.claude-plugin/scripts/livespec` layout ONLY when the block is entirely
+# absent — so an omitted block silently scopes every check at a package this
+# repo does not have, and the ROP / blind-except enforcement goes dormant
+# (the drift the `source_trees_scoped_to_consumer` guardrail now catches).
+# `source_trees` is parameterized to this plugin's package so the checks
+# scan your code, never livespec core's. Create your package root at
+# `.claude-plugin/scripts/{{ plugin_full_name | replace('-', '_') }}/`; as
+# your layout grows, extend this block with `io_trees`, `commands_trees`,
+# `source_tree_prefixes`, and `[[tool.livespec_dev_tooling.mirror_pairings]]`
+# entries (see livespec/SPECIFICATION for each role's meaning).
+# ---------------------------------------------------------------------------
+
+[tool.livespec_dev_tooling]
+source_trees = [".claude-plugin/scripts/{{ plugin_full_name | replace('-', '_') }}"]
+
+# ---------------------------------------------------------------------------
 # Ruff — sole linter, formatter, import-sorter, complexity checker.
 # Rule set mirrors livespec/pyproject.toml [tool.ruff] per
 # livespec/SPECIFICATION/non-functional-requirements.md
@@ -78,6 +98,7 @@ select = [
     "F",     # pyflakes
     "I",     # isort
     "B",     # flake8-bugbear
+    "BLE",   # flake8-blind-except — bans the broad `except Exception` bulkhead
     "UP",    # pyupgrade
     "SIM",   # flake8-simplify
     "C90",   # mccabe complexity
