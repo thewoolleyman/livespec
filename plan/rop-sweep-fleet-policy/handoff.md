@@ -68,17 +68,23 @@ Per-repo ROP audit (product code = the `source_trees` package, excluding synced
 
 ---
 
-## NEXT: the full-ROP + BLE backfill epic
+## NEXT: the full-ROP + BLE backfill epic — FILED
 
-Bring existing off-railway repos up to the new bar. Each repo backfills ITSELF
-(its own pyproject + its own catch-auditing), so the per-repo work-items belong in
-each repo's OWN beads tenant. **Filing is intentionally left to the maintainer's
-consent-gated `capture-work-item` workflow** (per-tenant, per-item-consented by
-design) rather than hand-filed — raw `bd` risks non-conforming records the ledger
-checks reject, and there is no bare create-CLI.
+The backfill is filed under **epic `livespec-y2lkf4` — "Full-ROP + ruff BLE fleet
+backfill"** in livespec CORE's ledger. Per the fleet convention the coordinating
+epic and ALL child work-items live in the one core tenant (the factory dispatches
+each child into the right repo's sandbox; the child titles name their target repo).
+The epic `tracks` its 6 children. **Status is READ from the ledger** via
+`list-work-items` / `next` — never stored here (no-shadow-ledger).
 
-Per-repo work-items (design record: nfr.md §"Shared content provenance" fleet-bar
-bullet + §"Linter rule set" BLE; this handoff):
+**Next action:** `groom livespec-y2lkf4` to decompose/tier the epic's children into
+`ready`, then dispatch each via the FACTORY path — the `drive` operation
+(`impl:<id>`) or the Dispatcher drain — under the janitor gate. Do NOT implement
+these in-session (the retired inline anti-pattern).
+
+Per-repo children (the ledger holds their ids; each child's title names its repo).
+Design record: livespec nfr.md v165 §"Shared content provenance" fleet-bar +
+§"Linter rule set" BLE:
 
 1. **`livespec` (core)** — add `"BLE"` to pyproject `[tool.ruff.lint].select`.
    `.claude/hooks/**` + `.claude/skills/overseer/**` are already ruff-excluded, but
