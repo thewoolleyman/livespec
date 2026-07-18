@@ -188,6 +188,21 @@ jobs:
         if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v4
 
+      # GitHub-hosted routing keeps the baked `container:` image, so the
+      # workspace is checked out as the runner uid (1001) on the host while
+      # every step runs git as ROOT inside the container — git then refuses
+      # with "detected dubious ownership" (exit 128). actions/checkout adds its
+      # own safe.directory but scopes it to a temporary HOME it discards, and
+      # resolve_repo_root() (config.py) strips all GIT_* env before shelling
+      # git, so an env-var safe.directory is invisible to it. Write it to the
+      # global gitconfig ($HOME/.gitconfig, HOME=/github/home) instead: HOME is
+      # preserved across the GIT_* scrub, so EVERY git call — including the
+      # env-scrubbed resolve_repo_root — reads it. No-op on the self-hosted
+      # lane (its persistent workspace already trusts itself).
+      - name: Trust workspace for git (hosted container root-vs-checkout uid)
+        if: needs.setup.outputs.py_changed == 'true'
+        run: git config --global --add safe.directory '*'
+
       # Tools are baked into the image; `mise install` is a near-no-op that
       # just confirms the pinned versions. A fresh container does not TRUST the
       # repo .mise.toml, so `mise trust` is required for the shims to resolve.
@@ -321,6 +336,15 @@ jobs:
           # never silently passes). Cheap for this repo; harmless for
           # the other metadata entries.
           fetch-depth: 0
+
+      # Trust the workspace for git under hosted routing: the baked container
+      # runs git as ROOT over a uid-1001 checkout → "dubious ownership" (exit
+      # 128) otherwise. Written to the global gitconfig (HOME=/github/home) so
+      # even resolve_repo_root() — which strips all GIT_* env before shelling
+      # git (config.py) — reads it. See check-python for the full rationale.
+      # No-op on the self-hosted lane.
+      - name: Trust workspace for git (hosted container root-vs-checkout uid)
+        run: git config --global --add safe.directory '*'
 
       # The cross-repo wiring-completeness invariant (run inside
       # check-doctor-static) walks every registered sibling repo and
