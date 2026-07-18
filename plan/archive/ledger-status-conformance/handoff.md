@@ -1,5 +1,48 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
+> **SESSION 12 — ✅ COMPLETE + VERIFIED LIVE (2026-07-18). Create-normalization is shipped, deployed, and proven on the host. Thread RE-ARCHIVED.**
+>
+> The guard now forces every qualifying `bd create` to `backlog` — the last raw
+> drift channel is closed. Landed in `livespec-orchestrator-beads-fabro` across
+> THREE PRs (#745 → #749 → #752), each gated by an independent adversarial
+> (Fable) review that caught THREE distinct data-corruption bugs BEFORE any
+> reached the host:
+>   - **#745** — the create-normalization (guard-side two-step: run the real
+>     create, extract the new id, fail-open `bd update <id> --status backlog`).
+>   - **#749** — fixed 2 deploy-BLOCKERS the review found: (1) the id extractor
+>     grabbed the WRONG token on `--json` creates — beads legacy JSON marshals
+>     keys ALPHABETICALLY, so a real id embedded in `--description` sorts before
+>     `id`, and the old first-token logic would `update` that unrelated live item
+>     to `backlog`; (2) the follow-up `update` dropped the create's global flags →
+>     wrong-tenant mutation. Replaced with FORM-ANCHORED extraction (`"id"` JSON
+>     field / `Created issue:` marker / whole-output for `--silent`, else skip) +
+>     tenant-selector EXCLUSION.
+>   - **#752** — closed the last narrow hole: tenant/db selectors placed AFTER the
+>     subcommand (cobra persistent flags) were still forced.
+>   101 hermetic tests; shellcheck + `just check` green on each.
+>
+> **DEPLOYED + LIVE-VERIFIED on the host (2026-07-18):**
+> `sudo /data/projects/livespec-orchestrator-beads-fabro/bd-guard/install.sh`
+> refreshed the wrapper (bd-real untouched, sentinel intact, mode PRESERVED =
+> `fail`, passthrough `1.0.5`, collector + OTLP door up). Three live tests, all
+> passed, all probes deleted (0 drift left):
+>   1. plain `bd create` → landed **`backlog`** (not `open`);
+>   2. the exact headline bug: a `--json` create whose description embedded a real
+>      **active** item's id → the NEW item landed `backlog` and the decoy item
+>      **STAYED `active`** (the old logic would have demoted it);
+>   3. fleet survey = **0 status-conformance drift** across all 8 members through
+>      the new guard. Tenant-selector + event/batch exclusions covered by the
+>      hermetic tests (live-testing needs a second tenant).
+>
+> The guard now covers EVERY non-lifecycle-introducing `bd` channel:
+> create→`backlog` (NEW) + the 5 mutation blocks (`--claim` / non-lifecycle
+> `--status` / `reopen` / `ready --claim` / `defer`). **RETIREMENT unchanged:**
+> the store two-step AND the guard create-enforcement are both v1.0.5 stopgaps;
+> they collapse/retire once beads ships #4536 (`bd create --status`) / #4738
+> (`status.default`), both still upstream-pending. On-demand drift healing
+> (`needs-attention-internal` Signal 5 / `ledger-normalize`) stays as the
+> backstop. No open work — thread RE-ARCHIVED.
+
 > **SESSION 12 (2026-07-18) — REOPENED. Close the create-drift hole: guard-enforce `bd create` → `backlog`. Implementation + autonomous rollout.**
 >
 > **Why reopened:** the SESSION-11 close correctly found no *legit workflow was
