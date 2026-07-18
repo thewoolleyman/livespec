@@ -43,12 +43,26 @@ copied here. Filed under epic `livespec-nrdk`:
   admission_policy-vs-factory_safety two-axis correction, the `ready → active`
   admission refusal, `## Scenario 48`, and the heading-coverage entry are all
   landed. Nothing left on A.
-- **Slice B — `bd-ib-fv6wse`** (bd-ib / livespec-orchestrator-beads-fabro tenant,
-  `backlog`): the `factory_safety` field + admission gate reads it. Cross-repo.
-  **Now UNBLOCKED** — its "A ratifies" prose-blocker is satisfied; ready to
-  groom. This is the next action.
-- **Slice C — `bd-ib-i6wfum`** (bd-ib tenant, `backlog`, `depends_on` B): the
-  host-only needs-attention kind. Awaits B + groom.
+- **Slice B — GROOMED (2026-07-18).** `bd-ib-fv6wse` was regroomed out
+  (maintainer-approved cut) into three dependency-layered slices across three
+  tenants (bj9x cross-tenant model — **prose** deps, not machine deps, because no
+  `cross_repo_targets` manifest declares `livespec-runtime`):
+  - **B1 — `livespec-runtime-vkqer3`** (livespec-runtime tenant, **`ready`**):
+    add the `factory_safety` field + `FactorySafety` enum to the shared
+    `livespec_runtime` `WorkItem`. Foundational, no deps — **dispatch-eligible
+    now**.
+  - **B2 — `bd-ib-qcnbbp`** (bd-ib tenant, `backlog`): beads-fabro store encoding
+    + admission gate (realizes v040 Scenario 48; replaces `is_host_only_item`
+    regex; fixes the refusal message; updates the doctor invariant; migrates old
+    host-only-marked items). **Prose-blocked on B1** (it re-vendors runtime +
+    bumps the pin); promote `backlog → ready` when B1 lands.
+  - **B3 — `bd-gj-7adugd`** (bd-gj / livespec-orchestrator-git-jsonl tenant,
+    `backlog`): git-jsonl `store_codec` parity (pop-vs-persist is an implementer
+    sub-decision). Prose-blocked on B1; promote when B1 lands.
+- **Slice C — `bd-ib-i6wfum`** (bd-ib tenant, `backlog`): the host-only
+  needs-attention kind. **Re-pointed (prose) to depend on B1**; its stale machine
+  edge to the now-closed `bd-ib-fv6wse` is harmless while backlog. Groomed later,
+  after B lands.
 - **Slice D — capability-widening (move #3): stays under `z2ctra`**, coordinated
   not absorbed. No new item here (recorded as the epic comment).
 
@@ -64,26 +78,22 @@ epic by prose (the livespec-bj9x precedent).
 
 ## Next actions (in order)
 
-1. **Slice B — groom, then factory-dispatch (DO THIS FIRST; A is done).** Slice A
-   is ratified (v040), so B is unblocked. Run
-   `/livespec-orchestrator-beads-fabro:groom bd-ib-fv6wse` to cut B's cross-repo
-   ready slices in the bj9x foundational-first order: (1) the `factory_safety`
-   field on the shared `livespec_runtime` `WorkItem`, (2) the beads-fabro store
-   encode/decode of the `factory-safety:` label + REPLACE the `is_host_only_item`
-   title/description regex (`commands/_dispatcher_host_only.py`) with a field read
-   (and fix its refusal message, which points at the retired "livespec-implementer
-   dispatch path"), (3) the git-jsonl codec pop for parity. **Also realize the
-   v040 spec**: the admission valve MUST refuse a non-null-`factory_safety` item
-   before any sandbox launch, and the doctor invariant asserting the admission
-   check set (contracts.md §"Work-item beads-issue mapping" invariants block) must
-   be updated in lockstep. Then dispatch each ready slice **factory-side via the
-   Dispatcher drain or `/livespec-orchestrator-beads-fabro:drive --action
-   impl:<id>`** — never in-session implement. Migration: existing items marked by
-   the old prose `host-only` regex must not silently lose classification (migrate
-   them to the field or keep the regex as a read-fallback).
-2. **Slice C — after B lands: groom + dispatch `bd-ib-i6wfum`** (host-only
-   needs-attention kind), same factory-dispatch route.
-3. **Slice D stays under `z2ctra`** — no action here beyond the recorded
+1. **Factory-dispatch B1 `livespec-runtime-vkqer3` (DO THIS FIRST).** It is
+   `ready` with no deps. Dispatch it **factory-side** via the Dispatcher drain or
+   `/livespec-orchestrator-beads-fabro:drive --action impl:livespec-runtime-vkqer3`
+   — never in-session implement. It adds `factory_safety` + `FactorySafety` to the
+   shared `livespec_runtime` `WorkItem`.
+2. **When B1 lands: promote + factory-dispatch B2 and B3.** Their prose blocker
+   (B1) is then satisfied, so promote `bd-ib-qcnbbp` (bd-ib) and `bd-gj-7adugd`
+   (bd-gj) `backlog → ready` (e.g. `drive --action set-admission` / a status
+   move), then factory-dispatch each. B2 realizes the v040 admission refusal +
+   replaces the `is_host_only_item` regex + updates the paired doctor invariant +
+   migrates old host-only-marked items; B3 is git-jsonl codec parity. They can run
+   in parallel (both depend only on B1).
+3. **Slice C — after B2 lands: groom + dispatch `bd-ib-i6wfum`** (host-only
+   needs-attention kind), same factory-dispatch route. At C's groom, set its
+   proper phased (prose) dependency on B1/B2.
+4. **Slice D stays under `z2ctra`** — no action here beyond the recorded
    coordination; the capability-widening work is driven from that item.
 
 **Golden rule:** FILE ripe work + GROOM it; never hand-code factory-safe
