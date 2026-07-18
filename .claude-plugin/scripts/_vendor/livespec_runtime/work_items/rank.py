@@ -42,7 +42,7 @@ def key_between(*, a: str | None, b: str | None) -> str:
 
     `a` / `b` are existing order keys or `None` for the open start / end.
     """
-    return generate_key_between(a, b)
+    return generate_key_between(a=a, b=b)
 
 
 def n_keys_between(*, a: str | None, b: str | None, n: int) -> list[str]:
@@ -51,4 +51,4 @@ def n_keys_between(*, a: str | None, b: str | None, n: int) -> list[str]:
     `a` / `b` are existing order keys or `None` for the open start / end;
     `n >= 0` (returns `[]` for `n == 0`).
     """
-    return generate_n_keys_between(a, b, n)
+    return generate_n_keys_between(a=a, b=b, n=n)

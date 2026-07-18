@@ -1,6 +1,7 @@
 # ruff: noqa
 # type: ignore
 # fmt: off
+# @generated
 #
 # VERBATIM PORT — DO NOT EDIT (decision 38, G-1).
 #
@@ -38,6 +39,14 @@ import decimal
 __version__ = '0.1.3'
 __licence__ = 'CC0 1.0 Universal'
 
+__all__: list[str] = [
+    "BASE_62_DIGITS",
+    "FIError",
+    "generate_key_between",
+    "generate_n_keys_between",
+    "validate_order_key",
+]
+
 BASE_62_DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 
@@ -45,7 +54,7 @@ class FIError(Exception):
     pass
 
 
-def midpoint(a: str, b: Optional[str], digits: str) -> str:
+def midpoint(*, a: str, b: Optional[str], digits: str) -> str:
     """
     `a` may be empty string, `b` is null or non-empty string.
     `a < b` lexicographically if `b` is non-null.
@@ -71,7 +80,7 @@ def midpoint(a: str, b: Optional[str], digits: str) -> str:
             break
 
         if n > 0:
-            return b[:n] + midpoint(a[n:], b[n:], digits)
+            return b[:n] + midpoint(a=a[n:], b=b[n:], digits=digits)
 
     # first digits (or lack of digit) are different
     try:
@@ -84,7 +93,7 @@ def midpoint(a: str, b: Optional[str], digits: str) -> str:
         digit_b = -1
 
     if digit_b - digit_a > 1:
-        min_digit = round_half_up(0.5 * (digit_a + digit_b))
+        min_digit = round_half_up(n=0.5 * (digit_a + digit_b))
         return digits[min_digit]
     else:
         if b is not None and len(b) > 1:
@@ -96,15 +105,15 @@ def midpoint(a: str, b: Optional[str], digits: str) -> str:
             # given, for example, midpoint('49', '5'), return
             # '4' + midpoint('9', null), which will become
             # '4' + '9' + midpoint('', null), which is '495'
-            return digits[digit_a] + midpoint(a[1:], None, digits)
+            return digits[digit_a] + midpoint(a=a[1:], b=None, digits=digits)
 
 
-def validate_integer(i: str):
-    if len(i) != get_integer_length(i[0]):
+def validate_integer(*, i: str):
+    if len(i) != get_integer_length(head=i[0]):
         raise FIError(f'invalid integer part of order key: {i}')
 
 
-def get_integer_length(head):
+def get_integer_length(*, head):
     if 'a' <= head <= 'z':
         return ord(head) - ord('a') + 2
     elif 'A' <= head <= 'Z':
@@ -112,14 +121,14 @@ def get_integer_length(head):
     raise FIError('invalid order key head: ' + head)
 
 
-def get_integer_part(key: str) -> str:
-    integer_part_length = get_integer_length(key[0])
+def get_integer_part(*, key: str) -> str:
+    integer_part_length = get_integer_length(head=key[0])
     if integer_part_length > len(key):
         raise FIError(f'invalid order key: {key}')
     return key[:integer_part_length]
 
 
-def validate_order_key(key: str, digits=BASE_62_DIGITS):
+def validate_order_key(*, key: str, digits=BASE_62_DIGITS):
     zero = digits[0]
     smallest = 'A' + (zero * 26)
     if key == smallest:
@@ -128,15 +137,15 @@ def validate_order_key(key: str, digits=BASE_62_DIGITS):
     # get_integer_part() will throw if the first character is bad,
     # or the key is too short.  we'd call it to check these things
     # even if we didn't need the result
-    i = get_integer_part(key)
+    i = get_integer_part(key=key)
     f = key[len(i):]
     if f and f[-1] == zero:
         raise FIError(f'invalid order key: {key}')
 
 
-def increment_integer(x: str, digits: str) -> Optional[str]:
+def increment_integer(*, x: str, digits: str) -> Optional[str]:
     zero = digits[0]
-    validate_integer(x)
+    validate_integer(i=x)
     head, *digs = x
     carry = True
     for i in reversed(range(len(digs))):
@@ -162,8 +171,8 @@ def increment_integer(x: str, digits: str) -> Optional[str]:
         return head + ''.join(digs)
 
 
-def decrement_integer(x, digits):
-    validate_integer(x)
+def decrement_integer(*, x, digits):
+    validate_integer(i=x)
     head, *digs = x
     borrow = True
     for i in reversed(range(len(digs))):
@@ -195,7 +204,7 @@ def decrement_integer(x, digits):
         return head + ''.join(digs)
 
 
-def generate_key_between(a: Optional[str], b: Optional[str], digits=BASE_62_DIGITS) -> str:
+def generate_key_between(*, a: Optional[str], b: Optional[str], digits=BASE_62_DIGITS) -> str:
     """
     `a` is an order key or null (START).
     `b` is an order key or null (END).
@@ -206,49 +215,49 @@ def generate_key_between(a: Optional[str], b: Optional[str], digits=BASE_62_DIGI
     """
     zero = digits[0]
     if a is not None:
-        validate_order_key(a, digits=digits)
+        validate_order_key(key=a, digits=digits)
     if b is not None:
-        validate_order_key(b, digits=digits)
+        validate_order_key(key=b, digits=digits)
     if a is not None and b is not None and a >= b:
         raise FIError(f'{a} >= {b}')
 
     if a is None:
         if b is None:
             return 'a' + zero
-        ib = get_integer_part(b)
+        ib = get_integer_part(key=b)
         fb = b[len(ib):]
         if ib == 'A' + (zero * 26):
-            return ib + midpoint('', fb, digits)
+            return ib + midpoint(a='', b=fb, digits=digits)
         if ib < b:
             return ib
-        res = decrement_integer(ib, digits)
+        res = decrement_integer(x=ib, digits=digits)
         if res is None:
             raise FIError('cannot decrement any more')
         return res
 
     if b is None:
-        ia = get_integer_part(a)
+        ia = get_integer_part(key=a)
         fa = a[len(ia):]
-        i = increment_integer(ia, digits)
-        return ia + midpoint(fa, None, digits) if i is None else i
+        i = increment_integer(x=ia, digits=digits)
+        return ia + midpoint(a=fa, b=None, digits=digits) if i is None else i
 
-    ia = get_integer_part(a)
+    ia = get_integer_part(key=a)
     fa = a[len(ia):]
-    ib = get_integer_part(b)
+    ib = get_integer_part(key=b)
     fb = b[len(ib):]
     if ia == ib:
-        return ia + midpoint(fa, fb, digits)
-    i = increment_integer(ia, digits)
+        return ia + midpoint(a=fa, b=fb, digits=digits)
+    i = increment_integer(x=ia, digits=digits)
     if i is None:
         raise FIError('cannot increment any more')
 
     if i < b:
         return i
 
-    return ia + midpoint(fa, None, digits)
+    return ia + midpoint(a=fa, b=None, digits=digits)
 
 
-def generate_n_keys_between(a: Optional[str], b: Optional[str], n: int, digits=BASE_62_DIGITS) -> List[str]:
+def generate_n_keys_between(*, a: Optional[str], b: Optional[str], n: int, digits=BASE_62_DIGITS) -> List[str]:
     """
     same preconditions as generate_keys_between().
     n >= 0.
@@ -261,33 +270,33 @@ def generate_n_keys_between(a: Optional[str], b: Optional[str], n: int, digits=B
     if n == 0:
         return []
     if n == 1:
-        return [generate_key_between(a, b, digits)]
+        return [generate_key_between(a=a, b=b, digits=digits)]
     if b is None:
-        c = generate_key_between(a, b, digits)
+        c = generate_key_between(a=a, b=b, digits=digits)
         result = [c]
         for i in range(n - 1):
-            c = generate_key_between(c, b, digits)
+            c = generate_key_between(a=c, b=b, digits=digits)
             result.append(c)
         return result
 
     if a is None:
-        c = generate_key_between(a, b, digits)
+        c = generate_key_between(a=a, b=b, digits=digits)
         result = [c]
         for i in range(n - 1):
-            c = generate_key_between(a, c, digits)
+            c = generate_key_between(a=a, b=c, digits=digits)
             result.append(c)
         return list(reversed(result))
 
     mid = floor(n / 2)
-    c = generate_key_between(a, b, digits)
+    c = generate_key_between(a=a, b=b, digits=digits)
     return [
-        *generate_n_keys_between(a, c, mid, digits),
+        *generate_n_keys_between(a=a, b=c, n=mid, digits=digits),
         c,
-        *generate_n_keys_between(c, b, n - mid - 1, digits)
+        *generate_n_keys_between(a=c, b=b, n=n - mid - 1, digits=digits)
     ]
 
 
-def round_half_up(n: float) -> int:
+def round_half_up(*, n: float) -> int:
     """
     >>> round_half_up(0.4)
     0

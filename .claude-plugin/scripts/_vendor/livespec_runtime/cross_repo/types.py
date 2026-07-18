@@ -17,9 +17,10 @@ work-items file, `.livespec.jsonc` config, harness fixture).
 """
 
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, TypeAlias
+from typing import Any, ClassVar, Literal, TypeAlias
+
+from typing_extensions import assert_never
 
 from livespec_runtime.cross_repo.errors import CrossRepoSchemaError
 
@@ -37,7 +38,11 @@ __all__: list[str] = [
 ]
 
 
-class RefStatus(str, Enum):
+DependsOnKind: TypeAlias = Literal["local", "sibling_work_item", "pull_request", "branch"]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RefStatus:
     """The resolved state of a `DependsOnEntry`.
 
     `OPEN`   — the dependency is still in-flight (target work-item /
@@ -50,9 +55,16 @@ class RefStatus(str, Enum):
                exhaustion, impl-plugin surface absent).
     """
 
-    OPEN = "open"
-    CLOSED = "closed"
-    UNKNOWN = "unknown"
+    value: Literal["open", "closed", "unknown"]
+
+    OPEN: ClassVar["RefStatus"]
+    CLOSED: ClassVar["RefStatus"]
+    UNKNOWN: ClassVar["RefStatus"]
+
+
+RefStatus.OPEN = RefStatus(value="open")
+RefStatus.CLOSED = RefStatus(value="closed")
+RefStatus.UNKNOWN = RefStatus(value="unknown")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -174,7 +186,15 @@ def parse_depends_on_entry(*, parsed: dict[str, Any]) -> DependsOnEntry:
         raise CrossRepoSchemaError(
             detail="depends_on entry missing required field 'kind'",
         )
-    kind = parsed["kind"]
+    kind_raw = parsed["kind"]
+    if kind_raw not in ("local", "sibling_work_item", "pull_request", "branch"):
+        raise CrossRepoSchemaError(
+            detail=(
+                f"depends_on entry has unknown kind {kind_raw!r}; "
+                f"expected one of: local, sibling_work_item, pull_request, branch"
+            ),
+        )
+    kind: DependsOnKind = kind_raw
     match kind:
         case "local":
             return _parse_local(parsed=parsed)
@@ -185,12 +205,7 @@ def parse_depends_on_entry(*, parsed: dict[str, Any]) -> DependsOnEntry:
         case "branch":
             return _parse_branch(parsed=parsed)
         case _:
-            raise CrossRepoSchemaError(
-                detail=(
-                    f"depends_on entry has unknown kind {kind!r}; "
-                    f"expected one of: local, sibling_work_item, pull_request, branch"
-                ),
-            )
+            assert_never(kind)
 
 
 def parse_cross_repo_manifest(*, parsed: dict[str, Any]) -> CrossRepoManifest:

@@ -34,7 +34,7 @@ __all__: list[str] = [
 ]
 
 
-class NonCanonicalGithubUrlError(ValueError):
+class NonCanonicalGithubUrlError(Exception):
     """Raised when a github_url is not the canonical https form.
 
     Canonical form: `https://github.com/<owner>/<name>` with an
@@ -42,6 +42,9 @@ class NonCanonicalGithubUrlError(ValueError):
     (`git@github.com:...`, `git://...`, bare owner/name) raises this
     error at the module boundary so consumers never silently dispatch
     `gh` against a malformed URL.
+
+    Inherits `Exception` directly: consumers catch this domain type
+    (or `Exception`), never `ValueError`.
     """
 
     def __init__(self, *, github_url: str) -> None:
