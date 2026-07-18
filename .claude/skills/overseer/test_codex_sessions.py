@@ -264,7 +264,7 @@ def test_map_codex_sessions_is_deterministic_across_sessions(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def test_codex_by_tmux_session_keys_live_sessions_by_their_tmux_session(tmp_path):
+def test_codex_by_tmux_session_keys_live_sessions_by_tmux_session_and_name(tmp_path):
     home = _index(tmp_path, [(_ID_A, "topic-a"), (_ID_B, "topic-b")])
     host = _host(
         comms={10: "codex", 20: "codex"},
@@ -274,10 +274,32 @@ def test_codex_by_tmux_session_keys_live_sessions_by_their_tmux_session(tmp_path
     by = codex_sessions.codex_by_tmux_session(
         {101: "s-one", 202: "s-two"}, codex_home=home, ppid_of={10: 101, 20: 202}.get, **host
     )
-    assert set(by) == {"s-one", "s-two"}
-    assert by["s-one"].name == "topic-a"
-    assert by["s-one"].pid == 10
-    assert by["s-two"].name == "topic-b"
+    assert set(by) == {("s-one", "topic-a"), ("s-two", "topic-b")}
+    assert by[("s-one", "topic-a")].pid == 10
+    assert by[("s-two", "topic-b")].pid == 20
+
+
+def test_codex_by_tmux_session_keeps_both_when_two_share_one_tmux_session(tmp_path):
+    """#4: two codex sessions in ONE tmux session, each named for its own plan topic, must
+    BOTH survive — keyed by (tmux, name) so neither shadows the other. A single value per
+    tmux session would drop the second, silently losing its ctx reading, wrap-up, and
+    restart (invisible in the table). The codex analogue of the set-valued
+    `names_by_tmux_session` (R2 SF5)."""
+    home = _index(tmp_path, [(_ID_A, "topic-a"), (_ID_B, "topic-b")])
+    host = _host(
+        comms={10: "codex", 20: "codex"},
+        cwds={10: "/data/projects/one", 20: "/data/projects/one"},
+        fds={10: [_rollout(_ID_A)], 20: [_rollout(_ID_B)]},
+    )
+    # Both codex pids resolve (via their pane pids) to the SAME tmux session "shared".
+    by = codex_sessions.codex_by_tmux_session(
+        {101: "shared", 202: "shared"}, codex_home=home, ppid_of={10: 101, 20: 202}.get, **host
+    )
+    assert set(by) == {("shared", "topic-a"), ("shared", "topic-b")}
+    assert by[("shared", "topic-a")].pid == 10
+    assert by[("shared", "topic-a")].session_id == _ID_A
+    assert by[("shared", "topic-b")].pid == 20
+    assert by[("shared", "topic-b")].session_id == _ID_B
 
 
 def test_codex_by_tmux_session_is_empty_with_no_codex_running(tmp_path):

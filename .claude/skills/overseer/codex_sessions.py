@@ -281,8 +281,8 @@ def codex_by_tmux_session(
     pids_of_comm: Callable[[str], list[int]] = proc_pids_of_comm,
     cwd_of: Callable[[int], str | None] = proc_cwd,
     fd_targets_of: Callable[[int], list[str]] = proc_fd_targets,
-) -> dict[str, CodexSession]:
-    """``{tmux_session: CodexSession}`` for every live NAMED codex session held in tmux.
+) -> dict[tuple[str, str], CodexSession]:
+    """``{(tmux_session, name): CodexSession}`` for every live NAMED codex session in tmux.
 
     The twin of :func:`claude_sessions.status_by_tmux_session`, and the per-tick map the
     supervisor keys Codex behavior off — recomputed every tick like ``_claude_status``,
@@ -297,10 +297,20 @@ def codex_by_tmux_session(
     resolved to that tmux session this tick. It also needs no stored ``runtime`` field on
     the mapping (nothing to migrate, nothing to drift).
 
-    A tmux session hosting more than one codex process keeps the FIRST by pid order —
-    deterministic, and the daemon drives one session per pane anyway.
+    **Keyed by ``(tmux_session, name)``, not ``tmux_session`` alone.** Two codex sessions
+    can share ONE tmux session — a second split, or a ``codex resume <topic>`` spawned
+    from another session's Bash tool — each carrying a DIFFERENT ``name`` (= its plan
+    topic). A single value per tmux session would let the second SHADOW the first, so that
+    track silently loses its ctx reading, its wrap-up, and its restart — invisible in the
+    table. Keying by the ``(tmux_session, name)`` pair keeps BOTH, so the supervisor's
+    ``_is_codex_track`` / ``_do_codex_restart`` resolve each track to ITS OWN session by
+    ``(tmux, topic)``. This is the codex analogue of the set-valued
+    :func:`claude_sessions.names_by_tmux_session` (R2 review SF5). Only a genuine
+    same-``(tmux, name)`` collision — two codex processes for the SAME topic in the SAME
+    tmux session — keeps the FIRST by pid order (deterministic; the daemon drives one
+    session per pane anyway).
     """
-    by_session: dict[str, CodexSession] = {}
+    by_key: dict[tuple[str, str], CodexSession] = {}
     for session in read_live_codex_sessions(
         codex_home=codex_home,
         pids_of_comm=pids_of_comm,
@@ -310,7 +320,10 @@ def codex_by_tmux_session(
         tmux_session = resolve_tmux_session(
             session.pid, pane_pid_to_session=pane_pid_to_session, ppid_of=ppid_of
         )
-        if tmux_session is None or tmux_session in by_session:
+        if tmux_session is None:
             continue
-        by_session[tmux_session] = session
-    return by_session
+        key = (tmux_session, session.name)
+        if key in by_key:
+            continue
+        by_key[key] = session
+    return by_key

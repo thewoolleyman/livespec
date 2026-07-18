@@ -2767,7 +2767,7 @@ def _adopt_codex_ready(tmp_path):
     sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     session_id = "019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
     sup._codex = {
-        session: codex_sessions.CodexSession(
+        (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id=session_id
         )
     }
@@ -2811,6 +2811,40 @@ def test_an_adopted_codex_track_declaring_ready_is_restarted_with_the_codex_comm
     with contextlib.redirect_stderr(_io.StringIO()):
         sup.evaluate(_mapped_track(repo, topic, session), act=True)
     assert not fake.has("respawn")  # no re-restart of the session we just resumed
+
+
+def test_two_codex_tracks_sharing_a_tmux_session_each_restart_their_own_session(tmp_path):
+    """#4: two codex sessions live in ONE tmux session, each named for its own plan topic.
+    Before the (tmux, name) keying, `self._codex` kept ONE CodexSession per tmux session,
+    so the SECOND track resolved to the wrong session id (or None) — its restart aimed at
+    the wrong rollout and its monitoring was silently lost, invisible in the table. Keyed
+    by (tmux, topic), each track's `_do_codex_restart` resolves to ITS OWN session, so each
+    respawns `codex resume <its-own-id>`. Sabotage: revert the lookup to `.get(session)`
+    and the second track resolves to None → no respawn → this goes red."""
+    repo, topic_a = _make_plan(tmp_path, topic="alpha")
+    _, topic_b = _make_plan(tmp_path, topic="beta")
+    shared = "shared-tmux"
+    fake = FakeTmux()
+    fake.serve(shared, repo, capture=_codex_idle_capture(ctx=40), cmd="bun")
+    sup = _sup(tmp_path, fake)
+    id_a = "019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+    id_b = "019f548d-6071-7893-9c2e-472cce81da02"
+    sup._codex = {
+        (shared, topic_a): codex_sessions.CodexSession(
+            pid=10, name=topic_a, cwd=str(repo), session_id=id_a
+        ),
+        (shared, topic_b): codex_sessions.CodexSession(
+            pid=20, name=topic_b, cwd=str(repo), session_id=id_b
+        ),
+    }
+    target = fake.pane_id(shared)
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup._do_codex_restart(_mapped_track(repo, topic_a, shared), target)
+        sup._do_codex_restart(_mapped_track(repo, topic_b, shared), target)
+    respawn_cmds = [c[3] for c in fake.calls if c[0] == "respawn"]
+    assert len(respawn_cmds) == 2  # each track resolved to a live session and respawned
+    assert id_a in respawn_cmds[0] and id_b not in respawn_cmds[0]  # track alpha → A's rollout
+    assert id_b in respawn_cmds[1] and id_a not in respawn_cmds[1]  # track beta → B's rollout
 
 
 def test_a_codex_restart_keeps_the_ready_marker_when_the_respawn_fails(tmp_path):
@@ -2884,7 +2918,7 @@ def test_a_codex_track_below_threshold_gets_the_escalating_wrapup(tmp_path):
     sessions_dir.mkdir()
     sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     sup._codex = {
-        session: codex_sessions.CodexSession(
+        (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
         )
     }
@@ -2909,7 +2943,7 @@ def test_a_codex_approval_gate_suppresses_the_wrapup(tmp_path):
     sessions_dir.mkdir()
     sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
     sup._codex = {
-        session: codex_sessions.CodexSession(
+        (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
         )
     }
@@ -2942,7 +2976,7 @@ def test_a_claude_pane_keeps_its_wrapup_when_codex_shares_its_tmux_session(tmp_p
     sup = _sup(tmp_path, fake)
     # ...while a codex session for the SAME topic sits in the SAME tmux session.
     sup._codex = {
-        session: codex_sessions.CodexSession(
+        (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
         )
     }
