@@ -47,10 +47,12 @@ copied here. Filed under epic `livespec-nrdk`:
   (maintainer-approved cut) into three dependency-layered slices across three
   tenants (bj9x cross-tenant model — **prose** deps, not machine deps, because no
   `cross_repo_targets` manifest declares `livespec-runtime`):
-  - **B1 — `livespec-runtime-vkqer3`** (livespec-runtime tenant, **`ready`**):
-    add the `factory_safety` field + `FactorySafety` enum to the shared
-    `livespec_runtime` `WorkItem`. Foundational, no deps — **dispatch-eligible
-    now**.
+  - **B1 — `livespec-runtime-vkqer3`** (livespec-runtime tenant): **MERGED via
+    the factory (2026-07-18)** — dispatched green, merged on `livespec-runtime`
+    master (commit `0274008`); `FactorySafety` + `factory_safety` are LIVE on the
+    shared `WorkItem`. Parked in **`acceptance`** (ai-then-human) awaiting the
+    human accept leg (its live exercise is B2 reading the field — not
+    force-accepted).
   - **B2 — `bd-ib-qcnbbp`** (bd-ib tenant, `backlog`): beads-fabro store encoding
     + admission gate (realizes v040 Scenario 48; replaces `is_host_only_item`
     regex; fixes the refusal message; updates the doctor invariant; migrates old
@@ -78,18 +80,23 @@ epic by prose (the livespec-bj9x precedent).
 
 ## Next actions (in order)
 
-1. **Factory-dispatch B1 `livespec-runtime-vkqer3` (DO THIS FIRST).** It is
-   `ready` with no deps. Dispatch it **factory-side** via the Dispatcher drain or
-   `/livespec-orchestrator-beads-fabro:drive --action impl:livespec-runtime-vkqer3`
-   — never in-session implement. It adds `factory_safety` + `FactorySafety` to the
-   shared `livespec_runtime` `WorkItem`.
-2. **When B1 lands: promote + factory-dispatch B2 and B3.** Their prose blocker
-   (B1) is then satisfied, so promote `bd-ib-qcnbbp` (bd-ib) and `bd-gj-7adugd`
-   (bd-gj) `backlog → ready` (e.g. `drive --action set-admission` / a status
-   move), then factory-dispatch each. B2 realizes the v040 admission refusal +
-   replaces the `is_host_only_item` regex + updates the paired doctor invariant +
-   migrates old host-only-marked items; B3 is git-jsonl codec parity. They can run
-   in parallel (both depend only on B1).
+1. **Wait for the `livespec-runtime` v0.10.0 release to cut (DO THIS FIRST — it
+   gates B2/B3).** B1's `feat:` merge triggered the release-please PR
+   `chore(master): release 0.10.0` (in CI as of 2026-07-18). B2/B3 re-vendor
+   `livespec_runtime` + bump the pin to a RELEASE (dogfooding pins track
+   releases), and the latest release is still `v0.9.2` (no `factory_safety`). When
+   v0.10.0 is tagged, proceed. (If the release-please PR stalls, that is the
+   blocker to clear.) Optionally: give B1 (`livespec-runtime-vkqer3`, in
+   `acceptance`) its human accept leg.
+2. **Once v0.10.0 is cut: bump pins, then promote + factory-dispatch B2 and B3.**
+   Bump the `livespec-runtime` pin to `v0.10.0` in both
+   `livespec-orchestrator-beads-fabro` and `livespec-orchestrator-git-jsonl`
+   (re-vendor `_vendor/livespec_runtime`), then promote `bd-ib-qcnbbp` (B2) and
+   `bd-gj-7adugd` (B3) `backlog → ready` and factory-dispatch each **via the
+   Dispatcher drain or `drive --action impl:<id>`** — never in-session implement.
+   B2 realizes the v040 admission refusal + replaces the `is_host_only_item` regex
+   + updates the paired doctor invariant + migrates old host-only-marked items; B3
+   is git-jsonl codec parity. They can run in parallel (both depend only on B1).
 3. **Slice C — after B2 lands: groom + dispatch `bd-ib-i6wfum`** (host-only
    needs-attention kind), same factory-dispatch route. At C's groom, set its
    proper phased (prose) dependency on B1/B2.
