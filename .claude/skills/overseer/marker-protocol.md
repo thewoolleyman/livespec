@@ -176,12 +176,21 @@ context". That wastes the context it still has. The daemon closes that gap with 
 single **keep-going nudge**, the inverse of the wrap-up.
 
 When a tracked session is idle, still **above** its `ctx_threshold`, **not**
-waiting on a human (its Claude registry status is not `waiting`), and has made
-**no** `ready` / `blocked` / `winding-down` declaration of its own, the daemon:
+waiting on a human (its Claude registry status is not `waiting`), has made
+**no** `ready` / `blocked` / `winding-down` declaration of its own, **AND has been
+continuously idle for at least one hour** (`_IDLE_NUDGE_AFTER`), the daemon:
 
 1. bracketed-pastes ONE nudge message telling it to keep going (below), and
 2. writes `idle-with-context-left` to the state file **as a note to itself**, so
    it does not re-nudge the same idle episode every tick.
+
+The **one-hour minimum-idle floor** is load-bearing (maintainer-declared 2026-07-18:
+the nudge was "too aggressive, TOO SOON" and interrupted sessions merely between
+turns). The nudge pastes + submits text, so firing it on a session that is only
+briefly at the prompt interrupts active work. The continuous-idle clock is in-memory
+and resets on ANY activity (busy / a turn / a sub-agent), so only a genuinely long
+idle spell reaches the nudge; a daemon restart resets it too, which only ever DELAYS
+a nudge — the safe direction.
 
 The nudge message (`supervisor.py`'s `_IDLE_NUDGE` / `idle_nudge_message`):
 
@@ -304,6 +313,16 @@ commit on disk survives it. Every tmux step is a hard gate: if the respawn fails
 or the pane never becomes a live Claude, the daemon surfaces the failure and
 **keeps** the `ready` declaration so the next tick retries, rather than silently
 destroying it.
+
+**The resume-submit is self-healing (R1, 2026-07-18).** A freshly-respawned TUI
+can DROP the resume line's Enter while still drawing its welcome screen, leaving
+the fresh session live but IDLE with an un-run handoff. The daemon does NOT give
+up: on a failed submit it keeps the round open (marker + stamp) and marks a
+round-scoped `resume_pending`, then on the next tick re-sends Enter — **the
+SUBMIT only, never a re-respawn** — until the box clears. Re-`respawn-pane -k`
+stays gated on a fresh `ready` alone, so the retry can never escalate to a kill;
+the stranded track is a NEEDS-YOU report until it resumes. (Codex needs none of
+this: `codex resume` takes the kick as an argument and auto-submits it.)
 
 ## Notify, never block — the overseer relays, the tracked pane answers
 

@@ -1,5 +1,38 @@
 # Handoff — the overseer never restarts a session that has not declared itself ready
 
+**LATEST (2026-07-18): restart-correctness R1 + R2 + idle-nudge floor shipped.** The two
+defects in `plan/overseer-rewrite/restart-correctness-defects.md` are FIXED on branch
+`fix/overseer-restart-correctness` (269 beside-tests green; each new guard sabotage-verified),
+along with a maintainer-flagged live fix and a Fable adversarial-review hardening pass:
+- **Idle-nudge 1-hour floor.** The keep-going (`idle-with-context-left`) nudge was firing on
+  sessions merely between turns and interrupting active work (maintainer 2026-07-18: "too
+  aggressive, TOO SOON"). It now fires only after a session has been CONTINUOUSLY idle for
+  ≥1 hour (`_IDLE_NUDGE_AFTER`, in-memory `_InjectState.idle_since`, resets on any activity).
+- **Fable review hardening (NO BLOCKERS; 5 should-fix addressed).** SF1: adopt re-point skips
+  ambiguous (>1 live session for one track) so it can't flip-flop the store every tick. SF2:
+  added an end-to-end wiring test (registry → `_refresh_claude_status` → gate). SF3: the retry
+  branches on BOX STATE, not `busy` (a fresh session's SessionStart-hook busy no longer
+  false-closes the round). SF4: a fresh TUI on a picker is reported `blocked:human`, never
+  keystroked (both `_do_restart` and the retry). SF5: `_claude_names` is set-valued so a
+  helper Claude sharing a tmux session can't flap the track to `session-gone`.
+- **R1 — self-healing resume-submit.** A freshly-respawned Claude TUI can DROP the resume
+  line's Enter and sit idle with an un-run handoff (proven live 2026-07-17: fabro /
+  autonomous-mode (9h) / overseer-rewrite). The daemon no longer discards the `ready` marker
+  and logs a false "restarted": on a failed submit it keeps the round open, marks a
+  round-scoped `resume_pending` (`registry.set_resume_pending`), and the next tick retries
+  the SUBMIT ONLY (`_resend_enter` — never a re-respawn, so it can never escalate to a kill;
+  a fresh `ready` is still the sole respawn trigger). `_await_input_box` hardens the first
+  paste. A stranded resume is a NEEDS-YOU row until it resumes.
+- **R2 — Claude identity gate `name == topic` parity + stale-mapping re-point.** The Claude
+  act-gate now also requires the pane's live Claude `name` to equal the topic (parity with
+  the Codex gate; `_claude_name` from `claude_sessions.sessions_by_tmux_session`), rejecting
+  a proven mismatch (positive-mismatch only, fail-soft on unknown) so a generic reused window
+  (`livespec1`…) running another topic's Claude in the same repo is never mis-driven; and
+  `adopt_sessions` RE-POINTS a stale mapping (`registry.repoint_tmux`) when a topic's live
+  session moves tmux sessions instead of freezing it.
+- After merge: **respawn the daemon** to pick up this code (Standing operational notes below),
+  then confirm a live restart submits its resume and a wrong-name pane reads `session-gone`.
+
 **LATEST (2026-07-17): Codex tracks are FULL CITIZENS — shipped, merged, and live.**
 PR #1308 (commits `31fb34cb` + `c1aed0a4`) retired monitor-only: a Codex track now gets
 the escalating wrap-up AND is auto-restarted on its own `ready` via

@@ -40,6 +40,7 @@ __all__ = [
     "default_sessions_dir",
     "has_active_subshell",
     "map_named_sessions",
+    "names_by_tmux_session",
     "proc_children",
     "proc_comm",
     "proc_ppid",
@@ -309,4 +310,31 @@ def status_by_tmux_session(
         )
         if tmux_session is not None:
             out[tmux_session] = session.status
+    return out
+
+
+def names_by_tmux_session(
+    sessions_dir: str | os.PathLike[str],
+    pane_pid_to_session: dict[int, str],
+    *,
+    ppid_of: Callable[[int], int | None] = proc_ppid,
+    starttime_of: Callable[[int], str | None] = proc_starttime,
+) -> dict[str, set[str]]:
+    """``{tmux_session: {name, ...}}`` — the set of ALL live named Claude session names in
+    each tmux session.
+
+    Unlike :func:`status_by_tmux_session` (last-wins, one value per tmux session), this keeps
+    EVERY name, so the daemon's identity gate can ask "is a live Claude named ``<topic>`` in
+    this tmux session?" even when a HELPER Claude shares the tmux session (a second window/
+    split). A last-wins single name would let that helper's name shadow the track's own and
+    flap a healthy track to ``session-gone`` (R2 review SF5, 2026-07-18). Same registry ⋈
+    tmux PID-walk join as :func:`status_by_tmux_session`.
+    """
+    out: dict[str, set[str]] = {}
+    for session in read_live_sessions(sessions_dir, starttime_of=starttime_of):
+        tmux_session = resolve_tmux_session(
+            session.pid, pane_pid_to_session=pane_pid_to_session, ppid_of=ppid_of
+        )
+        if tmux_session is not None:
+            out.setdefault(tmux_session, set()).add(session.name)
     return out
