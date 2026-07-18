@@ -2348,6 +2348,8 @@ def test_evaluate_derives_codex_runtime_and_annotates_the_tmux_cell(tmp_path):
     fake = FakeTmux()
     fake.serve(session, repo, capture=_codex_idle_capture(ctx=80, topic=topic), cmd="bun")
     sup = _sup(tmp_path, fake)
+    # `_codex` is keyed by (tmux_session, name) so two codex sessions can share a tmux
+    # session (fix a24e3e13) — key this fixture the same way the other codex tests do.
     sup._codex = {
         (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
