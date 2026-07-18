@@ -25,6 +25,7 @@ domain type.
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import Any, Literal, cast
 
 from livespec_runtime.cross_repo.errors import CrossRepoSchemaError
@@ -46,6 +47,11 @@ __all__: list[str] = [
     "lane_of",
     "ready_sort_key",
 ]
+
+ready_sort_key: Callable[[WorkItem], tuple[str, str]] = cast(
+    Callable[[WorkItem], tuple[str, str]],
+    attrgetter("rank", "id"),
+)
 
 LaneName = Literal[
     "backlog",
@@ -119,20 +125,6 @@ def is_item_ready(
     return lane_of(item=item, index=index, manifest=manifest).name == "ready"
 
 
-def ready_sort_key(item: WorkItem) -> tuple[str, str]:
-    """Canonical ranking key for ready items, composed by next + Dispatcher.
-
-    The lead key is the fractional `rank` (the sole ordering authority),
-    then `id` as the deterministic tie-break. The signature mirrors the
-    `key=` callable precedent (a single positional `item`, not
-    keyword-only) so it can be passed directly to `list.sort` / `sorted`.
-    Both the `next` ranker and the Dispatcher's drain order compose this
-    one function, so the two can never diverge on which ready item runs
-    first.
-    """
-    return (item.rank, item.id)
-
-
 def _has_open_dependency(
     *,
     item: WorkItem,
@@ -194,12 +186,17 @@ def _local_status_lookup_for(*, index: dict[str, WorkItem]) -> Callable[[str], R
     surface for that, not the readiness gate — `UNKNOWN` does not block).
     """
 
-    def _lookup(work_item_id: str) -> RefStatus:
-        record = index.get(work_item_id)
+    return _LocalStatusLookup(index=index)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _LocalStatusLookup:
+    index: dict[str, WorkItem]
+
+    def __call__(self, work_item_id: str) -> RefStatus:
+        record = self.index.get(work_item_id)
         if record is None:
             return RefStatus.UNKNOWN
         if record.status == "done":
             return RefStatus.CLOSED
         return RefStatus.OPEN
-
-    return _lookup

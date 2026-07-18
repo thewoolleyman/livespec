@@ -9,15 +9,15 @@ Python-level realization.
 
 This is the SHARED lift of the model both `livespec-impl-git-jsonl`
 and `livespec-impl-beads` re-implemented identically. The unified
-shape is a 22-field record: 15 required fields (including the `rank`
-ordering key) followed by 7 optional-on-read fields. `rank` is the
+shape is a 23-field record: 15 required fields (including the `rank`
+ordering key) followed by 8 optional-on-read fields. `rank` is the
 sole ordering authority — the prior `priority: int` is REMOVED (two
 order sources are two conflicting truths). The `spec_commitment_hint`
 / `acceptance_criteria` / `notes` / `supersedes` pointers and the
 `admission_policy` / `acceptance_policy`
-/ `blocked_reason` policy fields all follow the blessed `… | None`
-optional-on-read pattern: legacy records lacking them read back as
-`None`, with no in-place migration.
+/ `blocked_reason` / `factory_safety` policy fields all follow the
+blessed `… | None` optional-on-read pattern: legacy records lacking
+them read back as `None`, with no in-place migration.
 
 Transitive type closure: the only non-primitive type reachable from
 `WorkItem` is `AuditRecord` (via the `audit` field). `AuditRecord`'s
@@ -35,6 +35,7 @@ __all__: list[str] = [
     "AdmissionPolicy",
     "AuditRecord",
     "DependsOnRaw",
+    "FactorySafety",
     "Origin",
     "Resolution",
     "StoredBlockedReason",
@@ -67,6 +68,11 @@ Resolution = Literal[
 AdmissionPolicy = Literal["auto", "manual"]
 AcceptancePolicy = Literal["ai-only", "human-only", "ai-then-human"]
 StoredBlockedReason = Literal["needs-human", "infra-external"]
+FactorySafety = Literal[
+    "needs-host-secrets",
+    "mutates-host-machinery",
+    "needs-privileged-host",
+]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -146,6 +152,11 @@ class WorkItem:
     the third reason `dependency` is DERIVED, never stored — it appears
     only as a rendered `Lane.reason` (see
     `### livespec_runtime.work_items.lifecycle`).
+
+    `factory_safety` follows the same optional-on-read pattern. `None`
+    means factory-safe; legacy records lacking the field read back as
+    `None` with no in-place migration. Non-None values carry the stored
+    reason a factory-autonomous runner must treat as not runnable.
     """
 
     id: str
@@ -170,3 +181,4 @@ class WorkItem:
     admission_policy: AdmissionPolicy | None = None
     acceptance_policy: AcceptancePolicy | None = None
     blocked_reason: StoredBlockedReason | None = None
+    factory_safety: FactorySafety | None = None
