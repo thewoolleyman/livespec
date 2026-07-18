@@ -257,6 +257,7 @@ jobs:
           - check-handoff-dispatch-routing
           - check-heading-coverage
           - check-local-memory-drift-audit
+          - check-plan-thread-anchor-declared
           - check-self-hosted-routing
           - check-source-trees-scoped-to-consumer
           - check-vendor-manifest
