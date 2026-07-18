@@ -577,7 +577,7 @@ class Supervisor:
     # tick beside _claude_status. Membership IS the exact answer to "is this pane
     # Codex?" — the pane command says `bun` (the launcher), which is too generic to
     # trust. Typed loosely to keep the dataclass free of a codex_sessions import cycle.
-    _codex: dict[str, object] = field(default_factory=dict, init=False)
+    _codex: dict[tuple[str, str], object] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         if self.out is None:
@@ -810,16 +810,18 @@ class Supervisor:
         )
 
     def _refresh_codex_sessions(self) -> None:
-        """Recompute this tick's ``{tmux_session: CodexSession}`` map (read-only).
+        """Recompute this tick's ``{(tmux_session, name): CodexSession}`` map (read-only).
 
         The Codex twin of :meth:`_refresh_claude_status`, and the ONLY honest way to ask
         "is this pane Codex?": tmux reports a codex pane's ``#{pane_current_command}`` as
         **`bun`** (the launcher; the vendored codex binary is its child), and `bun` is
         generic — any bun app matches it. Membership in this map is exact: a session is in
         it only because a real codex process, holding a real rollout, resolved to that
-        tmux session THIS tick. Derived live, so it needs no stored ``runtime`` field on
-        the mapping and cannot drift. Fail-soft to an empty map (no codex running is the
-        overwhelmingly common case).
+        tmux session THIS tick. Keyed by ``(tmux_session, name)`` so two codex sessions
+        sharing one tmux session never shadow each other (see
+        :func:`codex_sessions.codex_by_tmux_session`). Derived live, so it needs no stored
+        ``runtime`` field on the mapping and cannot drift. Fail-soft to an empty map (no
+        codex running is the overwhelmingly common case).
         """
         self._codex = codex_sessions.codex_by_tmux_session(
             self.tmux.pane_pid_sessions(), ppid_of=self.ppid_of
@@ -919,8 +921,10 @@ class Supervisor:
         other pane-scoped but generic, and only together are they exact AND pane-scoped:
 
         1. ``self._codex`` (rebuilt each tick from real codex processes holding real
-           rollouts) has a session for this tmux whose ``name`` is this topic and whose
-           cwd is in this repo. Never a guess — but keyed by tmux SESSION.
+           rollouts) has a session keyed by ``(this tmux, this topic)`` whose cwd is in
+           this repo. Never a guess. Keyed by ``(tmux, name)`` — not tmux alone — so a
+           SECOND codex sharing this tmux session (a different topic) does not shadow this
+           track's own session (#4).
         2. ``target``'s OWN pane command is codex-like. `bun` is far too generic to gate
            on alone (any bun app matches), which is why (1) exists — but it is exactly
            what makes this PANE-scoped.
@@ -938,10 +942,11 @@ class Supervisor:
         naming convention this very change establishes ("codex threads named after plan
         topics") is what makes the collision reachable, so this is not exotic.
         """
-        live = self._codex.get(session or "")
+        live = self._codex.get((session or "", topic))
         if live is None:
             return False
-        if not (live.name == topic and signals.path_in_repo(live.cwd, repo)):  # type: ignore[attr-defined]
+        # The (tmux, topic) key already pins name == topic; only the repo remains to check.
+        if not signals.path_in_repo(live.cwd, repo):  # type: ignore[attr-defined]
             return False
         if target is None:
             return True  # no pane to check against (callers that only have the mapping)
@@ -1864,12 +1869,14 @@ class Supervisor:
         by UUID, never by name: "UUIDs take precedence", and a name could be ambiguous or
         drop to a picker.
 
-        The session id comes from the live per-tick Codex map (``self._codex``); if the
-        session vanished between the map refresh and here, the declaration is KEPT and the
-        restart retried next tick (B5), exactly like a failed respawn.
+        The session id comes from the live per-tick Codex map (``self._codex``), looked up
+        by ``(tmux, topic)`` so a second codex sharing this tmux session cannot supply the
+        WRONG session id (#4); if the session vanished between the map refresh and here,
+        the declaration is KEPT and the restart retried next tick (B5), exactly like a
+        failed respawn.
         """
         session = self._session_of(track)
-        live = self._codex.get(session)
+        live = self._codex.get((session, track.topic))
         if live is None:
             self._alert(
                 repo=track.repo,
