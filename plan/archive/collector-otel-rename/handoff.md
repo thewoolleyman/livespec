@@ -1,10 +1,12 @@
 # Plan — rename `claude-collector` → `otel-collector` (host OTel collector)
 
-**Status:** VPS side DONE and live-confirmed (2026-07-18); macOS migration
-PENDING on the Mac — the ONLY remaining item. Maintainer-approved 2026-07-11
-as a separate, self-contained task (split out of
-`plan/fabro-ci-image-factoring/`). **Owning session:** livespec core,
-2026-07-11; live-marker confirmation 2026-07-18.
+**Status:** ✅ COMPLETE (2026-07-18) — VPS + macOS both migrated, cleaned up,
+and live-confirmed in Honeycomb; no PENDING items remain; thread archived to
+`plan/archive/collector-otel-rename/`. No beads ledger epic was ever anchored
+(self-contained task), so none to close. Maintainer-approved 2026-07-11 as a
+separate task (split out of `plan/fabro-ci-image-factoring/`). **Owning
+session:** livespec core, 2026-07-11; live-marker + macOS confirmation
+2026-07-18.
 
 **Settled decisions (2026-07-11):** name = `otel-collector`; cross-platform
 = runs on Linux or macOS (docs + code updated); marker migration = hard cut
@@ -46,11 +48,24 @@ session on the Linux VPS via the Honeycomb MCP):**
   historical mentions (this handoff, `plan/fabro-ci-image-factoring/
   handoff.md`) and frozen archive transcripts — no stale path references.
 
-**What's PENDING (the only remaining item):**
-- **macOS migration** — run on the Mac via the collector repo's `AGENTS.md`
-  first-line reminder → `plan/rename-to-otel-collector-macos-migration.md`
-  (unload old-label LaunchAgent, install new, smoke-test, then delete the
-  reminder + archive that plan). Cannot be driven from the Linux VPS.
+**macOS migration — DONE (2026-07-18, run on the Mac by the maintainer):**
+- `otel-collector` repo commit `aad8dd5` ("Complete macOS rename migration:
+  move LaunchAgent to otel-collector label"): the macOS-local collector now
+  runs + smoke-tested under the new launchd label
+  `com.thewoolleyweb.otel-collector` (old label
+  `com.thewoolleyweb.claude-collector` unloaded/removed). The Mac's clone was
+  at the OLD path (`~/workspace/claude-collector`, user `cwoolley`) since the
+  Mac had never been renamed — the `/data/projects/otel-collector` path in
+  the earlier handoff note was the VPS path, not the Mac's.
+- The PENDING-migration reminders were removed from the `otel-collector`
+  repo's `AGENTS.md` (first line) and `CLAUDE.md` (mirrored pointer), and
+  `plan/rename-to-otel-collector-macos-migration.md` was archived to
+  `plan/archive/` — verified after `git pull` of `otel-collector` main.
+- Live-confirmed from the livespec-core session via the Honeycomb MCP: the
+  Mac-local marker `collector.agent-activity-local = "washere"` (deliberately
+  UNCHANGED by this migration — it lives in the separate `config.macos.yaml`)
+  is flowing in the `agent-activity` env, **985 events / 3h**, continuous
+  through now — proving the new-label LaunchAgent is running post-migration.
 
 The remainder of this document is the ORIGINAL task spec (kept for the
 migration-checklist detail); the decisions above are now settled.

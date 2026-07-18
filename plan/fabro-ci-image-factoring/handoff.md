@@ -36,10 +36,10 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
   shaping is just one processor). The live systemd service is now
   `otel-collector.service` against
   `/data/projects/otel-collector/config.yaml`, stamping the
-  `collector.otel-collector` marker. The macOS-side migration is still
-  pending on the Mac (tracked in the collector repo's `AGENTS.md` +
-  `plan/rename-to-otel-collector-macos-migration.md`). See
-  `plan/collector-otel-rename/handoff.md`.
+  `collector.otel-collector` marker. The macOS-side migration is now DONE
+  too (2026-07-18, `otel-collector` commit `aad8dd5`; both sides
+  live-confirmed in Honeycomb) — the whole rename is COMPLETE. See the
+  archived thread `plan/archive/collector-otel-rename/handoff.md`.
 
 **Maintainer corrections (2026-07-12) — two framings below are WRONG; these supersede them:**
 - **The "multi-day baseline" is DEAD — do not wait for days of data.** The
@@ -1903,8 +1903,9 @@ valid pause point.
 - **Collector renamed to `otel-collector` (was `claude-collector`).** The
   `hostmetrics`/`docker_stats` additions land in the host's shared OTel
   collector; the VPS-side rename landed 2026-07-11 (service
-  `otel-collector.service`, `/data/projects/otel-collector/`), Mac
-  migration pending. Tracked in `plan/collector-otel-rename/`.
+  `otel-collector.service`, `/data/projects/otel-collector/`), and the Mac
+  migration landed 2026-07-18 — rename COMPLETE, both sides live-confirmed.
+  Tracked in the archived thread `plan/archive/collector-otel-rename/`.
 
 ## Dependency diagram
 
