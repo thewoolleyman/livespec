@@ -412,14 +412,14 @@ check-coverage:
     # bypasses pyproject.toml's `[tool.coverage.run]` (including the
     # `omit = ["*/_vendor/*"]` carve-out). Pass the config path
     # explicitly so the vendored-tree exclusion takes effect under
-    # `pytest --cov`. `-n auto` (pytest-xdist) parallelizes the suite;
+    # `pytest --cov`. `-n 4` (pytest-xdist) parallelizes the suite;
     # pytest-cov auto-runs `coverage combine` at session-end.
     if [[ -f .coverage ]]; then
         echo ":: check-coverage: reading existing .coverage (produced by check-per-file-coverage); no duplicate suite run"
         uv run coverage report --fail-under=100
     else
         echo ":: check-coverage: no .coverage data file (CI standalone job); running the suite"
-        uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+        uv run pytest -n 4 --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     fi
     # Per-file 100% line+branch gate. In `just check` this reads the
     # `.coverage` that check-per-file-coverage already wrote (cheap, no
@@ -832,7 +832,7 @@ check-per-file-coverage:
     set -euo pipefail
     # See check-coverage above for the rationale on the cov-config
     # path + pytest-xdist parallelism.
-    uv run pytest -n auto --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+    uv run pytest -n 4 --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
     uv run python -m livespec_dev_tooling.checks.per_file_coverage
 
 # ---------------------------------------------------------------
