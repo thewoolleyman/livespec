@@ -13,14 +13,22 @@ __all__: list[str] = [
     "validate_attention_item_id",
 ]
 
-AttentionKind = Literal["human-valve", "impl", "spec", "plan", "hygiene", "internal"]
+AttentionKind = Literal[
+    "human-valve",
+    "impl",
+    "spec",
+    "plan",
+    "hygiene",
+    "internal",
+    "host-only",
+]
 AttentionUrgency = Literal["high", "medium", "low"]
 HandoffKind = Literal["drive", "livespec-op", "plan", "shell"]
 
 _TWO_PART_COUNT = 2
 _THREE_PART_COUNT = 3
 _TWO_PART_PREFIXES = frozenset(("impl", "plan"))
-_THREE_PART_PREFIXES = frozenset(("valve", "hygiene", "spec"))
+_THREE_PART_PREFIXES = frozenset(("host-only", "valve", "hygiene", "spec"))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
