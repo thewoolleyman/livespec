@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.5](https://github.com/thewoolleyman/livespec/compare/v0.17.4...v0.17.5) (2026-07-18)
+
+
+### Bug Fixes
+
+* **overseer:** key the codex-runtime test's _codex map by (tmux, name) ([93044e7](https://github.com/thewoolleyman/livespec/commit/93044e7a553ef188ac9f69eb61948e191cf94cdf))
+* **overseer:** key the runtime-column test's _codex map by (tmux, name) ([b11eedc](https://github.com/thewoolleyman/livespec/commit/b11eedcfcc5f71d575b8a684218871e626f920bd))
+
 ## [0.17.4](https://github.com/thewoolleyman/livespec/compare/v0.17.3...v0.17.4) (2026-07-18)
 
 
