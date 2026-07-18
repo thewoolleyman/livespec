@@ -81,12 +81,20 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-18 — Phases 0–2 DONE; Phase 3 is 6/8 cut over;
-T10 cache-tiering DONE + console acceptance MET).** The plan is anchored by the **beads epic
+**State (fresh-session entry point, updated 2026-07-18 — Phases 0–2 DONE; Phase 3 is 7/8 cut over;
+console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The plan is anchored by the **beads epic
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
 ## ▶ START HERE — updated 2026-07-18
+
+> **Update 2026-07-18 (cont.): console #250 MERGED → 7 of 8 cut over.** The console cutover landed
+> (`c7b0cc15`) and is proven green on its self-hosted master run (`29630716803`) — after ONE transient
+> podman "Stop containers" teardown flake under peak load that re-ran clean (see the SESSION
+> 2026-07-18 (cont.) note below; all test steps had passed). The wind-down PRs — livespec **#1315** and
+> dev-tooling **#434** (T10 hook hardening) — merged and their worktrees are cleaned. **Only the
+> orchestrator (8th repo) remains, and it is MAINTAINER-GATED (§2 below) — do NOT self-start.** The
+> T10/console diagnosis below is retained as the trail.
 
 **T10 cache-tiering is DONE and the console's 2× regression is SOLVED (proven live). Full diagnosis +
 evidence is on `livespec-dev-tooling-9mp` — read its comments first.** Summary:
@@ -107,16 +115,14 @@ evidence is on `livespec-dev-tooling-9mp` — read its comments first.** Summary
   recreatable artifacts.
 
 **Next actions, in order:**
-1. **`livespec-console-beads-fabro` #250 — MAINTAINER call on CONTENT.** Its *performance* is validated
-   (370s). But the branch diverges ~8382 lines from console `master` (a refactor?) — the maintainer
-   confirms that content is intended before merging #250. The tool-fix rides along on merge.
+1. **SURFACE the orchestrator trust-tier decision** (`livespec-orchestrator-beads-fabro`, the last repo,
+   MAINTAINER-GATED — see §2 below). Do NOT self-start. This is the ONLY remaining repo — the other 7
+   are cut over + merged + proven on their master runs (console #250 MERGED 2026-07-18, `c7b0cc15`).
 2. **Follow-ups (non-blocking, tracked on 9mp):** (a) root-cause the tool-fix — bake
    nextest/llvm-cov/deny/machete into the `python-rust` image (or make `ensure-rust-quality-tools` use
    prebuilt), replacing the per-workflow ungate; (b) write-back automation (timer/supervisor re-seed via
    `warm-ci-cache.sh`) to keep the cache warm as the console evolves; (c) recreatability — re-provision
    the host from merged source so the cache tree + hardened hook are reproducible, not hand-built.
-3. **SURFACE the orchestrator trust-tier decision** (`livespec-orchestrator-beads-fabro`, the last repo,
-   MAINTAINER-GATED — see §2 below). Do NOT self-start.
 
 Also open, neither blocking: **`livespec-dev-tooling-xb7`** (P1 — the `ci.yml` image tag is an
 unmanaged pin; CI is 5 releases behind the sandbox. **De-risked: the drift is LATENT** — toolchains
@@ -125,11 +131,12 @@ are identical — **and the fan-out is validated**, so this is "stop the rot", n
 
 **Pool: 7 of 8 repos served — 63 runners (9 × 7), all online, zero orphans.** All 8 fleet repos are
 at `all_external_contributors` (the strictest fork-PR approval tier) — **no repo has runners without
-the hardened gate.** The console HAS its 9 runners already; only its ci.yml is un-merged.
+the hardened gate.** The console's ci.yml cutover is now MERGED + proven on master; the orchestrator
+(0 runners by design) is the only repo not cut over.
 
 ---
 
-**Phase 3 per-repo results — 6 of 8 CUT OVER + MERGED + proven on their MASTER runs:**
+**Phase 3 per-repo results — 7 of 8 CUT OVER + MERGED + proven on their MASTER runs:**
 
 | Repo | PR | Live proof |
 |---|---|---|
@@ -139,6 +146,7 @@ the hardened gate.** The console HAS its 9 runners already; only its ci.yml is u
 | `livespec-dev-tooling` | [#419](https://github.com/thewoolleyman/livespec-dev-tooling/pull/419) | **master 29486162624 — 58/58, ZERO skips**; `check-types`/`check-coverage`/`check-lint` all RAN in-container; 54 self-hosted / 4 hosted |
 | `livespec-runtime` | [#237](https://github.com/thewoolleyman/livespec-runtime/pull/237) | **master 29487092182 — 57/57, ZERO skips**; `check-lint`/`check-types`/`check-coverage` all RAN in-container |
 | `livespec-orchestrator-git-jsonl` | [#297](https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/297) | **master 29488086244 — 59/59, ZERO skips**; `check-types`/`check-coverage`/`e2e-cli`/`acceptance` all RAN in-container; 56 self-hosted / 3 hosted. Green only after the GOTCHA #4 duplicate-`env` fix (below) |
+| `livespec-console-beads-fabro` (RUST) | [#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250) | **master [29630716803](https://github.com/thewoolleyman/livespec-console-beads-fabro/actions/runs/29630716803) — 13/13 green on rerun** (T10 acceptance MET; PR run 347s < ~430s baseline). First master run flaked ONLY on the post-job podman "Stop containers" teardown under peak load (all test steps passed); re-ran clean once #1315's 68 checks + the dispatcher drained. See SESSION 2026-07-18 (cont.) |
 
 driver-codex's live run surfaced one real defect that merge + CI-green + review could not (below).
 **`livespec-runtime` ships NO auto-enable-merge workflow** (unlike the drivers, where
@@ -383,6 +391,46 @@ pinning why). **Validate with a DUPLICATE-KEY-STRICT loader, not `yaml.safe_load
 `SafeLoader` subclass whose mapping constructor rejects repeated keys. Swept all four of this
 session's cutovers with it: only `e2e-cli` was affected. Any future repo with a job-level `env:`
 (or any other key the preamble injects) needs the same care.
+
+**SESSION 2026-07-18 (cont.) — console #250 MERGED → 7 of 8 cut over; wind-down PRs reconciled.**
+- **`livespec-console-beads-fabro` #250 (RUST) MERGED (merge commit `c7b0cc15`).** With T10 done, the
+  only real blocker was cleared; the maintainer approved the merge after the "content" worry was shown
+  to be a FALSE ALARM. **The "~8382-line divergence from console master" was a MEASUREMENT ARTIFACT, not
+  a refactor:** `origin/master...phase3-selfhosted-cutover` was `14 2` — master had moved **14 commits
+  ahead** of the branch's merge-base, so the 2-dot `git diff master..branch` rendered master's own
+  forward progress as phantom "deletions". The PR's actual content (3-dot / GitHub "Files changed") was
+  a **clean 1-file `ci.yml` cutover, +97/−42**, across its 2 commits (`c852f230` cutover + `07a88eb2`
+  prebuild-all-4-tools). Rebase was clean (master's only `ci.yml` change since base was a 1-line
+  `- check-completeness` matrix add, in a region the cutover doesn't touch). **Lesson: judge a PR by its
+  3-dot diff, never the 2-dot branch-tip-vs-master-tip diff — the latter conflates the base repo's
+  advancement with branch content.**
+- **T10 acceptance PROVEN on the PR run** (`29629237878`): all 13 jobs green, `check-coverage`/
+  `check-nextest` at **347s** (< the ~430s hosted-warm baseline). So `livespec-dev-tooling-9mp`'s
+  acceptance ("un-draft #250; self-hosted wall-clock ≤ hosted warm baseline; PR lane proven unable to
+  write the trusted cache") is **MET**.
+- **⚠ The console's FIRST self-hosted MASTER run (`29630716803`) initially went RED — but on a TRANSIENT
+  INFRA FLAKE, not a cutover/code defect.** The sole failed step was the post-job **"Stop containers"**
+  teardown: `Error response from daemon: cannot remove container … timed out waiting for file
+  /run/user/1001/libpod/tmp/exits/…` → dockershim exit 1 → `ci-green` failed downstream. **Every actual
+  test/build step (1–13) passed.** Root cause: rootless-podman container teardown timing out under
+  EXCEPTIONAL concurrent container churn — that master run overlapped livespec **#1315's 68 checks** plus
+  the `livespec-dev-tooling` dispatcher, all hammering the same host. First-and-only occurrence (the
+  console's self-hosted PR runs — 13 jobs green repeatedly — never flaked on teardown). **Re-ran the
+  failed jobs once load dropped (#1315 done) → GREEN (13/13).** Carry as a WATCH-ITEM: if the "Stop
+  containers" podman timeout recurs on any repo's self-hosted lane, it's a real runner-runtime
+  reliability item (podman cleanup under load), not a test bug — root-cause the teardown, never
+  retry-mask a genuine test failure.
+- **Wind-down PRs reconciled + worktrees cleaned:** `livespec-dev-tooling` **#434** (T10 hook hardening)
+  merged → worktree `~/.worktrees/livespec-dev-tooling/t10-harden` + branch removed. `livespec` **#1315**
+  (the previous session's handoff wind-down write) merged (`5369034d`) → primary reconciled
+  (`checkout -- handoff.md && pull --ff-only`; the 12-line transient wind-down note was discarded as
+  designed), worktree `~/.worktrees/livespec/t10-handoff-update` + branch removed. Both primaries clean
+  on master. Left the active `livespec-dev-tooling` dispatch loop (item `i5barz`, another session) and
+  all other tracks' dirty working-tree files strictly untouched.
+- **Live hook note:** the installed `sanitize-hook.js` remains the pre-hardening #429 version
+  (functionally sound; #434's review found no blockers). Optionally re-install #434's hardened hook so
+  live matches source: `sudo install -o ci-runner -g ci-runner -m 0644 <merged ci-runner/sanitize-hook.js>
+  /home/ci-runner/actions-runner/container-hooks/sanitize-hook.js`.
 
 **SESSION 2026-07-16 (cont.) — pool extended to 6 repos + a fork-PR approval SECURITY REPAIR +
 driver-codex cut over.**
