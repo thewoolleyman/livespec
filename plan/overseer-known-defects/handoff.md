@@ -1,7 +1,9 @@
 # Handoff — overseer daemon known defects (deferred from overseer-rewrite)
 
-**Owning session:** livespec core, "overseer-known-defects". **Status:** OPEN, ready to
-start. These are the overseer daemon's known non-critical defects, deferred while the
+**Owning session:** livespec core, "overseer-known-defects". **Status:** IN PROGRESS —
+#4 DONE (merged `a24e3e13`, PR #1348); #5 DECIDED (option c + b-fallback); #6 UNBLOCKED.
+See the PROGRESS section below. These are the overseer daemon's known non-critical
+defects, deferred while the
 **restart-correctness** priority was in flight. That priority is now DONE — R1
 (self-healing resume-submit) + R2 (Claude name-gate + stale-mapping re-point) + the
 idle-nudge 1-hour floor are merged (`cf52b669`, PR #1318) and the daemon is respawned onto
@@ -11,6 +13,43 @@ None of these is correctness-critical (none can violate THE CARDINAL RULE — th
 never restarts a session that has not declared itself `ready`). They are a monitoring
 outage (#4), a runtime-recovery gap that needs a design call (#5), and test-isolation
 hygiene (#6). Work them in the order below; each is independent.
+
+## PROGRESS (2026-07-18)
+
+- **#4 — DONE, merged.** `codex_by_tmux_session` is now keyed by `(tmux_session, name)`
+  so two codex sessions sharing one tmux session no longer shadow each other; both
+  consumers (`_is_codex_track`, `_do_codex_restart`) resolve each track to ITS OWN
+  session by `(tmux, topic)`. Merged as `a24e3e13` (PR #1348). Two new beside-tests,
+  BOTH sabotage-verified (the map builder + the supervisor consumers). This is the codex
+  analogue of R2's set-valued `_claude_names` (SF5).
+- **Combined-state reconciliation — merged (PR #1350).** #4 auto-merged (rebase) cleanly
+  at the git level ON TOP of the concurrently-merged `overseer-tmux-runtime-column`
+  feature (`467e9cb3`), but that feature's new test built `sup._codex = {session: ...}`
+  (the OLD single-string key) and #4's `_is_codex_track` reads the map by `(session,
+  topic)` — so on combined master the runtime test read `runtime=None` and went red
+  (1 failed / 279 passed). Fixed by the same mechanical `(session, topic)` key update.
+  **LESSON (load-bearing for this folder):** because `.claude/skills/overseer/` runs NO
+  CI, two overseer branches can merge git-clean and still leave the folder red. After ANY
+  concurrent overseer merge, re-run `uv run pytest .claude/skills/overseer/ -q` against
+  the COMBINED master state — do not trust either PR's own green.
+- **#5 — DECIDED (maintainer, 2026-07-18): option (c) + (b) fallback.** Give reboot
+  recovery Codex parity: resume a dead codex track via `codex resume <id>` rather than
+  recreating it as claude. The session-id is recovered by REVERSING the persistent codex
+  index (`session_index.jsonl`, which survives the session's death — `read_thread_names`)
+  to find the session(s) for the mapped topic, picking the most-recent by `updated_at`.
+  Resume ONLY if that rollout still exists on disk; otherwise FALL BACK to (b) — skip and
+  surface in NEEDS YOU ("codex track X was down at boot; relaunch it, it'll re-adopt"),
+  never mis-recreating as claude. Rationale: Claude recovery launches a FRESH session +
+  handoff (continuity via the handoff file); codex `resume` reattaches the OLD rollout,
+  which is parity-or-better continuity. Two things to VERIFY LIVE before claiming done
+  (the (b) fallback bounds the risk if either disappoints): (1) `codex resume <old-id>`
+  reliably reattaches a long-dead session; (2) the latest-by-`updated_at` pick is
+  unambiguous in real index data. NOT yet implemented — implement on post-#4 master.
+- **#6 — now UNBLOCKED.** It was held only because the `overseer-tmux-runtime-column`
+  work had uncommitted edits in `supervisor.py` + `test_supervisor.py`; that feature is
+  now merged (`467e9cb3`), so the contention is gone. #6 still edits `codex_sessions.py`
+  + `supervisor.py` + `test_supervisor.py`, which #5 ALSO touches, so **#5 and #6 conflict
+  with each other — sequence them** (original suggested order: #6 then #5).
 
 ## Where the code + the discipline live
 
