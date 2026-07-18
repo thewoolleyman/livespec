@@ -81,26 +81,42 @@ Fable-model adversarial review AND maintainer corrections (2026-07-11).
 
 ## Session handoff — where to start
 
-**State (fresh-session entry point, updated 2026-07-16 — Phases 0, 1 AND 2 DONE; Phase 3 is 6/8
-cut over).** The plan is anchored by the **beads epic `livespec-3lev`**
-(`livespec` tenant) with per-phase children `.1`–`.8` (`.8` = Phase 5, the closing
-efficiency report). **Phase 0 (the local self-hosted runner), Phase 1 (baked layered
-images + the codex-acp auto-bump automation), AND Phase 2 (livespec `ci.yml` cut over to
-the self-hosted runner + baked image) are all functionally COMPLETE and live-exercised.**
+**State (fresh-session entry point, updated 2026-07-18 — Phases 0–2 DONE; Phase 3 is 6/8 cut over;
+T10 cache-tiering DONE + console acceptance MET).** The plan is anchored by the **beads epic
+`livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — the next two actions, in order
+## ▶ START HERE — updated 2026-07-18
 
-**1. BUILD T10 cache-tiering (`livespec-dev-tooling-9mp`, P1).** It is fully designed AND the design
-is PROVEN on this host; it is the only thing blocking the last repo. A ready-to-cut-over console PR
-([console#250](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/250)) sits GREEN
-but held DRAFT behind it, because without a cache the Rust matrix is a **2.06× regression** (883s vs
-the ~430s hosted baseline). Read §"1. `livespec-console-beads-fabro` (RUST)" below for the full
-design, the live overlay proof, the implementation shape, and the trap to avoid. Acceptance:
-un-draft #250 and get its wall-clock ≤ ~430s, with a PR-lane job proven unable to write the lower.
+**T10 cache-tiering is DONE and the console's 2× regression is SOLVED (proven live). Full diagnosis +
+evidence is on `livespec-dev-tooling-9mp` — read its comments first.** Summary:
+- **The original T10 premise was WRONG.** The console's regression was NOT dep-compilation (which the
+  warm cache fixes) — warm cache alone still left the matrix at 984s. It was
+  `ensure-rust-quality-tools` **source-building** cargo-nextest/llvm-cov/deny/machete per job (~740s
+  each; the taiki-e prebuilt installs were gated per `matrix.target`, so each job source-built the
+  other three). `check-coverage`'s REAL work is **38s** warm; the rest was source-builds + contention.
+- **The fix = T10 warm cache + prebuild all 4 tools** → matrix **984s → 370s (≤430s target MET)**, even
+  under host load 60–76. The "18 cores can't match hosted" fear was purely the source-build
+  contamination — capping cargo cores is UNNECESSARY.
+- **Shipped:** T10 hook = **`livespec-dev-tooling` #429 MERGED** (independent Fable review: no blockers;
+  hardening follow-up **#434** auto-merging). Tool-fix = console commit **`07a88eb`** on the
+  `phase3-selfhosted-cutover` branch (#250) — ungates the taiki-e installs.
+- **Live host:** T10 hook installed (backup `…/sanitize-hook.js.pre-t10.bak`); console cache tree seeded
+  from the branch (cargo+target+uv, warm). `provision-ci-runner.sh` (creates the tree +
+  `CI_RUNNER_RUST_REPOSLUGS`) and `warm-ci-cache.sh` (the trusted host-side write-back seed) are the
+  recreatable artifacts.
 
-**2. SURFACE the orchestrator trust-tier decision to the maintainer (do NOT self-start).**
-`livespec-orchestrator-beads-fabro` is the last repo and is MAINTAINER-GATED — see §2 below.
+**Next actions, in order:**
+1. **`livespec-console-beads-fabro` #250 — MAINTAINER call on CONTENT.** Its *performance* is validated
+   (370s). But the branch diverges ~8382 lines from console `master` (a refactor?) — the maintainer
+   confirms that content is intended before merging #250. The tool-fix rides along on merge.
+2. **Follow-ups (non-blocking, tracked on 9mp):** (a) root-cause the tool-fix — bake
+   nextest/llvm-cov/deny/machete into the `python-rust` image (or make `ensure-rust-quality-tools` use
+   prebuilt), replacing the per-workflow ungate; (b) write-back automation (timer/supervisor re-seed via
+   `warm-ci-cache.sh`) to keep the cache warm as the console evolves; (c) recreatability — re-provision
+   the host from merged source so the cache tree + hardened hook are reproducible, not hand-built.
+3. **SURFACE the orchestrator trust-tier decision** (`livespec-orchestrator-beads-fabro`, the last repo,
+   MAINTAINER-GATED — see §2 below). Do NOT self-start.
 
 Also open, neither blocking: **`livespec-dev-tooling-xb7`** (P1 — the `ci.yml` image tag is an
 unmanaged pin; CI is 5 releases behind the sandbox. **De-risked: the drift is LATENT** — toolchains
