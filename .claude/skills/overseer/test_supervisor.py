@@ -2349,7 +2349,7 @@ def test_evaluate_derives_codex_runtime_and_annotates_the_tmux_cell(tmp_path):
     fake.serve(session, repo, capture=_codex_idle_capture(ctx=80, topic=topic), cmd="bun")
     sup = _sup(tmp_path, fake)
     sup._codex = {
-        session: codex_sessions.CodexSession(
+        (session, topic): codex_sessions.CodexSession(
             pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
         )
     }
