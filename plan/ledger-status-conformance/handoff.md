@@ -1,5 +1,38 @@
 # Ledger status-conformance cleanup + beads create-status adoption — plan handoff (livespec core)
 
+> **SESSION 10 (2026-07-18) — ✅ TRACK CLOSED. Post-flip observation window is conclusively clean; nothing left to watch.**
+>
+> The SESSION 9 flip (bd-guard host-wide `fail` mode) has now run ~2.85 days
+> under real load with zero incident. Honeycomb `livespec` env / `bd-guard`
+> dataset, `guard.mode=fail` since the flip:
+>   - **24,803** real `bd` ops flowed through the guard from **5** distinct
+>     caller processes.
+>   - **Exactly 1** was blocked (`guard.warned=true`) — the deliberate
+>     `zzz-flip-probe-DELETEME --claim` test probe. **Zero legitimate workflows
+>     blocked.**
+>   - Diverse lifecycle mutations passed clean (`update` 206, `create` 59,
+>     `close` 27, `dep` 21, `ready` 3, …), so the guard is discriminating
+>     correctly — not waving everything past.
+>   - This clears the original readiness bar (≥500 ops/24h, ≥3 callers, 0 real
+>     blocks) by ~17×. In `fail` mode the guard is behavior-transparent on any
+>     op it passes, so the ONLY way it can break a workflow is a block — and the
+>     only block was our own probe.
+>
+> **The observation phase (SESSION 9's "only remaining work") is DONE.** The two
+> durable Honeycomb triggers remain live as the standing, session-independent
+> safety net: `nak9miYrs14` (raw op caught → in `fail` mode = BLOCKED; its
+> description was updated to fail-mode semantics this session) and `VrKJu9hrgr`
+> (telemetry-stalled). No polling loop or session heartbeat is needed; the
+> transient session health monitor was stopped at close.
+>
+> **UNCHANGED external/upstream waits (do NOT block closure):** beads #4738
+> (`status.default`) awaiting the `gastownhall/beads` maintainer; a beads release
+> carrying #4536 (`bd create --status`) → then bump the pin, single-step the
+> store, and eventually RETIRE the guard (it is a stopgap).
+>
+> The SESSION 9 flip narrative was committed in livespec core PR #1256; this note
+> closes the track. Everything below is prior-session history.
+
 > **SESSION 9 (2026-07-15) — ✅ THE GUARD IS FLIPPED TO `fail`, LIVE-VERIFIED. THE TRACK'S GOAL IS ACHIEVED. Do NOT re-do the flip.**
 >
 > The bd-guard now BLOCKS (enforces) host-wide in `fail` mode — the long-pending
