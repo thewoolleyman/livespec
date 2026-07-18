@@ -345,11 +345,11 @@ topic; `/proc/<pid>/cwd` = the repo. `resolve_tmux_session` was already runtime-
    new Codex gate detection confirmed live (`codex-yolo-sandbox` correctly reported
    `blocked:human` at a `›` picker). Two independent Fable reviews: no blockers. See
    `research/codex-ctx-and-restart-evidence.md` §"2026-07-17".
-2. **Does `vps-info` belong in the fleet?** It has `plan/dolt-backup-missing-secret/` but
-   is absent from `.livespec-fleet-manifest.jsonc`, so it is unwatched. **Independently: a
-   live Claude session there is `waiting` on the human right now** (`tmux switch-client -t
-   vps-info`), invisible to the fleet view. Note its session is named `vps-info-7e`, not
-   the topic — so registering the repo alone would NOT adopt it.
+2. **RESOLVED (maintainer 2026-07-18): `vps-info` is NOT a fleet member yet.** It has
+   `plan/dolt-backup-missing-secret/` but is deliberately absent from
+   `.livespec-fleet-manifest.jsonc` — **do not register it.** (Its live Claude session is
+   named `vps-info-7e`, not the topic, so registering the repo alone would not adopt it
+   anyway.) Revisit only if the maintainer later decides it should join the fleet.
 
 ### OPEN — known defects (defects #1–#3 RESOLVED by the full-citizen change 2026-07-17)
 
@@ -365,22 +365,16 @@ topic; `/proc/<pid>/cwd` = the repo. `resolve_tmux_session` was already runtime-
    corrected (deleted-status), the Codex-ctx section rewritten (statusline, not the removed
    `rollout_ctx_remaining`), and the `adopt_sessions` docstring fixed (codex IS adopted).
    The `--warn-percent`/"four modules" pre-existing inaccuracies were fixed too.
-4. **Two codex sessions in one tmux session (STILL OPEN):** `codex_by_tmux_session` keeps
-   first-by-pid, so the second shadows the first → that track silently loses ctx +
-   monitoring. Safe, but a monitoring outage.
-5. **`recover_missing_sessions` is Claude-only (STILL OPEN, now DOCUMENTED):** startup
-   recovery re-launches the CLAUDE command, so a codex track that died while the daemon was
-   DOWN would be recreated as claude (rollout orphaned) — non-destructive (only ABSENT
-   sessions are recreated), unavoidable under runtime-derived-live (a dead codex has no
-   live rollout id at recovery). Documented in the `recover_missing_sessions` docstring; a
-   real fix needs a codex-session-store lookup by `thread_name`. While the daemon is UP the
-   per-tick restart path DOES dispatch by runtime.
-6. **The beside-tests now touch the REAL `/proc` and `~/.codex`** via default kwargs in
-   adopt/refresh. Deterministic today (tmp cwds cannot match fleet repos), but a real host
-   coupling in a unit suite.
-7. **`livespec-p9s0`** (ledger, P1, NOT overseer): the cross-repo wiring check reads
-   siblings' LOCAL clones, so a stale clone flaps phantom drift. Hit live this session and
-   worked around by fast-forwarding the clone.
+Defects #4–#6 (the overseer daemon's deferred non-critical defects) are **RELOCATED to a
+dedicated, startable plan: `plan/overseer-known-defects/handoff.md`** (maintainer-directed
+2026-07-18) — two-codex-in-one-tmux shadowing (#4), the Claude-only reboot-recovery gap
+(#5, needs a design call), and the beside-tests touching real `/proc`/`~/.codex` (#6). That
+handoff carries each defect's root cause, fix direction, and acceptance, plus the sole-gate
++ sabotage discipline; start that track to work them.
+
+7. **`livespec-p9s0`** (ledger, P1, NOT overseer — stays here as a cross-reference): the
+   cross-repo wiring check reads siblings' LOCAL clones, so a stale clone flaps phantom
+   drift. Belongs to the ledger/cross-repo-consistency track, not this daemon.
 
 ### Method notes worth keeping
 
