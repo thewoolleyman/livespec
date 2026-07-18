@@ -38,6 +38,10 @@ on:
   push:
     branches: [master]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup:
     name: detect-py-changes
