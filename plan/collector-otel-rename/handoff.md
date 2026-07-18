@@ -1,9 +1,10 @@
 # Plan — rename `claude-collector` → `otel-collector` (host OTel collector)
 
-**Status:** VPS side DONE (2026-07-11); macOS migration PENDING on the Mac.
-Maintainer-approved 2026-07-11 as a separate, self-contained task (split
-out of `plan/fabro-ci-image-factoring/`). **Owning session:** livespec
-core, 2026-07-11.
+**Status:** VPS side DONE and live-confirmed (2026-07-18); macOS migration
+PENDING on the Mac — the ONLY remaining item. Maintainer-approved 2026-07-11
+as a separate, self-contained task (split out of
+`plan/fabro-ci-image-factoring/`). **Owning session:** livespec core,
+2026-07-11; live-marker confirmation 2026-07-18.
 
 **Settled decisions (2026-07-11):** name = `otel-collector`; cross-platform
 = runs on Linux or macOS (docs + code updated); marker migration = hard cut
@@ -22,13 +23,34 @@ core, 2026-07-11.
 - Honeycomb: inventory found ZERO board/trigger dependency on the old
   marker, so no dashboard migration was needed.
 
-**What's PENDING:**
+**Live-marker confirmation — DONE (2026-07-18, from the livespec-core
+session on the Linux VPS via the Honeycomb MCP):**
+- `otel-collector.service` verified `active (running)` — 4-day uptime,
+  config loaded from `/data/projects/otel-collector/config.yaml`, port 4317
+  up. The gRPC log lines about `api.honeycomb.io:443` ("operation was
+  canceled" / "handshake failed") are the normal multi-subchannel-cancel
+  churn, NOT export failures — data lands (see counts below).
+- New marker flowing: over 24h the `agent-activity` env carries **314,601**
+  events with `collector.otel-collector="washere"`, version **`0.8`**
+  (bumped past the handoff's `0.5` by Phase P-host config work), continuous
+  through now.
+- Old marker fully gone: **0** events with `collector.claude-collector` over
+  24h — the hard cut is complete; nothing still stamps the old marker.
+- Host-metrics also marked: the `livespec-host-metrics` dataset (Phase
+  P-host `hostmetrics`+`docker_stats`) carries `collector.otel-collector=
+  "washere"` v`0.8` too (7,604 events/1h) — closes verify-step 9. (Honeycomb
+  classifies that dataset as `events`-kind, a P-host ingestion detail, not a
+  rename-thread concern.)
+- Cross-repo straggler sweep clean: the only surviving `claude-collector`
+  strings in this repo are legitimate "renamed from `claude-collector`"
+  historical mentions (this handoff, `plan/fabro-ci-image-factoring/
+  handoff.md`) and frozen archive transcripts — no stale path references.
+
+**What's PENDING (the only remaining item):**
 - **macOS migration** — run on the Mac via the collector repo's `AGENTS.md`
   first-line reminder → `plan/rename-to-otel-collector-macos-migration.md`
   (unload old-label LaunchAgent, install new, smoke-test, then delete the
-  reminder + archive that plan).
-- **Live-marker confirmation** — verify `collector.otel-collector` is
-  flowing in the `agent-activity` Honeycomb env once telemetry accumulates.
+  reminder + archive that plan). Cannot be driven from the Linux VPS.
 
 The remainder of this document is the ORIGINAL task spec (kept for the
 migration-checklist detail); the decisions above are now settled.
