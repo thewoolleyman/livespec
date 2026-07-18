@@ -80,23 +80,22 @@ epic by prose (the livespec-bj9x precedent).
 
 ## Next actions (in order)
 
-1. **Wait for the `livespec-runtime` v0.10.0 release to cut (DO THIS FIRST — it
-   gates B2/B3).** B1's `feat:` merge triggered the release-please PR
-   `chore(master): release 0.10.0` (in CI as of 2026-07-18). B2/B3 re-vendor
-   `livespec_runtime` + bump the pin to a RELEASE (dogfooding pins track
-   releases), and the latest release is still `v0.9.2` (no `factory_safety`). When
-   v0.10.0 is tagged, proceed. (If the release-please PR stalls, that is the
-   blocker to clear.) Optionally: give B1 (`livespec-runtime-vkqer3`, in
-   `acceptance`) its human accept leg.
-2. **Once v0.10.0 is cut: bump pins, then promote + factory-dispatch B2 and B3.**
-   Bump the `livespec-runtime` pin to `v0.10.0` in both
-   `livespec-orchestrator-beads-fabro` and `livespec-orchestrator-git-jsonl`
-   (re-vendor `_vendor/livespec_runtime`), then promote `bd-ib-qcnbbp` (B2) and
-   `bd-gj-7adugd` (B3) `backlog → ready` and factory-dispatch each **via the
-   Dispatcher drain or `drive --action impl:<id>`** — never in-session implement.
-   B2 realizes the v040 admission refusal + replaces the `is_host_only_item` regex
-   + updates the paired doctor invariant + migrates old host-only-marked items; B3
-   is git-jsonl codec parity. They can run in parallel (both depend only on B1).
+1. **Confirm the pin bumps to `v0.10.0` land (DO THIS FIRST — it gates B2/B3).**
+   `livespec-runtime` **v0.10.0 is CUT** (release PR #163 merged 2026-07-18;
+   contains B1's `factory_safety`). The `livespec-orchestrator-beads-fabro` +
+   `livespec-orchestrator-git-jsonl` pins (at `v0.9.2`) now lag it, so the
+   pin-freshness sweep + fan-out `bump-pin` should auto-open `chore/bump-*` PRs to
+   `v0.10.0`. Confirm those bump PRs open + merge (re-vendoring
+   `_vendor/livespec_runtime`); if the fan-out doesn't fire, bump the two pins
+   directly. Optionally: give B1 (`livespec-runtime-vkqer3`, in `acceptance`) its
+   human accept leg.
+2. **Once the pins are at `v0.10.0`: promote + factory-dispatch B2 and B3.**
+   Promote `bd-ib-qcnbbp` (B2) and `bd-gj-7adugd` (B3) `backlog → ready` and
+   factory-dispatch each **via the Dispatcher drain or `drive --action
+   impl:<id>`** — never in-session implement. B2 realizes the v040 admission
+   refusal + replaces the `is_host_only_item` regex + updates the paired doctor
+   invariant + migrates old host-only-marked items; B3 is git-jsonl codec parity.
+   They can run in parallel (both depend only on B1).
 3. **Slice C — after B2 lands: groom + dispatch `bd-ib-i6wfum`** (host-only
    needs-attention kind), same factory-dispatch route. At C's groom, set its
    proper phased (prose) dependency on B1/B2.
