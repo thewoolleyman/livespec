@@ -1,9 +1,11 @@
 # Handoff — the overseer never restarts a session that has not declared itself ready
 
-**LATEST (2026-07-18): restart-correctness R1 + R2 + idle-nudge floor shipped.** The two
-defects in `plan/overseer-rewrite/restart-correctness-defects.md` are FIXED on branch
-`fix/overseer-restart-correctness` (269 beside-tests green; each new guard sabotage-verified),
-along with a maintainer-flagged live fix and a Fable adversarial-review hardening pass:
+**LATEST (2026-07-18): restart-correctness R1 + R2 + idle-nudge floor MERGED and LIVE.** The
+two defects in `plan/overseer-rewrite/restart-correctness-defects.md` are fixed and merged to
+master (`cf52b669`, PR #1318; 269 beside-tests green; each new guard sabotage-verified; full CI
+green; Fable review NO BLOCKERS), and the daemon has been respawned onto the merged code —
+**restart-correctness is COMPLETE, nothing pending here.** It carried a maintainer-flagged live
+fix and a Fable adversarial-review hardening pass:
 - **Idle-nudge 1-hour floor.** The keep-going (`idle-with-context-left`) nudge was firing on
   sessions merely between turns and interrupting active work (maintainer 2026-07-18: "too
   aggressive, TOO SOON"). It now fires only after a session has been CONTINUOUSLY idle for
@@ -23,15 +25,25 @@ along with a maintainer-flagged live fix and a Fable adversarial-review hardenin
   the SUBMIT ONLY (`_resend_enter` — never a re-respawn, so it can never escalate to a kill;
   a fresh `ready` is still the sole respawn trigger). `_await_input_box` hardens the first
   paste. A stranded resume is a NEEDS-YOU row until it resumes.
-- **R2 — Claude identity gate `name == topic` parity + stale-mapping re-point.** The Claude
-  act-gate now also requires the pane's live Claude `name` to equal the topic (parity with
-  the Codex gate; `_claude_name` from `claude_sessions.sessions_by_tmux_session`), rejecting
-  a proven mismatch (positive-mismatch only, fail-soft on unknown) so a generic reused window
-  (`livespec1`…) running another topic's Claude in the same repo is never mis-driven; and
+- **R2 — Claude identity gate `topic in names` parity + stale-mapping re-point.** The Claude
+  act-gate now also requires a live Claude named for the topic to be present in the pane's tmux
+  session (parity with the Codex gate; set-valued `_claude_names` from
+  `claude_sessions.names_by_tmux_session`, so a helper Claude sharing the session cannot shadow
+  it — review SF5), rejecting a proven mismatch (fail-soft on unknown) so a generic reused
+  window (`livespec1`…) running another topic's Claude in the same repo is never mis-driven; and
   `adopt_sessions` RE-POINTS a stale mapping (`registry.repoint_tmux`) when a topic's live
   session moves tmux sessions instead of freezing it.
-- After merge: **respawn the daemon** to pick up this code (Standing operational notes below),
-  then confirm a live restart submits its resume and a wrong-name pane reads `session-gone`.
+- **Respawn DONE (2026-07-18).** The `livespec-overseer` daemon (session `livespec-overseer`,
+  pane `%77`, title `overseer-daemon`) was respawned onto the merged code and live-exercised:
+  it re-adopted the fleet and renders the table + `NEEDS YOU` block correctly. Because
+  `idle_since` is in-memory, every idle track's 1-hour nudge clock restarted at the respawn, so
+  the aggressive nudging stops immediately. To re-verify later: a live restart submits its
+  resume, and a wrong-name pane reads `session-gone`.
+- **Next focus (all lower priority than the now-complete restart-correctness):** the OPEN items
+  further down — `vps-info` fleet membership (decision #2), known-defects #4–#7, and the
+  `livespec-p9s0` pin-staleness — plus the observed `codex-yolo-sandbox` malformed state file
+  (`'dispatched ok'`) in `livespec-orchestrator-beads-fabro2` pane `%71` (that track should
+  write a conforming token; the daemon already fail-closes it).
 
 **LATEST (2026-07-17): Codex tracks are FULL CITIZENS — shipped, merged, and live.**
 PR #1308 (commits `31fb34cb` + `c1aed0a4`) retired monitor-only: a Codex track now gets
