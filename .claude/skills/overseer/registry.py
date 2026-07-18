@@ -45,10 +45,13 @@ __all__ = [
     "read_injection_stamp",
     "read_mapping",
     "read_notified_bands",
+    "read_resume_pending",
     "remove_mapping",
     "repo_root_present",
     "repo_slug",
+    "repoint_tmux",
     "rewrite_mapping",
+    "set_resume_pending",
     "tmux_id",
     "watch_set",
     "write_injection_stamp",
@@ -393,6 +396,45 @@ def remove_mapping(
         )
 
     return rewrite_mapping(_keep, store_path)
+
+
+def repoint_tmux(
+    repo: str,
+    topic: str,
+    new_tmux: str,
+    store_path: str | os.PathLike[str] | None = None,
+) -> bool:
+    """Rewrite the ``(repo, topic)`` mapping row's ``tmux`` field to ``new_tmux``.
+
+    The daemon uses this to RE-POINT a stale mapping: a topic's live named session that
+    moved to a DIFFERENT tmux session than the store records (generic reused windows
+    ``livespec1``… drift across topics), so the frozen binding would otherwise let an act
+    target the wrong pane (R2, 2026-07-18). Operates on raw dicts under the store lock so
+    unknown keys (``added_at``) survive and a concurrent append cannot clobber the update.
+
+    Idempotent: returns False and SKIPS the write when no matching row needs changing (the
+    stored ``tmux`` already equals ``new_tmux``, or there is no such row), so a steady-state
+    tick where nothing moved never rewrites (and never risks truncating) the store. Returns
+    True when at least one row was re-pointed. Fail-soft on OSError (inherited from
+    :func:`_write_rows`).
+    """
+    norm = _norm(repo)
+    with _file_lock(_store(store_path)):
+        rows = _read_rows(store_path)
+        changed = False
+        for row in rows:
+            row_repo = row.get("repo")
+            if (
+                isinstance(row_repo, str)
+                and _norm(row_repo) == norm
+                and row.get("topic") == topic
+                and row.get("tmux") != new_tmux
+            ):
+                row["tmux"] = new_tmux
+                changed = True
+        if changed:
+            _write_rows(rows, store_path)
+        return changed
 
 
 # --------------------------------------------------------------------------- #
@@ -783,3 +825,63 @@ def clear_injection_stamp(
         if _stamp_key(repo, topic) in data:
             del data[_stamp_key(repo, topic)]
             _atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+
+def read_resume_pending(
+    repo: str,
+    topic: str,
+    stamp_path: str | os.PathLike[str] | None = None,
+) -> bool:
+    """True if a restart RESPAWNED the fresh session but its resume line never SUBMITTED.
+
+    The daemon's restart respawns the pane and pastes the ``read <handoff> and follow
+    it`` resume line, but a freshly-respawned TUI can DROP the Enter while still drawing
+    its welcome screen — leaving the fresh session live but idle with the resume line
+    un-submitted (proven live 2026-07-17: fabro / autonomous-mode / overseer-rewrite all
+    stranded this way in one day). ``set_resume_pending`` records that state as a
+    round-scoped member of the injection-stamp dict so the NEXT tick retries the SUBMIT
+    ONLY (re-send Enter, never a re-respawn — a fresh ``ready`` is the sole respawn
+    trigger). Reads the ``resume_pending`` member; anything else ⇒ False.
+
+    Round-scoped by construction: :func:`clear_injection_stamp` (restart closed) deletes
+    the whole key and :func:`write_injection_stamp` (a fresh round) overwrites the dict, so
+    the flag can never outlive the round it belongs to. Fail-soft: an unusable value ⇒ False.
+    """
+    data = _read_stamp_data(_stamp_store(stamp_path))
+    value = data.get(_stamp_key(repo, topic))
+    if not isinstance(value, dict):
+        return False
+    return value.get("resume_pending") is True
+
+
+def set_resume_pending(
+    repo: str,
+    topic: str,
+    stamp_path: str | os.PathLike[str] | None = None,
+) -> None:
+    """Record that a restart respawned the fresh session but its resume did not submit.
+
+    Sets the ``resume_pending`` member on the track's injection-stamp dict, PRESERVING
+    ``at`` (so the ``ready`` marker still certifies — ``mtime > at``) and any notified
+    ``bands``. Same lock + atomic replace as :func:`write_injection_stamp`. If the current
+    value is a legacy bare float, it is upgraded to the dict shape with that float as
+    ``at``; if the key is absent, a bare ``{"resume_pending": True}`` is written (the
+    retry still fires — it keys on this flag, not on ``at``). Fail-soft on OSError (B7).
+    """
+    path = _stamp_store(stamp_path)
+    with _file_lock(path):
+        data = _read_stamp_data(path)
+        key = _stamp_key(repo, topic)
+        value = data.get(key)
+        if isinstance(value, dict):
+            entry: dict[str, object] = dict(value)  # preserve at + bands
+        elif value is None:
+            entry = {}
+        else:
+            try:
+                entry = {"at": float(value)}  # legacy bare-float → dict, preserving at
+            except (TypeError, ValueError):
+                entry = {}
+        entry["resume_pending"] = True
+        data[key] = entry
+        _atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")

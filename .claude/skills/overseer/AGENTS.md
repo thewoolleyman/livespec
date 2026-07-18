@@ -354,7 +354,23 @@ for the marker's edge-triggered lifecycle.
      bracketed-pasted AND verify-submitted once the fresh TUI is up
      (`default_resume` + `_submit_prompt`). A `claude "<prompt>"` argv only
      PRE-FILLS the box without submitting — which is why the resume line is pasted
-     after launch rather than passed on the command line.
+     after launch rather than passed on the command line. **The submit is
+     SELF-HEALING (R1, 2026-07-18):** a freshly-respawned TUI can DROP the Enter
+     while still drawing its welcome screen, leaving the fresh session live but idle
+     with the resume UN-submitted (proven live 2026-07-17 — fabro / autonomous-mode /
+     overseer-rewrite each stranded this way, autonomous-mode for 9h until a human
+     pressed Enter). So `_do_restart` waits for the box to render first
+     (`_await_input_box`) and, if the submit STILL does not land, does NOT clear the
+     `ready` marker or log success — it marks a round-scoped `resume_pending`
+     (`registry.set_resume_pending`) and alerts. The next tick's `evaluate` intercepts
+     the still-open round BEFORE the busy/idle cascade and retries the SUBMIT ONLY
+     (`_resend_enter` — re-send Enter, NEVER a re-respawn, so it can never escalate to
+     a kill; a fresh `ready` is still the sole respawn trigger), closing the round only
+     once the box clears or the pane goes busy. The stranded row stays a NEEDS-YOU
+     report (`_RESUME_PENDING_NOTE`) until it resumes. See invariant 7's B5 discipline:
+     "is the fresh Claude up?" and "did the resume submit?" are now SEPARATE facts —
+     conflating them (the old `_clear_state` + "restarted" log on a failed submit) is
+     the exact discarded-marker bug this replaced.
 
    **The Codex arm (`_do_codex_restart`) is the ONE place the destructive bug lives,
    and the dispatch is what prevents it.** `claude -n <topic>` aimed at a codex pane
@@ -439,7 +455,16 @@ for the marker's edge-triggered lifecycle.
    goes idle while still ABOVE the wind-down threshold and is not waiting on a human
    (and has made no `ready`/`blocked`/`winding-down` declaration of its own), the
    daemon sends exactly ONE "keep going, don't stop with context left" nudge and
-   stamps this token so it does not re-nudge every tick. It is EDGE-TRIGGERED: the
+   stamps this token so it does not re-nudge every tick. **The nudge fires ONLY after
+   the session has been CONTINUOUSLY idle for at least `_IDLE_NUDGE_AFTER` (1 hour;
+   maintainer-declared 2026-07-18: it was "too aggressive, TOO SOON" and interrupted
+   sessions merely between turns).** The continuous-idle clock is in-memory
+   (`_InjectState.idle_since`), stamped on the first cleanly-idle tick (empty prompt AND
+   not busy — `busy` folds in Claude's registry `busy`/`shell`, so a sub-agent or
+   background command resets it) and cleared the moment the session is non-idle; a daemon
+   restart resets it, which only ever DELAYS a nudge (the safe direction). The row still
+   reads `idle-with-context-left` immediately (descriptive, not an attention status); only
+   the keystroke waits for the 1-hour floor. It is EDGE-TRIGGERED: the
    nudge fires once per idle episode, and the daemon CLEARS the token the moment the
    session goes non-idle again (busy / gate / blocked branches call
    `_clear_idle_nudge_state`), re-arming a fresh nudge for a later episode. The
@@ -645,6 +670,54 @@ for the marker's edge-triggered lifecycle.
   for itself"** (invariant 7). The full contract is in `marker-protocol.md`; keep
   it and `supervisor.py`'s `_WRAPUP_SUGGEST_HEAD` / `_WRAPUP_INSIST_HEAD` /
   `_WRAPUP_BODY` in sync.
+- **Self-healing resume-submit (`registry.set_resume_pending` / `read_resume_pending`,
+  `_resend_enter`; R1, 2026-07-18).** The restart respawns the fresh session and pastes the
+  resume line, but a freshly-respawned TUI can DROP the Enter while still drawing its
+  welcome screen — the fresh session then sits live but IDLE with an un-run handoff
+  (proven live 2026-07-17 four times in one day; autonomous-mode stranded 9h). The OLD code
+  cleared the `ready` marker and logged "restarted" anyway, so the daemon never retried.
+  Now `_do_restart` separates two facts it used to conflate — "is the fresh Claude up?"
+  (await) and "did the resume submit?" (the Enter): on a FAILED submit it keeps the marker
+  + stamp, marks a round-scoped `resume_pending` flag on the injection-stamp dict, and
+  alerts (no clean "restarted" log). The next tick's `evaluate` sees `resume_pending` and
+  intercepts BEFORE the busy/idle cascade — a box holding the un-submitted resume reads as
+  "not idle" and would otherwise fall to `settling` and never retry. The retry branches on
+  the BOX STATE, NOT on `busy` (review SF3): an empty box means the resume left the box
+  (submitted / never pasted) → close the round; a box holding text means the Enter dropped →
+  re-send Enter ONLY (`_resend_enter`, NEVER a re-paste, NEVER a re-respawn). `busy` is NOT a
+  "submitted" signal — a fresh session can be busy for SessionStart-hook reasons unrelated to
+  the resume, so a `busy` shortcut would false-close the round. And a fresh TUI that comes up
+  on a PICKER is never keystroked (review SF4): both `_do_restart` and the retry branch check
+  `is_structured_gate` first and report `blocked:human`, keeping the round open until the
+  human clears the gate. **The re-respawn stays gated on a fresh `ready` alone**,
+  so the retry can never escalate to a `respawn-pane -k` (the loop-safety property the
+  Codex-#2 reasoning protected; pinned by `test_submit_retry_never_kills_the_fresh_session`
+  and `test_idle_pane_with_resume_pending_closes_the_round_instead_of_respawning`). The flag
+  is round-scoped by construction: `clear_injection_stamp` (round close) and
+  `write_injection_stamp` (fresh round) both drop it, so it can never outlive its round.
+  Codex never sets it (`codex resume` auto-submits its kick, no separate paste). Harden:
+  `_await_input_box` waits for the box to render before the FIRST paste so most restarts
+  never need the retry at all.
+- **Claude identity gate `topic in names` parity + stale-mapping re-point
+  (`_pane_is_managed_claude`, `_claude_names`, `registry.repoint_tmux`; R2, 2026-07-18).**
+  The Codex gate is pane-scoped (`_is_codex_track` requires `live.name == topic`); the
+  Claude gate checked only process + cwd, so a generic reused tmux window (`livespec1`…
+  cycled across topics) the store mapped to topic A but now running topic B's Claude —
+  SAME repo — passed the gate and got A's wrap-up injected into B, then a `ready`
+  respawn-KILLED B as A. The gate now ALSO requires a live Claude named for THIS topic to be
+  present in the pane's tmux session (`self._claude_names`, from `names_by_tmux_session` —
+  the SET of ALL live Claude names in that tmux session, so a HELPER Claude sharing the
+  session cannot shadow the track's own name and flap it to `session-gone`; review SF5). It
+  is POSITIVE-mismatch only: reject only when the tmux session has live Claude names but NOT
+  this topic's; an UNKNOWN tmux session (empty set — registry miss, or a direct-`evaluate`
+  test that did not populate the map) preserves the prior process+cwd gate — fail-soft, so a
+  transient miss never flaps a live track to `session-gone`. Do NOT widen this to "reject
+  unless proven `topic in names`" (that reintroduces the flap). Separately,
+  `adopt_sessions` now RE-POINTS a stale mapping: when a topic's live named session resolves
+  to a tmux session different from the store's `tmux` field, it rewrites the row
+  (`repoint_tmux`, idempotent + guarded so a steady-state tick never touches the store)
+  instead of freezing the binding — the "re-mapping is a separate concern" the old code
+  deferred was the concern.
 - **Stale-`ready` voiding (`_void_if_stale` + `_MARKER_VOID_GRACE`).** A session
   that declares `ready` and then RESUMES work must not be restarted on that (now
   false) declaration. So on a busy/blocked tick a `ready` OLDER than

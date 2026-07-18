@@ -52,6 +52,7 @@ so the daemon never keystrokes into a session that is already wrapping up.
 from __future__ import annotations
 
 import argparse
+import collections
 import contextlib
 import fcntl
 import os
@@ -107,6 +108,14 @@ DANGER_CTX_REMAINING = 20
 # `session-gone` IS attention: a plan we have seen running is no longer in any tmux,
 # and the operator decides whether to restart or unassign it. `not-claude` is gone.
 ATTENTION_STATUSES = ("blocked:human", "danger", "session-gone")
+
+# The row note a track carries while its POST-RESPAWN resume line has not yet SUBMITTED
+# (R1, 2026-07-18). The daemon self-heals — it re-sends Enter every tick (never a
+# re-respawn) until the box clears — but until it lands the operator should SEE the track
+# is mid-restart and stranded, and a human may need to press Enter if the retry cannot
+# clear it. Matched by `needs_attention` so the row stays in `NEEDS YOU` (and the alert
+# stays edge-triggered, not re-armed) until the resume actually submits.
+_RESUME_PENDING_NOTE = "resume not submitted — daemon retrying Enter"
 
 # Claude's registry `status` values (`~/.claude/sessions/<pid>.json`) that mean the session
 # is doing work — the AUTHORITATIVE busy signal for an adopted Claude session. `busy` =
@@ -199,6 +208,16 @@ _MARKER_VOID_GRACE = 120.0
 # daemon resumes escalating and reports the track. It STILL never acts on it — the
 # escalation is louder words, never a kill.
 _ACK_STALE_AFTER = 900.0
+
+# Minimum CONTINUOUS idle duration before the keep-going ("idle-with-context-left") nudge
+# may fire. The nudge pastes + submits text into the session, so firing it on a session that
+# is only BRIEFLY at the prompt (between turns, or the human is mid-thought) INTERRUPTS
+# active work — the maintainer-reported failure (2026-07-18: "too aggressive, TOO SOON …
+# interrupting active sessions"). A session must sit cleanly idle (empty prompt, not busy,
+# above its wind-down threshold) for at least this long before it is nudged. In-memory
+# (`_InjectState.idle_since`), so a daemon restart resets the clock — which only DELAYS a
+# nudge, the safe direction.
+_IDLE_NUDGE_AFTER = 3600.0  # 1 hour
 
 
 # --------------------------------------------------------------------------- #
@@ -417,23 +436,33 @@ def needs_attention(row: RowView) -> bool:
     """
     if row.status in ATTENTION_STATUSES:
         return True
-    return bool(row.note and row.note.startswith("BAD state file"))
+    if row.note and row.note.startswith("BAD state file"):
+        return True
+    # A stranded post-respawn resume (R1) is also a NEEDS-YOU row: the daemon keeps
+    # retrying the Enter, but the operator should see it — and keeping it here keeps the
+    # `_alert` edge-triggered (not re-armed) so it fires once, not every tick.
+    return bool(row.note and row.note.startswith(_RESUME_PENDING_NOTE))
 
 
 @dataclass
 class _InjectState:
     """Per-track wrap-up bookkeeping (in-memory; reset on restart/recovery).
 
-    Only ``last_ctx`` lives here: the last KNOWN remaining-% (used by
+    ``last_ctx`` is the last KNOWN remaining-% (used by
     :meth:`Supervisor._effective_ctx` when a tick reads ctx as unknown — design:
-    keep last known, and unknown never triggers a crossing). The injection-round
-    timestamp and the set of already-notified escalation bands are DURABLE, in the
-    injection-stamp sidecar (``registry.read_injection_stamp`` /
-    ``read_notified_bands`` / ``add_notified_band``), so a daemon restart never
-    re-spams a band it already sent — they are not in-memory here.
+    keep last known, and unknown never triggers a crossing). ``idle_since`` is the epoch
+    time the session ENTERED its current continuous-idle episode (None when not cleanly
+    idle) — it gates the keep-going nudge behind a minimum idle duration
+    (``_IDLE_NUDGE_AFTER``) so a session that is only BRIEFLY at the prompt (between turns)
+    is never interrupted. Both are in-memory: a daemon restart resets them, which only ever
+    DELAYS a nudge (the safe direction). The injection-round timestamp and the set of
+    already-notified escalation bands are DURABLE, in the injection-stamp sidecar
+    (``registry.read_injection_stamp`` / ``read_notified_bands`` / ``add_notified_band``),
+    so a daemon restart never re-spams a band it already sent — they are not in-memory here.
     """
 
     last_ctx: int | None = None
+    idle_since: float | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -498,6 +527,16 @@ class Supervisor:
     # cannot see. Empty for Codex sessions (not in Claude's registry) and in direct-
     # `evaluate` beside-tests that don't set it.
     _claude_status: dict[str, str] = field(default_factory=dict, init=False)
+    # `{tmux_session: {claude_registry_name, ...}}` for this tick, recomputed beside
+    # `_claude_status`. The identity gate (`_pane_is_managed_claude`) checks that the track's
+    # TOPIC is among the live Claude names in the pane's tmux session — parity with the Codex
+    # gate's `name == topic` check — so a generic reused tmux window the store maps to topic A
+    # but now running topic B's Claude is not mis-driven (R2, 2026-07-18). It is a SET (not a
+    # last-wins single) so a helper Claude sharing the tmux session cannot shadow the track's
+    # own name and flap it to `session-gone` (review SF5). Empty for Codex sessions (not in
+    # Claude's registry) and in direct-`evaluate` beside-tests that don't set it — an unknown
+    # tmux session preserves the prior repo+process gate (fail-soft).
+    _claude_names: dict[str, set[str]] = field(default_factory=dict, init=False)
     # {tmux_session: CodexSession} for every live NAMED codex session, recomputed each
     # tick beside _claude_status. Membership IS the exact answer to "is this pane
     # Codex?" — the pane command says `bun` (the launcher), which is too generic to
@@ -656,7 +695,7 @@ class Supervisor:
         active: dict[str, set[str]] = {}
         for repo, topic, _ in registry.discover_plans(watch):
             active.setdefault(repo, set()).add(topic)
-        existing = {(t.repo, t.topic) for t in registry.read_mapping(self.store_path)}
+        existing = {(t.repo, t.topic): t.tmux for t in registry.read_mapping(self.store_path)}
         pane_pids = self.tmux.pane_pid_sessions()
         # BOTH runtimes, through ONE path. `codex_sessions.map_codex_sessions` emits the
         # same `(tmux_session, name, cwd)` triple as its Claude twin precisely so adoption
@@ -674,6 +713,18 @@ class Supervisor:
             ppid_of=self.ppid_of,
             starttime_of=self.starttime_of,
         ) + codex_sessions.map_codex_sessions(pane_pids, ppid_of=self.ppid_of)
+        # Detect (repo, topic) claimed by MORE THAN ONE live session this tick. Re-pointing
+        # such a track would FLIP-FLOP between the sessions' tmux ids every tick — two store
+        # rewrites + two "re-pointed" log lines forever (review SF1) — since which one "wins"
+        # is just `mapped` order. When ambiguous we skip the re-point entirely and leave the
+        # mapping as-is (the identity gate + set-valued `_claude_names` still classify each
+        # pane correctly). Resolve repo the same way the loop does, so the counts match.
+        live_keys: list[tuple[str, str]] = []
+        for _session, name, cwd in mapped:
+            r = next((r for r in watch if signals.path_in_repo(cwd, r)), None)
+            if r is not None and name in active.get(r, set()):
+                live_keys.append((r, name))
+        ambiguous = {k for k, count in collections.Counter(live_keys).items() if count > 1}
         adopted: list[registry.Track] = []
         for session, name, cwd in mapped:
             repo = next((r for r in watch if signals.path_in_repo(cwd, r)), None)
@@ -683,6 +734,23 @@ class Supervisor:
             if topic not in active.get(repo, set()):
                 continue
             if (repo, topic) in existing:
+                # Already mapped. RE-POINT if the live named session has MOVED to a
+                # different tmux session than the store records (R2, 2026-07-18): generic
+                # reused windows (`livespec1`…) get cycled across topics, so a frozen
+                # binding would let an act target the wrong pane. The data is already in
+                # `mapped`; rewrite the row's `tmux` and log it like an adoption. Guarded
+                # so a steady-state tick (tmux unchanged) never touches the store, and
+                # idempotent (`repoint_tmux` no-ops + returns False when unchanged). SKIP
+                # when ambiguous (>1 live session for this track) so it cannot flip-flop.
+                if (
+                    (repo, topic) not in ambiguous
+                    and existing[(repo, topic)] != session
+                    and registry.repoint_tmux(repo, topic, session, self.store_path)
+                ):
+                    self._log(
+                        f"re-pointed {repo}::{topic} tmux {existing[(repo, topic)]} → {session}"
+                    )
+                    existing[(repo, topic)] = session
                 continue
             track = registry.Track(
                 topic=topic,
@@ -692,7 +760,7 @@ class Supervisor:
                 resume=default_resume(repo, topic),
             )
             registry.append_mapping(track, self.store_path, added_at=_iso_now())
-            existing.add((repo, topic))
+            existing[(repo, topic)] = session
             adopted.append(track)
             self._log(f"adopted session {session} → {repo}::{topic}")
         return adopted
@@ -730,11 +798,15 @@ class Supervisor:
         the read-only path. Fail-soft: any read error yields an empty map (no session
         marked busy from this signal), never a raised exception.
         """
+        pane_pids = self.tmux.pane_pid_sessions()
+        # `status` feeds the busy check (last-wins is fine); `names` feeds the identity gate's
+        # `topic in names` parity check (R2) and is a SET so a helper Claude in the same tmux
+        # session cannot shadow the track's name (review SF5). Both from the same registry.
         self._claude_status = claude_sessions.status_by_tmux_session(
-            self._sessions_dir(),
-            self.tmux.pane_pid_sessions(),
-            ppid_of=self.ppid_of,
-            starttime_of=self.starttime_of,
+            self._sessions_dir(), pane_pids, ppid_of=self.ppid_of, starttime_of=self.starttime_of
+        )
+        self._claude_names = claude_sessions.names_by_tmux_session(
+            self._sessions_dir(), pane_pids, ppid_of=self.ppid_of, starttime_of=self.starttime_of
         )
         self._refresh_codex_sessions()
 
@@ -842,15 +914,18 @@ class Supervisor:
     def _pane_is_managed(self, target: str, repo: str, topic: str, session: str | None) -> bool:
         """The identity gate for EITHER runtime: is this pane OUR session, in OUR repo?
 
-        Claude via the pane's own process identity; Codex via the live per-tick session
-        map (`bun` is too generic to gate on). Fail-closed: anything unproven is not ours.
+        Claude via the pane's own process identity + the live session's name; Codex via
+        the live per-tick session map (`bun` is too generic to gate on). Fail-closed:
+        anything unproven is not ours.
         """
-        return self._pane_is_managed_claude(target, repo) or self._is_codex_track(
+        return self._pane_is_managed_claude(target, repo, topic, session) or self._is_codex_track(
             session, repo, topic
         )
 
-    def _pane_is_managed_claude(self, target: str, repo: str) -> bool:
-        """True iff ``target``'s pane is a live Claude TUI whose cwd is inside ``repo``.
+    def _pane_is_managed_claude(
+        self, target: str, repo: str, topic: str, session: str | None
+    ) -> bool:
+        """True iff ``target``'s pane is a live Claude TUI for THIS topic, in ``repo``.
 
         The identity gate for EVERY act (inject / restart). ``pane_is_claude`` and
         ``path_in_repo`` exist and are tested, but the shipped daemon wired them
@@ -862,12 +937,28 @@ class Supervisor:
         every act on process identity + cwd closes that, and hardens B1's residual
         (a name that resolved to the wrong session would fail the cwd check).
 
+        **The ``topic in names`` parity check (R2, 2026-07-18).** The Codex gate is
+        pane-scoped (``_is_codex_track`` requires ``live.name == topic``); the Claude gate
+        was not, so a generic reused tmux window (``livespec1``…) the store maps to topic A
+        but now running topic B's Claude — same repo — passed the process+cwd check and got
+        A's wrap-up injected into B, then a ``ready`` respawn-KILLED B as A. Here a live Claude
+        named for THIS topic must be present in this pane's tmux session (``self._claude_names``
+        — the SET of all live Claude names in that tmux session, so a HELPER Claude sharing the
+        session cannot shadow the track's own name; review SF5). Reject on POSITIVE proof that
+        the tmux session has live Claude names but NOT this topic's; an UNKNOWN tmux session
+        (empty set — registry miss, or a direct-``evaluate`` test that did not populate the
+        map) preserves the prior process+cwd gate — fail-soft, so a transient registry miss can
+        never flap a live track to ``session-gone``.
+
         ``target`` is the resolved pane id (RB3), so the identity read is of the
         exact pane, never a prefix-matched sibling.
         """
         if not signals.pane_is_claude(self.tmux.pane_current_command(target)):
             return False
-        return signals.path_in_repo(self.tmux.pane_current_path(target), repo)
+        if not signals.path_in_repo(self.tmux.pane_current_path(target), repo):
+            return False
+        names = self._claude_names.get(session or "")
+        return not names or topic in names
 
     def _clear_state(self, track: registry.Track) -> None:
         """Delete a track's state file, clear its stamp, AND reset its inject state.
@@ -1227,6 +1318,19 @@ class Supervisor:
         current_ctx = signals.parse_ctx_remaining(capture)
         eff_ctx = self._effective_ctx(key, current_ctx)
 
+        # Track the CONTINUOUS-idle episode for the keep-going nudge's minimum-duration gate
+        # (`_IDLE_NUDGE_AFTER`). A session is "cleanly idle" only at an empty prompt AND not
+        # busy (busy folds in Claude's registry `busy`/`shell`, which an idle-looking capture
+        # misses — a sub-agent / background command is active work). The FIRST cleanly-idle
+        # tick stamps `idle_since`; ANY non-idle tick clears it, so brief activity resets the
+        # clock and only a genuinely long idle spell reaches the nudge.
+        istate = self._inject.setdefault(key, _InjectState())
+        if idle and not busy:
+            if istate.idle_since is None:
+                istate.idle_since = self.now()
+        else:
+            istate.idle_since = None
+
         stamp = registry.read_injection_stamp(repo, topic, self.stamp_path)
 
         # The ONE indicator file (`ready` / `blocked` / `winding-down`). A single file
@@ -1245,6 +1349,70 @@ class Supervisor:
             and (self.now() - declared.mtime) <= _ACK_STALE_AFTER
         )
         ready = signals.ready_valid(repo, topic, stamp)
+
+        # R1 — self-healing resume retry. A prior tick respawned the fresh Claude but its
+        # resume line did not submit (the fresh TUI dropped the Enter, or the daemon died
+        # mid-restart). The round is still open (marker + stamp kept), so `ready` is still
+        # valid — but re-entering the `elif ready:` branch below would RE-RESPAWN and kill
+        # the live fresh session. This branch intercepts first and retries the SUBMIT ONLY:
+        # re-send Enter, never a respawn (a fresh `ready` is the sole respawn trigger,
+        # invariant 7). It also runs BEFORE the busy/idle cascade because a box holding the
+        # un-submitted resume text reads as "not idle" → would otherwise fall to `settling`
+        # and never retry. Codex never sets `resume_pending` (its `codex resume` auto-submits
+        # the kick), so this is Claude-only by construction.
+        if act and registry.read_resume_pending(repo, topic, self.stamp_path):
+            if gate:
+                # A fresh TUI showing a picker (trust / update / bypass-permissions confirm):
+                # NEVER keystroke into a gate (blocker #6). Report it and keep the round open;
+                # the retry resumes once the human clears the gate (review SF4).
+                self._alert(
+                    repo=repo,
+                    topic=topic,
+                    session=session,
+                    pane=target,
+                    message="gate on freshly-restarted pane — answer it IN THAT PANE",
+                )
+                return RowView(
+                    topic=topic,
+                    repo=repo,
+                    tmux=session,
+                    ctx=eff_ctx,
+                    status="blocked:human",
+                    note="structured gate on freshly-restarted pane",
+                )
+            # Branch on the BOX STATE, not on `busy` (review SF3): a freshly-respawned session
+            # can read busy for reasons unrelated to the resume (SessionStart hooks), so a
+            # top-level `busy` shortcut would false-close the round while the resume is still
+            # un-submitted. An EMPTY box means the resume left the box (submitted / never
+            # pasted) — the round is done here; the rare paste-failure re-engages via the
+            # idle-with-context nudge, not a double-kick. A box holding TEXT means the Enter
+            # was dropped — re-send Enter ONLY (never re-paste; the text is already there).
+            if signals.input_box_ready(capture):
+                resolved = True
+            else:
+                resolved = self._resend_enter(target)
+            if resolved:
+                self._clear_state(track)
+                self._log(f"restart resume submitted for {repo}::{topic} (pane {target})")
+                return RowView(
+                    topic=topic, repo=repo, tmux=session, ctx=eff_ctx, status="restarting"
+                )
+            # Still un-submitted: keep the round open (retry again next tick) and report it.
+            self._alert(
+                repo=repo,
+                topic=topic,
+                session=session,
+                pane=target,
+                message="resume line STILL not submitted after restart — retrying the Enter (no respawn)",
+            )
+            return RowView(
+                topic=topic,
+                repo=repo,
+                tmux=session,
+                ctx=eff_ctx,
+                status="restarting",
+                note=_RESUME_PENDING_NOTE,
+            )
 
         # A per-track override (an int ``ctx_threshold``) wins; otherwise inherit
         # the daemon-wide default (``warn_percent``, set from ``--warn-percent``).
@@ -1395,7 +1563,16 @@ class Supervisor:
             waiting_on_human = claude_status == "waiting"
             if has_context_left and not waiting_on_human and (declared is None or nudged_already):
                 status = "idle-with-context-left"
-                if act and not nudged_already:
+                # Fire the nudge ONLY after the session has been continuously idle for at
+                # least `_IDLE_NUDGE_AFTER` (maintainer 2026-07-18: the nudge was "too
+                # aggressive, TOO SOON", interrupting sessions merely between turns). The
+                # status still reads `idle-with-context-left` immediately (it is descriptive,
+                # not an attention row); only the keystroke waits for the 1-hour floor.
+                idle_long_enough = (
+                    istate.idle_since is not None
+                    and (self.now() - istate.idle_since) >= _IDLE_NUDGE_AFTER
+                )
+                if act and not nudged_already and idle_long_enough:
                     self._nudge_idle_with_context(
                         track, target, eff_ctx, threshold, is_codex=is_codex
                     )
@@ -1545,13 +1722,21 @@ class Supervisor:
         Every tmux step is a HARD GATE (B5). If ``respawn-pane`` fails, or the pane
         never becomes a live Claude, the daemon SURFACES the failure and RETURNS
         WITHOUT closing the round — so the session's declaration is preserved and the
-        restart is retried, never silently destroyed. The round is closed (state file
-        deleted + injection stamp cleared — B4) only once the respawn is confirmed; the
-        resume-submit result is surfaced but does not block closing, because the fresh
-        Claude IS up (a stale ``ready`` would else re-restart and kill it, and B3's
-        identity gate already blocks re-acting on a non-Claude pane). ``_clear_state``
-        also pops the in-memory inject state (RB2), so the redundant explicit pop below
-        is belt-and-suspenders.
+        restart is retried, never silently destroyed.
+
+        **The submit is SELF-HEALING (R1, 2026-07-18).** The round is closed (state file
+        deleted + injection stamp cleared — B4) ONLY when the resume line actually SUBMITS.
+        A freshly-respawned TUI can DROP the Enter while still drawing its welcome screen,
+        leaving the fresh session live but idle with an un-run handoff (proven live
+        2026-07-17). On that failure this does NOT clear the marker or log "restarted" —
+        it marks a round-scoped ``resume_pending`` (``registry.set_resume_pending``) and
+        alerts, and the NEXT tick's ``evaluate`` retries the SUBMIT ONLY (``_resend_enter``
+        — never a re-respawn; a fresh ``ready`` stays the sole respawn trigger, so the retry
+        can never escalate to a kill). Separating "is the fresh Claude up?" from "did the
+        resume submit?" is the fix for the discarded-marker bug where the old code cleared
+        the marker and reported success regardless. On the SUCCESS path ``_clear_state``
+        also pops the in-memory inject state (RB2), so the redundant explicit pop is
+        belt-and-suspenders.
         """
         if is_codex:
             self._do_codex_restart(track, target)
@@ -1574,18 +1759,48 @@ class Supervisor:
                 message="respawned pane never became Claude; keeping the ready declaration",
             )
             return
-        resume = track.resume or default_resume(track.repo, track.topic)
-        if not self._submit_prompt(target, resume):
+        # Wait for the fresh TUI to finish its FIRST paint and render a ready (empty)
+        # input box before pasting — a half-drawn welcome/news screen DROPS the Enter,
+        # which is exactly what stranded resumes live (2026-07-17). Best-effort: if the
+        # box never appears in time, proceed anyway and let the submit-retry below (and
+        # the next tick's `resume_pending` retry) recover.
+        self._await_input_box(target)
+        # If the fresh TUI came up on a picker (a trust / update / bypass-permissions
+        # gate), NEVER keystroke into it (blocker #6) — pasting + Enter would auto-accept
+        # its default. Defer to the `resume_pending` retry, which reports the gate as
+        # `blocked:human` and resumes once the human clears it (review SF4).
+        if signals.is_structured_gate(self.tmux.capture_pane(target)):
+            registry.set_resume_pending(track.repo, track.topic, self.stamp_path)
             self._alert(
                 repo=track.repo,
                 topic=track.topic,
                 session=self._session_of(track),
                 pane=target,
-                message="resume line NOT submitted after restart — the fresh session is idle",
+                message="freshly-restarted pane is on a gate — not keystroking it; will retry",
             )
-        self._clear_state(track)
-        self._inject.pop(_key(track.repo, track.topic), None)
-        self._log(f"restarted {track.repo}::{track.topic} (pane {target})")
+            return
+        resume = track.resume or default_resume(track.repo, track.topic)
+        if self._submit_prompt(target, resume):
+            self._clear_state(track)
+            self._inject.pop(_key(track.repo, track.topic), None)
+            self._log(f"restarted {track.repo}::{track.topic} (pane {target})")
+            return
+        # The fresh Claude IS up, but the resume line did not submit (the fresh TUI
+        # dropped the Enter). Separate the two facts the old code conflated — "is the
+        # fresh Claude up?" (yes) and "did the resume submit?" (no) — and DO NOT give up:
+        # keep the `ready` marker + stamp, record a round-scoped `resume_pending`, and let
+        # the NEXT tick retry the SUBMIT ONLY (re-send Enter, never a re-respawn — a fresh
+        # `ready` is the sole respawn trigger, so the retry can never escalate to a kill).
+        # Never log a clean "restarted" here; the alert is edge-triggered and persists (the
+        # row stays NEEDS-YOU) until the resume actually submits.
+        registry.set_resume_pending(track.repo, track.topic, self.stamp_path)
+        self._alert(
+            repo=track.repo,
+            topic=track.topic,
+            session=self._session_of(track),
+            pane=target,
+            message="resume line NOT submitted after restart — will retry the Enter (no respawn)",
+        )
 
     def _do_codex_restart(self, track: registry.Track, target: str) -> None:
         """Atomic restart of a CODEX track: respawn with ``codex resume <id> "<kick>"``.
@@ -1695,6 +1910,42 @@ class Supervisor:
             if is_ready(self.tmux.pane_current_command(target)):
                 return True
             self.sleep(_RESTART_POLL_INTERVAL)
+        return False
+
+    def _await_input_box(self, target: str) -> bool:
+        """Poll until the pane renders a ready (empty) Claude input box, bounded.
+
+        Used right after a respawn, BEFORE pasting the resume line: a freshly-respawned
+        Claude is often still drawing its welcome/news screen, and a paste + Enter that
+        arrives then is dropped (the stranded-resume failure). Waiting for the empty `❯`
+        box (`signals.input_box_ready`) means the TUI has finished its first paint and is
+        ready to accept input. Best-effort — returns True if the box appeared, False if it
+        never did within the bound; the caller proceeds either way (the submit-verify loop
+        and the next-tick `resume_pending` retry recover a residual drop).
+        """
+        for _ in range(_RESTART_POLL_MAX):
+            if signals.input_box_ready(self.tmux.capture_pane(target)):
+                return True
+            self.sleep(_RESTART_POLL_INTERVAL)
+        return False
+
+    def _resend_enter(self, target: str) -> bool:
+        """Re-send Enter (NEVER re-paste, NEVER re-respawn) until the resume submits.
+
+        The retry half of the self-healing resume (R1): the resume line is ALREADY sitting
+        in the box from the prior respawn, so re-pasting would duplicate it — this only
+        re-sends Enter, bounded by `_SUBMIT_MAX_ENTERS`. Submitted is confirmed by the Claude
+        box CLEARING (`signals.input_box_ready`) — the same signal `_submit_prompt` uses on
+        the Claude path — NOT by the pane going busy: a freshly-respawned session can be busy
+        for reasons unrelated to the resume (SessionStart hooks), so a busy check would
+        false-confirm an un-submitted resume (review SF3). An extra Enter on an already-empty
+        prompt is a harmless no-op.
+        """
+        for _ in range(_SUBMIT_MAX_ENTERS):
+            self.tmux.send_keys(target, "Enter")
+            self.sleep(_SUBMIT_POLL)
+            if signals.input_box_ready(self.tmux.capture_pane(target)):
+                return True
         return False
 
     def _submit_prompt(self, target: str, text: str, *, expect_codex: bool = False) -> bool:

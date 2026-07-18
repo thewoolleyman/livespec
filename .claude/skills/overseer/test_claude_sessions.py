@@ -111,6 +111,24 @@ def test_status_by_tmux_session_keys_status_by_tmux(tmp_path):
     assert status == {"sA": "busy"}  # gamma omitted (not held in any tmux pane)
 
 
+def test_names_by_tmux_session_collects_all_names_per_tmux(tmp_path):
+    """R2/SF5: the identity gate needs the SET of all live Claude names in a tmux session, so
+    a HELPER Claude sharing the session cannot shadow the track's own name (a last-wins single
+    would). Two live sessions in one tmux → both names; an out-of-tmux session is omitted."""
+    _write(tmp_path, 100, name="alpha", cwd="/r/a", proc_start="111")
+    _write(tmp_path, 200, name="helper", cwd="/r/a", proc_start="222")  # a second Claude in sA
+    _write(tmp_path, 300, name="gamma", cwd="/r/c", proc_start="333")  # not in tmux
+    starttimes = {100: "111", 200: "222", 300: "333"}
+    # both 100 and 200 walk up to pane pids that map to the SAME tmux session `sA`.
+    ppid = {100: 50, 50: 1, 200: 51, 51: 1, 300: 60, 60: 1}
+    pane_pid_to_session = {50: "sA", 51: "sA"}
+
+    names = claude_sessions.names_by_tmux_session(
+        tmp_path, pane_pid_to_session, ppid_of=ppid.get, starttime_of=starttimes.get
+    )
+    assert names == {"sA": {"alpha", "helper"}}  # BOTH names kept; gamma (out of tmux) omitted
+
+
 def test_proc_readers_on_this_process():
     # The real /proc readers, exercised against THIS process (safe, always present).
     assert claude_sessions.proc_ppid(os.getpid()) == os.getppid()

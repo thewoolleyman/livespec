@@ -434,3 +434,57 @@ def test_write_rows_is_atomic_and_skips_when_unchanged(tmp_path):
     dropped = registry.rewrite_mapping(lambda _row: True, store)  # keep all
     assert dropped == 0
     assert store.stat().st_mtime_ns == before  # unchanged → not rewritten
+
+
+def test_resume_pending_roundtrip_and_preserves_at_and_bands(tmp_path):
+    """R1: set_resume_pending marks the flag on the round dict WITHOUT disturbing `at`
+    (so the ready marker still certifies — mtime > at) or the notified bands."""
+    stamp = tmp_path / "stamps.json"
+    registry.write_injection_stamp("/r", "t", 500.0, stamp)
+    registry.add_notified_band("/r", "t", 40, stamp)
+    assert registry.read_resume_pending("/r", "t", stamp) is False  # not set yet
+
+    registry.set_resume_pending("/r", "t", stamp)
+    assert registry.read_resume_pending("/r", "t", stamp) is True
+    assert registry.read_injection_stamp("/r", "t", stamp) == 500.0  # `at` preserved
+    assert registry.read_notified_bands("/r", "t", stamp) == [40]  # bands preserved
+
+
+def test_resume_pending_is_cleared_by_round_close_and_by_a_fresh_round(tmp_path):
+    """R1: the pending flag is round-scoped — clear_injection_stamp (restart closed) and
+    write_injection_stamp (a fresh round) both drop it, so it can never outlive its round."""
+    stamp = tmp_path / "stamps.json"
+    registry.write_injection_stamp("/r", "t", 500.0, stamp)
+    registry.set_resume_pending("/r", "t", stamp)
+    registry.clear_injection_stamp("/r", "t", stamp)
+    assert registry.read_resume_pending("/r", "t", stamp) is False  # round closed → flag gone
+
+    registry.write_injection_stamp("/r", "t", 600.0, stamp)
+    registry.set_resume_pending("/r", "t", stamp)
+    registry.write_injection_stamp("/r", "t", 700.0, stamp)  # a NEW round overwrites the dict
+    assert registry.read_resume_pending("/r", "t", stamp) is False
+
+
+def test_repoint_tmux_rewrites_only_the_matching_row_and_is_idempotent(tmp_path):
+    """R2: repoint_tmux rewrites a (repo, topic) row's tmux field, preserves unknown keys,
+    leaves other rows untouched, and no-ops (returns False, no write) when already correct."""
+    store = tmp_path / "map.jsonl"
+    store.write_text(
+        json.dumps({"topic": "a", "repo": "/r", "tmux": "old", "added_at": "keep"})
+        + "\n"
+        + json.dumps({"topic": "b", "repo": "/r", "tmux": "b-tmux"})
+        + "\n",
+        encoding="utf-8",
+    )
+    assert registry.repoint_tmux("/r", "a", "new", store) is True
+    rows = {r.topic: r.tmux for r in registry.read_mapping(store)}
+    assert rows == {"a": "new", "b": "b-tmux"}  # only `a` moved
+    raw_a = next(
+        json.loads(ln) for ln in store.read_text().splitlines() if json.loads(ln)["topic"] == "a"
+    )
+    assert raw_a["added_at"] == "keep"  # unknown key survives the rewrite
+
+    before = store.stat().st_mtime_ns
+    assert registry.repoint_tmux("/r", "a", "new", store) is False  # already correct → no-op
+    assert store.stat().st_mtime_ns == before  # not rewritten
+    assert registry.repoint_tmux("/r", "missing", "x", store) is False  # no such row → no-op
