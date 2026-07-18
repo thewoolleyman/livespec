@@ -2253,6 +2253,161 @@ def test_table_row_cells_follow_the_header_order(tmp_path):
     assert row.split() == ["idle", "mytopic", "sess", "42%", "livespec"]
 
 
+# --------------------------------------------------------------------------- #
+# The `tmux` column annotates the session name with its RUNTIME — `livespec
+# (claude)` / `livespec1 (codex)` — so the operator can tell at a glance whether a
+# track is a Claude or a Codex session (maintainer 2026-07-18). Only a row with a
+# LIVE MANAGED pane carries a runtime; the no-managed-pane rows (`unassigned` /
+# `session-gone` / `live-outside-tmux`) render a bare `—` with no `(...)`. The
+# annotation is part of the CELL, so the column width is computed from it and
+# alignment holds.
+# --------------------------------------------------------------------------- #
+
+
+def _cell_row(out, topic):
+    """The single rendered DATA line for TOPIC (skipping the header row)."""
+    return next(ln for ln in out.splitlines() if topic in ln and "Topic" not in ln)
+
+
+def test_tmux_column_annotates_a_claude_row_with_its_runtime(tmp_path):
+    """A row with a live Claude pane renders its tmux cell as `<tmux> (claude)`."""
+    sup = _sup(tmp_path, FakeTmux())
+    view = supervisor.RowView(
+        topic="wk", repo="/r", tmux="livespec", ctx=50, status="working", runtime="claude"
+    )
+    line = _cell_row(_render_of(sup, [view]), "wk")
+    assert "livespec (claude)" in line
+
+
+def test_tmux_column_annotates_a_codex_row_with_its_runtime(tmp_path):
+    """A row with a live Codex pane renders its tmux cell as `<tmux> (codex)`."""
+    sup = _sup(tmp_path, FakeTmux())
+    view = supervisor.RowView(
+        topic="cx", repo="/r", tmux="livespec1", ctx=70, status="idle", runtime="codex"
+    )
+    line = _cell_row(_render_of(sup, [view]), "cx")
+    assert "livespec1 (codex)" in line
+
+
+def test_tmux_column_is_a_bare_dash_with_no_runtime_for_no_pane_rows(tmp_path):
+    """`unassigned` and `session-gone` have no live session — their tmux cell is a bare
+    `—`, never a `(...)` annotation (both carry `tmux=None` and `runtime=None`)."""
+    sup = _sup(tmp_path, FakeTmux())
+    for topic, status in (("un", "unassigned"), ("sg", "session-gone")):
+        view = supervisor.RowView(topic=topic, repo="/r", tmux=None, ctx=None, status=status)
+        line = _cell_row(_render_of(sup, [view]), topic)
+        assert "—" in line
+        assert "(" not in line  # no runtime annotation, and no note to add parens
+
+
+def test_tmux_runtime_annotation_preserves_column_alignment(tmp_path):
+    """Column invariant 1: the tmux column width is computed from the ANNOTATED cell
+    (`livespec (claude)`), so a short bare-`—` cell is padded to that same width and the
+    following Repo column still lines up."""
+    sup = _sup(tmp_path, FakeTmux())
+    views = [
+        supervisor.RowView(
+            topic="alpha",
+            repo="/x/repoZZ",
+            tmux="livespec",
+            ctx=50,
+            status="working",
+            runtime="claude",
+        ),
+        supervisor.RowView(topic="beta", repo="/x/repoZZ", tmux=None, ctx=60, status="unassigned"),
+    ]
+    out = _render_of(sup, views)
+    wide = _cell_row(out, "alpha")  # tmux cell "livespec (claude)" sets the column width
+    narrow = _cell_row(out, "beta")  # tmux cell "—" padded to that same width
+    # Both rows share a repo slug; if the column is aligned it starts at the same index.
+    assert wide.index("repoZZ") == narrow.index("repoZZ")
+
+
+def test_evaluate_derives_claude_runtime_and_annotates_the_tmux_cell(tmp_path):
+    """END-TO-END: `evaluate` derives `runtime="claude"` for a live Claude track (no
+    `_codex` entry → `is_codex` False), and the rendered tmux cell reads `<session>
+    (claude)`. Sabotage target: drop `runtime=runtime` on evaluate's final RowView and
+    the cell falls back to the bare session name → this goes red."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=80))  # a live Claude idle pane
+    sup = _sup(tmp_path, fake)
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=False)
+    assert view.runtime == "claude"
+    line = _cell_row(_render_of(sup, [view]), topic)
+    assert f"{session} (claude)" in line
+
+
+def test_evaluate_derives_codex_runtime_and_annotates_the_tmux_cell(tmp_path):
+    """END-TO-END: `evaluate` derives `runtime="codex"` for a track adopted in `_codex`
+    on a `bun` pane, and the rendered tmux cell reads `<session> (codex)`. Sabotage
+    target for the Codex arm (route it to `"claude"` and this goes red)."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_codex_idle_capture(ctx=80, topic=topic), cmd="bun")
+    sup = _sup(tmp_path, fake)
+    sup._codex = {
+        session: codex_sessions.CodexSession(
+            pid=4242, name=topic, cwd=str(repo), session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8"
+        )
+    }
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=False)
+    assert view.runtime == "codex"
+    line = _cell_row(_render_of(sup, [view]), topic)
+    assert f"{session} (codex)" in line
+
+
+def test_evaluate_leaves_runtime_none_for_a_session_gone_row(tmp_path):
+    """A track whose mapped tmux session is gone (and no live Claude for the topic) is
+    `session-gone`: no pane, so no runtime — the rendered tmux cell is a bare `—`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # the mapped session is NOT served → session_exists False
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # empty registry → no live Claude anywhere → session-gone
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+    assert view.status == "session-gone"
+    assert view.tmux is None
+    assert view.runtime is None
+    line = _cell_row(_render_of(sup, [view]), topic)
+    assert "—" in line
+    assert "(claude)" not in line and "(codex)" not in line
+
+
+def test_evaluate_leaves_runtime_none_for_an_unassigned_row(tmp_path):
+    """An unassigned plan (no mapping) never has a pane, so it carries no runtime — the
+    `unassigned` branch returns before any runtime is derived."""
+    repo, topic = _make_plan(tmp_path)
+    sup = _sup(tmp_path, FakeTmux())
+    track = registry.Track.make_unassigned(repo=str(repo), topic=topic)
+    view = sup.evaluate(track, act=True)
+    assert view.status == "unassigned"
+    assert view.runtime is None
+
+
+def test_attention_block_annotates_the_tmux_coordinate_with_the_runtime(tmp_path):
+    """The NEEDS YOU block's `tmux:` coordinate is annotated the SAME way the table is,
+    so the operator knows whether they are jumping into a Claude or Codex pane. The jump
+    command itself stays the bare session name (`tmux switch-client -t` takes no runtime)."""
+    fake = FakeTmux()
+    sup = _sup(tmp_path, fake)
+    view = supervisor.RowView(
+        topic="autonomous-mode",
+        repo="/data/projects/livespec",
+        tmux="livespec-autonomous-mode",
+        ctx=41,
+        status="blocked:human",
+        note="waiting on a decision",
+        runtime="codex",
+    )
+    out = _render_of(sup, [view])
+    assert "tmux: livespec-autonomous-mode (codex)" in out
+    assert "jump: tmux switch-client -t livespec-autonomous-mode" in out  # bare name
+
+
 def test_attention_block_lists_a_blocked_track_with_its_jump_command(tmp_path):
     """The block must be a SUFFICIENT handover on its own: what is stuck, and where to go."""
     fake = FakeTmux()

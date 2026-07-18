@@ -416,7 +416,18 @@ def _elide(text: str, limit: int) -> str:
 
 @dataclass(frozen=True, kw_only=True)
 class RowView:
-    """One rendered table row: the outward projection of a track this tick."""
+    """One rendered table row: the outward projection of a track this tick.
+
+    ``runtime`` is the harness driving the track — ``"claude"`` or ``"codex"`` —
+    carried so the table's ``tmux`` column can annotate the session name
+    (``livespec (claude)`` / ``livespec1 (codex)``) and the operator can tell at a
+    glance which runtime a track is. It is set exactly for a row with a LIVE MANAGED
+    pane (``evaluate`` derives it from ``is_codex`` and sets it alongside
+    ``tmux=session``); the no-managed-pane rows (``unassigned`` / ``session-gone`` /
+    ``live-outside-tmux``) carry ``tmux=None`` and leave it ``None`` — those cells
+    render a bare ``—`` with no ``(...)`` (there is no live session, and for the first
+    two no runtime either).
+    """
 
     topic: str
     repo: str
@@ -424,6 +435,7 @@ class RowView:
     ctx: int | None
     status: str
     note: str | None = None
+    runtime: str | None = None
 
 
 def needs_attention(row: RowView) -> bool:
@@ -442,6 +454,30 @@ def needs_attention(row: RowView) -> bool:
     # retrying the Enter, but the operator should see it — and keeping it here keeps the
     # `_alert` edge-triggered (not re-armed) so it fires once, not every tick.
     return bool(row.note and row.note.startswith(_RESUME_PENDING_NOTE))
+
+
+def _tmux_cell(row: RowView) -> str:
+    """The ``tmux`` column value: the session name annotated with its RUNTIME.
+
+    A row with a live managed pane renders ``<tmux> (<runtime>)`` — ``livespec (claude)``
+    / ``livespec1 (codex)`` — so the operator can tell at a glance which harness a track
+    is; a no-managed-pane row (``tmux=None``: ``unassigned`` / ``session-gone`` /
+    ``live-outside-tmux``) renders the bare ``—`` with no ``(...)``. The annotation is
+    part of the CELL, so the column width in :meth:`Supervisor.render` MUST be computed
+    from this string, not the bare name, or the column misaligns.
+
+    Single-sourced here so the table (:meth:`Supervisor.render`) and the ``NEEDS YOU``
+    block (:meth:`Supervisor._attention_lines`) — the operator's handover surface, where
+    knowing the runtime before jumping into a Claude-vs-Codex pane has the same value —
+    format the tmux cell identically and cannot drift. The jump command itself still uses
+    the bare ``row.tmux`` (``tmux switch-client -t <session>``); only the DISPLAYED cell
+    is annotated.
+    """
+    if row.tmux is None:
+        return "—"
+    if row.runtime is None:
+        return row.tmux
+    return f"{row.tmux} ({row.runtime})"
 
 
 @dataclass
@@ -1303,6 +1339,13 @@ class Supervisor:
         busy = signals.is_busy(capture) or claude_busy or codex_fallback
         gate = signals.is_structured_gate(capture)
         is_codex = self._is_codex_track(session, repo, topic, target)
+        # The row's RUNTIME, derived ONCE here where `is_codex` is already known, then
+        # carried onto every row below that has a live managed pane (`tmux=session`) so the
+        # table's tmux column can annotate the session name (`livespec (claude)` /
+        # `livespec1 (codex)`). Every branch reaching this point HAS a managed pane (the
+        # no-managed-pane / unassigned rows returned above with `tmux=None` and no runtime),
+        # so `claude`/`codex` is always the right binary answer here.
+        runtime = "codex" if is_codex else "claude"
         # `is_idle_input` knows CLAUDE's prompt: an EMPTY `❯` between two rules. Codex's
         # prompt is a `›` line above its statusline (`… · Context N% left · …`), so it
         # needs its own STRUCTURAL detector (`is_codex_idle_input`) — NOT the coarse
@@ -1379,6 +1422,7 @@ class Supervisor:
                     ctx=eff_ctx,
                     status="blocked:human",
                     note="structured gate on freshly-restarted pane",
+                    runtime=runtime,
                 )
             # Branch on the BOX STATE, not on `busy` (review SF3): a freshly-respawned session
             # can read busy for reasons unrelated to the resume (SessionStart hooks), so a
@@ -1395,7 +1439,12 @@ class Supervisor:
                 self._clear_state(track)
                 self._log(f"restart resume submitted for {repo}::{topic} (pane {target})")
                 return RowView(
-                    topic=topic, repo=repo, tmux=session, ctx=eff_ctx, status="restarting"
+                    topic=topic,
+                    repo=repo,
+                    tmux=session,
+                    ctx=eff_ctx,
+                    status="restarting",
+                    runtime=runtime,
                 )
             # Still un-submitted: keep the round open (retry again next tick) and report it.
             self._alert(
@@ -1412,6 +1461,7 @@ class Supervisor:
                 ctx=eff_ctx,
                 status="restarting",
                 note=_RESUME_PENDING_NOTE,
+                runtime=runtime,
             )
 
         # A per-track override (an int ``ctx_threshold``) wins; otherwise inherit
@@ -1586,6 +1636,7 @@ class Supervisor:
             ctx=eff_ctx,
             status=status,
             note=note,
+            runtime=runtime,
         )
         # Re-arm the edge-triggered alert once the track is healthy again, so the NEXT
         # time it goes bad it reports afresh rather than being suppressed as a duplicate
@@ -2098,7 +2149,11 @@ class Supervisor:
                 (
                     row.status if not note else f"{row.status} ({note})",
                     row.topic,
-                    row.tmux or "—",
+                    # The tmux cell is the session name annotated with its runtime
+                    # (`livespec (claude)`); the column width is computed below from THIS
+                    # already-annotated string (the `max(len(...))` over `table`), so the
+                    # column stays aligned — never widen it from the bare name.
+                    _tmux_cell(row),
                     "—" if row.ctx is None else f"{row.ctx}%",
                     registry.repo_slug(row.repo),
                 )
@@ -2151,7 +2206,11 @@ class Supervisor:
             # Elide the note here too: a session can write an arbitrarily long `blocked:`
             # reason, and the full text lives in the pane this line points at.
             detail = f" — {_elide(row.note, _MAX_REASON_IN_ALERT)}" if row.note else ""
-            coords = f"topic: {row.topic} | tmux: {row.tmux or '—'} | repo: {registry.repo_slug(row.repo)}"
+            # Annotate the tmux coordinate with the runtime the SAME way the table does
+            # (`_tmux_cell`), so the operator knows whether they are jumping into a Claude
+            # or a Codex pane before they do. The jump command itself stays the bare
+            # session name (`tmux switch-client -t` takes no runtime).
+            coords = f"topic: {row.topic} | tmux: {_tmux_cell(row)} | repo: {registry.repo_slug(row.repo)}"
             lines.append(f"  ! {coords} — {row.status}{detail}")
             if row.tmux:
                 lines.append(f"      jump: tmux switch-client -t {row.tmux}")
