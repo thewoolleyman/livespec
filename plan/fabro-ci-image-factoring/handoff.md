@@ -86,27 +86,31 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-19 (cont. 8)
+## ▶ START HERE — updated 2026-07-19 (cont. 9)
 
 ## ▶▶ READ THIS FIRST — where the track actually stands
 
-**The original epic is DELIVERED.** CI and the Fabro sandbox run the SAME image
-across all 8 fleet repos, and the pin that keeps them aligned is now discovered and
-fan-out-reconciled automatically. Nothing on the original plan is outstanding.
+**The original epic is DELIVERED, and as of cont. 9 all three defects in the
+follow-on family are FIXED AND MERGED.** CI and the Fabro sandbox run the SAME
+image across all 8 fleet repos, the pin that keeps them aligned is discovered and
+fan-out-reconciled automatically, and the producer now reconciles its OWN pins too.
+Nothing on the original plan is outstanding.
 
-**What remains is a family of THREE defects found while live-verifying that
-delivery.** Two are fixed, one is in flight. They are recorded here because the
-story is the useful part: a 16-release drift survived DAILY GREEN freshness runs
-because three independent failures compounded, and any one of them alone would have
-been enough to hide it.
+**ONE THING IS NOT YET PROVEN: `5r3`'s live exercise.** The code is on master and
+green, but it only runs on a `release` event, and it landed as `chore(ci):` which
+cuts no release. See "THE ONE OPEN LOOP" below — that is the first thing to check.
+
+**The family of THREE defects is the useful story.** A 16-release drift survived
+DAILY GREEN freshness runs because three independent failures compounded, and any
+one of them alone would have been enough to hide it.
 
 ### The three compounding defects — the important context
 
 | Item | What it was | State |
 |---|---|---|
-| `livespec-dev-tooling-5r3` | The fan-out excludes the publishing repo (so a release does not echo back), which means the producer's OWN pins are structurally unreachable by dispatch. Nothing reconciled them, ever. | **Contract RATIFIED** (v027, PR #464). **Implementation NOT built.** |
+| `livespec-dev-tooling-5r3` | The fan-out excludes the publishing repo (so a release does not echo back), which means the producer's OWN pins are structurally unreachable by dispatch. Nothing reconciled them, ever. | **IMPLEMENTED** — PR #469 merged 2026-07-19 11:13Z, master run 29684760714 green. **Live exercise still PENDING.** |
 | `livespec-dev-tooling-p73` | The freshness scan collapsed every record for a source to ONE representative (`.[0].current_value`), so a source whose first record was fresh emitted nothing even when its other pins were stale. | **FIXED** — PR #462 merged, master green |
-| `livespec-dev-tooling-ews` | The scan's ordinal-distance capture was corrupted by SIGPIPE, so a stale pin was SILENTLY never flagged while the workflow reported success. | **Fix in flight** — PR #465, 60/60 `just check` green, auto-merge armed |
+| `livespec-dev-tooling-ews` | The scan's ordinal-distance capture was corrupted by SIGPIPE, so a stale pin was SILENTLY never flagged while the workflow reported success. | **FIXED** — PR #465 merged (`bd108ef`), master run 29681408422 green |
 
 **`ews` in one paragraph, because it is the subtle one.** The scan piped the release
 list into an `awk` that `exit`ed at the match, with a `|| echo "$STALENESS_THRESHOLD"`
@@ -122,44 +126,60 @@ reassuring per-source notices, and no bump PR. Observed live in run
 show it** — the producer must still be writing when the consumer exits, which is why
 it survived original review.
 
-### ▶ NEXT ACTIONS, in order
+### ▶▶ THE ONE OPEN LOOP — check this first
 
-1. **Confirm PR #465 merged and its master run is green.** It was 33-pass /
-   26-pending / zero-fail with auto-merge armed at handoff time. If it went red,
-   that is the first thing to fix — it is a P1 and the freshness net stays broken
-   until it lands.
-2. **Implement `livespec-dev-tooling-5r3`** — the one substantive piece of work
-   left on this track. The CONTRACT is ratified and on master
-   (`SPECIFICATION/contracts.md` §"Self-hosting", `history/v027/`); the CODE does
-   not exist. Read the ratified §"Self-hosting" text first — it is the
-   specification for what to build. Summary of what it now requires:
-   - On publishing a release, this library MUST rewrite its OWN occurrences of
-     every SELF-SOURCED pin to the released tag and open an auto-merge
-     `chore(deps):` bump PR, using the same rewrite machinery as the dispatch path.
-   - **Two formats are self-sourced**, and BOTH are in scope: (i) the fabro-sandbox
-     image tag in `ci.yml` (currently `python-v0.43.2`, 16 releases behind), and
-     (ii) FOUR `uses:` refs into this library's own reusable workflows —
-     `release-dispatch.yml`, `bump-pin-from-dispatch.yml`, `pin-freshness.yml`,
-     **and `release-park.yml`** (currently `v0.46.5`, 8 behind). Verify the live set
-     with `pin_autodiscovery.discover(source_repo="livespec-dev-tooling")` rather
-     than trusting this list.
-   - **Ordering matters for the image pin ONLY**: it must not run before the
-     released image exists, or CI gets pinned to an unpushed tag. A `uses:` ref has
-     no such constraint (the tag exists at publish).
-   - It cannot recurse: the output PR is `chore:`, which cuts no release.
-   - **Recommended shape** (option (a) from the work-item): a job in
-     `.github/workflows/fabro-sandbox-image.yml` with `needs: build`, gated to
-     `github.event_name == 'release'` — `needs: build` is what makes the
-     image-exists ordering hold structurally rather than by hope. Reuse the
-     `.github/actions/bump-pin-rewrite` composite Action; do NOT hand-roll a second
-     rewrite path.
-   - **Do NOT hand-bump the stale pins as a shortcut.** A manual bump re-rots on
-     the next release, which is precisely the bug this family exists to end.
-3. **Non-blocking, maintainer-owned:** `livespec-dev-tooling-4j3` (P3 —
-   release-please bumps `pyproject.toml` but not `uv.lock`, so every `uv run`
-   dirties a clean checkout; `livespec-console-beads-fabro` has the IDENTICAL stale
-   `Cargo.lock` issue, so fix both together, recommended via a release-please
-   post-bump re-lock).
+**`5r3` is implemented and merged but NOT yet live-exercised.** Per the
+done-means-exercised discipline, it is not closeable until a real release run has
+opened the self-bump PR.
+
+**What to check, concretely:**
+
+1. Has any release of `livespec-dev-tooling` been cut since 2026-07-19 11:13Z
+   (`gh release list --limit 5`)? Every release fires the job — the `release:`
+   trigger carries NO `paths` filter, so it does not matter what the release
+   contained.
+2. If yes, find the run:
+   `gh run list --repo thewoolleyman/livespec-dev-tooling --workflow "Fabro sandbox image" --limit 5`,
+   and inspect the `self-reconcile-pins` job. Expected: it discovers the SIX
+   self-sourced records, rewrites them, and opens a
+   `chore/self-bump-livespec-dev-tooling-<tag>` PR with auto-merge armed.
+3. **Verify the rewrite is CORRECT, not merely that a PR appeared** — the layer
+   prefix is the thing most likely to be wrong. Both `ci.yml` lines must read
+   `python-v<new>` (NOT a bare `v<new>`, which would break the image reference),
+   and all four shim `uses:` refs must read a bare `v<new>`.
+4. Once that PR merges, `livespec-dev-tooling` finally satisfies the epic's
+   headline claim, and `livespec-dev-tooling-5r3` can be closed with the run URL
+   journalled as the live-exercise evidence.
+
+**If it went wrong**, the two most likely failures are (a) the App lacking the
+`workflows` permission to push a commit touching `.github/workflows/*` — though
+this was verified to work via existing bot commits — and (b) an auto-merge
+enablement failure, which the composite Action surfaces as a hard `::error::`
+rather than swallowing.
+
+**DO NOT hand-bump the stale pins if you find them still stale.** A manual bump
+re-rots on the next release — that is the whole bug this family exists to end.
+Fix the job instead.
+
+### Also open (both non-blocking, neither on the critical path)
+
+- **`livespec-dev-tooling-3tu` (P3, filed cont. 9)** — `reusable-pin-freshness.yml`
+  resolves the SAME `pin_staleness` module two different ways inside one step:
+  line 147 from the CONSUMER's env (plain `uv run`), line 213 from the master
+  support checkout (`--project .livespec-dev-tooling`). `pin_staleness` is a TOOL,
+  so line 213 is the correct form and line 147 is the wrong one — it creates an
+  undocumented coupling to the consumer's pinned version for logic that has no
+  reason to be version-matched. **Exposure verified to be ZERO today** (all 7 fleet
+  consumers hold the workflow pin and the package pin in lockstep; `livespec-runtime`
+  runs the older workflow that lacks line 147 entirely; consumer `uv.lock`s are not
+  lagging; no adopter carries a freshness shim). One-word fix. Deliberately NOT
+  typed `fix:` — with no exposure that would be dishonest release-cutting.
+- **`livespec-dev-tooling-4j3` (P3, maintainer-owned)** — release-please bumps
+  `pyproject.toml` but not `uv.lock`, so every `uv run` dirties a clean checkout.
+  Observed repeatedly during cont. 9 (the lock regenerates 0.49.1 → 0.50.0 on any
+  `just check`, and has to be reverted before staging).
+  `livespec-console-beads-fabro` has the IDENTICAL stale `Cargo.lock` issue, so fix
+  both together, recommended via a release-please post-bump re-lock.
 
 ### Method note worth carrying forward
 
@@ -170,6 +190,26 @@ OUT of bash into tested Python (`livespec_dev_tooling/cross_repo/pin_staleness.p
 following the repo's own `fabro_image_pin_rewrite` precedent ("extracted from the
 embedded heredoc, now behind a tested surface"). **The remaining untested shell in
 `reusable-pin-freshness.yml` is where to look for the next one.**
+
+**cont. 9 followed that note and it paid out — partially.** Re-reading that shell
+surfaced `3tu` (the split `pin_staleness` resolution above). But the honest result
+is that it is a LATENT inconsistency with zero current exposure, not another live
+defect. Two lessons worth carrying:
+
+- **Measure exposure before assigning severity.** The first read of `3tu` looked
+  like a live P1 ("consumers pinned below v0.49.3 will crash the scan"). Four
+  concrete checks — consumer workflow-vs-package pin lockstep, `livespec-runtime`
+  running the older workflow, consumer `uv.lock` freshness, and adopter shim
+  presence — each independently closed the exposure path. The finding survived; the
+  severity did not. Do that measurement BEFORE filing, not after.
+- **Do not let a desired side effect pick the commit type.** `3tu`'s fix would have
+  cut a release, which would in turn have live-exercised `5r3` — a genuinely
+  tempting two-birds move. But with no exposure, typing it `fix:` to obtain that
+  release would be manufacturing a release under a false label. It was filed
+  instead, and `5r3`'s exercise left to wait for real work.
+
+**Where to look next:** the remaining shell in the `open-bump-pr` job (lines
+~276–378 of `reusable-pin-freshness.yml`) has still not been read with this lens.
 
 Also: every proposed change on this track went through the mandatory independent
 Fable review, and it found real blockers EVERY time — including one draft that would
