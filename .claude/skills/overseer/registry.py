@@ -13,9 +13,11 @@ Vocabulary (see design.md, the discovery-join model):
     (pinned session id, custom resume line, threshold override).
   - the displayed list = discovery LEFT-JOIN mapping.
 
-The tmux session name is repo-qualified ``<repo-slug>--<topic>`` because tmux
-session names are GLOBAL while plan topics are only unique per repo
-(adversarial-review blocker #8).
+The tmux session name is the BARE plan ``<topic>`` (maintainer-declared 2026-07-19);
+it is repo-qualified as ``<repo-slug>-<topic>`` (single dash) ONLY when that topic
+collides across watched repos, because tmux session names are GLOBAL while plan topics
+are only unique per repo (adversarial-review blocker #8). See :func:`tmux_id` /
+:func:`colliding_topics`.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ import os
 import re
 import sys
 import tempfile
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -40,6 +42,7 @@ __all__ = [
     "append_mapping",
     "archived_or_gone",
     "clear_injection_stamp",
+    "colliding_topics",
     "discover_plans",
     "join",
     "read_injection_stamp",
@@ -139,17 +142,54 @@ def repo_slug(repo: str | os.PathLike[str]) -> str:
     return Path(repo).name
 
 
-def tmux_id(repo: str | os.PathLike[str], topic: str) -> str:
-    """The repo-qualified tmux session name ``<repo-slug>--<topic>``.
+def colliding_topics(
+    discovered: Iterable[tuple[str, str, str]],
+) -> frozenset[str]:
+    """Topics that appear in >=2 DISTINCT watched repos.
 
-    The separator is ``--`` (NOT ``:``): tmux ≥3.3 SANITIZES ``:`` and ``.`` in a
-    ``new-session -s`` name to ``_``, so a session created as ``slug:topic`` is
-    actually named ``slug_topic`` and ``-t slug:topic`` then parses as session
-    ``slug`` + window ``topic`` and never round-trips — the daemon could not find
-    the session it created (verified live 2026-07-13, adversarial code review
-    blocker B1). ``--`` is tmux-legal and round-trips exactly.
+    ``discovered`` is the ``(repo, topic, handoff)`` triple list from
+    :func:`discover_plans`. A topic in this set would collide on its bare tmux
+    name if two of its repos ran at once (tmux session names are global), so
+    :func:`tmux_id` repo-qualifies exactly these — and nothing else. Repos are
+    de-duplicated via :func:`_norm` (the same key both sides of the join use), so
+    the SAME repo discovered twice never counts as a collision.
     """
-    return f"{repo_slug(repo)}--{topic}"
+    repos_by_topic: dict[str, set[str]] = {}
+    for repo, topic, _ in discovered:
+        repos_by_topic.setdefault(topic, set()).add(_norm(repo))
+    return frozenset(t for t, repos in repos_by_topic.items() if len(repos) > 1)
+
+
+def tmux_id(
+    repo: str | os.PathLike[str],
+    topic: str,
+    colliding: Collection[str] = frozenset(),
+) -> str:
+    """The tmux session name for a plan ``topic``.
+
+    Default is the **bare plan topic** (maintainer-declared 2026-07-19): a session
+    is named after the plan topic the operator reads and navigates by, NOT
+    repo-qualified. A repo prefix is added ONLY on a real cross-repo collision —
+    when the SAME topic exists in more than one watched repo (``topic in
+    colliding``) — as ``<repo-slug>-<topic>`` with a **single** dash. tmux session
+    names are global, so two live sessions cannot both be named ``<topic>``; the
+    single-dash prefix disambiguates exactly those clashes and nothing else.
+
+    ``colliding`` is the set of topics appearing in >=2 watched repos, from
+    :func:`colliding_topics` over the discovery set. The default (empty) means "no
+    known collisions" and yields the bare topic; a caller holding the discovery
+    set SHOULD pass the real collision set so a genuine clash is prefixed.
+
+    Both forms are tmux-legal and round-trip: the separator is ``-`` (NOT ``:`` or
+    ``.``, which tmux ≥3.3 SANITIZES to ``_`` in a ``new-session -s`` name, breaking
+    ``-t`` lookup — adversarial code review blocker B1, 2026-07-13). A plan topic
+    itself may contain dashes (e.g. ``autonomous-mode``); that is fine, a dash is
+    never sanitized. The predecessor ``<repo-slug>--<topic>`` (double-dash, ALWAYS
+    prefixed) form is retired.
+    """
+    if topic in colliding:
+        return f"{repo_slug(repo)}-{topic}"
+    return topic
 
 
 @dataclass(frozen=True, kw_only=True)

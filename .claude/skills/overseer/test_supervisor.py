@@ -2135,6 +2135,11 @@ def _isolate_store(tmp_path, monkeypatch):
     """
     store = tmp_path / "map.jsonl"
     monkeypatch.setattr(registry, "DEFAULT_STORE_PATH", store)
+    # `add`/`start` now consult the real fleet manifest to detect cross-repo topic
+    # collisions (for the single-dash prefix). Neutralize that read by default so a
+    # CLI test is hermetic and never flakes on the host's actual fleet; a collision
+    # test overrides this with its own set.
+    monkeypatch.setattr(supervisor, "_cli_colliding", lambda: frozenset())
     return store
 
 
@@ -2150,6 +2155,53 @@ def test_cli_add_remove_roundtrip(tmp_path, monkeypatch):
 
     assert supervisor.main(["remove", "--repo", repo, "--topic", "alpha"]) == 0
     assert registry.read_mapping(store) == []
+
+
+def test_cli_add_names_a_bare_topic_by_default(tmp_path, monkeypatch):
+    # With no cross-repo collision, `add` maps the session to the BARE topic name.
+    store = _isolate_store(tmp_path, monkeypatch)
+    repo = str(tmp_path / "livespec")
+    assert supervisor.main(["add", "--repo", repo, "--topic", "autonomous-mode"]) == 0
+    rows = registry.read_mapping(store)
+    assert [(r.topic, r.tmux) for r in rows] == [("autonomous-mode", "autonomous-mode")]
+
+
+def test_cli_add_single_dash_prefixes_a_cross_repo_collision(tmp_path, monkeypatch):
+    # When the topic collides across repos, `add` repo-qualifies it as `<slug>-<topic>`
+    # with a SINGLE dash (the daemon derives the identical name).
+    store = _isolate_store(tmp_path, monkeypatch)
+    monkeypatch.setattr(supervisor, "_cli_colliding", lambda: frozenset({"shared"}))
+    repo = str(tmp_path / "livespec")
+    assert supervisor.main(["add", "--repo", repo, "--topic", "shared"]) == 0
+    assert supervisor.main(["add", "--repo", repo, "--topic", "solo"]) == 0
+    rows = {r.topic: r.tmux for r in registry.read_mapping(store)}
+    assert rows["shared"] == "livespec-shared"  # colliding -> repo-qualified
+    assert rows["solo"] == "solo"  # non-colliding -> bare
+
+
+def test_build_rows_caches_the_cross_repo_collision_set(tmp_path):
+    # Two watched repos share topic "shared"; each also carries a unique topic. After a
+    # tick's build_rows, the daemon caches exactly the cross-repo topic, and `_session_of`
+    # repo-qualifies ONLY that one — per repo, single dash — leaving the unique ones bare.
+    r1, _ = _make_plan(tmp_path, repo_name="livespec", topic="shared")
+    _make_plan(tmp_path, repo_name="livespec", topic="solo-a")
+    r2, _ = _make_plan(tmp_path, repo_name="other", topic="shared")
+    _make_plan(tmp_path, repo_name="other", topic="solo-b")
+    sessions = tmp_path / "sess"
+    sessions.mkdir()
+    sup = _sup(
+        tmp_path,
+        FakeTmux(),
+        watch_repos=[str(r1), str(r2)],
+        sessions_dir=str(sessions),
+    )
+    rows = sup.build_rows(act=False)
+    assert sup._colliding == frozenset({"shared"})
+    derived = {(r.repo, r.topic): sup._session_of(r) for r in rows}
+    assert derived[(str(r1), "shared")] == "livespec-shared"
+    assert derived[(str(r2), "shared")] == "other-shared"
+    assert derived[(str(r1), "solo-a")] == "solo-a"
+    assert derived[(str(r2), "solo-b")] == "solo-b"
 
 
 def test_cli_unassign_is_remove(tmp_path, monkeypatch):
