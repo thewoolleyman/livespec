@@ -146,12 +146,35 @@ into `livespec-xw65el`): `livespec-dev-tooling-adqmnm` (`8975025`),
 `livespec-dev-tooling-xb7` (`b0c320d`), `livespec-o0x1` (fan-out stamps at
 `bump-pin-rewrite/action.yml:379`).
 
-**Genuinely open, absorbed as children in spirit:** `livespec-p9s0` (stale
+**Genuinely open, absorbed as children in spirit:** ~~`livespec-p9s0` (stale
 local-clone false reds), `livespec-dev-tooling-p73` (pin-freshness
-first-record blind spot).
+first-record blind spot).~~ — see the verification sweep below; `p73` is closed,
+`p9s0` is confirmed live.
 
 **Premise does not reproduce — re-derive or close:**
 `livespec-console-beads-fabro-7wy`.
+
+### Verification sweep, 2026-07-19/20 — every remaining item checked live
+
+Each was re-verified against `origin/master` before any disposition, because six
+items in this thread had already turned out to be stale records. The sweep found
+the population genuinely mixed — one fixed, one live, one settled, one stale
+evidence — which is why "verify before implementing" is the standing rule here.
+
+| Item | Verdict | Evidence |
+|---|---|---|
+| `livespec-dev-tooling-p73` | **CLOSED — already fixed** | The `.[0].current_value` jq collapse is gone; selection now comes from the tested `pin_staleness` module, and the surviving comment names the item by id as the resolved cause. Fix `4ad8344`, confirmed an ancestor of `origin/master` |
+| `livespec-p9s0` | **LIVE — do not assume fixed** | Path A still does `git -C <local_clone> show HEAD:justfile`; the GitHub-API read is only a FALLBACK taken when Path A *fails*, so a stale-but-valid clone never reaches it |
+| `livespec-console-beads-fabro-tafkuw` | **LIVE, and its owed design decision is now SETTLED** | See the diagnosis note's §"scope question" — the stamp is keyed to the core pin while the fixture depends on the orchestrator's key set, whose two emitting modules have 1 and 2 commits ever |
+| `livespec-dev-tooling-tuyje7` | **LIVE** | All three workflow files still claim `just check` runs; `bump-pin-rewrite/action.yml` explicitly documents that it deliberately does NOT run the consumer's `just check` |
+| `livespec-dev-tooling-f5or5c` | **EVIDENCE STALE, framing too strong — NOT closed** | Claimed producer at `python-v0.43.2` vs consumers `v0.49.2`; both now `python-v0.50.3`. Self-bumps DO happen and ARE automated (`4f47762`, bot-authored). Real defect is SPORADIC-WITH-SKIPS (v0.46.5 → v0.50.1 skipped v0.47–v0.49), not absent |
+
+`livespec-p9s0` gained a new dimension worth carrying: it and `livespec-fxxfq6`
+are two faces of one weakness — the cross-repo wiring check's notion of "the
+sibling's state" is **environment-dependent**, reading local clone `HEAD`
+locally and a fresh clone in CI. That split is exactly why the 2026-07-19
+breakage blocked every local push while master CI stayed green. Fix either with
+the other in view.
 
 Linked but NOT owned: `livespec-dev-tooling-9j8.6` (CI-logic extraction epic —
 this thread depends on it, must not absorb it), `livespec-dev-tooling-q9a`
