@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/thewoolleyman/livespec/compare/v0.18.0...v0.18.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* **overseer:** make the six permission-denial tests root-proof ([108009b](https://github.com/thewoolleyman/livespec/commit/108009b5cbc485ec0f3a06b57e1058db65cebcfa))
+
 ## [0.18.0](https://github.com/thewoolleyman/livespec/compare/v0.17.9...v0.18.0) (2026-07-19)
 
 
