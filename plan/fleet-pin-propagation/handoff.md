@@ -120,19 +120,65 @@ Linked but NOT owned: `livespec-dev-tooling-9j8.6` (CI-logic extraction epic —
 this thread depends on it, must not absorb it), `livespec-dev-tooling-q9a`
 (CI-matrix hygiene, not pin propagation).
 
+## ⚠ TWO SESSIONS ARE IN THIS EPIC — read before dispatching anything
+
+A second session groomed `livespec-xw65el` into three replacement slices
+(`livespec-e7lanq`, `livespec-u7x5zn`, `livespec-b7ropo`) while this session
+was working. **Dispatch is theirs**; maintainer-directed 2026-07-19, this
+session stood down from dispatching rather than risk duplicate worktrees and
+conflicting closes.
+
+**The groom was cut against a STALE diagnosis** — it predates the recovery, so
+each slice carried "treat the earlier attempt's absence as absence," which is
+no longer true. All three slice bodies have been AMENDED with a `READ FIRST`
+block pointing at `research/recovered/`. The cut itself was left untouched
+(grooming is maintainer-owned). **Anyone dispatching those slices must read the
+amended bodies, not the original framing** — two of them would otherwise
+re-derive an inventory already committed to master.
+
+That session also contributed a measurement this thread lacked: the 8 members
+carry **106 distinct `check-*` recipe names across ~490 instances**, of which
+only 6 names appear in all 8 repos and 37 are repo-local. That is the
+UNFILTERED universe; the recovered inventory's 12 is the pin-bump-reachable
+SUBSET. Reconciling those two numbers is the sharpest remaining sweep task.
+
 ## NEXT ACTION
 
-**Groom `livespec-xw65el`**, then dispatch it. It is RE-SCOPED — read its
-current ledger body, not this heading's old framing.
+**Nothing is owed by this session.** `livespec-xw65el` is closed (regroomed
+out), its answerable tasks are complete (below), and dispatch of the successor
+slices belongs to the other session.
 
-The gate-classification sweep this item originally called for was in fact
-COMPLETED, lost to a harness fault, and RECOVERED. Its findings are folded into
-the diagnosis note. So the item is now verification + ledger reconciliation,
-not discovery: verify the recovered 12-gate table (8 (a)-derivable /
-4 (b)-needs-live-system), close-or-narrow the **six pre-existing items that are
-already fixed on master**, resolve the workflow-permission contradiction before
-anything is built on an assumption about it, file the three newly-surfaced
-gaps, and re-derive or close `livespec-console-beads-fabro-7wy`.
+A resuming driver should: confirm with the grooming session before dispatching
+`livespec-e7lanq` / `livespec-b7ropo` (both `READY`), and route
+`livespec-u7x5zn` (`pending-approval`) through the admission valve.
+
+## COMPLETED 2026-07-19 — the answerable half of `livespec-xw65el`
+
+- **Workflow-permission contradiction RESOLVED.** The fleet App DOES have
+  `workflows` permission: `livespec-pr-bot[bot]` authored real `ci.yml` content
+  changes that landed on master (`livespec-runtime 0d6b3a2`, bumping the
+  container image across two `container:` blocks). The standing "the App
+  deliberately lacks `workflows` permission" decision record is STALE for the
+  fan-out path, and `adqmnm`'s "never `.github/workflows/`" acceptance clause is
+  MOOT rather than violated. **(a)-class auto-fix design may assume the fan-out
+  can write workflow files.**
+- **Six already-done items CLOSED**, each checked against its own written
+  acceptance with per-item evidence — not bulk-closed: `adqmnm` (`8975025`),
+  `q9a` (`5693955`), `fz4` (`ebf54cc`, live-exercise satisfied in production by
+  console `a6d7221`), `u0x` (`7dc0d9b`), `xb7` (`b0c320d`), `livespec-o0x1`
+  (fan-out stamps at `action.yml:379`). Two carry recorded residue rather than a
+  clean close: `u0x` facet (b) (ordered cross-repo merge sequencing — no
+  evidence of a fix) and `o0x1` (how a red bump PR reached master remains
+  undetermined; Actions history aged out).
+- **Three new gaps FILED**: `livespec-dev-tooling-f5or5c` (the producer is
+  outside its own fan-out), `livespec-dev-tooling-tuyje7` (three workflow files
+  document a `just check` step that does not exist),
+  `livespec-bg47fr` (no adopter is wired into the fan-out; `resume` 11 minors
+  stale).
+- **`livespec-console-beads-fabro-7wy` closed by an independent console-side
+  session**, which verified zero `§"` marker hits under `crates/**/src/` and
+  confirmed `…-tafkuw` is the ONLY console-side gate on the pin train —
+  corroborating this thread's byte-identity disproof from the other direction.
 
 **Do NOT re-run the sweep from scratch.**
 
