@@ -307,6 +307,29 @@ Verified from the **build log**, not from a green tick (the leg-6 lesson from
 `python-rust-agent` — built and pushed, so the five-layer tree and the
 `FROM`-by-digest threading both hold.
 
+### ✅ And the metric `a46` actually specified — `Initialize containers`
+
+Measured on the SAME job (`check-private-calls`) in two real `livespec-dev-tooling`
+master runs, not synthetic:
+
+| Run | Image | `Initialize containers` |
+|---|---|---|
+| 29691737436 | `python-v0.50.3` (751 MB) | **39s** |
+| 29707579662 | `python-v0.50.4` (435 MB) | **25s** |
+
+**−14s per job, a 36% cut.** At ~60 jobs per run that is on the order of 14 minutes
+of aggregate compute per CI run, per repo, across 8 repos — and it is entirely
+**runner-agnostic**, so GitHub-hosted runners get all of it and none of it is
+blocked on the runner deferral.
+
+**Why 36% and not 42%, which matters for the next lever.** The image shrank 42% but
+init fell only 36%, because `Initialize containers` is not purely transfer — it also
+covers container create, network setup, and volume mounts, which are fixed costs the
+layer split does not touch. So the remaining ~25s is **not all pull**, and
+`livespec-dev-tooling-oik` (the buildpack-deps re-base, the other 185.5 MB) should
+be expected to return **less** than its share-of-bytes suggests. Measure it; do not
+extrapolate.
+
 ### ⚠️ THE HAZARD FIRED — 4 minutes after the impl merged. Read this before any future prefix migration.
 
 The mitigation described above **did not hold**, and the reason generalizes.
