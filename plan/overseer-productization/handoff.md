@@ -13,7 +13,7 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
 | D — pyright strict | NEXT | — |
-| B + E — coverage + ROP railway | blocked on D1/D2 | — |
+| B + E — coverage + ROP railway | BLOCKED on D1/D2 — see the D2 blocker below | — |
 
 ## Gate C — ruff (PR #1396, merged 2026-07-19)
 
@@ -245,8 +245,50 @@ daemon loop's outermost bug-catcher — already carries an explicit
 So D2's remaining question is narrower than it was: not "will `BLE` ever reach the
 overseer" (it does, and the one site is resolved), but whether the repo-level full-ROP
 bar is intended to reach a `.claude/skills/` host-tooling folder at all, or only the
-`livespec` package. Confirm that with the rop-sweep thread — its wind-down handoff says
-a Fable ROP ruling is its step 1, which is the natural place to settle it.
+`livespec` package.
+
+Both facts were RELAYED to the live `rop-sweep-fleet-policy` tmux session on 2026-07-19
+(pane idle, bracketed-paste). Nothing here was edited on their behalf.
+
+### ⚠️ D2 blocker — the overseer's daemon catch fits none of the proposed markers
+
+`SPECIFICATION/proposed_changes/rop-broad-except-boundary-rule.md` (filed by the
+rop-sweep thread, commit `985a4322`, under Fable review at the time of writing) defines a
+**closed set of four** standardized `# noqa: BLE001` markers and rules that any other
+wording "marks a violation, not an escape":
+
+1. `— sole supervisor bug-catcher: log traceback, exit 1`
+2. `— sole fail-open hook boundary: silent pass-through, exit 0`
+3. `— sole fail-closed guard boundary: deny per policy, exit 0`
+4. `— foreign-code isolation: <surface> crash captured as <ErrorType>, reported`
+
+The overseer's one broad catch (`supervisor.py`, inside `Supervisor.run`'s `while True`)
+matches NONE of them. It logs the full traceback and **continues the loop** — it does not
+exit 1, and it is not a direct child of `main()`:
+
+```python
+except Exception:  # noqa: BLE001 — outermost supervisor boundary
+    self._log("tick error (continuing):\n" + traceback.format_exc())
+```
+
+That shape is the daemon's whole point: it supervises N independent tracks, and a bug
+evaluating ONE track must not take the process down and strand the other N-1. "Log and
+exit 1" is the wrong contract for it.
+
+So the proposal, as written, has no category for a long-running supervisor's
+**per-iteration resilience catch**. If it ratifies unchanged, the overseer becomes
+non-conforming immediately, and the only conforming moves would be to mis-label it as
+marker 1 (a lie — it does not exit 1) or to change the daemon's behavior (wrong).
+
+Note the conflict would be **spec-text-only, not mechanical**: `check-supervisor-discipline`
+scopes on `source_tree_prefixes`, which does not include `.claude/skills/`, so nothing
+would actually flag it. That is precisely why it needs a human ruling rather than a gate.
+
+**Do not resolve this here.** It is the rop-sweep thread's proposal and its reviewer's
+pass; the gap was relayed to that session with two options to weigh (add a fifth marker
+such as `— sole loop-iteration bug-catcher: log traceback, continue`, or rule that the
+bar does not reach `.claude/skills/` at all). Gate B/E work stays blocked until that
+lands, because the answer determines whether the overseer goes on the `Result` railway.
 
 ## Phase 2 — ship it (design exploration, not yet committed)
 
