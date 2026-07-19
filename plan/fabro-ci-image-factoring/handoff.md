@@ -166,7 +166,91 @@ guidance.
 
 ---
 
-## ▶ START HERE — updated 2026-07-19 (cont. 9, corrected)
+## ▶▶ START HERE — cont. 10 (written 2026-07-19 at session end)
+
+**Read the STOP block above first.** Then this. Everything below this section is
+prior trail — accurate, but long; you do not need it to start.
+
+### The one-line state
+
+The epic's image work is DELIVERED and live-exercised. Local self-hosted runners
+are DEFERRED until new hardware (CPU incident — see STOP block). **Your priority is
+runner-agnostic container optimization, and there is exactly one well-evidenced
+piece of work queued: `livespec-dev-tooling-a46`.**
+
+### ▶ DO THIS FIRST — `livespec-dev-tooling-a46` (P2, filed, NOT implemented)
+
+**CI pulls a 751 MB image per job; 39s of every ~46s job is the pull; 94% of the
+image is payload CI never uses.** Measured, not estimated — read the item, it
+carries the full numbers and the trap.
+
+Quick orientation:
+
+| Fact | Value |
+|---|---|
+| `Initialize containers` on a *fast* check job | **39s** |
+| The check itself (0.6s locally) | 1s |
+| `base-v0.50.3` / `python-v0.50.3` compressed | **707 MB** / 751 MB |
+| So the layer CI needs adds | **44 MB — base is 94%** |
+
+Base carries `buildpack-deps:noble`, bubblewrap, and BOTH ACP agent adapters. CI
+uses none of the agent payload (it does need node — pyright shells out to npm).
+
+**THE TRAP, stated because it is easy to get wrong:** do NOT build a separate slim
+CI image. That reintroduces the CI-vs-sandbox drift this entire epic exists to
+kill. The shape that preserves the guarantee is a LAYER RESTRUCTURE — move
+agent-only payload out of `base` into a layer only the sandbox pulls, so CI and the
+sandbox still share byte-identical toolchain layers. A second, larger, riskier
+lever is re-basing off something slimmer than `buildpack-deps:noble`; that one can
+break native wheel builds, so it needs a full `just check` across the fleet.
+
+**Measure the same way after any change:** `Initialize containers` on a fast job,
+read from any master run's job steps via the GitHub API. That is the metric.
+
+### Then, in order
+
+2. **`livespec-3lev.1` — build the CPU-saturation trigger.** The incident's root
+   lesson: the 2026-07-12 correction correctly named sustained CPU-idle≈0%
+   *duration* as the one signal that flexes, and it was never instrumented. That
+   unbuilt trigger is still this child's scope. **It also needs the observability
+   gap closed** — CI-runner job containers are invisible to `docker_stats`
+   (rootless podman vs the rootful socket), so today's telemetry cannot see runner
+   load at all. Both are prerequisites for any future capacity decision.
+3. **Bookkeeping on `livespec-3lev.3`:** amend its stale "~18 runner slots (~core
+   count)" deliverable text. SETTLED: 6 per repo × 8 repos = 48 agents is
+   deliberate; the ~18 figure predates the fan-out. Do not re-open it.
+4. **Adopter policy — MAINTAINER DECISION, still unanswered.** `openbrain`
+   `ob-4oku` is filed: it pins a pre-layer-split tag and cannot self-heal (no
+   `livespec-sibling` topic, no bump-pin shim, no pin-freshness shim — same bug
+   class as `5r3`). `resume`/`homelab` have no Fabro workflows, so nothing to pin;
+   amend `3lev.7`'s title accordingly. The question: enrol adopters in the pin
+   automation, or declare manual pinning the policy? Ask with a picker; do not
+   self-resolve — it is a fleet-boundary call. Note `openbrain`'s factory dispatch
+   is separately broken (`ob-nfwa`), so a bump there cannot be live-exercised yet.
+
+### Closed this session — do not redo
+
+`5r3` (producer self-reconcile; implemented + live-exercised on release v0.50.1,
+self-bump PR #472 merged, master 60/60 in-image), `ews`, `p73`, `3tu`, `7m1`,
+`3lev.4`. Isolation exit-tests supplied (14/0/3). Shadow lane 3× 14/14 including
+full `just check` green on the runner. Filed: `a46`, `ob-4oku`,
+`livespec-console-beads-fabro-mcj`.
+
+### Three process lessons this session paid for
+
+1. **Verify a status claim against the LEDGER before writing "complete".** Two
+   completion claims were merged and retracted. Enumerate the epic's children
+   untruncated (`bd show <epic>` prints an `N/8` tally — use it).
+2. **When a tool looks wrong, suspect your own invocation first.** A "bd
+   under-reports children" defect was asserted and nearly written into
+   `.ai/beads-gaps-workarounds.md`; the truth was a self-inflicted `head -25`.
+3. **An unrecorded maintainer decision WILL be re-litigated.** The runner deferral
+   existed only in the maintainer's head, so this session proposed flipping and
+   burned their time. That is why the STOP block exists.
+
+---
+
+## ▶ START HERE — updated 2026-07-19 (cont. 9, corrected — superseded by cont. 10 above)
 
 ## ▶▶ CORRECTION FIRST — the previous revision of this section was WRONG
 
