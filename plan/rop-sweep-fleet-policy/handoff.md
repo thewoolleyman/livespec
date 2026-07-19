@@ -30,6 +30,10 @@ evidence.
 - **`livespec-dev-tooling-qm5` is BLOCKED + `needs-regroom`** by maintainer decision. Its
   premise was disproved. Nothing landed.
 - **`livespec-dev-tooling-cvz` (P1) filed** — the third vacuous gate.
+- **`livespec-dev-tooling-e9j` (P1) filed** — the SYSTEMIC finding that supersedes `cvz`: role-key
+  non-declaration silently disarms SEVEN checks fleet-wide, four of which have never enforced
+  anything in any repo. Core runs 5+ structural gates vacuous while CI reports them green.
+  Flagged for possible P0. See the vacuous-gates section below.
 
 Nothing is running: no dispatches, no monitors, no sub-agents. The `rop-drain` tmux socket
 is empty.
@@ -198,23 +202,57 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | `bd-ib-47gr` | livespec-orchestrator-beads-fabro | P1 | Shared-journal deletion; ready, blocked on credential |
 | `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **BLOCKED + `needs-regroom`.** Premise falsified — see below |
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
-| `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Hinges on the same unresolved flat-package rule as qm5** |
+| `livespec-dev-tooling-e9j` | livespec-dev-tooling | P1 | **NEW, and the superset of `cvz`.** Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. **Consider P0** |
+| `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Blast radius is beads-fabro (47 sites), NOT git-jsonl (2) as its brief says.** Hinges on the same unresolved flat-package rule as qm5 |
 | `livespec-dev-tooling-jjb` | livespec-dev-tooling | P2 | Mechanize cardinality + marker wording (the ratified spec says these are review-enforced today) |
 | `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Make the canonical no-shadow-ledger body type-checkable so both Drivers drop pyright carve-outs |
 
-## THREE VACUOUS GATES — do NOT trust any of them
+## NOT "TWO VACUOUS GATES" — SEVEN CHECKS ACROSS FIVE ROLE KEYS
 
-The prior handoff said TWO. There are THREE, and the new one is the largest. All report green
-while enforcing nothing; each verified directly.
+This section has now been revised upward twice (2 → 3 → 7). Treat any count here as a floor
+until `livespec-dev-tooling-e9j` is worked. All of these report GREEN while inspecting nothing.
+
+**The three originally catalogued, each verified directly:**
 
 1. `check-no-except-outside-io` returns 0 immediately when `io_trees` is unset (`qm5`).
 2. `check-no-raise-outside-io` hardcodes `_DOMAIN_ERROR_NAMES` to core's four names; a repo whose
    errors are named differently gets zero coverage. Instrumented against git-jsonl it flagged 0
    of 9 raises including a genuine outside-`io/` one (`6vz`).
-3. **`check-no-except-outside-io` walks `config.source_trees`, which is UNDECLARED in livespec
-   core AND in both Driver repos** — so the loop runs zero iterations and the check has never
-   inspected core's own tree or either Driver's hooks (`cvz`). `livespec-driver-codex`'s
+3. `check-no-except-outside-io` walks `config.source_trees`, UNDECLARED in livespec core AND both
+   Driver repos, so the loop runs zero iterations (`cvz`). `livespec-driver-codex`'s
    `pyproject.toml` even documents that it deliberately omits the "heavy product-tree role keys".
+
+**The systemic finding underneath them (`livespec-dev-tooling-e9j`).** SEVEN checks share one
+early return — `if not config.<role_key>: log.info("role key absent — check no-ops"); return 0`.
+It is not a bug but a documented convention (`load_config`'s own docstring). Measured across the
+7 repos declaring a `[tool.livespec_dev_tooling]` block:
+
+| Role key | UNSET in | Checks it silences |
+|---|---|---|
+| `pure_trees` | **7/7** | `check_mutation`, `pbt_coverage_pure_modules`, `public_api_result_typed` |
+| `dataclasses_tree` | **7/7** | `newtype_domain_primitives` |
+| `io_trees` | 5/7 | `no_except_outside_io`, `no_raise_outside_io` |
+| `neutral_hook_body_path` | 5/7 | `no_shadow_ledger_body_identical` |
+| `source_trees` | 4/7 | (empties the walk loop even when `io_trees` IS set) |
+
+**Four checks have never enforced anything in any repo in the fleet.** Proven by execution in
+core's own checkout — `public_api_result_typed`, `newtype_domain_primitives`,
+`pbt_coverage_pure_modules`, `no_except_outside_io`, `no_raise_outside_io` all print
+`check no-ops` — while core CI reports every one SUCCESS (verified on PR #1426's rollup).
+
+**Root cause, and it is sharper than "someone forgot a key":** `config.py`'s
+`_livespec_core_config()` fallback applies ONLY when the block is ABSENT. Core HAS a block (for
+`file_lloc_hard_gate` and friends) and declares NONE of the five structural role keys — so the
+fallback named for core never fires for core, and core takes the empty flat baseline.
+Meanwhile `livespec-console-beads-fabro` has no block, so it DOES take the core fallback and
+inherits core paths that do not exist in what is a Rust crate. **The core-shaped fallback misses
+core and lands on a repo it cannot describe.** Declaring one unrelated convenience key silently
+moves a repo from the fallback regime to the empty regime, disarming every gated check in one
+edit, with no diagnostic louder than an INFO line.
+
+**Why this bears directly on this thread:** v169's mechanical half is carried by exactly these
+checks. In core and both Drivers they inspect nothing. A ratified ROP policy is being enforced
+by gates that are structurally inert in the repos that define and ship it.
 
 Defect #2 distorted a real design decision: restoring protocol conformance vs. tracking the
 divergence was argued partly on whether unwrapping would trip that check. It wouldn't have.
@@ -222,6 +260,23 @@ divergence was argued partly on whether unwrapping would trip that check. It wou
 Defect #3 falsifies `qm5`'s rationale. The two holes are in SERIES: with `source_trees` empty the
 walk runs zero iterations no matter what `io_trees` says, so fixing `qm5` alone yields ZERO new
 Driver coverage.
+
+## THE FOUR GATE ITEMS ARE ONE MACHINE — do not land them independently
+
+`qm5`, `cvz`, `6vz`, and `e9j` all touch the same config-plus-walk machinery. Two facts to hold:
+
+- **The defects are shared-shape across BOTH ROP checks.** `no_raise_outside_io` carries the
+  io_trees early return (`qm5`'s defect, byte-identical in shape, lines 91-97) AND the
+  source_trees walk (`cvz`'s defect, line 99) AND its own hardcoded names (`6vz`). It is vacuous
+  through THREE serial mechanisms; fixing any one leaves it vacuous. `qm5` and `cvz` were both
+  filed naming `no_except_outside_io` alone. Fix both checks in one pass.
+- **Blast radius is dominated by a repo none of the briefs name.** Measured, counting raises of
+  each repo's own error classes outside its DECLARED io trees:
+  `livespec-orchestrator-beads-fabro` **47 sites**; `livespec-dev-tooling` 14;
+  `livespec-orchestrator-git-jsonl` **2** — the only repo `6vz`'s brief anticipates. beads-fabro
+  declares both `source_trees` and `io_trees`, so the qm5/cvz vacuities do NOT shield it — only
+  `6vz`'s does. **Fixing `6vz` alone immediately reddens beads-fabro with 47 findings.** The
+  warn-tier severity lever its brief already sanctions is likely required, not optional.
 
 ## THE OPEN DESIGN QUESTION — blocks `qm5`, `cvz`, and `6vz`
 
