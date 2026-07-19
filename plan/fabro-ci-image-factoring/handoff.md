@@ -86,9 +86,150 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-19 (cont. 7)
+## ▶ START HERE — updated 2026-07-19 (cont. 7 COMPLETE)
 
-## ▶▶ ACTIVE EXECUTION PLAN — cont. 7 (2026-07-19): the two released follow-ups
+## ✅ RESULT — cont. 7 is DONE. Both released follow-ups LANDED and live-exercised.
+
+**Every step of the cont. 7 plan below is complete.** The plan text is retained
+unchanged underneath as the record of what was intended; this block is what
+actually happened. Two NEW findings were surfaced in the process and are filed,
+NOT fixed — they are the only open work on this track.
+
+### The epic's headline claim is now TRUE (measured on master, 2026-07-19)
+
+CI and the Fabro sandbox run the SAME image. Verified by reading each repo's
+`origin/master`, counting matching lines across ALL workflow files — not assumed:
+
+| Repo | CI image pins | Tag |
+|---|---|---|
+| `livespec` | 5 (2 `ci.yml` + 3 `ci-selfhosted-shadow.yml`) | `python-v0.49.2` |
+| `livespec-driver-claude` | 3 | `python-v0.49.2` |
+| `livespec-driver-codex` | 3 | `python-v0.49.2` |
+| `livespec-runtime` | 3 | `python-v0.49.2` |
+| `livespec-orchestrator-git-jsonl` | 5 | `python-v0.49.2` |
+| `livespec-orchestrator-beads-fabro` | 5 | `python-v0.49.2` |
+| `livespec-console-beads-fabro` | 3 | `python-rust-v0.49.2` |
+| **`livespec-dev-tooling`** | **2** | **`python-v0.43.2` — STILL STALE, see finding 1** |
+
+Sandbox (`livespec-orchestrator-beads-fabro` `workflow.toml`): `python-v0.49.2`.
+The console getting `python-rust-` proves the layer-prefix-preserving rewrite
+works; a bare-version rewrite there would have broken its image.
+
+### Track A — orchestrator `gh` hermeticity + cutover: DONE
+
+| Step | Result |
+|---|---|
+| A1 work-item | `bd-ib-tyee` (P1) filed in the orchestrator's own tenant |
+| A2/A3 fix | `livespec-orchestrator-beads-fabro` **#785 MERGED**, master green |
+| A4 verify | Master run green — verified on the MASTER run, not the PR |
+| A5 cutover | **#787 MERGED**; master run **64 jobs / 64 success / ZERO skips**, container jobs demonstrably in-image (`Initialize containers` ok, the `safe.directory` step fired, `just check-types` RAN) |
+
+`ShellCommandRunner.run` now maps `FileNotFoundError` → `exit_code=127`, so a
+missing `gh` degrades through the SAME `() → skip self-update` path as a `gh`
+error instead of crashing the dispatch. That restores the documented fail-open
+`0jxs` invariant. The hermetic tier puts a REAL scriptable `gh` stub at the head
+of `PATH` defaulting to **exit 1** (not success), so the production spawn path is
+still exercised and it is not a blanket always-succeeds stub.
+
+**Deviation, deliberate — the orchestrator's `ci.yml` uses PLAIN `runs-on:
+ubuntu-latest`, NOT the flippable `fromJSON(vars.CI_RUNNER_LABELS || …)` form the
+other 7 repos use. Do NOT "restore uniformity".** `livespec-dev-tooling`'s
+`self_hosted_routing` check is a fail-by-default SECURITY guard: if any job's
+`runs-on` references the label `local-ci`, the workflow's trigger set must contain
+none of six forbidden triggers. The flippable form writes the literal `local-ci`
+into the file, dragging the ONE repo that hosts the privileged gate-runner into
+that guard's scope and leaving a default that would route CI to self-hosted
+runners if the variable were ever unset — this repo registers ZERO runners, so
+that default would simply hang. Plain `ubuntu-latest` delivers the baked-image
+payload with no self-hosted surface and no repo-variable mutation, which keeps
+the two-trust-tier decision the maintainer's rather than half-making it by
+default. Flip-back here is a deliberate PR, which is correct for this repo.
+
+**Two cutover fallout repairs, both landed:**
+- **#788** — the baked image ships NO shellcheck (verified against
+  `python-v0.49.1`). `check-bd-guard` degrades to a loud WARNING when shellcheck
+  is absent — a deliberate severity lever, correct as designed — but CI never
+  took that path before, because `ubuntu-latest` ships it. Containerizing would
+  have made CI take the warning path on EVERY run: an occasional lever becoming a
+  permanently disabled lint, CI green throughout. Pinned `shellcheck = "0.11.0"`
+  in `.mise.toml`, handling it at its source. Verified the lint is genuinely live
+  (no WARNING emitted, 101 bd-guard tests pass).
+- **#789** — the cutover turned the master run RED: `export-telemetry` died with
+  `jq: Argument list too long` (exit 126). LATENT bug the cutover merely exposed —
+  `run_json` (the full run INCLUDING every job and step) was passed as an
+  `--argjson` **argv** value, and Linux caps a single argument at
+  `MAX_ARG_STRLEN` (128KB). Adding a `safe.directory` and a `mise install` step to
+  five jobs grew it past that. Mechanism confirmed directly, not inferred: 100KB
+  argv OK, 128KB and 200KB both E2BIG, all sizes fine on stdin. **The post-hoc
+  `gh run view` payload is only 84KB, so the failure is NOT reproducible from the
+  completed run's JSON** — the runtime payload was larger than can be fetched now;
+  the fix does not depend on that size. Both unbounded payloads moved to stdin
+  (`run_json` AND `job_spans`, the latter would have hit the same wall a few jobs
+  later); `run_span` stays argv as a single bounded span.
+
+### Track B — `xb7` pin autodiscovery: DONE
+
+| Step | Result |
+|---|---|
+| B1 propose-change | Filed with the replace-target lifted VERBATIM from the live file (never retyped) and verified to occur exactly once |
+| B2 Fable review | Round 1 **BLOCKERS FOUND**; redraft; round 2 **NO BLOCKERS** |
+| B3 ratify | `livespec-dev-tooling` **#459 MERGED** → `SPECIFICATION/history/v026/` |
+| B4 implement | `livespec-dev-tooling` **#460 MERGED**, `just check` 60/60 |
+| B5 fan-out | Ran on the REAL machinery — release `v0.49.2` fired the fan-out, consumers' bump-pin discovered the previously-invisible pins via the shipped walk, PRs merged. **No hand-bumping.** |
+
+**Live-exercise proof the shipped walk works** (`discover()` against live clones):
+`livespec` 0 → **5** fabro pins; `livespec-runtime` 0 → **3**;
+`livespec-console-beads-fabro` 1 → **4** (1 `workflow.toml` + 3 `ci.yml`).
+
+**Three ways this would have failed at fan-out time, all caught before landing** —
+none of which merge-plus-CI-green would have surfaced:
+1. **The rewriter could not match the YAML line form.** `rewrite_pin_in_text` was
+   anchored to the TOML `docker = "..."` form and `main()` treats a zero match
+   count as FATAL — so emitting the new records without extending it would have
+   turned a silent drift into a HARD FAN-OUT FAILURE across every cut-over repo.
+   Strictly worse than the status quo.
+2. **Singular phrasing + a false `file_path` distinguishability claim.** Every
+   real `ci.yml` carries SEVERAL matching lines (one per job `container:` block;
+   measured 2–5). With the existing first-match-per-file walk, an implementer
+   following the draft would have rewritten one line, passed single-job fixtures,
+   merged green, and left jobs 2..N stale — recreating INTRA-FILE the exact drift
+   the change exists to kill.
+3. **A line form that exists nowhere.** There is no literal `container: image:`
+   line; it is a `container:` block with a nested `image:` line.
+
+`walk_fabro_workflow_docker` was also switched from `search` (first-match) to
+`finditer`, since the ratified per-line rule binds the whole format — behaviourally
+identical today, but it removes a latent single-match assumption.
+
+---
+
+## ⚠ OPEN — the only remaining work on this track (both FILED, NOT fixed)
+
+**1. `livespec-dev-tooling-5r3` (P1) — the PRODUCER's own pin is structurally
+unreachable by the fan-out.** `livespec-dev-tooling`'s own `ci.yml` is still at
+`python-v0.43.2`, six releases behind the image it BUILDS. Root cause is not a
+bug in `xb7`: `release-dispatch.yml` discovers siblings via the
+`livespec-sibling` topic and, per its own header, "excludes this repo from the
+dispatch matrix" — so this repo never receives a `sibling-released` dispatch and
+no bump-pin run ever rewrites its pins. Every consumer is now self-healing; the
+producer is not. It is the one repo where the epic's headline claim stays FALSE,
+and the worst place for it. **DO NOT hand-bump** — a manual bump re-rots on the
+next release, which is precisely the bug `xb7` was filed against. Recommended fix
+(a): self-reconcile at release time, reusing the existing rewrite machinery to
+open an auto-merge `chore:` PR (which cuts no release, so it cannot loop).
+
+**2. `livespec-dev-tooling-p73` (P2) — pin-freshness judges staleness from ONE
+representative record per source.** `reusable-pin-freshness.yml` takes
+`.[0].current_value` per `source_repo`, while `contracts.md` says a bump PR is
+opened per `(source_repo, current_pin, latest_tag)` triple. If the representative
+is fresh, NO bump PR fires even when sibling pins for the same source are stale —
+a blind spot exactly where `xb7`'s drift lived. `xb7` WIDENS it by adding 2–5
+independently-staleable records per repo. The two together are why this class of
+drift can persist silently.
+
+---
+
+## ▶▶ ORIGINAL cont. 7 EXECUTION PLAN (retained as the record of intent)
 
 **The maintainer RELEASED both previously-gated follow-ups on 2026-07-19**, so the
 "MAINTAINER-owned / do NOT self-start" wording everywhere below is SUPERSEDED for
