@@ -152,10 +152,24 @@ SHAs — do not search for the original).
   convention; pyright names the two files individually; the launcher's output goes through
   the `streams` sink.
 
-## Verified daemon findings — NOT fixed, no work-items filed yet
+## Verified daemon findings — ✅ NOW FILED as work-items (2026-07-19)
 
 All three were independently verified in source, not taken on trust. None is a live
-defect; each is recorded so it is not lost.
+defect. **They are now tracked in the ledger rather than only on this page**, so they
+survive this thread closing:
+
+- **`livespec-ail8`** (bug, P3) — findings 1 and 2 below, filed TOGETHER because they
+  are the same "topic is not globally unique" root shape in the same function, gated
+  behind the same unset flag; fixing either alone leaves the trap armed. Re-verified at
+  master before filing: `run()` carries `recover: bool = False` (`supervisor.py:2572`)
+  and `grep -n 'recover' .claude/skills/overseer/overseerd` returns nothing, so the
+  recovery path is genuinely unreachable in production.
+- **`livespec-3rj4`** (task, P3) — finding 3 below. Filed as a task, not a bug, because
+  the fix changes the fail-soft contract's shape and so needs a decision; three options
+  are laid out on the item with a recommendation.
+
+The ledger is now the source of truth for their status; the text below is kept as the
+analysis that produced them.
 
 1. **`recover_missing_sessions` derives session names with an EMPTY collision set.**
    `_colliding` is only populated inside `build_rows` (supervisor.py), but `run()` calls
