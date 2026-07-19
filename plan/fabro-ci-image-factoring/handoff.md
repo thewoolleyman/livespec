@@ -91,16 +91,51 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 ## ▶▶ CORRECTION FIRST — the previous revision of this section was WRONG
 
 **The cont. 9 revision of this handoff claimed "nothing on this track is
-outstanding" and "THIS THREAD IS READY TO ARCHIVE". BOTH CLAIMS WERE FALSE, and
-they merged before the error was caught** (PR #1428). The anchoring epic
-`livespec-3lev` has **three children still in BACKLOG** — verified with `bd show`,
-which the wrong revision never ran:
+outstanding" and "THIS THREAD IS READY TO ARCHIVE". BOTH CLAIMS WERE FALSE** (PR
+#1428). A first correction (PR #1430) said three children were open. **That was
+ALSO wrong — there are SEVEN.** This is the measured picture.
 
-| Child | Scope | Real status |
+> **`bd show <epic>` UNDER-REPORTS ITS OWN CHILDREN.** `bd show livespec-3lev`
+> listed only 4 (`.2 .4 .7 .8`); `bd list` shows 7 open plus the closed `.2`. The
+> first correction trusted the `bd show` CHILDREN block and inherited its gap.
+> **Enumerate children with `bd list`, never with `bd show`.** Worth carrying to
+> `.ai/beads-gaps-workarounds.md`.
+
+### The epic's THREE stated goals, measured
+
+The epic description names three. Only the first is delivered:
+
+| # | Goal | State |
 |---|---|---|
-| `livespec-3lev.4` | Phase 1 — baked layered images, matrix build, cross-repo pin lockstep, console/orchestrator image switch | **Probably stale-open; needs DISPOSITION, not work.** The images, matrix build, and image switch shipped; the "Rust & Codex-ACP cross-repo pin lockstep" portion was explicitly CANCELLED by the 2026-07-12 maintainer correction as a circular dependency. Verify, then close citing that correction. |
-| `livespec-3lev.7` | Phase 4 — file conversion work-items in the `openbrain` + `resume` adopter ledgers | **GENUINELY OUTSTANDING.** No adopter work-items filed. |
-| `livespec-3lev.8` | Phase 5 — post-rollout efficiency report: before/after CPU-seconds + wall-clock over a real Honeycomb window | **GENUINELY OUTSTANDING**, and it is the epic's own "closing measurement gate" — the evidence that this whole rollout actually paid off. |
+| 1 | Replace the per-Fabro-run "live-work tax" with minimal, layered, pinned sandbox images | ✅ **DELIVERED** and live-exercised |
+| 2 | **Move CI onto local self-hosted runners** so images/caches are hot and free | ❌ **NOT DELIVERED** — see below |
+| 3 | Gate the rollout on host-resource observability + a continuous resource health check | ⚠️ **PARTIAL** — metrics flow; no trigger is live |
+
+**Goal 2 is the one to understand, because the handoff has been misleading about
+it.** Every fleet repo's `ci.yml` carries a *flippable* form,
+`runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}`
+— so grepping for `self-hosted` finds 7–13 hits per repo and looks like adoption.
+**It is not.** The live repo variable overrides it: `CI_RUNNER_LABELS =
+["ubuntu-latest"]` in both repos checked. **The fleet is 8/8 on the baked image and
+0/8 on the local runner.** The mechanism is built and the switch is OFF.
+
+That narrowing is DELIBERATE and defensible (see the cont. 7 record: the baked
+image delivers the headline on hosted runners, and the orchestrator's trust-tier
+gate was explicitly not spent) — but it means Phases 2 and 3 are **not met as
+written**, and the phrase "cut over" has been used for both image adoption and
+runner adoption. **Always say which.**
+
+### All seven open children
+
+| Child | Real status |
+|---|---|
+| `livespec-3lev.1` P-host | **OPEN, legitimately.** Gating role DISCHARGED per the 2026-07-12 correction, but exit criteria (live resource-health trigger, runner-liveness alert, cache budget/prune) are unmet, and the trigger needs a maintainer decision on an alert destination. |
+| `livespec-3lev.3` Phase 0 | **OPEN.** Substantially delivered — the HARD dual Fable+Codex security gate was genuinely honored (4 rounds, PASSED round 4, recorded in `phase0-runner-containment-design.md`), 6 runners registered, shadow lane green 2026-07-14. Blocked on two ambiguities: **no execution record for the 6 isolation exit-tests** (the security-relevant half), and 6 runners vs the specified ~18. Shadow lane has not run since 07-14. |
+| `livespec-3lev.4` Phase 1 | ✅ **CLOSED 2026-07-19** — every deliverable verified against `origin/master`. Its `blocks` edge from `.1` was a stale proxy and was REMOVED (not `--force`d). Codex lockstep designed away (version-less adapter); Rust lockstep relocated → filed as `livespec-console-beads-fabro-mcj`. |
+| `livespec-3lev.5` Phase 2 | **OPEN.** Disposition table + in-image CI done; the local-runner cutover is not. Now a maintainer DECISION, not implementation: flip `CI_RUNNER_LABELS`, or narrow the exit criterion to same-image-parity-on-hosted and close. |
+| `livespec-3lev.6` Phase 3 | **OPEN.** Image half fully delivered — 8/8 members pinned, green, and now AUTO-reconciled (`xb7` + `5r3`). Local-runner half 0/8; resource signal not live. |
+| `livespec-3lev.7` Phase 4 | **GENUINELY OUTSTANDING.** No adopter work-items filed in `openbrain` / `resume`. |
+| `livespec-3lev.8` Phase 5 | **GENUINELY OUTSTANDING** — the epic's own closing measurement gate. |
 
 **DO NOT ARCHIVE THIS THREAD.** Phases 4 and 5 are real remaining scope.
 
@@ -116,8 +151,27 @@ front of you is no defence against an unchecked premise underneath you.
 
 **Standing rule this earns:** before writing any "track complete", "nothing
 outstanding", or "archivable" line in ANY handoff, enumerate the anchoring epic's
-children and check each status directly. A closed track is a claim about the
-LEDGER, so it must be verified against the ledger.
+children **with `bd list`** and check each status directly. A closed track is a
+claim about the LEDGER, so it must be verified against the ledger.
+
+**The correction needed correcting, which is the sharper lesson.** The first fix
+(PR #1430) used `bd show livespec-3lev`, got 4 children, and confidently reported
+3 open. `bd list` shows 7 open. So a verification step was performed, produced a
+number, and the number was still wrong — because the TOOL under-reported and its
+output looked complete. Getting caught once and reaching for the nearest
+verification is not the same as verifying. **When a check yields a suspiciously
+tidy answer right after you have been wrong, cross-check it with a second tool
+before publishing.** Here the tell was available and ignored: `bd close
+livespec-3lev.4` failed with "blocked by open issues [livespec-3lev.1]" — naming a
+child that the `bd show` listing had never mentioned.
+
+**And a third layer, worth naming separately.** Even the corrected child list
+understated things, because several children were open for a reason no status
+field captures: Phases 2 and 3 were *narrowed in substance* — "cut over" silently
+came to mean image adoption rather than local-runner adoption. A child can be
+accurately reported as "open" and still mislead, if the delivered thing has quietly
+diverged from the specified thing. **Read each child's own exit criterion and
+compare it to what shipped; do not infer completion from surrounding progress.**
 
 ### What IS genuinely delivered (the narrower, true claim)
 
@@ -137,23 +191,47 @@ from a green tick. See "THE COMPLETED LOOP" below for the full chain.
 
 ### ▶ NEXT ACTIONS, in order
 
-1. **Dispose of `livespec-3lev.4`.** Confirm the images / matrix build /
-   console+orchestrator image switch all shipped (they appear to have), then close
-   it citing the 2026-07-12 maintainer correction that CANCELLED its cross-repo
-   pin-lockstep portion as a circular dependency. This is bookkeeping, not work —
-   but leaving it open misrepresents the epic.
-2. **`livespec-3lev.7` — Phase 4, adopter work-items.** File ready conversion
+**`livespec-3lev.4` is already done** (closed 2026-07-19). The rest, in order:
+
+1. **MAINTAINER DECISION, and it gates Phases 2+3 — do this first.** Is goal 2
+   (CI on local self-hosted runners) still wanted? The machinery is BUILT and the
+   switch is OFF (`CI_RUNNER_LABELS = ["ubuntu-latest"]`). Two coherent answers,
+   and no implementation is blocked on anything else:
+   - **Flip it.** Set `CI_RUNNER_LABELS` to the local lane per repo, accepting the
+     trust-tier consequence — notably that `livespec-orchestrator-beads-fabro`
+     hosts the privileged on-demand gate-runner, which is exactly why its cutover
+     deliberately left it hosted. Then `.5` and `.6` complete as written.
+   - **Narrow the goal.** Declare same-image-parity-on-hosted the delivered
+     outcome, rewrite `.5`/`.6` exit criteria to match, and close them. The epic's
+     headline value is already banked either way.
+   Everything downstream reads differently depending on this answer, so it is not
+   a decision to defer while doing 2–4.
+2. **`livespec-3lev.3` — resolve two ambiguities.** (a) The **6 isolation
+   exit-tests have no execution record.** That is the security-relevant half of
+   Phase 0 — the proof that the runner user cannot read the Dolt tenant password,
+   the 1Password token, the GitHub App key, or the runner registration credential.
+   Either find the evidence and journal it, or run them. (b) 6 runners are
+   registered against a specified ~18: confirm which number is intended. Also
+   decide the shadow lane's cadence — it has not run since 2026-07-14, and a
+   shadow lane that stops running stops shadowing while still LOOKING like coverage.
+3. **`livespec-3lev.7` — Phase 4, adopter work-items.** File ready conversion
    work-items in the `openbrain` and `resume` ledgers. Note per
    `.ai/adding-an-adopter.md` that onboarding is END-USER work in the adopter repo;
    what this child owns is FILING the work-items, not performing the conversion.
-3. **`livespec-3lev.8` — Phase 5, the closing measurement gate.** Before/after
+4. **`livespec-3lev.8` — Phase 5, the closing measurement gate.** Before/after
    CPU-seconds and wall-clock for factory + CI over a real Honeycomb window. This
    is the evidence the rollout paid off, and nothing else on the epic substitutes
    for it. The `livespec-host-metrics` dataset (agent-activity Honeycomb env) has
    been receiving host + per-container metrics since P-host step 1 landed
    (`otel-collector` PR #3, commit `417e5d8`), so the "after" window is available;
-   the "before" comparison needs a window predating the cutover.
-4. **Non-blocking, maintainer-owned:** `livespec-dev-tooling-4j3` (release-please
+   the "before" comparison needs a window predating the cutover. **Note the
+   measurement means something different under each answer to item 1** — under
+   "flip it" it measures hot local runners, under "narrow it" it measures baked-image
+   savings on hosted runners. Settle item 1 first or the report measures the wrong thing.
+5. **`livespec-3lev.1` — P-host remainder**, when its blockers clear: the
+   continuous resource-health trigger (needs a maintainer decision on an alert
+   recipient/destination), the runner-liveness alert, and the cache budget/prune.
+6. **Non-blocking, maintainer-owned:** `livespec-dev-tooling-4j3` (release-please
    bumps `pyproject.toml` but not `uv.lock`, so every `uv run` dirties a clean
    checkout; `livespec-console-beads-fabro` has the identical stale `Cargo.lock`
    issue). Fix both together via a release-please post-bump re-lock. It belongs to
@@ -224,6 +302,22 @@ conflicting for a human, with the freshness cron and §"Fallback to known-good p
 as the designed catch.
 
 ### Also open (non-blocking, not on the critical path)
+
+- **`livespec-console-beads-fabro-mcj` (P3, filed cont. 9)** — an ORPHANED
+  RESPONSIBILITY, and a good example of how "designed away" can quietly mean
+  "dropped". Nothing binds the console's `rust-toolchain.toml` to the baked
+  `python-rust` image's `RUST_VERSION`, because **each repo's comment defers the
+  check to the other**: `livespec-dev-tooling`'s python-rust Dockerfile says any
+  such check "lives on the CONSUMER (console) side … never in dev-tooling", while
+  `livespec-console-beads-fabro`'s `workflow.toml` says "No repo-local consistency
+  check is needed". The console's sentence is true about the image TAG (which
+  bump-pin autodiscovery does keep current) but that is a different concern from
+  the Rust VERSION *inside* the image. Exposure measured as ZERO today — both sides
+  read `1.92.0` + `clippy` + `rustfmt` — so this is a missing guard, not live drift.
+  It originates in `3lev.4`'s cross-repo Rust lockstep, which the 2026-07-12
+  correction correctly RELOCATED to the consumer side and which was then never
+  rebuilt there. A mismatch would produce exactly the "green in CI, red in sandbox"
+  drift this epic exists to eliminate.
 
 - **`livespec-dev-tooling-7m1` (P3) — FIXED AND MERGED cont. 9**, PR #473
   (`refactor(ci):`), merged 12:03Z, `just check` 60/60 green.
