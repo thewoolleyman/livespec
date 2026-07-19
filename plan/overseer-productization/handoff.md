@@ -53,20 +53,30 @@ Do NOT duplicate it, and do NOT touch that branch or worktree — it is another 
 (the cross-session force-push/clobber ban in `AGENTS.md` applies). Gate B lands the
 moment it merges.
 
-⚠️ **That fix is STALLED and the blast radius is wider than "pushes are blocked".**
-As of 2026-07-19 ~12:20 the branch is pushed to `origin` but **no PR was ever opened**
-for it, and master has moved on (now `a28374da`, dev-tooling pin already at v0.50.3).
-Opening that PR is a one-step unblock for the whole repo, but it is ANOTHER SESSION'S
-branch and an outward-facing action — get maintainer or that session's agreement first;
-do not open it unilaterally.
+✅ **RESOLVED 2026-07-19 — the blocker is GONE; `check-doctor-static` exits 0 at master
+`38d86b59`.** The revert landed as **`333e5263`** (a rebased re-apply; the original
+`6bdccd04` is NOT an ancestor of master, so don't search for it). `cross_repo_targets`
+no longer carries the console entry. **Gate B is unblocked — go run Step 2.**
 
-**The blocker also breaks the SPEC LIFECYCLE, which was not previously recorded.** The
-propose-change CLI runs doctor static as BOTH a pre-step and a post-step
-(`prose/propose-change.md` Steps 8 / Post-CLI). `--skip-pre-check` suppresses only the
-pre-step; the POST-step still fires and still exits 3. So while the blocker stands,
-`/livespec:propose-change` cannot complete cleanly — the proposed-change file lands on
-disk but the CLI reports exit 3. Any spec amendment is effectively frozen, not merely
-un-pushable. This is why the root-cause work below is filed rather than driven.
+Watch for this when reading the record: the same change exists under two SHAs, and only
+the rebased one is on master.
+
+Still-open consequence: the revert dropped the cross-tenant `sibling_work_item` linkage
+`7107be6c` created, and the fleet-pin-propagation epic (`livespec-n4ptl2`) has a real
+filed child in that tenant, `livespec-console-beads-fabro-tafkuw`. The revert commit
+says the re-land is tracked; **that was not verified here.** Confirm a re-land work-item
+exists before considering the linkage safe, and note remedy (c) — splitting
+`cross_repo_targets` into a planning list and a conformance list — remains the unowned
+durable fix.
+
+**Durable lesson from this outage — a red `doctor-static` freezes the SPEC LIFECYCLE,
+not just pushes.** The propose-change CLI runs doctor static as BOTH a pre-step and a
+post-step (`prose/propose-change.md` Steps 8 / Post-CLI), and `--skip-pre-check`
+suppresses only the pre-step — the POST-step still fires and still exits 3. So a
+red doctor-static means `/livespec:propose-change` cannot complete cleanly: the
+proposed-change file lands on disk but the CLI reports exit 3. Worth knowing the next
+time a doctor-static gate goes red, because it means spec amendments (including any
+amendment that would FIX the gate) are frozen, not merely un-pushable.
 
 ## Step 2 — land Gate B (only once Step 1 is exit 0)
 
@@ -170,8 +180,12 @@ Supporting facts measured this session, none previously recorded:
 - Removing ONLY the console entry takes `check-doctor-static` from exit 3 to **exit 0**;
   `livespec-dev-tooling` contributes zero drift pairs. (Verified by experiment, then
   reverted — the config was restored to HEAD.)
-- The `fleet-pin-propagation` tmux session named below **no longer exists**; there is no
-  tmux server running at all. Any instruction here to "check that session" is dead.
+- ~~The `fleet-pin-propagation` session no longer exists.~~ **RETRACTED — this was my own
+  false claim, and it is the third on this page.** It was inferred from `tmux ls` finding
+  no server, which proves only that no server exists in THIS session's socket namespace.
+  `session_01XybfmAK5sG5RugLNWcwUxm` was alive the whole time and committed master's tip
+  at 19:01. **Never infer another session's liveness from `tmux ls`;** read commit
+  trailers (`git log --format=%B | grep session_`) instead, which is how this was caught.
 
 ## What Gate B contains (already committed as `39047284`)
 
