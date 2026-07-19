@@ -32,6 +32,13 @@ env:
   # warns on an UNDETERMINABLE currency locally, but CI fails hard on it —
   # confirmed-stale always hard-fails everywhere (livespec-c1k9.3).
   LIVESPEC_CURRENCY_GATE: "fail"
+  # Test-parallelism lane signal read by the justfile's `test_nprocs`
+  # (plan/fabro-ci-image-factoring cont.5). RUNNER_ENVIRONMENT does NOT
+  # propagate into container jobs, so derive the lane from the routing
+  # variable here: GitHub-hosted (CI_RUNNER_LABELS flipped to an ubuntu
+  # label) → `hosted` → pytest -n auto; the self-hosted/local lane → `local`
+  # → -n 25%-of-cores (overridable per host via LIVESPEC_TEST_PARALLELISM).
+  LIVESPEC_CI_LANE: ${{ contains(vars.CI_RUNNER_LABELS, 'ubuntu') && 'hosted' || 'local' }}
 
 on:
   pull_request:
