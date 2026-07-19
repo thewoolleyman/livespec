@@ -30,10 +30,17 @@ not restate it. Every item this thread filed carries the marker
 2. `plan/fleet-pin-propagation/research/diagnosis.md` — the measured evidence,
    the classification axis every decision turns on, the consolidation verdicts
    for the ten pre-existing ledger items, and the settled decisions that must
-   NOT be re-litigated.
+   NOT be re-litigated. **Start with its "⚠ MAJOR REVISION" section**, which
+   corrects four load-bearing claims from the first draft.
 
 That is the whole chain. Everything needed to pick up the next action is in
 those two files plus the ledger.
+
+Optional depth, not required to act:
+`plan/fleet-pin-propagation/research/recovered/` holds the three raw research
+inventories the diagnosis summarizes — per-gate `file:line` citations, the full
+pin-format table, and each agent's own flagged unknowns. Read them when you
+need evidence behind a specific claim; the diagnosis note is the authority.
 
 ## What this thread owns
 
@@ -92,12 +99,22 @@ circular-dependency significance for ledger records.
 ## Pre-existing items this thread absorbs
 
 Not re-filed; they stay in their own tenants. Verdicts and justification are
-in the diagnosis note's disposition table.
+in the diagnosis note.
 
-Absorbed as children in spirit: `livespec-dev-tooling-adqmnm`,
-`livespec-dev-tooling-fz4`, `livespec-dev-tooling-xb7`,
-`livespec-dev-tooling-p73`, `livespec-dev-tooling-u0x`, `livespec-o0x1`,
-`livespec-p9s0`, `livespec-console-beads-fabro-7wy`.
+**ALREADY FIXED on master — close-or-narrow, do not implement** (fix commits
+verified as ancestors of `origin/master`; per-item acceptance check is scoped
+into `livespec-xw65el`): `livespec-dev-tooling-adqmnm` (`8975025`),
+`livespec-dev-tooling-q9a` (`5693955`), `livespec-dev-tooling-fz4`
+(`ebf54cc`), `livespec-dev-tooling-u0x` (`7dc0d9b`),
+`livespec-dev-tooling-xb7` (`b0c320d`), `livespec-o0x1` (fan-out stamps at
+`bump-pin-rewrite/action.yml:379`).
+
+**Genuinely open, absorbed as children in spirit:** `livespec-p9s0` (stale
+local-clone false reds), `livespec-dev-tooling-p73` (pin-freshness
+first-record blind spot).
+
+**Premise does not reproduce — re-derive or close:**
+`livespec-console-beads-fabro-7wy`.
 
 Linked but NOT owned: `livespec-dev-tooling-9j8.6` (CI-logic extraction epic —
 this thread depends on it, must not absorb it), `livespec-dev-tooling-q9a`
@@ -105,16 +122,43 @@ this thread depends on it, must not absorb it), `livespec-dev-tooling-q9a`
 
 ## NEXT ACTION
 
-**Groom `livespec-xw65el`** (the gate-classification sweep), then dispatch it.
+**Groom `livespec-xw65el`**, then dispatch it. It is RE-SCOPED — read its
+current ledger body, not this heading's old framing.
 
-It is first because every other decision in this thread depends on its output:
-until the (a)/(b) classification exists, we do not know how many gates are in
-the (b) class that the settled "fan-out writes the wiring" mechanism cannot
-serve. The current belief — that the console's captured manifest is the only
-one — is UNPROVEN; it is merely the only one found so far.
+The gate-classification sweep this item originally called for was in fact
+COMPLETED, lost to a harness fault, and RECOVERED. Its findings are folded into
+the diagnosis note. So the item is now verification + ledger reconciliation,
+not discovery: verify the recovered 12-gate table (8 (a)-derivable /
+4 (b)-needs-live-system), close-or-narrow the **six pre-existing items that are
+already fixed on master**, resolve the workflow-permission contradiction before
+anything is built on an assumption about it, file the three newly-surfaced
+gaps, and re-derive or close `livespec-console-beads-fabro-7wy`.
+
+**Do NOT re-run the sweep from scratch.**
 
 Grooming route: the `groom` operation on `livespec-xw65el`. The maintainer
 owns the cut.
+
+### The single most important correction
+
+Six of the ten pre-existing ledger items this thread set out to absorb are
+**already fixed on master** — including `livespec-dev-tooling-adqmnm`, the
+settled "fan-out writes the wiring" decision the whole plan was written to
+honor. It shipped 2026-07-09 (`8975025`) and its `blocked-reason:needs-human`
+is stale because its blocking dependency closed 2026-07-15. **Do not
+re-implement it.** This thread is substantially a ledger-reconciliation job
+plus a small number of genuinely-open defects, not the build job the first
+draft assumed.
+
+### Scope boundary — the console's cockpit thread
+
+`livespec-console-beads-fabro-tafkuw` and the console's
+`plan/cockpit-ux-docs-release/` deliverable **B6** both edit
+`crates/console-completeness-check/src/lib.rs` — ~200 lines apart, different
+functions, different concerns (B6: which doc surface is read; `tafkuw`: when
+the pin stamp invalidates). **B6 goes first, unconditionally.** Full boundary
+in the diagnosis note; do not start `tafkuw` before B6's impl lands on console
+master.
 
 **Implementation route, for this and every item in this thread: the FACTORY.**
 Dispatch through the `drive` operation with action `impl:<work-item-id>`, or
