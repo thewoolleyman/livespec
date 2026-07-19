@@ -60,13 +60,10 @@ tenant. Do not try to dispatch the `livespec-*` children.
 
 ## REMAINING WORK — in order. Nothing may be reported done until ALL of it is.
 
-### 0. Commit these plan docs — they are UNCOMMITTED and fragile
-`plan/tmux-fleet-kill-prevention/handoff.md` (modified) and
-`research/incident-2026-07-19-agent-brief-kill.md` (untracked) exist only in the
-primary checkout working tree. A prior session deliberately did not open a PR
-because a restart mid-cycle would orphan a branch/worktree. Land them via the
-normal worktree → PR → merge protocol (`docs(plan):` subject, no product `.py`,
-so the TDD ritual does not apply) BEFORE starting step 1.
+### 0. ~~Commit these plan docs~~ — **DONE 2026-07-19**
+This handoff and `research/incident-2026-07-19-agent-brief-kill.md` are committed
+on `master` (PR #1391, merge `1f9add96`; this correction followed it). Nothing to
+do here — start at step 1.
 
 ### 1. Install + live-verify the **Codex** guard (closes the 2026-07-19 hole) — DO THIS FIRST
 Host-wide registration (per `CLAUDE.md` §"Codex dogfooding"):
@@ -176,7 +173,7 @@ complete and verified.
   2026-07-19 08:2x wind-down, **no sub-agent, background task, or subprocess
   started by that session was still running** (verified: no `codex-acp`, no
   review agents, no `fabro-exec` wrappers).
-- Committing these plan docs is **step 0** of Remaining Work above.
+- These plan docs are committed on `master` (PR #1391, `1f9add96`) — step 0 is done.
 - Nothing beyond the L2-host guard has been claimed done. The four mirrors are
   merged and parked in `acceptance` — they are NOT accepted and NOT installed.
   Do not report this epic complete until every step 0–10 is finished and each
