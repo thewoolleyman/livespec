@@ -212,18 +212,29 @@ def test_file_lock_proceeds_unlocked_when_the_lock_cannot_be_acquired(
     assert "could not acquire lock" in capsys.readouterr().err
 
 
-def test_file_lock_proceeds_unlocked_when_the_lock_file_cannot_be_opened(tmp_path, capsys):
+def test_file_lock_proceeds_unlocked_when_the_lock_file_cannot_be_opened(
+    tmp_path, monkeypatch, capsys
+):
     """B7: the lock sidecar failing to OPEN (no handle was ever acquired) takes the
-    same unlocked fallback — the caller runs and reports, and the daemon lives."""
+    same unlocked fallback — the caller runs and reports, and the daemon lives.
+
+    The denial is injected at ``Path.open`` rather than via ``chmod``: CI runs its
+    container steps as ROOT, where mode bits deny nothing, so a chmod-based version
+    of this test passes locally and silently stops exercising the branch in CI.
+    """
     unwritable = tmp_path / "unwritable"
     unwritable.mkdir()
-    unwritable.chmod(0o500)  # readable + traversable, but nothing may be created in it
     store = unwritable / "map.jsonl"
-    try:
-        registry.append_mapping(Track(topic="a", repo="/r"), store)
-        assert registry.read_mapping(store) == []  # the append itself also failed soft
-    finally:
-        unwritable.chmod(0o755)
+    real_open = registry.Path.open
+
+    def _deny(self, *args, **kwargs):
+        if str(self).startswith(str(unwritable)):
+            raise PermissionError(13, "Permission denied")
+        return real_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(registry.Path, "open", _deny)
+    registry.append_mapping(Track(topic="a", repo="/r"), store)
+    assert registry.read_mapping(store) == []  # the append itself also failed soft
 
     err = capsys.readouterr().err
     assert "could not acquire lock" in err
@@ -231,16 +242,21 @@ def test_file_lock_proceeds_unlocked_when_the_lock_file_cannot_be_opened(tmp_pat
     assert not (unwritable / "map.jsonl.lock").exists()  # no lock sidecar was created
 
 
-def test_read_mapping_fail_soft_on_an_unreadable_store(tmp_path, capsys):
+def test_read_mapping_fail_soft_on_an_unreadable_store(tmp_path, monkeypatch, capsys):
     """B7: a store that exists but cannot be read yields an EMPTY mapping (naming
-    the offender), not a propagated PermissionError."""
+    the offender), not a propagated PermissionError.
+
+    Denial is injected at ``Path.read_text`` rather than via ``chmod`` — CI runs as
+    root, where mode bits deny nothing (see the lock-open test above).
+    """
     store = tmp_path / "map.jsonl"
     store.write_text(json.dumps({"topic": "a", "repo": "/r"}) + "\n", encoding="utf-8")
-    store.chmod(0o000)
-    try:
-        assert registry.read_mapping(store) == []
-    finally:
-        store.chmod(0o600)
+
+    def _deny(self, *args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(registry.Path, "read_text", _deny)
+    assert registry.read_mapping(store) == []
     assert "unreadable mapping store" in capsys.readouterr().err
 
 
@@ -315,37 +331,57 @@ def test_discover_plans_fail_soft_on_missing_plan_dir(tmp_path):
     assert registry.discover_plans([repo]) == []
 
 
-def test_discover_plans_fail_soft_on_an_unreadable_plan_dir(tmp_path, capsys):
+def test_discover_plans_fail_soft_on_an_unreadable_plan_dir(tmp_path, monkeypatch, capsys):
     """B7: a plan/ that becomes unlistable between the is_dir check and iterdir
     (chmod, NFS hiccup, mid-clone) skips that ONE repo — every other watched repo
-    still contributes, rather than the whole discovery pass crashing the daemon."""
+    still contributes, rather than the whole discovery pass crashing the daemon.
+
+    ``iterdir`` is denied for the poisoned repo only, rather than via ``chmod`` —
+    CI runs as root, where mode bits deny nothing. Matching on the repo directory
+    NAME rather than on path equality keeps this robust against the path
+    normalization ``discover_plans`` applies before building ``plan_dir``.
+    """
     poisoned = tmp_path / "repo-poisoned"
     _make_plan(poisoned, "topic-a")
     healthy = tmp_path / "repo-healthy"
     _make_plan(healthy, "topic-b")
-    (poisoned / "plan").chmod(0o000)  # unlistable, but still stats as a dir
-    try:
-        triples = registry.discover_plans([poisoned, healthy])
-    finally:
-        (poisoned / "plan").chmod(0o755)
+    real_iterdir = registry.Path.iterdir
+
+    def _deny(self):
+        if self.name == "plan" and self.parent.name == "repo-poisoned":
+            raise PermissionError(13, "Permission denied")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(registry.Path, "iterdir", _deny)
+    triples = registry.discover_plans([poisoned, healthy])
 
     assert [(registry.repo_slug(r), t) for r, t, _h in triples] == [("repo-healthy", "topic-b")]
     assert "unreadable plan dir" in capsys.readouterr().err
 
 
-def test_discover_plans_fail_soft_on_an_unreadable_plan_child(tmp_path, capsys):
-    """B7: with plan/ readable but not traversable (r--), iterdir still lists the
+def test_discover_plans_fail_soft_on_an_unreadable_plan_child(tmp_path, monkeypatch, capsys):
+    """B7: with plan/ listable but one child un-stattable, iterdir still lists the
     children while stat'ing one raises — that child is dropped and named, and the
-    rest of the discovery set survives."""
+    rest of the discovery set survives.
+
+    The raise is injected at ``Path.is_dir`` for that ONE child, rather than via a
+    ``chmod(0o444)`` on the parent — CI runs as root, where mode bits deny nothing.
+    Keying on the child's own name leaves ``plan_dir.is_dir()`` (the guard just
+    above the loop) working normally, which is what isolates this to the child.
+    """
     poisoned = tmp_path / "repo-poisoned"
     _make_plan(poisoned, "unstattable")
     healthy = tmp_path / "repo-healthy"
     _make_plan(healthy, "topic-b")
-    (poisoned / "plan").chmod(0o444)
-    try:
-        triples = registry.discover_plans([poisoned, healthy])
-    finally:
-        (poisoned / "plan").chmod(0o755)
+    real_is_dir = registry.Path.is_dir
+
+    def _deny(self):
+        if self.name == "unstattable":
+            raise PermissionError(13, "Permission denied")
+        return real_is_dir(self)
+
+    monkeypatch.setattr(registry.Path, "is_dir", _deny)
+    triples = registry.discover_plans([poisoned, healthy])
 
     assert [(registry.repo_slug(r), t) for r, t, _h in triples] == [("repo-healthy", "topic-b")]
     assert "unreadable plan child" in capsys.readouterr().err
@@ -581,17 +617,22 @@ def test_repo_root_present(tmp_path):
     assert registry.repo_root_present(str(tmp_path / "nope")) is False
 
 
-def test_repo_root_present_is_false_when_the_root_cannot_be_stated(tmp_path):
+def test_repo_root_present_is_false_when_the_root_cannot_be_stated(tmp_path, monkeypatch):
     """B6: a root that raises rather than answering (an untraversable parent — the
     unmounted-volume / mid-move case) reads as ABSENT, so the daemon's GC keeps the
-    mapping row instead of crashing the tick."""
+    mapping row instead of crashing the tick.
+
+    The raise is injected at ``Path.is_dir`` rather than via ``chmod`` on the parent —
+    CI runs as root, where mode bits deny nothing.
+    """
     parent = tmp_path / "untraversable"
     (parent / "repo").mkdir(parents=True)
-    parent.chmod(0o000)
-    try:
-        assert registry.repo_root_present(str(parent / "repo")) is False
-    finally:
-        parent.chmod(0o755)
+
+    def _deny(self):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(registry.Path, "is_dir", _deny)
+    assert registry.repo_root_present(str(parent / "repo")) is False
 
 
 def test_clear_injection_stamp(tmp_path):

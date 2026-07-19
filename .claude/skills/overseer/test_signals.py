@@ -380,17 +380,24 @@ def test_is_codex_idle_input_false_while_the_codex_pane_is_busy():
     assert signals.is_codex_idle_input(busy_codex) is False  # ...but busy wins
 
 
-def test_read_state_is_none_when_the_state_file_is_unreadable(tmp_path):
+def test_read_state_is_none_when_the_state_file_is_unreadable(tmp_path, monkeypatch):
     """Fail-closed: a PRESENT but unreadable indicator reads as "no state", never raises —
-    so an unreadable file can never authorize a restart (it is not a `ready`)."""
+    so an unreadable file can never authorize a restart (it is not a `ready`).
+
+    Denial is injected at ``Path.read_text`` rather than via ``chmod``: CI runs its
+    container steps as ROOT, where mode bits deny nothing, so a chmod-based version
+    of this test passes locally and silently stops exercising the fail-closed branch
+    in CI — which is worse than no test, because this branch is a SAFETY guard.
+    """
     repo, topic = _setup_track(tmp_path)
-    path = _declare(repo, topic, "ready\n", mtime=1001.0)
-    path.chmod(0o000)
-    try:
-        assert signals.read_state(str(repo), topic) is None
-        assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
-    finally:
-        path.chmod(0o600)
+    _declare(repo, topic, "ready\n", mtime=1001.0)
+
+    def _deny(self, *args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(signals.Path, "read_text", _deny)
+    assert signals.read_state(str(repo), topic) is None
+    assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
 
 
 def test_only_a_shell_proves_a_pane_is_dead():
