@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.9](https://github.com/thewoolleyman/livespec/compare/v0.17.8...v0.17.9) (2026-07-19)
+
+
+### Bug Fixes
+
+* **overseer:** build claude-recovery test's expected from _launch_command (combine-fix) ([719bbab](https://github.com/thewoolleyman/livespec/commit/719bbab59021a30aea6475062d15ac0a9864c5de))
+
 ## [0.17.8](https://github.com/thewoolleyman/livespec/compare/v0.17.7...v0.17.8) (2026-07-19)
 
 
