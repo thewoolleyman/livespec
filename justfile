@@ -256,6 +256,7 @@ check:
         check-imports-architecture
         check-lint
         check-no-renderer-vendoring
+        check-overseer
         check-prompts
         check-schema-dataclass-pairing
         check-types
@@ -735,6 +736,18 @@ e2e-test-claude-code-mock:
 
 check-prompts:
     uv run pytest tests/prompts/
+
+# Beside-tests for the LOCAL-ONLY overseer supervisor daemon under
+# .claude/skills/overseer/. They live beside the modules they cover
+# rather than under tests/, so the default pytest `testpaths =
+# ["tests"]` never collects them and they need their own target. They
+# are hermetic (FakeTmux + a fake /proc), so they run anywhere. No
+# coverage: .claude/skills/overseer/** is scoped out of ruff, pyright,
+# and import-linter as host tmux-coordination tooling rather than
+# product or dev-tooling Python, and running it under --cov would
+# feed unmeasured host-glue modules into the fail_under = 100 gate.
+check-overseer:
+    uv run pytest .claude/skills/overseer/ -q
 
 # Doctor deterministic static-phase coverage gate. Per SPECIFICATION/
 # non-functional-requirements.md §"Enforcement-suite invocation" →
