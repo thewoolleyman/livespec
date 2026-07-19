@@ -1062,9 +1062,20 @@ section is the Claude conversation-restore one, and they are different outcomes.
 ### The RIGHT command
 
 ```
-claude --resume <session-id> --dangerously-skip-permissions -n <topic>
+unset TMUX; export TMUX_TMPDIR=/tmp/tmux-agents-$(id -u); exec \
+  claude --resume <session-id> --dangerously-skip-permissions -n <topic>
 ```
 
+- **The `unset TMUX` + `TMUX_TMPDIR` prefix is NOT optional** — it is the L1
+  env-inversion guard, and a manual restore MUST carry it because
+  `Supervisor._with_agent_tmux_tmpdir` puts it on every daemon-spawned track. It
+  points any bare `tmux` command the restored agent runs at
+  `/tmp/tmux-agents-<uid>/` instead of the maintainer's default server namespace.
+  Omitting it restores the whole fleet UNGUARDED against the exact failure this
+  runbook exists to recover from. (Found live 2026-07-19: this section had shown
+  the bare command, so following it literally would have rebuilt an unprotected
+  fleet immediately after a fleet kill. If you change the wrapper in
+  `supervisor.py`, change it here in the same commit.)
 - `--resume <session-id>` re-attaches THAT exact conversation, no picker.
 - `--dangerously-skip-permissions` — required so the resumed session is autonomous
   (the whole fleet runs with it; without it the session stalls on its first
@@ -1161,16 +1172,76 @@ it is still loading, not broken).
 `respawn-pane -k … --resume <id> … -n <topic>` per remaining track, each with its
 own computed id.
 
-**6. Verify all.** Each pane's statusline names its own topic and shows no picker;
-the daemon re-adopts each within a tick.
+**6. KICK each restored track — restoring it does NOT make it run.** A `--resume`d
+pane comes back with its conversation loaded but its last turn already FINISHED, so
+it sits at an idle `❯` doing nothing until something prompts it. This step is the
+difference between "the tracks are back" and "the tracks are working"; skipping it
+is the single most common way a recovery is reported complete while the whole fleet
+sits idle. Paste a kick and submit it (`load-buffer -` + `paste-buffer -p`, then
+`Enter` — the same atomic-paste discipline the daemon uses; never type it key-by-key):
+
+```
+Your tmux session was killed at <time> by an external fleet-wide tmux kill-server
+(not caused by anything you did, and not a maintainer decision). The session has now
+been restored with your full conversation intact. Re-read <repo>/plan/<topic>/handoff.md
+to re-ground yourself, then continue exactly where you left off.
+```
+
+**Say explicitly that the kill was external.** A restored pane renders its dead
+sub-agents as `Agent "…" was stopped by user` and its dead background commands as
+`Background command "…" was stopped` — a resumed session reads those as the
+MAINTAINER having cancelled its work and will abandon it. Name what died in the kick
+(live 2026-07-19: `rop-sweep-fleet-policy`'s Fable review and `codex-yolo-sandbox`'s
+factory dispatch both had to be corrected this way).
+
+**DO NOT kick a track in any of these four states — read the pane FIRST, one at a
+time.** A kick is arbitrary text submitted into whatever is focused, so kicking a
+waiting session ANSWERS its question on the maintainer's behalf:
+
+| State | How it looks | What to do instead |
+|---|---|---|
+| **Structured gate** | an `AskUserQuestion` picker, permission prompt, or trust prompt (`❯ 1.` / `› 1.`) | Leave it. Report the tmux session + pane; the maintainer answers IN THAT PANE. |
+| **Prose question to the human** | the turn ENDS asking the maintainer something ("Want me to X, or leave it?") | Leave it. This has no picker and no gate — only reading the tail catches it. |
+| **Declared `blocked: <reason>`** | `<repo>/tmp/overseer/<topic>/.overseer-state` reads `blocked:` | Leave it. It is waiting on a human by its own declaration. |
+| **Already self-continuing** | it died mid-turn and resumes on its own; pane goes busy with no prompting | Leave it. A kick would queue a redundant turn. |
+
+Both waiting states occurred in ONE recovery (2026-07-19): `autonomous-mode` had
+ended its turn asking the maintainer a question, and `tmux-fleet-kill-prevention`
+sat on a 3-option `AskUserQuestion` picker. A blind kick-everything sweep would have
+silently answered both. Checking the four states costs one `capture-pane` per track.
+
+**7. Verify all — by the REGISTRY, not by the pane.** Read
+`~/.claude/sessions/<pid>.json` (`status` is `busy` / `shell` / `waiting` / `idle`)
+rather than grepping the pane for a spinner: a streaming Claude renders NO busy
+marker in the captured region, and the lingering completed-turn summary
+(`✻ Baked for 3h 43m`) false-matches a naive `✻` grep — so pane-scraping reports
+working tracks as idle AND idle tracks as working, in both directions at once
+(live 2026-07-19). A kicked track must read `busy`; a deliberately-unkicked one
+reads `waiting` or `idle`. Each pane's statusline should also name its own topic
+and show no unexpected picker; the daemon re-adopts each within a tick.
 
 ### Two post-resume states are BOTH correct
 
 - **Small sessions** load straight to an empty `❯` prompt — ready to continue.
 - **Large sessions** (high token count) show Claude's own guard first:
   `Resume from summary (recommended) / Resume full session as-is / Don't ask me
-  again`. That is the "compact or resume" choice — leave it for the human; do NOT
-  keystroke a selection.
+  again`. **ALWAYS select 2. Resume full session as-is** — `Down` then `Enter`
+  (maintainer-declared 2026-07-19: this is a STANDING rule, not a per-incident
+  choice; do not re-ask it). Recovery exists to restore exact state, and Claude's
+  own "recommended" summary option silently compacts away the in-flight detail a
+  killed-mid-turn track needs. CANARY the keystroke: send `Down`, re-capture and
+  CONFIRM the cursor moved to option 2 before sending `Enter` (the first capture
+  often lags the redraw), so you never confirm the wrong choice.
+
+  This REPLACED a directly contradictory instruction. An earlier version of this
+  bullet said to "leave it for the human; do NOT keystroke a selection", while the
+  paragraph below it said you MUST clear the modal to get the track working — a
+  reader following the first sentence would restore the fleet into a frozen state
+  and report success. If you find yourself re-adding "leave the modal alone", stop:
+  that is the contradiction, not a safety rule. (The modal is NOT universal — it is
+  the large-session case only. In the 2026-07-19 recovery all five restored tracks
+  came back at 43–74% context and none showed it; every one landed idle at `❯` and
+  needed step 6's kick instead. Expect the kick path far more often than this one.)
 
 While a picker OR that resume-choice prompt is open, the daemon reads the pane as a
 structured gate and classifies it `blocked:human`, so it will not inject or restart
@@ -1181,15 +1252,16 @@ it. That self-heals the moment the human answers.
 tracks with `--resume` re-attached every conversation correctly, yet all five then
 sat frozen on the summary-vs-full guard: the operator reads "not restarted." The
 conversation IS back (verify by the pane's real tail + the token count matching the
-transcript size), but nothing runs until the modal is answered. To actually get a
-restored track working you must clear the modal — `Down` then `Enter` selects **2.
-Resume full session as-is** (exact state, heavy usage); a bare `Enter` selects **1.
-Resume from summary** (compressed, cheaper). CANARY the keystroke: send `Down`,
-re-capture and CONFIRM the `❯` cursor moved to option 2 before sending `Enter`, so
-you never confirm the wrong choice (the first capture often lags the redraw). After
-a full resume the pane either self-continues (it died mid-turn) or lands idle at a
-ready `❯` (its last turn had finished) — the latter needs a "continue where you left
-off" nudge to resume active work.
+transcript size), but nothing runs until the modal is answered. Clear it as the
+bullet above says (`Down` → confirm → `Enter`, always option 2).
+
+**LOADED IS NOT RUNNING — and that is true whether or not a modal appeared.** After
+the modal is cleared (or when none appeared at all) the pane either self-continues,
+because it died mid-turn, or lands idle at a ready `❯`, because its last turn had
+finished. The second case is the common one, and it is what step 6's kick is for:
+an idle restored track will sit there indefinitely. "Every conversation re-attached
+correctly" is NOT the success condition for this runbook — "every track is `busy` in
+the registry, or is deliberately left waiting on the maintainer" is.
 
 ### tmux gotchas that bit during this procedure
 
@@ -1242,6 +1314,33 @@ does not re-learn it. Append here — do NOT scatter these.
   re-points the mapping row's `tmux` field to the new name within one tick (R2 repoint).
   Verified live: renaming all six live sessions to bare topic names left the store
   auto-repointed and every row still tracked.
+- **`overseerd` NEVER runs `recover_missing_sessions` — this runbook is the ONLY
+  path back.** Recovery is gated behind `run_daemon`'s `recover` parameter, and the
+  `overseerd` executable passes no `--recover` flag (it is surface-only). So a
+  restarted daemon will NOT bring dead tracks back, and — the useful corollary —
+  it also cannot CLOBBER a manual `--resume` restore that is in progress. The
+  "Recovering + restoring" section's talk of "its startup `recover_missing_sessions`"
+  describes the function, not something the shipped daemon actually invokes.
+- **The codex index can hold a STALE NAMESAKE — never classify a track's runtime by
+  topic alone.** `autonomous-mode` appeared in `~/.codex/session_index.jsonl` (so a
+  reverse-index lookup calls it a Codex track and would `codex resume` it), while its
+  REAL live track was a Claude session whose transcript sat in the crash-moment
+  cluster; the index entry was a 6-day-old namesake. Cross-check the index hit's
+  `updated_at` against the Claude transcript cluster and prefer the crash-moment
+  evidence. Conversely, a topic NAMED for codex is not a codex track:
+  `codex-yolo-sandbox` is a Claude session whose SUBJECT is codex.
+- **A mapped track may have NEVER LAUNCHED — that needs `start`, not `--resume`.**
+  `cockpit-ux-docs-release` was in `~/.livespec-overseer.jsonl` but had no transcript
+  with that `customTitle` ANYWHERE on the host (and its repo had been untouched for
+  ~9 days): it was registered and never started, so there was nothing to resume.
+  Distinguish it from a killed track by the absence of ANY titled transcript, then
+  launch it with the CLI (`supervisor.py start --repo <ABSOLUTE path> --topic <t>`),
+  which pastes and auto-submits the resume line for you — no manual kick needed.
+- **The crash-moment mtime cluster is the reliable id selector.** All six killed
+  tracks' transcripts shared the same mtime to within a rounding minute, which
+  separated them cleanly from older same-title predecessors. Trust that cluster over
+  "most recent with this title"; a topic with 16 title-matching candidates resolved
+  unambiguously this way.
 - **`overseerd` keeps running the OLD code until you restart it.** The daemon is a
   long-lived process; editing `supervisor.py`/`registry.py` and merging does NOT change
   a running daemon's behavior. After landing an overseer code change, restart the daemon
