@@ -13,8 +13,207 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
 | D — pyright strict | **DONE, live-exercised** | livespec PR [#1408](https://github.com/thewoolleyman/livespec/pull/1408), merged 2026-07-19 |
-| B — coverage | NEXT — needs D1 decided | — |
-| E — ROP railway | BLOCKED on D2 — see below | — |
+| B — coverage | **CODE DONE + VERIFIED, COMMITTED, UNPUSHED — BLOCKED** | worktree `~/.worktrees/livespec/gate-b-overseer-coverage`, branch `gate-b-overseer-coverage`, commit `39047284` |
+| E — ROP railway | BLOCKED on D2 scope question — see below | — |
+
+# ⛔ START HERE — Gate B is finished but could not be pushed
+
+> **This handoff was rescued from the primary checkout on 2026-07-19** (commit below).
+> It had been left UNCOMMITTED on disk at `/data/projects/livespec` — 153 unversioned
+> lines, one `git checkout` from oblivion — because the session that wrote it believed
+> the push blocker "prevents committing anything". **That belief was wrong** (see
+> "Corrections" below): only `push` is blocked. Doc-only commits were always available.
+> **Keep this file committed from now on; update it in-session as findings land, not
+> at session end.**
+
+Read this whole section before doing anything else. Gate B's code is COMPLETE and
+FULLY VERIFIED. It is committed on a branch in a worktree and was never pushed, because
+a master-red gate blocks `git push` (pre-push runs `just check`). Nothing about Gate B
+itself is wrong.
+
+## Step 1 — is the blocker gone?
+
+```bash
+cd /data/projects/livespec && just check-doctor-static >/dev/null 2>&1; echo "exit=$?"
+```
+
+- **exit 0** → the blocker cleared. Go to Step 2.
+- **exit 3** → still blocked. Go to "The blocker" below.
+
+**As of 2026-07-19 ~12:15 the fix is IN FLIGHT — do not start your own.** A concurrent
+session (`session_014mhgdKfN9ucqxtJXjfeshe`) independently reached the identical
+diagnosis and pushed branch `revert-cross-repo-targets-console` (commit `6bdccd04`,
+worktree `~/.worktrees/livespec/revert-cross-repo-targets-console`), reverting ONLY the
+`.livespec.jsonc` `cross_repo_targets` hunk of `7107be6c` and deliberately keeping its
+`.ai/` docs change. **No PR was open yet at the time of writing** — check
+`gh pr list --repo thewoolleyman/livespec` before acting. That branch could be pushed
+at all precisely because the revert repairs the very gate that blocks pushing.
+
+Do NOT duplicate it, and do NOT touch that branch or worktree — it is another session's
+(the cross-session force-push/clobber ban in `AGENTS.md` applies). Gate B lands the
+moment it merges.
+
+## Step 2 — land Gate B (only once Step 1 is exit 0)
+
+```bash
+cd ~/.worktrees/livespec/gate-b-overseer-coverage
+mise exec -- git fetch origin master -q
+mise exec -- git rebase origin/master          # master moves fast; expect this to be needed
+just check-overseer                            # MUST report 100.00% and ~438 passed
+mise exec -- git push -u origin gate-b-overseer-coverage
+```
+
+Then open the PR. The commit message on `39047284` is complete and accurate — reuse it
+as the PR body. After merge: confirm the post-merge master CI run's `check-overseer`
+job passed against combined master (that is Gate B's live-exercise evidence, required
+before calling it done), then `git -C /data/projects/livespec pull --ff-only origin
+master`, remove the worktree, delete the branch.
+
+**Do NOT `--no-verify`.** The blocker is a real red gate; bypassing it is explicitly
+forbidden by `.ai/ci-gate-discipline.md`.
+
+**Do NOT `git checkout <file>` in that worktree** to undo anything — it reverts to HEAD,
+not to your working state, and has already destroyed in-progress work twice on this
+thread. Copy to the scratch dir and restore from there.
+
+## The blocker — another session's commit, fully diagnosed (do not re-investigate)
+
+`check-doctor-static` fails on livespec master with 53
+`(sibling, missing-canonical-slug)` drift pairs, all
+`livespec-console-beads-fabro→check-*`. This is NOT caused by Gate B — it reproduces on
+an untouched `/data/projects/livespec` and does not reproduce at the commit before the
+cause.
+
+**Cause:** commit `7107be6c` ("docs(ai): scope No-Circular-Dependency to code, never
+work-items"), authored by the `fleet-pin-propagation` session
+(`Claude-Session: session_01XybfmAK5sG5RugLNWcwUxm`, live in the tmux session of the
+same name; landed under `thewoolleyman` authorship via `livespec-pr-bot`). It added
+`livespec-dev-tooling` and `livespec-console-beads-fabro` to `.livespec.jsonc`'s
+`cross_repo_targets` so cross-tenant `sibling_work_item` refs resolve for the
+fleet-pin-propagation epic (`livespec-n4ptl2`). That reasoning is sound.
+
+**The accident:** `cross_repo_targets` is DUAL-PURPOSE. It is also the input to
+`doctor-wiring-completeness-cross-repo`, which requires every listed sibling to wire all
+53 canonical **Python** check slugs. `livespec-console-beads-fabro` is a **Rust** repo
+whose `check:` aggregate correctly wires only Rust targets (`check-format`,
+`check-clippy`, `check-test`, …). Registering it for a PLANNING purpose silently
+enrolled it in a CODE-CONFORMANCE check it cannot satisfy.
+
+**Why CI is green while every local push is blocked:** the check resolves each sibling
+from `cross_repo_targets[<slug>].local_clone` (e.g. `/data/projects/<sibling>`), and CI
+sets an env override pointing at a freshly-cloned siblings-root. So the check effectively
+only ever fires locally. `filter_sibling_targets`
+(`.claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_cross_repo_helpers.py`)
+drops only non-dict entries and the host repo — there is **no** language/class-based
+exemption, even though the fleet manifest already carries `class: console` for that repo.
+
+**Dead end already ruled out:** the `livespec-dev-tooling` v0.49.4 pin bump (`4a4b39cb`)
+is NOT the cause. The timing makes it look guilty; bisecting cleared it. Re-confirmed
+2026-07-19: master has since bumped to **v0.50.0** (`4dd7c836`) and the failure is
+byte-identical — same 53 pairs, same repo. The pin is not implicated at any version.
+(The Gate B worktree still sits at 0.49.3 and will need `uv sync` after rebasing.)
+
+**Status of the fix — RESOLVED BY ANOTHER SESSION, remedy (a).** The four remedies once
+put to the maintainer were: (a) revert only the `.livespec.jsonc` hunk of `7107be6c`,
+keeping its `.ai/` docs change — the revert-and-reland remedy `.ai/ci-gate-discipline.md`
+prescribes; (b) teach the check to exempt a sibling with no first-party Python;
+(c) split `cross_repo_targets` into a planning list and a conformance list — the real
+design fix; (d) hold. **(a) was chosen and executed** by
+`session_014mhgdKfN9ucqxtJXjfeshe` on branch `revert-cross-repo-targets-console` — see
+the START HERE box. This thread never owned that decision and did not drive it.
+
+Note (a) is a *restoration*, not the design fix: it un-breaks the gate but drops the
+cross-tenant `sibling_work_item` linkage that `7107be6c` existed to create — the
+fleet-pin-propagation epic (`livespec-n4ptl2`) has a real filed child in that tenant,
+`livespec-console-beads-fabro-tafkuw`. The revert commit says the re-land is tracked.
+(c) remains the durable fix and is unowned.
+
+### Corrections to this document's own earlier claims (verified 2026-07-19)
+
+Two statements written above/below were checked against the live tree and are FALSE.
+Both cost real time; do not re-inherit them.
+
+1. **"the check ships from livespec-dev-tooling" — WRONG.** `filter_sibling_targets`
+   lives in **livespec core**, at
+   `.claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_cross_repo_helpers.py:314`.
+   Remedy (b) is therefore a SINGLE-REPO change in this repo, not the cross-repo lift
+   the earlier text implied — materially cheaper than it was priced at.
+2. **"the push blocker prevents committing anything" — WRONG.** `just
+   check-pre-commit-doc-only` runs exactly seven targets
+   (`check-claude-md-coverage`, `check-heading-coverage`, `check-vendor-manifest`,
+   `check-no-direct-tool-invocation`, `check-codex-no-repo-local-adapters`,
+   `check-copier-template-smoke`, `check-tools`) and `check-doctor-static` is NOT among
+   them. Only `push` runs full `just check`. **A doc-only commit was available the whole
+   time** — which is why this handoff sat unversioned for no good reason.
+
+Supporting facts measured this session, none previously recorded:
+
+- `livespec-console-beads-fabro` carries **zero** first-party `.py` files and 28 `.rs`
+  files. It cannot satisfy 53 Python check slugs even in principle.
+- `.livespec-fleet-manifest.jsonc` already tags it `class: console` — the discriminator
+  a remedy-(b) exemption would key on already exists.
+- Removing ONLY the console entry takes `check-doctor-static` from exit 3 to **exit 0**;
+  `livespec-dev-tooling` contributes zero drift pairs. (Verified by experiment, then
+  reverted — the config was restored to HEAD.)
+- The `fleet-pin-propagation` tmux session named below **no longer exists**; there is no
+  tmux server running at all. Any instruction here to "check that session" is dead.
+
+## What Gate B contains (already committed as `39047284`)
+
+100.00% coverage — statements AND branches — on every module; 344 → 438 tests; full
+`just check` green (all 71 targets); no behavior change. Sabotage-verified three ways.
+
+- **Boundary extraction** (the D1 option the maintainer chose over a scoped threshold).
+  The premise that host-glue is untestable proved mostly false. `overseer-start` was the
+  real case: its `main()` constructed its own `TmuxIO`, so the whole bootstrap
+  orchestration could only run against a live tmux window and therefore never ran. It now
+  takes `io` / `build_supervisor` / `core_root` seams defaulting to the real
+  implementations. `core_root` specifically keeps the daemon's marker-dir `mkdir` out of
+  the real checkout when a test drives the split path. 49% → 100%.
+- **`tmuxio.WindowLayoutDriver`** — a second Protocol for the six window-LAYOUT methods,
+  the counterpart to Gate D's `PaneDriver` and the reason that one declares only twelve
+  of `TmuxIO`'s methods.
+- **Two `# pragma` annotations, the FIRST in first-party code** (all 33 pre-existing ones
+  are vendored), each with its reasoning inline: `_clear_idle_nudge_state`'s
+  `except OSError` (`no cover` — only reachable via a permission-denied parent, and CI
+  runs as root where chmod denies nothing, so a test would pass locally and silently stop
+  exercising it in CI); and `elif claude_status == "busy"` (`no branch` — provably always
+  True there, but KEPT as an `elif` rather than demoted to `else` because the proof
+  depends on the current contents of `_CLAUDE_BUSY_STATUSES`, which exists to be extended).
+- **Beside-tests omitted from measurement**, mirroring `[tool.pyright].exclude`: coverage
+  measures the code under test, not the test code.
+- **Also closes a hole in Gates C AND D.** `ruff check .` and pyright's `include` both
+  resolve files by EXTENSION, so `overseer-start` and `overseerd` — Python with a shebang,
+  invoked by bare name — were never linted or type-checked at all. Explicitly they carried
+  17 ruff findings (including 7 `print` calls Gate C claimed to have eliminated) and 5
+  pyright errors. `[tool.ruff].extend-include` now matches the folder's `overseer*` naming
+  convention; pyright names the two files individually; the launcher's output goes through
+  the `streams` sink.
+
+## Verified daemon findings — NOT fixed, no work-items filed yet
+
+All three were independently verified in source, not taken on trust. None is a live
+defect; each is recorded so it is not lost.
+
+1. **`recover_missing_sessions` derives session names with an EMPTY collision set.**
+   `_colliding` is only populated inside `build_rows` (supervisor.py), but `run()` calls
+   recovery BEFORE the first `tick()`. A mapping row with no stored `tmux` would derive
+   the bare topic instead of `<slug>-<topic>`.
+2. **Codex reboot-recovery dispatch keys on topic alone.** `recover_missing_sessions`
+   calls `codex_sessions.latest_session_for_thread_name(track.topic, …)` with no repo
+   scoping, so two watched repos sharing a plan topic could resume the wrong rollout in
+   the wrong repo.
+   **SEVERITY CORRECTION for both:** the shipped daemon calls
+   `supervisor.run(..., recover=False)` — deliberately and documented ("keeps the daemon a
+   pure surface-only watcher"). So `recover_missing_sessions` is **unreachable in
+   production today**. These are traps for whoever enables recovery, not active bugs. A
+   sub-agent reported #2 as "reachable rather than exotic"; that framing is wrong.
+3. **`rewrite_mapping` / `repoint_tmux` return a claim, not a fact.** Both return a count
+   computed from the in-memory diff, but `_atomic_write` beneath them swallows `OSError`
+   into a warning by design (the documented B7 fail-soft). So both can report "dropped N
+   rows" when nothing persisted. Self-correcting (archive-GC re-drops next tick), but the
+   return value is unreliable. Fixing means `_atomic_write` returning a success flag —
+   a change to the fail-soft contract's shape, hence a decision, not a fix.
 
 ## Gate D — pyright strict (PR #1408, merged 2026-07-19)
 
@@ -429,3 +628,11 @@ Goal: an adopter with a fleet manifest can run the overseer. Architecturally pla
 - Overseer `.py` is exempt from Red-Green-Replay (not an `_IMPL_PREFIXES` path) — use
   `fix(overseer):` / `chore(overseer):` with test+impl in one commit; never `--no-verify`.
 - Sabotage-verify any new guard (break it → watch its test go red → restore).
+- **This handoff is an owned artifact, not a read-only inbox.** A session working this
+  track updates it AS findings land and commits it — never accumulating them in
+  conversation context to be written at session end (a session can die first; that is
+  how 153 lines ended up unversioned on 2026-07-19). If a claim here is disproved,
+  correct it in place and say so; a stale handoff actively misleads, and two of this
+  document's own claims sent a later session down wrong paths before being caught.
+  Doc-only commits are NOT gated by `check-doctor-static` — there is no blocker excuse
+  for leaving it dirty.
