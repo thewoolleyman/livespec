@@ -86,19 +86,30 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-19 (cont. 9)
+## ▶ START HERE — updated 2026-07-19 (cont. 9, final)
 
-## ▶▶ READ THIS FIRST — where the track actually stands
+## ▶▶ READ THIS FIRST — THIS TRACK IS COMPLETE
 
-**The original epic is DELIVERED, and as of cont. 9 all three defects in the
-follow-on family are FIXED AND MERGED.** CI and the Fabro sandbox run the SAME
-image across all 8 fleet repos, the pin that keeps them aligned is discovered and
-fan-out-reconciled automatically, and the producer now reconciles its OWN pins too.
-Nothing on the original plan is outstanding.
+**The original epic is DELIVERED and all three defects in the follow-on family are
+FIXED, MERGED, AND LIVE-EXERCISED.** CI and the Fabro sandbox run the SAME image
+across all 8 fleet repos — including, as of 2026-07-19, the PRODUCER — and every
+pin that keeps them aligned is discovered and reconciled automatically with no
+hand-bumping anywhere. **Nothing on this track is outstanding.**
 
-**ONE THING IS NOT YET PROVEN: `5r3`'s live exercise.** The code is on master and
-green, but it only runs on a `release` event, and it landed as `chore(ci):` which
-cuts no release. See "THE ONE OPEN LOOP" below — that is the first thing to check.
+`livespec-dev-tooling-5r3` was closed with full live-exercise evidence: release
+`v0.50.1` fired the new job unprompted, it opened PR #472 rewriting all six
+self-sourced pins with the `python-` layer prefix preserved, that PR merged, and
+`livespec-dev-tooling`'s master CI then re-ran **inside** the newly-pinned image —
+**60 jobs, 60 success, zero skips**, with the container init and the pulled tag
+`livespec-fabro-sandbox:python-v0.50.1` read from the job log rather than inferred
+from a green tick. See "THE COMPLETED LOOP" below for the full chain.
+
+**What remains is NOT this track's work:** a single maintainer-owned P3 (`4j3`,
+the release-please `uv.lock` / `Cargo.lock` staleness, which spans two repos and
+belongs to its own thread). **THIS THREAD IS READY TO ARCHIVE** — every item it
+owns is closed and merged, so archive it rather than leaving a finished thread
+open. `4j3` should be carried wherever release-please hygiene is tracked, not used
+as a reason to keep this one alive.
 
 **The family of THREE defects is the useful story.** A 16-release drift survived
 DAILY GREEN freshness runs because three independent failures compounded, and any
@@ -108,7 +119,7 @@ one of them alone would have been enough to hide it.
 
 | Item | What it was | State |
 |---|---|---|
-| `livespec-dev-tooling-5r3` | The fan-out excludes the publishing repo (so a release does not echo back), which means the producer's OWN pins are structurally unreachable by dispatch. Nothing reconciled them, ever. | **IMPLEMENTED** — PR #469 merged 2026-07-19 11:13Z, master run 29684760714 green. **Live exercise still PENDING.** |
+| `livespec-dev-tooling-5r3` | The fan-out excludes the publishing repo (so a release does not echo back), which means the producer's OWN pins are structurally unreachable by dispatch. Nothing reconciled them, ever. | **CLOSED** — PR #469 merged; live-exercised on release `v0.50.1`; self-bump PR #472 merged; master run 29685792374 **60/60 in-image** |
 | `livespec-dev-tooling-p73` | The freshness scan collapsed every record for a source to ONE representative (`.[0].current_value`), so a source whose first record was fresh emitted nothing even when its other pins were stale. | **FIXED** — PR #462 merged, master green |
 | `livespec-dev-tooling-ews` | The scan's ordinal-distance capture was corrupted by SIGPIPE, so a stale pin was SILENTLY never flagged while the workflow reported success. | **FIXED** — PR #465 merged (`bd108ef`), master run 29681408422 green |
 
@@ -126,64 +137,59 @@ reassuring per-source notices, and no bump PR. Observed live in run
 show it** — the producer must still be writing when the consumer exits, which is why
 it survived original review.
 
-### ▶▶ THE ONE OPEN LOOP — check this first
+### ▶▶ THE COMPLETED LOOP — `5r3`, proven end to end
 
-**`5r3` is implemented and merged but NOT yet live-exercised.** Per the
-done-means-exercised discipline, it is not closeable until a real release run has
-opened the self-bump PR.
+Recorded in full because "the pin was rewritten" is NOT the same claim as "the
+producer is self-healing and the image it now points at actually works". All six
+legs were checked; each one could have passed while a later one failed.
 
-**THE BEFORE-PICTURE — measured on `origin/master` at 2026-07-19 ~11:30Z, by
-reading every workflow file in each repo and counting matching lines.** This is the
-baseline the exercise gets verified against; re-measure rather than trusting it:
-
-| Repo | CI image pin lines | Tag |
+| # | Leg | Evidence |
 |---|---|---|
-| `livespec` | 5 | `python-v0.50.0` |
-| `livespec-driver-claude` | 3 | `python-v0.50.0` |
-| `livespec-driver-codex` | 3 | `python-v0.50.0` |
-| `livespec-runtime` | 3 | `python-v0.50.0` |
-| `livespec-orchestrator-git-jsonl` | 5 | `python-v0.50.0` |
-| `livespec-orchestrator-beads-fabro` | 5 | `python-v0.50.0` |
-| `livespec-console-beads-fabro` | 3 | `python-rust-v0.50.0` |
-| **`livespec-dev-tooling`** | **2** | **`python-v0.43.2` — 7 releases behind** |
+| 1 | Contract ratified | `SPECIFICATION/contracts.md` §"Self-hosting", v027, PR #464 |
+| 2 | Implementation merged | PR #469; master run 29684760714 green |
+| 3 | A REAL release fired the job | `v0.50.1` at 11:37Z — cut by unrelated release-please work, **not** manufactured to test this. Run 29685459886: `build-fabro-sandbox-image` success → `self-reconcile-pins` success |
+| 4 | Job opened the bump PR | PR #472, branch `chore/self-bump-livespec-dev-tooling-v0.50.1`, auto-merge armed |
+| 5 | Rewrite CORRECT, not merely present | Both `ci.yml` lines → `python-v0.50.1` **with the layer prefix**; all four shims → bare `v0.50.1`. PR merged; re-read from `origin/master`, not from the PR |
+| 6 | The image actually WORKS | Master run 29685792374: **60 jobs / 60 success / zero skips**. Container init confirmed and the pulled tag `livespec-fabro-sandbox:python-v0.50.1` read from the `check-types` job log |
 
-Seven of eight are current and self-healing; the PRODUCER alone is stale. That one
-row flipping to `python-v0.50.x` is exactly what `5r3` delivers, and is the
-clearest single check that the exercise succeeded. Note the console's
-`python-rust-` prefix — that it survives every fan-out is the standing proof the
-prefix-preserving rewriter works.
+Leg 6 is the one most easily skipped and the one that matters most: a textually
+correct pin naming a broken image produces an identical-looking diff and a green
+bump PR. Read the log, don't trust the tick.
 
-**What to check, concretely:**
+**Leg 3 is worth internalizing too.** The job is `release`-gated, and the change
+landed as `chore(ci):`, which cuts no release — so the exercise depended on
+somebody else's release firing. It came 24 minutes later. Measured cadence at the
+time was five releases in 2.5 hours, which is what made `chore(ci):` the right
+call rather than mislabeling the commit `fix:` to force a release.
 
-1. Has any release of `livespec-dev-tooling` been cut since 2026-07-19 11:13Z
-   (`gh release list --limit 5`)? Every release fires the job — the `release:`
-   trigger carries NO `paths` filter, so it does not matter what the release
-   contained.
-2. If yes, find the run:
-   `gh run list --repo thewoolleyman/livespec-dev-tooling --workflow "Fabro sandbox image" --limit 5`,
-   and inspect the `self-reconcile-pins` job. Expected: it discovers the SIX
-   self-sourced records, rewrites them, and opens a
-   `chore/self-bump-livespec-dev-tooling-<tag>` PR with auto-merge armed.
-3. **Verify the rewrite is CORRECT, not merely that a PR appeared** — the layer
-   prefix is the thing most likely to be wrong. Both `ci.yml` lines must read
-   `python-v<new>` (NOT a bare `v<new>`, which would break the image reference),
-   and all four shim `uses:` refs must read a bare `v<new>`.
-4. Once that PR merges, `livespec-dev-tooling` finally satisfies the epic's
-   headline claim, and `livespec-dev-tooling-5r3` can be closed with the run URL
-   journalled as the live-exercise evidence.
+**Result: `livespec-dev-tooling` went from `python-v0.43.2` — seven releases behind
+the image it BUILDS — to current, with NO hand-bumping.** That "no hand-bumping"
+clause is the actual requirement, not a stylistic preference: a manual bump re-rots
+on the very next release, which is the bug this whole family existed to end. If a
+future session finds these pins stale again, fix the job; never hand-bump.
 
-**If it went wrong**, the two most likely failures are (a) the App lacking the
-`workflows` permission to push a commit touching `.github/workflows/*` — though
-this was verified to work via existing bot commits — and (b) an auto-merge
-enablement failure, which the composite Action surfaces as a hard `::error::`
-rather than swallowing.
-
-**DO NOT hand-bump the stale pins if you find them still stale.** A manual bump
-re-rots on the next release — that is the whole bug this family exists to end.
-Fix the job instead.
+**Two known nits, deliberately not fixed** (both from the independent Fable review,
+both exact parity with the pre-existing dispatch/freshness paths, neither corrupting
+state): a rerun after the self-bump merged fails loud at "nothing to commit" rather
+than no-oping; and two releases in rapid succession can leave the second PR
+conflicting for a human, with the freshness cron and §"Fallback to known-good pin"
+as the designed catch.
 
 ### Also open (non-blocking, not on the critical path)
 
+- **`livespec-dev-tooling-7m1` (P3) — FIXED AND MERGED cont. 9**, PR #473
+  (`refactor(ci):`), merged 12:03Z, `just check` 60/60 green.
+  The `bump-pin-rewrite` composite Action has
+  nine shell steps; eight begin `set -euo pipefail` and the "Open auto-merge PR" step
+  alone began `set -uo pipefail`. Without `-e` a failing `gh pr create` fell through
+  to the auto-merge enablement, where it was either MASKED (a PR already existed, so
+  `gh pr merge` succeeded and the step reported success) or MISDIAGNOSED (the
+  `::error::` blamed auto-merge and sent the reader to the `allow_auto_merge` /
+  branch-protection causes in that step's own comment, none of which were the fault).
+  Verified empirically that `-e` does NOT break the step's `if merge_err=$(...)`
+  capture idiom — POSIX exempts `if` conditions — so there was no design intent to
+  preserve. Scope checked line by line: the change affects `gh pr create` ALONE.
+  Typed `refactor:`, same reasoning as `3tu`.
 - **`livespec-dev-tooling-3tu` (P3) — FIXED AND MERGED cont. 9**, PR #470
   (`refactor(cross-repo):`), master green. `reusable-pin-freshness.yml` resolved the
   SAME `pin_staleness` module two different ways inside one step. Enumerating all
