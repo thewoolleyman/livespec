@@ -39,11 +39,43 @@ def test_make_unassigned():
     assert track.handoff == "/r/plan/x/handoff.md"
 
 
-def test_repo_slug_and_tmux_id_are_repo_qualified():
+def test_tmux_id_is_the_bare_topic_by_default():
+    # Default (no known collision): a session is named after the bare plan topic —
+    # NOT repo-qualified (maintainer-declared 2026-07-19). repo_slug still returns the
+    # basename (it is used for DISPLAY and for the collision prefix below).
     assert registry.repo_slug("/data/projects/livespec") == "livespec"
-    # B1: separator is tmux-legal `--` (a `:` is sanitized to `_` by tmux and never
-    # round-trips).
-    assert registry.tmux_id("/data/projects/livespec", "collector") == "livespec--collector"
+    assert registry.tmux_id("/data/projects/livespec", "collector") == "collector"
+    # A topic that itself contains dashes stays bare (a dash is never sanitized).
+    assert registry.tmux_id("/data/projects/livespec", "autonomous-mode") == "autonomous-mode"
+
+
+def test_tmux_id_single_dash_repo_prefix_only_on_collision():
+    # When the topic collides across repos, and ONLY then, it is repo-qualified as
+    # `<slug>-<topic>` with a SINGLE dash (not the retired double-dash).
+    assert (
+        registry.tmux_id("/data/projects/livespec", "collector", {"collector"})
+        == "livespec-collector"
+    )
+    # A collision set that does NOT contain this topic leaves it bare.
+    assert registry.tmux_id("/data/projects/livespec", "collector", {"other"}) == "collector"
+
+
+def test_colliding_topics_are_topics_in_two_or_more_repos():
+    discovered = [
+        ("/data/projects/livespec", "shared", "h1"),
+        ("/data/projects/livespec-console-beads-fabro", "shared", "h2"),
+        ("/data/projects/livespec", "solo", "h3"),
+    ]
+    assert registry.colliding_topics(discovered) == frozenset({"shared"})
+
+
+def test_colliding_topics_ignores_the_same_repo_seen_twice():
+    # Two triples for the SAME (normalized) repo + topic is NOT a cross-repo collision.
+    discovered = [
+        ("/data/projects/livespec", "dup", "h1"),
+        ("/data/projects/livespec/", "dup", "h2"),
+    ]
+    assert registry.colliding_topics(discovered) == frozenset()
 
 
 # --------------------------------------------------------------------------- #

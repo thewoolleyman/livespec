@@ -283,8 +283,9 @@ keyword flags. (`<cmd>` is one of `list` / `add` / `remove` / `unassign` /
   table **once, read-only** (no injection, no restart). A snapshot without
   waiting for a daemon tick.
 - **`add --repo <repo> --topic <topic>`** — map a discovered plan to a watched
-  session. The repo-qualified tmux id `<repo-slug>--<topic>` is derived
-  automatically; the handoff and resume line default to the plan's `handoff.md`.
+  session. The tmux id is derived automatically: the **bare plan topic**, or
+  `<repo-slug>-<topic>` (single dash) only when that topic collides across watched
+  repos. The handoff and resume line default to the plan's `handoff.md`.
   Replaces any existing row for that `(repo, topic)`.
 - **`remove --repo <repo> --topic <topic>`** / **`unassign --repo <repo> --topic
   <topic>`** — drop the mapping row (synonyms). The plan reverts to `unassigned`;
@@ -427,9 +428,11 @@ so it is never stale.
   want live. `overseerd` is **surface-only — it does NOT auto-recover** dead
   sessions at startup (the old `--recover` option is gone with the no-options
   daemon); it never spawns a session on its own. For each mapped plan whose
-  `<repo-slug>--<topic>` session is gone, relaunch it with a deliberate
-  `start --repo <repo> --topic <topic>` (which recreates the tmux session,
-  relaunches `claude -n <topic>`, and pastes the resume line).
+  session (the bare topic, or `<repo-slug>-<topic>` on a cross-repo collision) is
+  gone, relaunch it with a deliberate `start --repo <repo> --topic <topic>` (which
+  recreates the tmux session, relaunches `claude -n <topic>`, and pastes the resume
+  line). **`--repo` MUST be the full absolute path** (`/data/projects/livespec`),
+  never the bare slug — see the restart-learnings note in `AGENTS.md`.
 - The mapping survives the overseer process; a fresh `overseerd` re-attaches its
   table to the same tracks with no hand-re-registration, and `start` re-launches
   any whose session is gone.

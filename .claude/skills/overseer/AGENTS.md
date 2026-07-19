@@ -222,12 +222,25 @@ for the marker's edge-triggered lifecycle.
    (`~/.livespec-overseer.jsonl`) holds ONLY facts that cannot be rederived from
    the filesystem (topic↔tmux mapping, custom resume line, threshold override).
    Do NOT regress to a hand-maintained plan list.
-5. **Cross-repo by construction.** Rows are repo-scoped; tmux session ids are
-   repo-qualified `<repo-slug>--<topic>` (tmux names are global; plan topics are
-   unique only per repo). Never hardcode `/data/projects/livespec`. The daemon's
-   per-tick `auto_link` links a live session to a discovered plan ONLY when the
-   repo-qualified session exists AND its `#{pane_current_path}` resolves inside the
-   row's repo — never by topic name alone.
+5. **Cross-repo by construction; sessions are named after the BARE plan topic
+   (maintainer-declared 2026-07-19).** Rows are repo-scoped, but a tmux session is
+   named after its **bare plan topic** (`registry.tmux_id` → `<topic>`), because
+   that is the name the operator reads and navigates by — NOT the old
+   repo-qualified `<repo-slug>--<topic>`. A repo prefix is added ONLY on a genuine
+   cross-repo collision — when the SAME topic exists in ≥2 watched repos
+   (`registry.colliding_topics`, computed from discovery) — and then as
+   `<repo-slug>-<topic>` with a **single** dash (the double-dash form is retired).
+   tmux session names are global while topics are unique only per repo, so the
+   single-dash prefix disambiguates exactly the clashing topics and nothing else.
+   The collision set is recomputed each tick and cached on `self._colliding` (set at
+   the top of `build_rows`, before adopt / auto_link / evaluate), and threaded into
+   every session-name derivation (`_session_of`, `auto_link`) plus the CLI
+   (`_cli_colliding` for `add` / `start`) so a session is named identically wherever
+   it is derived. Never hardcode `/data/projects/livespec`. The daemon's per-tick
+   `auto_link` links a live session to a discovered plan ONLY when the derived
+   session (bare topic, or `<slug>-<topic>` on collision) exists AND its
+   `#{pane_current_path}` resolves inside the row's repo — the cwd check, not the
+   name, is what prevents two repos sharing a topic from cross-linking.
 6. **Two-pane bootstrap + `adopt` (the `/overseer` startup, 2026-07-13).** The
    skill runs the `overseer-start` executable FIRST — and ONLY the skill does:
    it is skill-invoked (by Claude's Bash tool), never a standalone launcher, and
@@ -261,8 +274,9 @@ for the marker's edge-triggered lifecycle.
    renamed, or launched later is picked up within one interval (the fix for "the
    daemon never re-adopted after the prompt cleared"). It maps to the bare session
    name (`tmux == session`), never double-adds, and — distinct from invariant 5's
-   `auto_link`, which links only the repo-qualified `<repo-slug>--<topic>` sessions
-   the daemon itself launches. **Codex sessions ARE adopted the same tick, through the
+   `auto_link`, which links only the `registry.tmux_id` session the daemon itself
+   launches (the bare topic, or `<repo-slug>-<topic>` on a cross-repo collision).
+   **Codex sessions ARE adopted the same tick, through the
    SAME code path** (`adopt_sessions` sums `claude_sessions.map_named_sessions(...)` +
    `codex_sessions.map_codex_sessions(...)`, both emitting the `(tmux, name, cwd)` triple)
    — they are not in Claude's registry, but `codex_sessions.py` supplies the equivalent
@@ -1144,6 +1158,21 @@ While a picker OR that resume-choice prompt is open, the daemon reads the pane a
 structured gate and classifies it `blocked:human`, so it will not inject or restart
 it. That self-heals the moment the human answers.
 
+**A large session sitting on that modal is LOADED-BUT-NOT-RUNNING — that is what
+"restored but still stuck" looks like (live 2026-07-19).** Restoring five Claude
+tracks with `--resume` re-attached every conversation correctly, yet all five then
+sat frozen on the summary-vs-full guard: the operator reads "not restarted." The
+conversation IS back (verify by the pane's real tail + the token count matching the
+transcript size), but nothing runs until the modal is answered. To actually get a
+restored track working you must clear the modal — `Down` then `Enter` selects **2.
+Resume full session as-is** (exact state, heavy usage); a bare `Enter` selects **1.
+Resume from summary** (compressed, cheaper). CANARY the keystroke: send `Down`,
+re-capture and CONFIRM the `❯` cursor moved to option 2 before sending `Enter`, so
+you never confirm the wrong choice (the first capture often lags the redraw). After
+a full resume the pane either self-continues (it died mid-turn) or lands idle at a
+ready `❯` (its last turn had finished) — the latter needs a "continue where you left
+off" nudge to resume active work.
+
 ### tmux gotchas that bit during this procedure
 
 - **Use `command tmux`, never bare `tmux`.** A zsh `tmux` function shim errors
@@ -1170,6 +1199,43 @@ would go: a `claude --resume <id>` arm that looks the topic's id up by `customTi
 `~/.claude/projects/<cwd-slug>/` (the exact computation step 3 automates) — the direct
 analogue of the codex reverse-index lookup just landed. Until then, this manual runbook
 is the procedure for Claude tracks.
+
+### Session-restart learnings (live-verified 2026-07-19)
+
+A dedicated log of what actually bit while restarting tracks, so the next operator
+does not re-learn it. Append here — do NOT scatter these.
+
+- **`start` / `add` `--repo` MUST be the full ABSOLUTE path, never the bare slug.**
+  `start --repo livespec --topic <t>` silently launches the session in `$HOME`: the
+  bare `livespec` is a RELATIVE path, so tmux's `-c livespec` fails to that repo and
+  falls back to home, the resume-line path (`livespec/plan/<t>/handoff.md`) is wrong,
+  and `_do_launch` then fails at the await/submit while claude boots in the wrong cwd
+  — reported only as a generic `start FAILED to launch`. Always pass
+  `--repo /data/projects/<repo>`. (`repo_slug`/`tmux_id` still produce the right
+  session NAME from a bare slug, which is why the failure is silent — only the cwd and
+  resume path are wrong.)
+- **A `--resume`d large session FREEZES on the summary-vs-full modal** — see "Two
+  post-resume states are BOTH correct" above. Loaded ≠ running; answer the modal to
+  make it run, canarying the `Down`→confirm→`Enter` keystroke.
+- **Renaming a session out-of-band SELF-HEALS in the store — no manual store edit.**
+  Renaming `<repo-slug>--<topic>` → the plain `<topic>` (or any name) with
+  `command tmux rename-session` is safe: the daemon adopts the live claude by its
+  REGISTRY name (the topic), independent of the tmux session name, and `adopt_sessions`
+  re-points the mapping row's `tmux` field to the new name within one tick (R2 repoint).
+  Verified live: renaming all six live sessions to bare topic names left the store
+  auto-repointed and every row still tracked.
+- **`overseerd` keeps running the OLD code until you restart it.** The daemon is a
+  long-lived process; editing `supervisor.py`/`registry.py` and merging does NOT change
+  a running daemon's behavior. After landing an overseer code change, restart the daemon
+  (re-run `overseer-start`, or kill the daemon pane and relaunch) to load it. The
+  one-shot track CLI (`list`/`add`/`start`) DOES pick up new code immediately (fresh
+  process per invocation).
+- **The beside-tests are the ONLY gate and neither CI nor Fabro runs them.** Live proof
+  (2026-07-19): commit `574192a8` wrapped every spawn with `unset TMUX; export
+  TMUX_TMPDIR=…; exec …` but left `test_recover_still_recreates_a_claude_track_as_claude`
+  asserting the bare command — it merged red and stayed red until this change repaired
+  it. ALWAYS run `uv run pytest .claude/skills/overseer/ -q` before pushing any overseer
+  change; a green PR here proves nothing on its own.
 
 ## Pointers
 

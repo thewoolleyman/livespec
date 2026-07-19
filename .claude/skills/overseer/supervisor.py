@@ -591,6 +591,14 @@ class Supervisor:
     # Codex?" — the pane command says `bun` (the launcher), which is too generic to
     # trust. Typed loosely to keep the dataclass free of a codex_sessions import cycle.
     _codex: dict[tuple[str, str], object] = field(default_factory=dict, init=False)
+    # Topics that appear in >=2 watched repos this tick, recomputed at the top of
+    # `build_rows` (before adopt/auto_link/evaluate run, so every session-name
+    # derivation this tick sees the same set). `registry.tmux_id` repo-qualifies
+    # ONLY these — so a session is named after its bare plan topic unless that topic
+    # genuinely collides across repos (maintainer-declared 2026-07-19). Empty in
+    # direct-`evaluate` beside-tests that don't run `build_rows` — which yields the
+    # bare-topic name, the correct default for a single-repo fixture.
+    _colliding: frozenset[str] = field(default_factory=frozenset, init=False)
 
     def __post_init__(self) -> None:
         if self.out is None:
@@ -686,12 +694,15 @@ class Supervisor:
     def auto_link(self, track: registry.Track) -> registry.Track | None:
         """Link a live session to an unassigned discovered plan — safely.
 
-        A link is created ONLY when a session named ``<repo-slug>--<topic>``
-        exists AND its ``#{pane_current_path}`` resolves inside the row's repo.
-        Never by topic name alone (blocker #8): two repos sharing a topic must
-        not cross-link. Returns the new mapped Track, or None if not linked.
+        A link is created ONLY when a session named ``tmux_id(repo, topic)`` (the
+        bare plan topic, or ``<repo-slug>-<topic>`` on a cross-repo collision — the
+        SAME name the daemon would spawn) exists AND its ``#{pane_current_path}``
+        resolves inside the row's repo. The ``path_in_repo`` guard is what actually
+        prevents cross-linking two repos that share a topic (blocker #8): even if a
+        colliding topic were not repo-qualified, the pane's cwd must match the row's
+        repo. Returns the new mapped Track, or None if not linked.
         """
-        session = registry.tmux_id(track.repo, track.topic)
+        session = registry.tmux_id(track.repo, track.topic, self._colliding)
         if not self.tmux.session_exists(session):
             return None
         path = self.tmux.pane_current_path(session)
@@ -728,9 +739,10 @@ class Supervisor:
         FLEET repo (the watch-set) AND (b) its ``name`` is an ACTIVE plan topic in
         that repo (a discovered ``plan/<topic>/`` with a ``handoff.md``). Registry
         membership already proves it is a live Claude process, so no worker-command
-        guard is needed. The mapping's ``tmux`` field is the bare session name
-        holding the work — NOT the repo-qualified ``tmux_id`` the daemon would
-        spawn. A ``(repo, topic)`` already mapped is left untouched (no double-add).
+        guard is needed. The mapping's ``tmux`` field is the ACTUAL session name
+        holding the work (any name — a generic `livespec`, an operator-renamed one) —
+        NOT necessarily the ``tmux_id`` the daemon would derive+spawn. A
+        ``(repo, topic)`` already mapped is left untouched (no double-add).
         Returns the newly-adopted Tracks.
 
         Codex sessions are NOT in Claude's registry, but they ARE adopted through the
@@ -738,7 +750,8 @@ class Supervisor:
         ``codex_sessions.map_codex_sessions`` (below), both emitting the same
         ``(tmux, name, cwd)`` triple, so a live NAMED codex session is adopted exactly
         like a Claude one. Distinct from :meth:`auto_link`, which links only the
-        repo-qualified ``<repo-slug>--<topic>`` session the daemon itself launches.
+        derived ``tmux_id`` session (the bare topic, or ``<repo-slug>-<topic>`` on a
+        cross-repo collision) the daemon itself launches.
         """
         watch = self._resolve_watch()
         active: dict[str, set[str]] = {}
@@ -886,6 +899,11 @@ class Supervisor:
         self._refresh_claude_status()
         watch = self._resolve_watch()
         discovered = registry.discover_plans(watch)
+        # Recompute the cross-repo collision set for THIS tick before any session-name
+        # derivation (adopt / auto_link / evaluate → `_session_of`) runs, so they all
+        # agree on which topics must be repo-qualified. Set ABOVE the `not act` return so
+        # the read-only `list` path derives display names identically.
+        self._colliding = registry.colliding_topics(discovered)
         if not act:
             return registry.join(discovered, registry.read_mapping(self.store_path))
         self.archive_gc()
@@ -908,7 +926,10 @@ class Supervisor:
     # ----------------------------------------------------------------- #
 
     def _session_of(self, track: registry.Track) -> str:
-        return track.tmux or registry.tmux_id(track.repo, track.topic)
+        # A mapped track carries its real session name (`track.tmux`); only an
+        # unmapped one falls back to the derived name, which must use THIS tick's
+        # collision set so it matches what `start`/`auto_link` would spawn.
+        return track.tmux or registry.tmux_id(track.repo, track.topic, self._colliding)
 
     def _effective_ctx(self, key: tuple[str, str], current: int | None) -> int | None:
         """Current remaining-%, or the last known if this tick read unknown.
@@ -2108,7 +2129,8 @@ class Supervisor:
         """Recreate any mapped session that is not currently live (design).
 
         Run ONCE at daemon startup: a fresh overseer reads the mapping, and for
-        each row whose ``<repo-slug>--<topic>`` session is gone, recreates it. Not a
+        each row whose mapped session (``_session_of``: the row's stored ``tmux``, or
+        the derived bare-topic / collision name) is gone, recreates it. Not a
         per-tick action (a session the user deliberately kills should not be revived
         every 10s). Returns the recovered names.
 
@@ -2502,6 +2524,19 @@ def _build_supervisor() -> Supervisor:
     return Supervisor(manifest_path=_default_manifest(), own_pane=os.environ.get("TMUX_PANE"))
 
 
+def _cli_colliding() -> frozenset[str]:
+    """Cross-repo topic-collision set for one-shot CLI naming (``add`` / ``start``).
+
+    Reads the SAME fleet watch-set the daemon uses (the core repo's
+    ``.livespec-fleet-manifest.jsonc``) and computes :func:`registry.colliding_topics`
+    over its discovery, so a CLI-created session is named EXACTLY as the daemon would
+    name it: the bare plan topic, or ``<slug>-<topic>`` only when the topic collides
+    across repos.
+    """
+    watch = registry.watch_set(_default_manifest(), [])
+    return registry.colliding_topics(registry.discover_plans(watch))
+
+
 def _upsert(track: registry.Track) -> None:
     """Replace any existing (repo, topic) mapping row in the hard-coded store, then
     append (one row each)."""
@@ -2553,7 +2588,7 @@ def _cmd_add(args: argparse.Namespace) -> int:
     track = registry.Track(
         topic=args.topic,
         repo=repo,
-        tmux=registry.tmux_id(repo, args.topic),
+        tmux=registry.tmux_id(repo, args.topic, _cli_colliding()),
         handoff=default_handoff(repo, args.topic),
         resume=default_resume(repo, args.topic),
     )
@@ -2579,7 +2614,7 @@ def _cmd_start(args: argparse.Namespace) -> int:
     """
     repo = os.path.normpath(args.repo)
     topic = args.topic
-    session = registry.tmux_id(repo, topic)
+    session = registry.tmux_id(repo, topic, _cli_colliding())
     force = getattr(args, "force", False)
     io = tmuxio.TmuxIO()
     sup = Supervisor(tmux=io)
