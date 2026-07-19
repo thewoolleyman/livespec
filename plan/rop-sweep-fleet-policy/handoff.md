@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — RULING RATIFIED (v169, LIVE ON MASTER). Next: unblock dispatch, then the 10 slices
+# rop-sweep-fleet-policy — RULING RATIFIED (v169). P0 rollout DONE. Dispatch still down; qm5 re-groomed
 
 **Read this whole file before acting.** The ROP ruling is SETTLED and RATIFIED — v169 is
 merged and live on master (livespec commit `2288197b`, PR #1424); the proposal is consumed
@@ -9,32 +9,77 @@ evidence.
 
 ## START HERE — first three moves, in order
 
-1. **Check whether the two maintainer blocks below cleared.** Probe the credential by
-   dispatching `bd-ib-47gr` (it is already `ready`); if it fails at `run-config-overlay`
-   again, dispatch is still down and you should NOT keep retrying — report and work the
-   unblocked items instead.
+1. **Probe the Codex credential by READING IT, not by dispatching.** Run:
+   `python3 -c "import json,base64,pathlib,datetime; d=json.loads((pathlib.Path.home()/'.codex/auth.json').read_text()); t=d['tokens']['id_token'].split('.')[1]; t+='='*(-len(t)%4); print(datetime.datetime.fromtimestamp(json.loads(base64.urlsafe_b64decode(t))['exp'], datetime.timezone.utc))"`
+   If that timestamp is in the past, dispatch is DOWN and every `drive impl` will fail at
+   `run-config-overlay`. **Do not burn a dispatch to discover this** — the prior handoff
+   advised probing by dispatching `bd-ib-47gr`, which spends a factory run to learn what one
+   file read tells you for free.
 2. **If dispatch works:** land `bd-ib-47gr`, then run ONE combined dual review over
    `bd-ib-sw0i` + `bd-ib-47gr` (see HELD below — `sw0i` needs it on two counts).
 3. **If dispatch is still down:** everything factory-side is blocked. The unblocked work is
-   the two P1 dev-tooling gate fixes (`qm5`, `6vz`), which are ordinary worktree→PR→merge
-   changes needing no dispatcher.
+   the dev-tooling gate items — but see the qm5 re-groom below before touching `qm5`, and
+   note `livespec-dev-tooling-6vz` hinges on the same unresolved rule.
 
-Nothing is running from the prior session: no dispatches, no monitors, no sub-agents. The
-`rop-drain` tmux socket is empty. Every worktree and branch that session created is cleaned up.
+## STATE AS OF 2026-07-19 (this session)
 
-## ⛔ BLOCKED ON THE MAINTAINER — two things, both outside agent reach
+- **`livespec-giq7` (P0) is DONE** — rolled out and live-exercised. See below.
+- **`codex login` is STILL NOT DONE.** Verified by reading `~/.codex/auth.json`: `auth_mode`
+  is `chatgpt` with NO `OPENAI_API_KEY` fallback, and the token expired **2026-07-09** — ten
+  days stale. Dispatch is down. **Maintainer action required; outside agent reach.**
+- **`livespec-dev-tooling-qm5` is BLOCKED + `needs-regroom`** by maintainer decision. Its
+  premise was disproved. Nothing landed.
+- **`livespec-dev-tooling-cvz` (P1) filed** — the third vacuous gate.
 
-1. **`codex login` on the orchestrator host.** Factory dispatch is DOWN. `bd-ib-47gr` failed at
-   `run-config-overlay` with *"Host Codex credential is too short-lived for the run budget; run
-   `codex login` on the orchestrator host to renew it."* Every further `drive impl` will fail the
-   same way. The item was left stranded `active` and has been moved back to `ready` via the
-   sanctioned `move:` valve (safe — it never reached a merge, so re-dispatch rebuilds nothing).
-2. **`livespec-giq7` (P0)** — the tmux guard fix is merged AND released
-   (`livespec-driver-claude` v0.4.2) but NOT rolled out. Per
-   `~/.claude/plugins/installed_plugins.json`, every project EXCEPT `/data/projects/livespec` is
-   bound to a pre-fix plugin cache copy whose guard **fails open**. Remedy is
-   `claude plugin update livespec@livespec-driver-claude -s project` per project + reload. NOT
-   done unilaterally: it mutates the environment of other live agent sessions on this host.
+Nothing is running: no dispatches, no monitors, no sub-agents. The `rop-drain` tmux socket
+is empty.
+
+**Outstanding worktrees/branches** (the previous handoff claimed "every worktree and branch
+that session created is cleaned up" — that was FALSE when written; its own delivery PR #1426
+was open at the time, from a worktree that still exists):
+- `livespec`: worktree `docs-rop-handoff-post-ratification` (PR #1426, now MERGED — reapable).
+- `livespec-dev-tooling`: branch `fix/no-except-outside-io-runs-when-io-trees-unset`, local
+  and unpushed, carrying a valid Red commit `a33c394` deliberately preserved for the qm5
+  re-groom. Worktree already removed. **Do not delete this branch** — see qm5's ledger note.
+- `livespec-driver-claude`: worktree `codex/livespec-nj7d-hook-main` — ANOTHER session's, 14
+  dirty files, last commit 2026-07-13. Not touched. Route via `just reap-stale-worktrees`.
+
+## ✅ DONE THIS SESSION — `livespec-giq7` (P0), rolled out + live-exercised
+
+The tmux fail-open guard is now current in **11 of 12** install records, verified by hashing
+each installed cache's `hooks/_tmux_hazard.py` against
+`git -C livespec-driver-claude show origin/master:.claude-plugin/hooks/_tmux_hazard.py`
+(`608d3c9e183abda7…`) — **by content, never by version string**.
+
+Correction to the prior handoff: it said every project except `/data/projects/livespec` was
+on "a pre-fix plugin cache copy". Actually **10 of 12 lacked `_tmux_hazard.py` entirely**, so
+the gap was larger than recorded.
+
+Live exercise against the DEPLOYED cache (command strings only; nothing was executed):
+unscoped kill-server → **deny**; `env -i sh -lc` wrapper evasion → **deny**; scoped
+`-L <name>` form → **allowed**, not over-blocked.
+
+No repo was dirtied: `claude plugin update` did NOT rewrite any committed
+`.claude/settings.json` (unlike `install`/`uninstall`, which core's CLAUDE.md warns does).
+
+The one residual is the other session's worktree above. **`giq7` is left OPEN pending a
+maintainer call on whether the dual-review guard applies to a no-diff rollout** — there is no
+diff to review, only host state, which a reviewer can re-verify by re-running the hash and
+payload checks recorded in its ledger note.
+
+**Gotcha worth keeping:** the guard blocks its own evidence journaling. A `bd note` whose
+TEXT quotes hazardous command strings is denied, because the hook matches its hint regex over
+the whole command string and cannot tell a quoted documentation payload from an executable
+one. Workaround: write the note to a file and pass `bd note <id> "$(cat <file>)"`. That is a
+false-positive workaround on documentation text, not an evasion — `bd note` cannot kill a
+tmux server. Do NOT loosen the regex; the failure direction is the safe one.
+
+## ⛔ BLOCKED ON THE MAINTAINER
+
+1. **`codex login` on the orchestrator host** — see STATE above. Factory dispatch is down.
+2. **The flat-package rule for `no_except_outside_io`** — the blocking design question for
+   both `qm5` and `cvz`. Stated in full in qm5's ledger note; summarized under THREE VACUOUS
+   GATES below.
 
 ## ⛔ Guards
 - **DO NOT run `groom livespec-y2lkf4`** (the EPIC). Already decomposed; individual-child
@@ -48,6 +93,9 @@ Nothing is running from the prior session: no dispatches, no monitors, no sub-ag
 - **A correction note on a work-item does NOT reach an already-dispatched agent.** Once
   dispatched, the brief is frozen. Let it complete and reject, or stop it — do not append-and-hope.
   This exact mistake produced a defective guard (`bd-ib-ug4z`).
+- **Never edit a handoff on the primary checkout.** The previous session left
+  `plan/rop-sweep-fleet-policy/handoff.md` dirty on `/data/projects/livespec` while its PR
+  #1426 carried identical content. Restored this session once #1426 merged.
 
 ## THE RULING — ratified, v169
 
@@ -81,6 +129,8 @@ the failure modes below. Do not re-derive it.
 
 ## DONE — accepted, dual-reviewed, live-exercised
 
+*(Not re-verified this session — carried forward as recorded.)*
+
 | Item | Repo | PR |
 |---|---|---|
 | `livespec-driver-codex-64s` | livespec-driver-codex | #199 |
@@ -88,7 +138,13 @@ the failure modes below. Do not re-derive it.
 | `livespec-driver-claude-ob3` | livespec-driver-claude | #215 |
 | `bd-gj-li0` | livespec-orchestrator-git-jsonl | #341 (+#343) |
 
+**Caveat on #215 / #199:** both remediated Driver hook trees, but NOT because
+`check-no-except-outside-io` validated them — that check scans zero files in either repo (see
+`cvz`). Whatever gate cleared them, it was not this one. Do not read those merges as coverage.
+
 ## HELD — `bd-ib-sw0i`, on TWO counts
+
+*(Not re-verified this session — carried forward as recorded.)*
 
 1. **Journal-deletion blocker.** `_dispatcher_reconcile_merged.py:75-78`'s ambiguous-PR refusal
    calls `_remove_journal(path=journal.path)` on the SHARED cross-item dispatch journal
@@ -106,6 +162,8 @@ the failure modes below. Do not re-derive it.
 `sw0i` now — `47gr` changes the file under review, so a review today reviews superseded code.
 
 ## STILL STRANDED BY DESIGN — `livespec-ftbvgc`
+
+*(Not re-verified this session — carried forward as recorded.)*
 
 Core's `BLE` add merged (livespec PR #1381) but the item is stuck `active`. Root cause: the only
 `active → acceptance` write is `complete_and_accept` (`_dispatcher_completion.py:89`, status
@@ -136,25 +194,60 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 
 | Item | Repo | Pri | What |
 |---|---|---|---|
-| `livespec-giq7` | livespec | **P0** | Guard fix released but not rolled out (see top) |
+| `livespec-giq7` | livespec | P0 | **Rolled out + exercised.** Open only pending the dual-review call on a no-diff rollout |
 | `bd-ib-47gr` | livespec-orchestrator-beads-fabro | P1 | Shared-journal deletion; ready, blocked on credential |
-| `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | `no_except_outside_io` no-ops when `io_trees` unset. **Brief CORRECTED — breadth, not position** |
-| `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else |
+| `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **BLOCKED + `needs-regroom`.** Premise falsified — see below |
+| `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
+| `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Hinges on the same unresolved flat-package rule as qm5** |
 | `livespec-dev-tooling-jjb` | livespec-dev-tooling | P2 | Mechanize cardinality + marker wording (the ratified spec says these are review-enforced today) |
 | `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Make the canonical no-shadow-ledger body type-checkable so both Drivers drop pyright carve-outs |
 
-## TWO VACUOUS GATES — do NOT trust either
+## THREE VACUOUS GATES — do NOT trust any of them
 
-Both report green while enforcing nothing. Verified directly:
-1. `check-no-except-outside-io` returns 0 immediately when `io_trees` is unset — which is the
-   case in BOTH Driver repos, i.e. exactly the repos whose hooks drifted (`qm5`).
+The prior handoff said TWO. There are THREE, and the new one is the largest. All report green
+while enforcing nothing; each verified directly.
+
+1. `check-no-except-outside-io` returns 0 immediately when `io_trees` is unset (`qm5`).
 2. `check-no-raise-outside-io` hardcodes `_DOMAIN_ERROR_NAMES` to core's four names; a repo whose
    errors are named differently gets zero coverage. Instrumented against git-jsonl it flagged 0
    of 9 raises including a genuine outside-`io/` one (`6vz`).
+3. **`check-no-except-outside-io` walks `config.source_trees`, which is UNDECLARED in livespec
+   core AND in both Driver repos** — so the loop runs zero iterations and the check has never
+   inspected core's own tree or either Driver's hooks (`cvz`). `livespec-driver-codex`'s
+   `pyproject.toml` even documents that it deliberately omits the "heavy product-tree role keys".
 
-This one distorted a real design decision: the choice between restoring protocol conformance and
-tracking the divergence was argued partly on whether unwrapping would trip that check. It
-wouldn't have.
+Defect #2 distorted a real design decision: restoring protocol conformance vs. tracking the
+divergence was argued partly on whether unwrapping would trip that check. It wouldn't have.
+
+Defect #3 falsifies `qm5`'s rationale. The two holes are in SERIES: with `source_trees` empty the
+walk runs zero iterations no matter what `io_trees` says, so fixing `qm5` alone yields ZERO new
+Driver coverage.
+
+## THE OPEN DESIGN QUESTION — blocks `qm5`, `cvz`, and `6vz`
+
+**v169 ratified "narrow at the seam; broad only at the boundary." But
+`no_except_outside_io` bans ALL `try/except` outside `io/`, narrow included.** That is coherent
+for a LAYERED package — the narrow seam catches live in `io/`. For a FLAT package there is no
+`io/`, so the strict reading bans the very form v169 sanctions.
+
+Measured: `livespec-dev-tooling` is the ONLY repo the `qm5` fix affects — 36 offenses, of which
+**4 are broad** (`except Exception`) and **32 are narrow** typed catches. An independent
+classification judged ~30 legitimate (3 sanctioned boundaries missing only a
+`supervisor_entry_files` declaration; ~20 foreign-code isolation parsing `gh` CLI JSON and other
+repos' manifests; 7 borderline) and ~6 genuine violations — notably `green_token.py:92,122`,
+broad catches in ordinary helpers guarding a local advisory cache.
+
+`check-no-except-outside-io` is already live in dev-tooling's own justfile (221/630), so landing
+`qm5` as written turns THIS repo's `just check` red — the Green commit cannot even be made.
+
+**Agent recommendation (NOT yet ruled on):** flag BROAD catches only in the flat branch. It still
+catches the Driver drift `qm5` targets (blanket `except Exception` marked `# noqa: BLE001`, and
+BLE001 IS the blind-except rule) without banning the sanctioned narrow form, and reddens
+dev-tooling on 4 tractable sites. No skip flag, no per-repo exemption.
+**Counter-argument, stated fairly:** `contracts.md:213` says "no `try/except` is wholesale
+exempt" and the maintainer ruled that row correct as written. The recommendation reads
+"wholesale" as TREE-level, not "every individual catch is an offense". If the stricter reading is
+intended, broad-only is off the table and ~32 narrow catches need remediation or declaration.
 
 ## WHAT THE REVIEW GATE CAUGHT (do not weaken it)
 
@@ -170,6 +263,9 @@ Every finding below passed all mechanical gates:
 - **Two tests were inert** — one guarded behind `hasattr` on a symbol its own PR deleted, so it
   passed against a reintroduced fail-open.
 - **Two of six spec review rounds found blockers introduced by the previous round's fix.**
+- **A P1 work-item's own rationale was false** — `qm5` was written on the belief that one config
+  hole blocked Driver coverage; there were two in series, so the fix would have delivered nothing
+  where it was aimed while reddening the repo shipping it.
 
 ## MECHANICS (hard-won — do not rediscover)
 
@@ -177,6 +273,9 @@ Every finding below passed all mechanical gates:
   `git show <tip>` reviews only the last commit — in one case an entirely unrelated commit.
   Resolve `base..head` via `gh pr view <n> --json commits,baseRefOid,headRefOid,additions,deletions,changedFiles`
   and cross-check totals. **Brief every reviewer with this.**
+- **Verify plugin rollout by CONTENT, not version string.** Hash the installed cache's file
+  against `git show origin/master:<path>`. Version strings and "already at latest" both lie about
+  whether the fixed bytes are on disk.
 - **A `--force-with-lease` "stale info" rejection is ambiguous** between your own merged-and-deleted
   branch and a peer's push. STOP and investigate; never force blind.
 - **PRs here merge fast.** Land corrections as FRESH branches off current master, not amendments.
@@ -210,6 +309,7 @@ Every finding below passed all mechanical gates:
 - **`BLE001` markers in both Drivers' hook trees are DECORATIVE** — those trees are
   `extend-exclude`d from ruff, so `BLE001` never fires. `livespec-dev-tooling-jjb` must add a
   POSITIVE AST guard, not merely remove a carve-out.
+- **Do not probe a credential by dispatching.** Read `~/.codex/auth.json` — see START HERE.
 
 ## Close-out
 
