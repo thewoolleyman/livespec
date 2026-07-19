@@ -14,7 +14,7 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
 | D — pyright strict | **DONE, live-exercised** | livespec PR [#1408](https://github.com/thewoolleyman/livespec/pull/1408), merged 2026-07-19 |
 | B — coverage | **DONE, live-exercised** | livespec PR [#1440](https://github.com/thewoolleyman/livespec/pull/1440), merged 2026-07-19 (`198c62dc` + `108009b5`) |
-| E — ROP railway | **UNBLOCKED — D2 resolved.** Scope + ordering being coordinated with `rop-sweep-fleet-policy`; see §"Gate E" | — |
+| E — ROP railway | **Scope + ordering SETTLED; blocked on one ruling.** Size is 1 site or 35 depending on it — see §"Gate E" | — |
 
 **Phase 1 is four gates down, one to go.** Gates A, C, D, and B are all merged
 and live-exercised. Only Gate E remains, and its blocking decision is settled.
@@ -375,23 +375,56 @@ which `.ai/ci-gate-discipline.md` names as the thing that creates revert-worthy
 breakage — "an enforcement check must not land at error severity before the
 rollout it asserts has completed."
 
-### Proposed split, relayed to `rop-sweep-fleet-policy` 2026-07-19 — AWAITING REPLY
+### ✅ AGREED SPLIT AND ORDERING — settled with `rop-sweep-fleet-policy` 2026-07-19
+
+Encoded in BOTH plans per the maintainer's instruction; their side is committed
+as `03733f5c` (livespec PR
+[#1451](https://github.com/thewoolleyman/livespec/pull/1451)).
 
 1. **Theirs (`livespec-dev-tooling-cvz`)**: declare core's `source_trees` /
-   `io_trees` so the three inert checks start scanning, but WITHOUT
-   `.claude/skills/` in the initial declaration — so their work does not block on
-   this thread.
-2. **Ours (Gate E)**: refactor the overseer to conform. For a flat host-tooling
-   folder that means first deciding whether it grows a real `io/` versus pure
-   split, or is declared an io tree wholesale. **That design call is the main
-   open question on this side**, and it was put to the rop-sweep thread in case
-   their ruling already answers it.
-3. **Either side, but ONLY AFTER (2) lands**: add `.claude/skills/` to
-   `source_trees`, so enforcement arrives after adoption rather than before.
+   `io_trees` **WITHOUT** `.claude/skills/`.
+2. **Ours (Gate E)**: bring the overseer folder to conformance.
+3. **Either thread, ONLY AFTER (2)**: add `.claude/skills/` to `source_trees` —
+   enforcement arrives after adoption, per `.ai/ci-gate-discipline.md`.
 
-That session acknowledged the request and is measuring two things it says bear
-on the answer. **Encode whatever is agreed HERE and in their plan** — the
-maintainer asked for it in both, not one.
+They confirmed step 1 does NOT need to wait on us: simulating the check over
+core's main tree yields 3 narrow offenses under the strict rule and **0 under
+broad-only**, so their work proceeds independently.
+
+### ⛔ Gate E is BLOCKED on a ruling — do NOT start the refactor
+
+**Their answer to our design question: declaring the whole folder an `io` tree is
+NOT acceptable.** `io_trees` entries are WHOLESALE EXEMPT, so declaring
+`.claude/skills/overseer/` an io tree would make every handler instantly legal
+and the check vacuous over that tree — "a bypass wearing a declaration's
+clothes", the same move already rejected for `livespec-dev-tooling`, and
+forbidden by `.ai/ci-gate-discipline.md`'s "fix the gate, not the bypass". That
+option is CLOSED.
+
+**Gate E's size depends entirely on an unresolved rule, and the range is 1 site
+versus 35.** Their measurement, which corrects the count on this page (36
+handlers, not the 37 a cruder `grep -c` reported here): the overseer carries
+**36 `except` handlers of which exactly ONE is broad** — `supervisor.py`'s
+`except Exception`. The other 35 are narrow typed catches (registry 11,
+claude_sessions 6, codex_sessions 6, supervisor 6, tmuxio 3, jsonio 2,
+signals 1).
+
+- Under **broad-only**: Gate E is **1 site** — declare `supervisor.py`'s sole
+  `except Exception` as a boundary. No `io/` layer, no refactor.
+- Under **strict**: **35 sites** need an `io/` split or equivalent.
+
+**The unresolved rule** (their §"THE OPEN DESIGN QUESTION", which also blocks
+their `qm5`, `cvz`, and `6vz`): v169 ratified "narrow at the seam; broad only at
+the boundary", but `no_except_outside_io` bans ALL `try/except` outside `io/`,
+narrow included. That is coherent for a LAYERED package, where the narrow seam
+catches live in `io/`. For a FLAT package there is no `io/`, so the strict
+reading bans the very form v169 sanctions. The counter-argument is that
+`contracts.md:213` says "no `try/except` is wholesale exempt" — the question is
+whether "wholesale" means TREE-level or per-catch.
+
+**So do not begin Gate E's refactor until that is ruled on**, or risk doing 35
+sites of work the ruling makes unnecessary. If it lands broad-only, Gate E is
+close to trivial.
 
 ## Why this thread exists
 
