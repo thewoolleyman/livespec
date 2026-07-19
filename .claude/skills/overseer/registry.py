@@ -34,6 +34,7 @@ from collections.abc import Callable, Collection, Iterable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+import jsonio
 import streams
 
 __all__ = [
@@ -276,10 +277,11 @@ def _read_rows(store_path: str | os.PathLike[str] | None = None) -> list[dict[st
         except json.JSONDecodeError as exc:
             _warn(f"skipping malformed line {lineno} in {path}: {exc}")
             continue
-        if not isinstance(obj, dict):
+        record = jsonio.as_object(obj)
+        if record is None:
             _warn(f"skipping non-object line {lineno} in {path}")
             continue
-        rows.append(obj)
+        rows.append(record)
     return rows
 
 
@@ -298,10 +300,10 @@ def _atomic_write(path: Path, body: str) -> None:
         fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(body)
+                _ = handle.write(body)
                 handle.flush()
                 os.fsync(handle.fileno())
-            Path(tmp_name).replace(path)
+            _ = Path(tmp_name).replace(path)
         except OSError:
             with contextlib.suppress(OSError):
                 Path(tmp_name).unlink()
@@ -398,7 +400,7 @@ def append_mapping(
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(row) + "\n")
+                _ = handle.write(json.dumps(row) + "\n")
         except OSError as exc:
             _warn(f"could not append to {path}: {exc}")
 
@@ -640,17 +642,20 @@ def _parse_jsonc(text: str) -> object:
 def _manifest_repo_names(manifest: object) -> list[str]:
     """Collect ``repo`` names from a parsed manifest's fleet + adopters arrays."""
     names: list[str] = []
-    if not isinstance(manifest, dict):
+    parsed = jsonio.as_object(manifest)
+    if parsed is None:
         return names
     for section in ("fleet", "adopters"):
-        entries = manifest.get(section)
-        if not isinstance(entries, list):
+        entries = jsonio.as_list(parsed.get(section))
+        if entries is None:
             continue
-        for entry in entries:
-            if isinstance(entry, dict):
-                repo = entry.get("repo")
-                if isinstance(repo, str):
-                    names.append(repo)
+        for raw_entry in entries:
+            entry = jsonio.as_object(raw_entry)
+            if entry is None:
+                continue
+            repo = entry.get("repo")
+            if isinstance(repo, str):
+                names.append(repo)
     return names
 
 
@@ -756,10 +761,11 @@ def _read_stamp_data(path: Path) -> dict[str, object]:
     except (OSError, json.JSONDecodeError) as exc:
         _warn(f"unreadable injection-stamp sidecar {path}: {exc}")
         return {}
-    if not isinstance(data, dict):
+    stamp = jsonio.as_object(data)
+    if stamp is None:
         _warn(f"injection-stamp sidecar {path} is not a JSON object")
         return {}
-    return data
+    return stamp
 
 
 def read_injection_stamp(
@@ -779,20 +785,20 @@ def read_injection_stamp(
     value = data.get(_stamp_key(repo, topic))
     if value is None:
         return None
-    if isinstance(value, dict):
-        at = value.get("at")
+    entry = jsonio.as_object(value)
+    if entry is not None:
+        at = entry.get("at")
         if at is None:
             return None
-        try:
-            return float(at)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
+        stamped = jsonio.as_float(at)
+        if stamped is None:
             _warn(f"non-numeric injection stamp for {repo}::{topic}")
-            return None
-    try:
-        return float(value)  # type: ignore[arg-type]  # legacy bare-float value
-    except (TypeError, ValueError):
+        return stamped
+    # Legacy bare-float value, from before the sidecar grew its dict shape.
+    stamped = jsonio.as_float(value)
+    if stamped is None:
         _warn(f"non-numeric injection stamp for {repo}::{topic}")
-        return None
+    return stamped
 
 
 def write_injection_stamp(
@@ -830,10 +836,11 @@ def read_notified_bands(
     """
     data = _read_stamp_data(_stamp_store(stamp_path))
     value = data.get(_stamp_key(repo, topic))
-    if not isinstance(value, dict):
+    entry = jsonio.as_object(value)
+    if entry is None:
         return []
-    bands = value.get("bands")
-    if not isinstance(bands, list):
+    bands = jsonio.as_list(entry.get("bands"))
+    if bands is None:
         return []
     return [b for b in bands if isinstance(b, int)]
 
@@ -857,17 +864,17 @@ def add_notified_band(
         data = _read_stamp_data(path)
         key = _stamp_key(repo, topic)
         value = data.get(key)
-        if isinstance(value, dict):
-            entry: dict[str, object] = dict(value)  # preserve at + existing bands
+        existing = jsonio.as_object(value)
+        if existing is not None:
+            entry: dict[str, object] = dict(existing)  # preserve at + existing bands
         elif value is None:
             entry = {}
         else:
-            try:
-                entry = {"at": float(value)}  # legacy bare-float → dict, preserving at
-            except (TypeError, ValueError):
-                entry = {}
-        bands_raw = entry.get("bands")
-        bands = [b for b in bands_raw if isinstance(b, int)] if isinstance(bands_raw, list) else []
+            # Legacy bare-float value: upgrade it to the dict shape, keeping `at`.
+            legacy = jsonio.as_float(value)
+            entry = {} if legacy is None else {"at": legacy}
+        bands_raw = jsonio.as_list(entry.get("bands"))
+        bands = [b for b in bands_raw if isinstance(b, int)] if bands_raw is not None else []
         if band not in bands:
             bands.append(band)
         entry["bands"] = bands
@@ -919,9 +926,10 @@ def read_resume_pending(
     """
     data = _read_stamp_data(_stamp_store(stamp_path))
     value = data.get(_stamp_key(repo, topic))
-    if not isinstance(value, dict):
+    entry = jsonio.as_object(value)
+    if entry is None:
         return False
-    return value.get("resume_pending") is True
+    return entry.get("resume_pending") is True
 
 
 def set_resume_pending(
@@ -943,15 +951,15 @@ def set_resume_pending(
         data = _read_stamp_data(path)
         key = _stamp_key(repo, topic)
         value = data.get(key)
-        if isinstance(value, dict):
-            entry: dict[str, object] = dict(value)  # preserve at + bands
+        existing = jsonio.as_object(value)
+        if existing is not None:
+            entry: dict[str, object] = dict(existing)  # preserve at + bands
         elif value is None:
             entry = {}
         else:
-            try:
-                entry = {"at": float(value)}  # legacy bare-float → dict, preserving at
-            except (TypeError, ValueError):
-                entry = {}
+            # Legacy bare-float value: upgrade it to the dict shape, keeping `at`.
+            legacy = jsonio.as_float(value)
+            entry = {} if legacy is None else {"at": legacy}
         entry["resume_pending"] = True
         data[key] = entry
         _atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")

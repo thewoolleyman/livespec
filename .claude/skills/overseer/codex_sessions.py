@@ -45,12 +45,13 @@ is injected so the beside-tests run with no codex process and no real ``~/.codex
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+import jsonio
 
 # `proc_comm` is a GENERIC /proc reader that happens to live in `claude_sessions`,
 # which already hosts the runtime-agnostic readers used for Codex (`has_active_subshell`
@@ -181,13 +182,8 @@ def _read_index_final(codex_home: str | os.PathLike[str]) -> dict[str, tuple[str
     except OSError:
         return out
     for line in raw.splitlines():
-        if not line.strip():
-            continue
-        try:
-            record = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(record, dict):
+        record = jsonio.parse_object_line(line)
+        if record is None:
             continue
         session_id, name = record.get("id"), record.get("thread_name")
         updated = record.get("updated_at")
