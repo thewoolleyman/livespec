@@ -153,7 +153,7 @@ tally, which is the quickest check that you are seeing the whole set.
 | Child | Real status |
 |---|---|
 | `livespec-3lev.1` P-host | **OPEN, legitimately.** Gating role DISCHARGED per the 2026-07-12 correction, but exit criteria (live resource-health trigger, runner-liveness alert, cache budget/prune) are unmet, and the trigger needs a maintainer decision on an alert destination. |
-| `livespec-3lev.3` Phase 0 | **OPEN**, but the security half is now PROVEN. The HARD dual Fable+Codex gate was genuinely honored (4 rounds, PASSED round 4). **Isolation exit-tests RUN 2026-07-19 against the current image: 14 pass / 0 fail / 3 skip** — see below. Remaining: 6 runners vs the specified ~18 (which is intended?), and the shadow lane has not run since 07-14. |
+| `livespec-3lev.3` Phase 0 | **OPEN, but essentially proven.** Dual Fable+Codex gate honored (4 rounds). **Isolation exit-tests 14/0/3**, and the **shadow lane re-run 2026-07-19: 14/14 on two confirmed runs** (a third triggered — confirm it) — including the full `just check` green on the runner in-image. The "6 vs ~18 runners" question is **SETTLED — 6 is deliberate** (see below); only the item's stale text needs amending. |
 | `livespec-3lev.4` Phase 1 | ✅ **CLOSED 2026-07-19** — every deliverable verified against `origin/master`. Its `blocks` edge from `.1` was a stale proxy and was REMOVED (not `--force`d). Codex lockstep designed away (version-less adapter); Rust lockstep relocated → filed as `livespec-console-beads-fabro-mcj`. |
 | `livespec-3lev.5` Phase 2 | **OPEN.** Disposition table + in-image CI done; the local-runner cutover is not. Now a maintainer DECISION, not implementation: flip `CI_RUNNER_LABELS`, or narrow the exit criterion to same-image-parity-on-hosted and close. |
 | `livespec-3lev.6` Phase 3 | **OPEN.** Image half fully delivered — 8/8 members pinned, green, and now AUTO-reconciled (`xb7` + `5r3`). Local-runner half 0/8; resource signal not live. |
@@ -230,6 +230,52 @@ self-sourced pins with the `python-` layer prefix preserved, that PR merged, and
 `livespec-fabro-sandbox:python-v0.50.1` read from the job log rather than inferred
 from a green tick. See "THE COMPLETED LOOP" below for the full chain.
 
+### Shadow lane re-exercised, and the runner-count question SETTLED (2026-07-19)
+
+The lane triggers ONLY on push to `ci-shadow/**` — manually driven **by design**, no
+schedule, with `pull_request`/`merge_group`/`workflow_dispatch` deliberately excluded.
+So "it stopped running" was the wrong reading; it is push-driven and nobody had pushed
+since 07-14. That still matters, because its own header says it is the standing
+regression harness for a RACE that *"once passed 12/12 before failing 8/12"*, and
+therefore **"a single green run of this matrix proves nothing — re-run it several
+times over."**
+
+**Re-run 2026-07-19: runs 1 and 2 (`ci-shadow/verify-2026-07-19-run{1,2}`) both
+14/14 SUCCESS; run 3 was triggered and its result is NOT recorded here — check it
+(`gh run list --repo thewoolleyman/livespec --workflow ci-selfhosted-shadow.yml`)
+before relying on a three-run claim.** Each pass is 12 parallel slots + the
+live-isolation job + the full `just check`, clean — no clobbering, no podman network-prune race,
+nothing stalled in `queued`.
+
+**`just check (shadow)` passing is the single strongest datum for the goal-2
+decision.** The workflow hedges that job — *"May need tuning (some targets need GitHub
+auth)"* — but livespec's FULL check suite ran green in the baked image on the local
+runner. That is Phase 2's exit criterion ("pilot CI green on the local runner
+in-image") demonstrated in the shadow lane.
+
+**The "6 runners vs the specified ~18" question is SETTLED: 6 is DELIBERATE.**
+Measured from systemd, which is what actually launches agents — `runner@<slug>-N.service`
+runs **6 instances for EACH of the 8 fleet repos = 48 agents**, all under
+`ci-runner-supervisor.service`. The item's "~18 slots (~core count)" dates from when
+Phase 0 contemplated a SINGLE PILOT REPO, where 18-on-18-cores is exactly right; after
+the fan-out, 18-per-repo would be 144 agents on 18 cores. The provisioner's
+`SLOTS=18` default only creates cheap hard-linked instance *dirs* — concurrency is
+bounded by which units the supervisor runs. **Nothing to provision; amend the item's
+stale text so this is not re-opened.**
+
+Concurrency was proven from RUNNER IDENTITIES, not inferred from timing: run 1's 12
+slots were taken by **12 distinct ephemeral registrations resolving to 6 slot
+identities**, each recycling exactly twice (`ci-livespec-1` took slots 1 and 10, etc.),
+matching the two-wave timing precisely. Run 2 used 5 identities for the same 12 slots —
+so the ceiling is "up to 6, whichever are free", with the supervisor re-minting after
+each single-job runner dies.
+
+**Throughput, stated honestly** (an earlier revision of this handoff overstated it as a
+blocker): per-repo, a ~60-job matrix at 6 slots serializes into roughly ten waves;
+fleet-wide capacity is 48 slots and CI runs are not usually simultaneous across all
+eight repos. Whether that per-repo latency is acceptable is a JUDGEMENT for the goal-2
+decision — it is **not** evidence of misconfiguration.
+
 ### Phase 0 isolation — PROVEN on the live host (2026-07-19)
 
 Ran `livespec-dev-tooling/ci-runner/isolation-exit-tests.sh` against the current
@@ -297,7 +343,19 @@ are the mirror image, excluded by never having been enrolled.
 
 1. **MAINTAINER DECISION, and it gates Phases 2+3 — do this first.** Is goal 2
    (CI on local self-hosted runners) still wanted? The machinery is BUILT and the
-   switch is OFF (`CI_RUNNER_LABELS = ["ubuntu-latest"]`). Two coherent answers,
+   switch is OFF (`CI_RUNNER_LABELS = ["ubuntu-latest"]`).
+
+   **The technical risk has been retired — decide on values, not feasibility.**
+   Evidence gathered 2026-07-19, all measured rather than assumed: the containment
+   suite passes 14/0/3; the shadow lane passes **14/14 on two consecutive runs**
+   (a third was triggered — confirm it) including livespec's **full `just check`
+   green in the baked image on the local runner**; the two runner races the harness exists to catch did not recur; the
+   48-agent fleet allocation is deliberate and the host has separately been shown
+   to absorb heavy oversubscription gracefully. What remains is a JUDGEMENT about
+   trust tiers and per-repo latency (~10 waves for a 60-job matrix at 6 slots), not
+   an open question about whether it works.
+
+   Two coherent answers,
    and no implementation is blocked on anything else:
    - **Flip it.** Set `CI_RUNNER_LABELS` to the local lane per repo, accepting the
      trust-tier consequence — notably that `livespec-orchestrator-beads-fabro`
@@ -308,13 +366,19 @@ are the mirror image, excluded by never having been enrolled.
      headline value is already banked either way.
    Everything downstream reads differently depending on this answer, so it is not
    a decision to defer while doing 2–4.
-2. **`livespec-3lev.3` — two questions left, both small.** The isolation evidence
-   is now SUPPLIED (14/0/3, above), so what remains is: (a) **6 runners registered
-   vs the specified ~18** — confirm which is intended, since the item text and the
-   host disagree and neither is self-evidently right; (b) **the shadow lane's
-   cadence** — it has not run since 2026-07-14, and a shadow lane that stops
-   running stops shadowing while still LOOKING like coverage. Note T5/T6 cannot be
-   cleared until item 1 is decided.
+2. **`livespec-3lev.3` — nearly closeable; only bookkeeping and one judgement.**
+   Isolation evidence SUPPLIED (14/0/3); shadow lane re-run 14/14 on **two**
+   confirmed runs (a third triggered — confirm it) including full `just check`
+   green on the runner; the 6-vs-18 question SETTLED
+   (6 is deliberate, 48 fleet-wide). What is left:
+   - **Bookkeeping:** amend the item's stale "~18 runner slots (~core count)" text
+     to the post-fan-out allocation, so it is not re-opened.
+   - **Judgement:** the lane is push-triggered by design and only runs when someone
+     pushes `ci-shadow/**`. Its own header demands repeated runs because the race it
+     guards is intermittent. Decide whether that should become a schedule, or stay
+     deliberate-and-manual with a note that it MUST be re-run before any flip.
+   - T5/T6 remain unclearable until item 1 is decided — T5 needs a job that has
+     actually moved to the local runner, which cannot happen while the lane is off.
 3. **`livespec-3lev.7` — Phase 4: filing is DONE; a POLICY decision remains.**
    `openbrain` `ob-4oku` is filed; `resume`/`homelab` need nothing (amend the
    child's title). The open question is deliberately NOT self-resolved because it
