@@ -29,15 +29,25 @@ from pathlib import Path
 # guarantee explicit rather than dependent on uv's launch behavior.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import supervisor  # noqa: E402  (intentional: after the sys.path pin above)
+import supervisor  # intentionally after the sys.path pin above
+
+# A remaining-context percent. 0 would mean "warn only once context is gone", and
+# 100 would mean "warn immediately, always" — neither is a threshold anyone wants,
+# so the range is open at both ends rather than clamped.
+_MIN_WARN_PERCENT = 1
+_MAX_WARN_PERCENT = 99
 
 
 def _warn_percent(value: str) -> int:
     """argparse type: an int in [1, 99] (a remaining-context percent)."""
     ivalue = int(value)  # raises ValueError → argparse surfaces a clear error
-    if not 1 <= ivalue <= 99:
-        raise argparse.ArgumentTypeError(
-            f"--warn-percent must be an integer in [1, 99], got {ivalue}"
+    if not _MIN_WARN_PERCENT <= ivalue <= _MAX_WARN_PERCENT:
+        # TRY003: argparse's contract is that this exception's MESSAGE is the text
+        # the user sees on a bad flag, so it has to carry the context. There is no
+        # per-case exception subclass to move it into.
+        raise argparse.ArgumentTypeError(  # noqa: TRY003 — argparse surfaces this text verbatim
+            f"--warn-percent must be an integer in "
+            f"[{_MIN_WARN_PERCENT}, {_MAX_WARN_PERCENT}], got {ivalue}"
         )
     return ivalue
 
@@ -47,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="overseerd",
         description="the livespec overseer daemon (watches the whole fleet)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--warn-percent",
         type=_warn_percent,
         default=None,

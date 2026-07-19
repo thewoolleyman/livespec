@@ -38,7 +38,7 @@ from typing import Any, Protocol
 
 import streams
 
-__all__ = ["PaneDriver", "TmuxIO"]
+__all__ = ["PaneDriver", "TmuxIO", "WindowLayoutDriver"]
 
 
 class PaneDriver(Protocol):
@@ -83,6 +83,32 @@ class PaneDriver(Protocol):
     def new_session(self, name: str, cwd: str) -> bool: ...
 
     def rename_window(self, pane: str, name: str) -> bool: ...
+
+
+class WindowLayoutDriver(Protocol):
+    """The tmux surface the two-pane BOOTSTRAP depends on — the launcher's seam.
+
+    The counterpart to :class:`PaneDriver`, and the reason that one declares only
+    twelve of :class:`TmuxIO`'s methods: these six are window-LAYOUT operations
+    (split, title, resize, enumerate), used once at bootstrap by ``overseer-start``
+    and never by the daemon's per-tick loop. Splitting the surfaces keeps each
+    stated obligation honest — a daemon test double does not have to pretend it can
+    resize a pane, and a launcher test double does not have to pretend it can paste.
+
+    ``TmuxIO`` satisfies both structurally, being the one real implementation.
+    """
+
+    def window_pane_titles(self, pane: str) -> list[str]: ...
+
+    def split_window_top(self, pane: str, cwd: str, command: str) -> str | None: ...
+
+    def set_pane_title(self, pane: str, title: str) -> bool: ...
+
+    def select_layout_even(self, pane: str) -> bool: ...
+
+    def pane_by_title(self, pane: str, title: str) -> str | None: ...
+
+    def set_pane_height_percent(self, pane: str, percent: int) -> bool: ...
 
 
 # The tmux paste buffer the injector loads into. A UNIQUE name per paste (pid +

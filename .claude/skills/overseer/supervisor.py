@@ -1201,7 +1201,16 @@ class Supervisor:
             return
         try:
             signals.state_path(track.repo, track.topic).unlink(missing_ok=True)
-        except OSError as exc:
+        # The ONLY uncovered branch in this module, and deliberately so. The read
+        # above returns unless the marker is a readable regular file, so every
+        # root-proof way to make `unlink` fail (a directory at the path, a file
+        # where the parent should be) also makes that read return None and returns
+        # first. What remains is a permission-denied PARENT — and CI runs its
+        # container steps as root, where chmod denies nothing. A test would pass
+        # locally and silently stop exercising this in CI, which is worse than no
+        # test. Its sibling in `_clear_state` unlinks with no preceding read, so
+        # that one IS covered (a directory there yields EISDIR for every uid).
+        except OSError as exc:  # pragma: no cover
             self._log(f"could not clear idle-nudge marker for {track.repo}::{track.topic}: {exc}")
 
     def _nudge_idle_with_context(
@@ -1653,7 +1662,20 @@ class Supervisor:
             if not signals.is_busy(capture):
                 if claude_status == "shell" or codex_fallback:
                     note = "background shell"  # a live `Bash(run_in_background)` command
-                elif claude_status == "busy":
+                # Provably always True where it stands: reaching here needs `busy` True
+                # with `is_busy(capture)` False and the `shell`/codex-fallback arm above
+                # already excluded, which leaves `claude_busy` as the only disjunct that
+                # can be carrying `busy` — and `_CLAUDE_BUSY_STATUSES` holds exactly
+                # {"busy", "shell"}. So the else-exit is dead and branch coverage can
+                # never close it.
+                #
+                # KEPT as an `elif` rather than demoted to `else` precisely because that
+                # proof depends on the CURRENT contents of `_CLAUDE_BUSY_STATUSES`, which
+                # exists to be extended. Add a third status and `else` would silently
+                # label it "sub-agent (Claude busy)" — wrong; the `elif` correctly leaves
+                # the note unset. The dead arc is the cost of that safety, so it is
+                # annotated rather than removed.
+                elif claude_status == "busy":  # pragma: no branch
                     note = "sub-agent (Claude busy)"  # in-process sub-agent, no shell
             if act:
                 # Void the certification ONLY if it is past the grace — a young
