@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/thewoolleyman/livespec/compare/v0.17.9...v0.18.0) (2026-07-19)
+
+
+### Features
+
+* **overseer:** name tmux sessions after the bare plan topic ([dc45616](https://github.com/thewoolleyman/livespec/commit/dc456160a17064d4cf949deaaf4dab07b9c4bc77))
+
 ## [0.17.9](https://github.com/thewoolleyman/livespec/compare/v0.17.8...v0.17.9) (2026-07-19)
 
 
