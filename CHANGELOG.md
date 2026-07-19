@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.8](https://github.com/thewoolleyman/livespec/compare/v0.17.7...v0.17.8) (2026-07-19)
+
+
+### Bug Fixes
+
+* **overseer:** runtime-dispatch reboot recovery so codex tracks resume (defect [#5](https://github.com/thewoolleyman/livespec/issues/5)) ([4542b3d](https://github.com/thewoolleyman/livespec/commit/4542b3dac454a9e4db09918cf66ef09187e83c2f))
+
 ## [0.17.7](https://github.com/thewoolleyman/livespec/compare/v0.17.6...v0.17.7) (2026-07-19)
 
 
