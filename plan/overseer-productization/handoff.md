@@ -13,181 +13,110 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
 | D — pyright strict | **DONE, live-exercised** | livespec PR [#1408](https://github.com/thewoolleyman/livespec/pull/1408), merged 2026-07-19 |
-| B — coverage | **CODE DONE + VERIFIED, COMMITTED, UNPUSHED — BLOCKED** | worktree `~/.worktrees/livespec/gate-b-overseer-coverage`, branch `gate-b-overseer-coverage`, commit `39047284` |
-| E — ROP railway | BLOCKED on D2 scope question — see below | — |
+| B — coverage | **DONE, live-exercised** | livespec PR [#1440](https://github.com/thewoolleyman/livespec/pull/1440), merged 2026-07-19 (`198c62dc` + `108009b5`) |
+| E — ROP railway | **UNBLOCKED — D2 resolved.** Scope + ordering being coordinated with `rop-sweep-fleet-policy`; see §"Gate E" | — |
 
-# ⛔ START HERE — Gate B is finished but could not be pushed
+**Phase 1 is four gates down, one to go.** Gates A, C, D, and B are all merged
+and live-exercised. Only Gate E remains, and its blocking decision is settled.
 
-> **This handoff was rescued from the primary checkout on 2026-07-19** (commit below).
-> It had been left UNCOMMITTED on disk at `/data/projects/livespec` — 153 unversioned
-> lines, one `git checkout` from oblivion — because the session that wrote it believed
-> the push blocker "prevents committing anything". **That belief was wrong** (see
-> "Corrections" below): only `push` is blocked. Doc-only commits were always available.
-> **Keep this file committed from now on; update it in-session as findings land, not
-> at session end.**
+# ✅ Gate B — DONE (was blocked all of 2026-07-19; the blocker is gone)
 
-Read this whole section before doing anything else. Gate B's code is COMPLETE and
-FULLY VERIFIED. It is committed on a branch in a worktree and was never pushed, because
-a master-red gate blocks `git push` (pre-push runs `just check`). Nothing about Gate B
-itself is wrong.
+**Live-exercise evidence.** Post-merge master CI run
+[29700273133](https://github.com/thewoolleyman/livespec/actions/runs/29700273133)
+ran `check-overseer` against COMBINED master and it passed, alongside
+`check-coverage`, `check-types`, `check-lint`, and `check-per-file-coverage`.
+That is the bar — a green PR is not evidence; the post-merge master run is.
 
-## Step 1 — is the blocker gone?
+**What unblocked it.** The `check-doctor-static` red that blocked every local
+push in this repo was resolved by another session's revert, which landed as
+`333e5263` (a REBASED re-apply — the original `6bdccd04` is not an ancestor of
+master, so the same change exists under two SHAs). Nothing about Gate B itself
+was ever wrong.
 
-```bash
-cd /data/projects/livespec && just check-doctor-static >/dev/null 2>&1; echo "exit=$?"
-```
+**A real defect CI caught after the rebase, worth carrying forward.** The branch
+went green locally and RED in CI: six beside-tests simulated permission denial
+with `chmod`, and **CI runs its container steps as ROOT, where mode bits deny
+nothing** — 6 failed, 432 passed. Reproduced deterministically with
+`sudo -n env "PATH=$PATH" "HOME=$HOME" uv run pytest .claude/skills/overseer/ -q --no-cov`,
+which is the cheapest way to check this class of thing before pushing.
 
-- **exit 0** → the blocker cleared. Go to Step 2.
-- **exit 3** → still blocked. Go to "The blocker" below.
+The irony is instructive: THIS BRANCH'S OWN commit message already reasoned
+about that exact hazard for one site (the `# pragma: no cover` on
+`_clear_idle_nudge_state`'s `except OSError`, whose stated rationale is "CI runs
+its container steps as root, where chmod denies nothing"). The reasoning was
+right and was applied to one branch while six siblings kept relying on the
+assumption it refutes.
 
-**As of 2026-07-19 ~12:15 the fix is IN FLIGHT — do not start your own.** A concurrent
-session (`session_014mhgdKfN9ucqxtJXjfeshe`) independently reached the identical
-diagnosis and pushed branch `revert-cross-repo-targets-console` (commit `6bdccd04`,
-worktree `~/.worktrees/livespec/revert-cross-repo-targets-console`), reverting ONLY the
-`.livespec.jsonc` `cross_repo_targets` hunk of `7107be6c` and deliberately keeping its
-`.ai/` docs change. **No PR was open yet at the time of writing** — check
-`gh pr list --repo thewoolleyman/livespec` before acting. That branch could be pushed
-at all precisely because the revert repairs the very gate that blocks pushing.
+Fixed by injecting the denial at the call the implementation actually makes
+(`Path.open` / `read_text` / `iterdir` / `is_dir` raising `PermissionError`)
+rather than at the filesystem. That is NOT a new idiom — the same file already
+had `monkeypatch.setattr(registry.os, "fsync", _boom)` and a
+directory-where-a-file-belongs test, both root-proof; the chmod tests were the
+outliers. Verified 438 passed as root AND as an unprivileged user, 100.00%
+coverage held both ways.
 
-Do NOT duplicate it, and do NOT touch that branch or worktree — it is another session's
-(the cross-session force-push/clobber ban in `AGENTS.md` applies). Gate B lands the
-moment it merges.
+**If you write a permission-denial test in this folder, do not use `chmod`.**
+Patch the call. Otherwise it passes locally and silently stops testing anything
+in CI, which is worse than no test.
 
-✅ **RESOLVED 2026-07-19 — the blocker is GONE; `check-doctor-static` exits 0 at master
-`38d86b59`.** The revert landed as **`333e5263`** (a rebased re-apply; the original
-`6bdccd04` is NOT an ancestor of master, so don't search for it). `cross_repo_targets`
-no longer carries the console entry. **Gate B is unblocked — go run Step 2.**
+> **This handoff was rescued from the primary checkout on 2026-07-19.** It had
+> been left UNCOMMITTED on disk at `/data/projects/livespec` — 153 unversioned
+> lines, one `git checkout` from oblivion — because the session that wrote it
+> believed the push blocker "prevents committing anything". That belief was
+> false at both the commit AND the push step (post-mortem lesson 3 below).
+> **Keep this file committed; update it in-session as findings land, not at
+> session end.** The root-cause fix for that whole class of failure is its own
+> thread now: `plan/plan-thread-integrity/` (epic `livespec-nr5h`).
 
-Watch for this when reading the record: the same change exists under two SHAs, and only
-the rebased one is on master.
+## Blocker post-mortem (2026-07-19) — resolved, kept for the lesson
 
-Still-open consequence: the revert dropped the cross-tenant `sibling_work_item` linkage
-`7107be6c` created, and the fleet-pin-propagation epic (`livespec-n4ptl2`) has a real
-filed child in that tenant, `livespec-console-beads-fabro-tafkuw`. The revert commit
-says the re-land is tracked; **that was not verified here.** Confirm a re-land work-item
-exists before considering the linkage safe, and note remedy (c) — splitting
-`cross_repo_targets` into a planning list and a conformance list — remains the unowned
-durable fix.
+The operational "is the blocker gone / how to land Gate B" steps that stood here
+are DELETED: Gate B is merged and the blocker is gone. What is worth keeping is
+why it happened, because the shape recurs.
 
-**Durable lesson from this outage — a red `doctor-static` freezes the SPEC LIFECYCLE,
-not just pushes.** The propose-change CLI runs doctor static as BOTH a pre-step and a
-post-step (`prose/propose-change.md` Steps 8 / Post-CLI), and `--skip-pre-check`
-suppresses only the pre-step — the POST-step still fires and still exits 3. So a
-red doctor-static means `/livespec:propose-change` cannot complete cleanly: the
-proposed-change file lands on disk but the CLI reports exit 3. Worth knowing the next
-time a doctor-static gate goes red, because it means spec amendments (including any
-amendment that would FIX the gate) are frozen, not merely un-pushable.
-
-## Step 2 — land Gate B (only once Step 1 is exit 0)
-
-```bash
-cd ~/.worktrees/livespec/gate-b-overseer-coverage
-mise exec -- git fetch origin master -q
-mise exec -- git rebase origin/master          # master moves fast; expect this to be needed
-just check-overseer                            # MUST report 100.00% and ~438 passed
-mise exec -- git push -u origin gate-b-overseer-coverage
-```
-
-Then open the PR. The commit message on `39047284` is complete and accurate — reuse it
-as the PR body. After merge: confirm the post-merge master CI run's `check-overseer`
-job passed against combined master (that is Gate B's live-exercise evidence, required
-before calling it done), then `git -C /data/projects/livespec pull --ff-only origin
-master`, remove the worktree, delete the branch.
-
-**Do NOT `--no-verify`.** The blocker is a real red gate; bypassing it is explicitly
-forbidden by `.ai/ci-gate-discipline.md`.
-
-**Do NOT `git checkout <file>` in that worktree** to undo anything — it reverts to HEAD,
-not to your working state, and has already destroyed in-progress work twice on this
-thread. Copy to the scratch dir and restore from there.
-
-## The blocker — another session's commit, fully diagnosed (do not re-investigate)
-
-`check-doctor-static` fails on livespec master with 53
+`check-doctor-static` went red on livespec master with 53
 `(sibling, missing-canonical-slug)` drift pairs, all
-`livespec-console-beads-fabro→check-*`. This is NOT caused by Gate B — it reproduces on
-an untouched `/data/projects/livespec` and does not reproduce at the commit before the
-cause.
+`livespec-console-beads-fabro`, blocking every LOCAL push in the repo while
+master CI stayed GREEN. Cause: commit `7107be6c` added that repo to
+`.livespec.jsonc`'s `cross_repo_targets` so a cross-tenant work-item reference
+would resolve — a PLANNING purpose. But `cross_repo_targets` is DUAL-PURPOSE: it
+is also the input to `doctor-wiring-completeness-cross-repo`, which requires
+every listed sibling to wire all 53 canonical PYTHON check slugs.
+`livespec-console-beads-fabro` carries ZERO first-party `.py` and 28 `.rs` files,
+so it could not satisfy them at any version.
 
-**Cause:** commit `7107be6c` ("docs(ai): scope No-Circular-Dependency to code, never
-work-items"), authored by the `fleet-pin-propagation` session
-(`Claude-Session: session_01XybfmAK5sG5RugLNWcwUxm`, live in the tmux session of the
-same name; landed under `thewoolleyman` authorship via `livespec-pr-bot`). It added
-`livespec-dev-tooling` and `livespec-console-beads-fabro` to `.livespec.jsonc`'s
-`cross_repo_targets` so cross-tenant `sibling_work_item` refs resolve for the
-fleet-pin-propagation epic (`livespec-n4ptl2`). That reasoning is sound.
+Resolved by revert, landed as `333e5263` (a REBASED re-apply, so the original
+`6bdccd04` is not an ancestor of master and the same change exists under two
+SHAs — do not search for the original).
 
-**The accident:** `cross_repo_targets` is DUAL-PURPOSE. It is also the input to
-`doctor-wiring-completeness-cross-repo`, which requires every listed sibling to wire all
-53 canonical **Python** check slugs. `livespec-console-beads-fabro` is a **Rust** repo
-whose `check:` aggregate correctly wires only Rust targets (`check-format`,
-`check-clippy`, `check-test`, …). Registering it for a PLANNING purpose silently
-enrolled it in a CODE-CONFORMANCE check it cannot satisfy.
+**The durable lessons, none of which are about this one bug:**
 
-**Why CI is green while every local push is blocked:** the check resolves each sibling
-from `cross_repo_targets[<slug>].local_clone` (e.g. `/data/projects/<sibling>`), and CI
-sets an env override pointing at a freshly-cloned siblings-root. So the check effectively
-only ever fires locally. `filter_sibling_targets`
-(`.claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_cross_repo_helpers.py`)
-drops only non-dict entries and the host repo — there is **no** language/class-based
-exemption, even though the fleet manifest already carries `class: console` for that repo.
+1. **A green master CI is not evidence that local `just check` is green.** CI
+   clones siblings from a HARDCODED list in `.github/workflows/ci.yml` that is
+   not derived from `.livespec.jsonc` and has drifted from it in both
+   directions, so a newly-registered sibling is never cloned in CI and the check
+   cannot evaluate it there. This is filed on the fleet-pin-propagation side as
+   `livespec-fxxfq6`, with the drift table and the derive-from-source fix.
+2. **A red `doctor-static` freezes the SPEC LIFECYCLE, not just pushes.**
+   propose-change runs doctor static at BOTH its pre-step and post-step, and
+   `--skip-pre-check` suppresses only the pre-step. The proposed-change file
+   still lands on disk and the CLI then reports exit 3 — so the operation cannot
+   complete cleanly, though the artifact is not lost.
+3. **Doc-only work was never blocked at all.** `check-pre-commit-doc-only` runs
+   seven targets and `check-doctor-static` is not among them (`justfile:518`),
+   and `check-pre-push` routes a zero-`.py` push to that same subset
+   (`justfile:548`). The belief that the blocker "prevents committing anything"
+   was false at BOTH steps, and acting on it is what left this handoff
+   unversioned for 153 lines. See `plan/plan-thread-integrity/`, the thread
+   spun out to fix that class of failure.
+4. **Never infer another session's liveness from `tmux ls`.** It reads only the
+   socket namespace named by `TMUX_TMPDIR`; the fleet's sessions live on the
+   default socket at `/tmp/tmux-1000/default`. This page previously asserted a
+   session was gone on that basis and was wrong — it was alive and committing
+   throughout. Read commit trailers instead:
+   `git log -1 --format=%B <sha> | grep session_`.
 
-**Dead end already ruled out:** the `livespec-dev-tooling` v0.49.4 pin bump (`4a4b39cb`)
-is NOT the cause. The timing makes it look guilty; bisecting cleared it. Re-confirmed
-2026-07-19: master has since bumped to **v0.50.0** (`4dd7c836`) and the failure is
-byte-identical — same 53 pairs, same repo. The pin is not implicated at any version.
-(The Gate B worktree still sits at 0.49.3 and will need `uv sync` after rebasing.)
-
-**Status of the fix — RESOLVED BY ANOTHER SESSION, remedy (a).** The four remedies once
-put to the maintainer were: (a) revert only the `.livespec.jsonc` hunk of `7107be6c`,
-keeping its `.ai/` docs change — the revert-and-reland remedy `.ai/ci-gate-discipline.md`
-prescribes; (b) teach the check to exempt a sibling with no first-party Python;
-(c) split `cross_repo_targets` into a planning list and a conformance list — the real
-design fix; (d) hold. **(a) was chosen and executed** by
-`session_014mhgdKfN9ucqxtJXjfeshe` on branch `revert-cross-repo-targets-console` — see
-the START HERE box. This thread never owned that decision and did not drive it.
-
-Note (a) is a *restoration*, not the design fix: it un-breaks the gate but drops the
-cross-tenant `sibling_work_item` linkage that `7107be6c` existed to create — the
-fleet-pin-propagation epic (`livespec-n4ptl2`) has a real filed child in that tenant,
-`livespec-console-beads-fabro-tafkuw`. The revert commit says the re-land is tracked.
-(c) remains the durable fix and is unowned.
-
-### Corrections to this document's own earlier claims (verified 2026-07-19)
-
-Two statements written above/below were checked against the live tree and are FALSE.
-Both cost real time; do not re-inherit them.
-
-1. **"the check ships from livespec-dev-tooling" — WRONG.** `filter_sibling_targets`
-   lives in **livespec core**, at
-   `.claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_cross_repo_helpers.py:314`.
-   Remedy (b) is therefore a SINGLE-REPO change in this repo, not the cross-repo lift
-   the earlier text implied — materially cheaper than it was priced at.
-2. **"the push blocker prevents committing anything" — WRONG.** `just
-   check-pre-commit-doc-only` runs exactly seven targets
-   (`check-claude-md-coverage`, `check-heading-coverage`, `check-vendor-manifest`,
-   `check-no-direct-tool-invocation`, `check-codex-no-repo-local-adapters`,
-   `check-copier-template-smoke`, `check-tools`) and `check-doctor-static` is NOT among
-   them. Only `push` runs full `just check`. **A doc-only commit was available the whole
-   time** — which is why this handoff sat unversioned for no good reason.
-
-Supporting facts measured this session, none previously recorded:
-
-- `livespec-console-beads-fabro` carries **zero** first-party `.py` files and 28 `.rs`
-  files. It cannot satisfy 53 Python check slugs even in principle.
-- `.livespec-fleet-manifest.jsonc` already tags it `class: console` — the discriminator
-  a remedy-(b) exemption would key on already exists.
-- Removing ONLY the console entry takes `check-doctor-static` from exit 3 to **exit 0**;
-  `livespec-dev-tooling` contributes zero drift pairs. (Verified by experiment, then
-  reverted — the config was restored to HEAD.)
-- ~~The `fleet-pin-propagation` session no longer exists.~~ **RETRACTED — this was my own
-  false claim, and it is the third on this page.** It was inferred from `tmux ls` finding
-  no server, which proves only that no server exists in THIS session's socket namespace.
-  `session_01XybfmAK5sG5RugLNWcwUxm` was alive the whole time and committed master's tip
-  at 19:01. **Never infer another session's liveness from `tmux ls`;** read commit
-  trailers (`git log --format=%B | grep session_`) instead, which is how this was caught.
-
-## What Gate B contains (already committed as `39047284`)
+## What Gate B contained (merged as `198c62dc`)
 
 100.00% coverage — statements AND branches — on every module; 344 → 438 tests; full
 `just check` green (all 71 targets); no behavior change. Sabotage-verified three ways.
@@ -409,6 +338,61 @@ Two operational lessons from landing it, both worth carrying into Gates C/D:
   auto-merge lands before the master run finishes, so the manual combined-state re-run is
   still the advice while another overseer branch is in flight.
 
+## Gate E — the only remaining Phase 1 gate
+
+**Scope is settled (D2 above): the overseer goes on the railway.** What is being
+coordinated with `rop-sweep-fleet-policy` is the responsibility split and the
+ordering, because getting the ordering wrong turns core master red.
+
+### Measured facts about the target (2026-07-19, master)
+
+- The overseer is 8 product modules under `.claude/skills/overseer/`, **FLAT** —
+  there is NO `io/` subdirectory and no pure-versus-impure layer split.
+  Command: `ls .claude/skills/overseer/`.
+- **5 `raise`** statements (all in `supervisor.py`) and **37 `except`** handlers
+  (registry 11, supervisor 8, claude_sessions 6, codex_sessions 6, tmuxio 3,
+  jsonio 2, signals 1). Command:
+  `grep -c 'raise \|except ' .claude/skills/overseer/*.py`.
+- **Three of the five ROP checks currently scan ZERO files in core.**
+  `check-no-raise-outside-io`, `check-no-except-outside-io`, and
+  `check-public-api-result-typed` each log `"role key absent — check no-ops"` and
+  return 0, because `source_trees` and `io_trees` are both empty tuples.
+  `check-rop-pipeline-shape` and `check-supervisor-discipline` ARE active.
+  Command: `uv run python -c "from livespec_dev_tooling.config import load_config;
+  import pathlib; c = load_config(repo_root=pathlib.Path('.')); print(c.source_trees, c.io_trees)"`.
+
+  This is **already owned by the rop-sweep thread** as
+  `livespec-dev-tooling-cvz` ("`source_trees` undeclared → check scans ZERO files
+  in core + both Drivers"). Do NOT file a duplicate; it was checked before this
+  was written.
+
+### The ordering hazard — read before touching either side
+
+If `source_trees` is declared INCLUDING `.claude/skills/` before the overseer is
+refactored, core master goes RED immediately: 37 excepts and 5 raises in a tree
+with no `io/` to legalize them. That is textbook enforcement-before-adoption,
+which `.ai/ci-gate-discipline.md` names as the thing that creates revert-worthy
+breakage — "an enforcement check must not land at error severity before the
+rollout it asserts has completed."
+
+### Proposed split, relayed to `rop-sweep-fleet-policy` 2026-07-19 — AWAITING REPLY
+
+1. **Theirs (`livespec-dev-tooling-cvz`)**: declare core's `source_trees` /
+   `io_trees` so the three inert checks start scanning, but WITHOUT
+   `.claude/skills/` in the initial declaration — so their work does not block on
+   this thread.
+2. **Ours (Gate E)**: refactor the overseer to conform. For a flat host-tooling
+   folder that means first deciding whether it grows a real `io/` versus pure
+   split, or is declared an io tree wholesale. **That design call is the main
+   open question on this side**, and it was put to the rop-sweep thread in case
+   their ruling already answers it.
+3. **Either side, but ONLY AFTER (2) lands**: add `.claude/skills/` to
+   `source_trees`, so enforcement arrives after adoption rather than before.
+
+That session acknowledged the request and is measuring two things it says bear
+on the answer. **Encode whatever is agreed HERE and in their plan** — the
+maintainer asked for it in both, not one.
+
 ## Why this thread exists
 
 The `overseer-tmux-runtime-column` work (merged: PRs #1345, #1351 — now archived under
@@ -509,13 +493,17 @@ Proposed sequence (each its own small PR; Gate A first for the immediate win):
   I/O shell is `# pragma: no cover`d [Recommended — matches the product's io/ boundary
   discipline]; (b) a scoped per-file coverage threshold for the folder; (c) keep coverage
   out and enforce only lint+types+tests. Recommend (a).
-- **D2 — ROP railway for host-glue (Gate E).** Maintainer leans "treat it like
-  everything else" → put the overseer on the `Result`/`IOResult` railway with the fleet's
-  `reportUnusedCallResult`/`BLE` guardrails, the single outermost supervisor bug-catcher
-  boundary. Confirm scope: is the overseer "product logic" for the railway rule, or
-  host-glue like the `.claude/hooks/` footgun-guard (which is NOT on the railway)? The
-  spec's railway rule is fleet+adopter-wide for "first-party Python"; the overseer is
-  `.claude/skills/` host tooling. RESOLVE before Gate B/E work.
+- **D2 — ROP railway for host-glue (Gate E). ✅ RESOLVED 2026-07-19 by maintainer
+  ruling: `.claude/skills/` is IN SCOPE and follows the discipline — it is NOT
+  exempt.** The question put was whether to exclude `.claude/skills/` when core
+  declares `source_trees`. The answer was "DO NOT EXCLUDE IT, IT SHOULD FOLLOW
+  DISCIPLINE", with a direction to coordinate the responsibility split and
+  dependency ordering with the `rop-sweep-fleet-policy` session and encode the
+  result in BOTH plans.
+
+  **This session had recommended the opposite** (exempt it, on the
+  `.claude/hooks/` precedent) and was overruled. Do not resurrect the exemption
+  argument from the earlier text on this page; it is settled.
 - **D3 — does "inside the gates" change the LOCAL-ONLY status?** RESOLVED (no, by
   default): gate coverage (quality) is independent of distribution. The folder stays
   local-only in Phase 1. The AGENTS.md paragraph asserting "deliberately outside the
