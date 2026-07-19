@@ -1,4 +1,24 @@
-# rop-sweep-fleet-policy — RULING RATIFIED (v169). P0 rollout DONE. Dispatch still down; qm5 re-groomed
+# rop-sweep-fleet-policy — FLAT RULE RULED (broad-only). giq7 CLOSED. e9j is P0. Only `codex login` still blocks
+
+## ⚖️ FOUR MAINTAINER RULINGS — 2026-07-20. Do not re-litigate any of them.
+
+1. **The flat-package rule is BROAD-ONLY.** When a repo declares no `io_trees`,
+   `no_except_outside_io` flags `except Exception` / `except BaseException` / bare `except` only;
+   narrow typed catches PASS. This unblocked `qm5`, `cvz`, `6vz`, `e9j` AND the
+   overseer-productization thread's Gate E. Full ruling text — including what it does NOT
+   license — is on each of those four ledger items.
+2. **`livespec-dev-tooling-e9j` raised to P0.**
+3. **`livespec-giq7` CLOSED** on its journaled evidence. Ruled that the dual-review guard does
+   not gate a NO-DIFF rollout whose verification is re-runnable execution evidence. **Scoped
+   narrowly: the guard is undiminished for anything carrying a diff.**
+4. **Mutation sequencing: MEASURE BEFORE DECLARING.** Do not declare core's `pure_trees` until
+   core's real kill rate is known, measured inside `release-tag.yml`'s own harness.
+
+**`qm5` is unblocked** — moved `blocked` → `backlog`. It KEEPS `needs-regroom`: the rule is
+settled but its scope still needs re-cutting (its premise was falsified; see its ledger note).
+
+**The only remaining blocker is `codex login`.** Everything else in this thread is now
+groomable or implementable.
 
 **Read this whole file before acting.** The ROP ruling is SETTLED and RATIFIED — v169 is
 merged and live on master (livespec commit `2288197b`, PR #1424); the proposal is consumed
@@ -17,33 +37,38 @@ evidence.
    file read tells you for free.
 2. **If dispatch works:** land `bd-ib-47gr`, then run ONE combined dual review over
    `bd-ib-sw0i` + `bd-ib-47gr` (see HELD below — `sw0i` needs it on two counts).
-3. **If dispatch is still down:** everything factory-side is blocked — AND so are all four
-   dev-tooling gate items. **Do NOT start `qm5`, `cvz`, `6vz`, or `e9j`.** Every one of them
-   waits on the same unresolved flat-package rule (see THE OPEN DESIGN QUESTION). An earlier
-   version of this line pointed here as "the unblocked work"; that is no longer true, and
-   starting any of them risks doing remediation the ruling makes unnecessary — under
-   broad-only the fleet cost is 13 sites, under strict 109.
+3. **If dispatch is still down:** factory-side work is blocked, but the gate items are NOT —
+   the flat rule was ruled 2026-07-20 (broad-only), which unblocked all four. In rough order:
 
-   **What IS genuinely actionable with both blocks in place:** nothing in this thread's
-   critical path. The honest move is to surface the two maintainer decisions rather than
-   manufacture work. If you want useful non-blocking work, the measurement gaps named in
-   `e9j` are real: `check_mutation` has never been run under restored role keys (too slow for
-   the earlier pass), and only livespec core has been measured by EXECUTION — every other
-   repo's figure in the cost table is AST simulation.
+   - **`livespec-dev-tooling-e9j` (P0)** — the biggest. But per ruling 4, MEASURE core's
+     mutation kill rate inside `release-tag.yml`'s harness (with `uv sync --all-groups`) BEFORE
+     declaring `pure_trees`, or you arm a hard-fail at release 2 whose cause is one release
+     back.
+   - **The canonical-marker fix on `livespec-dev-tooling-bbl`** — rule-independent, was always
+     landable, ~1 string. Fixes 2 of the ~7 remaining broad sites fleet-wide.
+   - **`qm5` re-groom** — the rule is settled; its SCOPE still needs re-cutting (premise
+     falsified; must cover BOTH ROP except-checks, not just `no_except_outside_io`).
+   - **`cvz` / `6vz`** — both now have a settled rule to implement against.
 
-## STATE AS OF 2026-07-19 (this session)
+   Remaining honest measurement gap: only core and livespec-dev-tooling have EXECUTION-derived
+   figures; the Drivers are direct source inspection; every other cost-table row is AST
+   simulation validated once against core.
 
-- **`livespec-giq7` (P0) is DONE** — rolled out and live-exercised. See below.
+## STATE AS OF 2026-07-20
+
+- **`livespec-giq7` is CLOSED** — rolled out, live-exercised, and ruled not to require dual
+  review (no diff). See below for the evidence.
 - **`codex login` is STILL NOT DONE.** Verified by reading `~/.codex/auth.json`: `auth_mode`
   is `chatgpt` with NO `OPENAI_API_KEY` fallback, and the token expired **2026-07-09** — ten
   days stale. Dispatch is down. **Maintainer action required; outside agent reach.**
-- **`livespec-dev-tooling-qm5` is BLOCKED + `needs-regroom`** by maintainer decision. Its
-  premise was disproved. Nothing landed.
+- **`livespec-dev-tooling-qm5` is UNBLOCKED** (`backlog`) but KEEPS `needs-regroom`: the flat
+  rule that blocked it is ruled, its premise was disproved, and its scope still needs
+  re-cutting. Nothing landed.
 - **`livespec-dev-tooling-cvz` (P1) filed** — the third vacuous gate.
-- **`livespec-dev-tooling-e9j` (P1) filed** — the SYSTEMIC finding that supersedes `cvz`: role-key
+- **`livespec-dev-tooling-e9j` is P0** — the SYSTEMIC finding that supersedes `cvz`: role-key
   non-declaration silently disarms SEVEN checks fleet-wide, four of which have never enforced
-  anything in any repo. Core runs 5+ structural gates vacuous while CI reports them green.
-  Flagged for possible P0. See the vacuous-gates section below.
+  anything in any repo. Core runs 5+ structural gates vacuous while CI reports them green, and
+  the RELEASE gate's mutation testing is vacuous too. Raised to P0 2026-07-20.
 
 Nothing is running: no dispatches, no monitors, no sub-agents. The `rop-drain` tmux socket
 is empty.
@@ -76,10 +101,9 @@ unscoped kill-server → **deny**; `env -i sh -lc` wrapper evasion → **deny**;
 No repo was dirtied: `claude plugin update` did NOT rewrite any committed
 `.claude/settings.json` (unlike `install`/`uninstall`, which core's CLAUDE.md warns does).
 
-The one residual is the other session's worktree above. **`giq7` is left OPEN pending a
-maintainer call on whether the dual-review guard applies to a no-diff rollout** — there is no
-diff to review, only host state, which a reviewer can re-verify by re-running the hash and
-payload checks recorded in its ledger note.
+The one residual is the other session's worktree above. **`giq7` was CLOSED 2026-07-20**: ruled
+that the dual-review guard does not gate a no-diff rollout whose verification is re-runnable
+execution evidence. Scoped narrowly — the guard is undiminished for anything carrying a diff.
 
 **Gotcha worth keeping:** the guard blocks its own evidence journaling. A `bd note` whose
 TEXT quotes hazardous command strings is denied, because the hook matches its hint regex over
@@ -88,12 +112,12 @@ one. Workaround: write the note to a file and pass `bd note <id> "$(cat <file>)"
 false-positive workaround on documentation text, not an evasion — `bd note` cannot kill a
 tmux server. Do NOT loosen the regex; the failure direction is the safe one.
 
-## ⛔ BLOCKED ON THE MAINTAINER
+## ⛔ BLOCKED ON THE MAINTAINER — ONE item, down from two
 
 1. **`codex login` on the orchestrator host** — see STATE above. Factory dispatch is down.
-2. **The flat-package rule for `no_except_outside_io`** — the blocking design question for
-   both `qm5` and `cvz`. Stated in full in qm5's ledger note; summarized under THREE VACUOUS
-   GATES below.
+   This is now the ONLY maintainer blocker in this thread.
+2. ~~The flat-package rule~~ — **RULED 2026-07-20: broad-only.** See the four rulings at the
+   top.
 
 ## ⛔ Guards
 - **DO NOT run `groom livespec-y2lkf4`** (the EPIC). Already decomposed; individual-child
@@ -208,14 +232,14 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 
 | Item | Repo | Pri | What |
 |---|---|---|---|
-| `livespec-giq7` | livespec | P0 | **Rolled out + exercised.** Open only pending the dual-review call on a no-diff rollout |
+| ~~`livespec-giq7`~~ | livespec | — | **CLOSED 2026-07-20.** Rolled out, live-exercised, ruled not to need dual review (no diff) |
 | `bd-ib-47gr` | livespec-orchestrator-beads-fabro | P1 | Shared-journal deletion; ready, blocked on credential |
-| `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **BLOCKED + `needs-regroom`.** Premise falsified — see below |
+| `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **UNBLOCKED** (`backlog`), still `needs-regroom` — premise falsified, scope needs re-cutting |
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
-| `livespec-dev-tooling-e9j` | livespec-dev-tooling | P1 | **NEW, and the superset of `cvz`.** Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. **Consider P0** |
+| `livespec-dev-tooling-e9j` | livespec-dev-tooling | **P0** | Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. Raised to P0 2026-07-20. Superset of `cvz` |
 | `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Blast radius is beads-fabro (47 sites), NOT git-jsonl (2) as its brief says.** Hinges on the same unresolved flat-package rule as qm5 |
 | `livespec-dev-tooling-jjb` | livespec-dev-tooling | P2 | Mechanize cardinality + marker wording (the ratified spec says these are review-enforced today) |
-| `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Make the canonical no-shadow-ledger body type-checkable so both Drivers drop pyright carve-outs |
+| `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Canonical no-shadow-ledger body: type-checkable + **the non-conforming ROP marker (rule-independent, landable NOW, fixes 2 of ~7 remaining broad sites)** |
 
 ## NOT "TWO VACUOUS GATES" — SEVEN CHECKS ACROSS FIVE ROLE KEYS
 
@@ -342,7 +366,7 @@ Driver coverage.
   `6vz`'s does. **Fixing `6vz` alone immediately reddens beads-fabro with 47 findings.** The
   warn-tier severity lever its brief already sanctions is likely required, not optional.
 
-## THE OPEN DESIGN QUESTION — blocks `qm5`, `cvz`, `6vz`, `e9j`, AND the overseer thread's Gate E
+## THE FLAT-PACKAGE RULE — RULED 2026-07-20: BROAD-ONLY (kept for the reasoning and the numbers)
 
 **v169 ratified "narrow at the seam; broad only at the boundary." But
 `no_except_outside_io` bans ALL `try/except` outside `io/`, narrow included.** That is coherent
