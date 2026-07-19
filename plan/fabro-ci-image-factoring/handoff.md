@@ -166,7 +166,180 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 10 (written 2026-07-19 at session end)
+## ▶▶ START HERE — cont. 11 (written 2026-07-19/20 at session end)
+
+**Read the STOP block above first** — local self-hosted runners are still DEFERRED
+until new hardware, and nothing in this section changes that. Then read this.
+Everything below it, including cont. 10, is prior trail.
+
+### The one-line state
+
+cont. 10's priority item `livespec-dev-tooling-a46` is **designed, measured,
+maintainer-approved, and half-landed**. The spec half is merged-or-merging; the
+implementation half is in flight. **Your job is to finish the cut-over — and the
+dangerous part is the SEQUENCING, not the building.**
+
+### What the measurement actually showed, and why it changes the plan
+
+`a46` said "94% of the image is payload CI never uses." That number conflated two
+different things, and separating them is what makes this actionable. Measured by
+comparing the published `base-v0.50.3` manifest against `buildpack-deps:noble`'s
+own manifest — **the first four layer digests match byte-for-byte**, so the
+inherited-vs-ours split is certain rather than inferred:
+
+| Segment | Compressed | CI uses it? |
+|---|---|---|
+| ubuntu:noble rootfs | 29.7 MB | yes |
+| buildpack-deps curl + scm | 61.4 MB | yes (git, curl) |
+| buildpack-deps full dev headers | 185.5 MB | only native wheel builds |
+| bubblewrap | 0.3 MB | **no** — codex-acp only |
+| mise | 30.7 MB | yes |
+| just / lefthook / node / gh | 82.7 MB | yes |
+| `@agentclientprotocol/claude-agent-acp` | 165.9 MB | **no** |
+| `@zed-industries/codex-acp` | 150.4 MB | **no** |
+| git config + step-timer | ~0 MB | yes |
+
+Two independent levers, not one:
+
+1. **Agent-only payload — 316.6 MB, 45% of base, RISK-FREE.** This is `a46`.
+   `python-` 751 → 435 MB (−42%) for seven fleet repos; `python-rust-`
+   975 → 658 MB (−32%) for the console.
+2. **buildpack-deps dev headers — 185.5 MB, RISKY.** Split out as
+   **`livespec-dev-tooling-oik`** (P3, `blocks`-linked behind `a46`) so a
+   native-wheel regression can never be confused with the layer restructure. Its
+   validation bar is a full `just check` across the FLEET, not one repo's green.
+
+### The design, and the flaw in the work item's version of it
+
+`a46` proposed `base → agent` as a **sibling** of `base → python`. **That cannot
+work** — the Fabro sandbox needs Python AND the adapters, and a branch supplies
+only one. The agent payload goes ON TOP:
+
+```
+base                       (toolchain only — NO agent payload)
+ ├─ python                 (uv + CPython)                  ← CI
+ │   └─ python-agent       (bwrap + both ACP adapters)     ← Fabro: orchestrator
+ └─ python-rust            (+ Rust)                        ← CI (console)
+     └─ python-rust-agent  (bwrap + both ACP adapters)     ← Fabro: console
+```
+
+ONE new Dockerfile built TWICE with different `PARENT_IMAGE`. CI and the sandbox
+still share byte-identical toolchain layers, so the epic's "same image" guarantee
+holds — **a layer restructure, not a separate slim CI image.**
+
+Maintainer chose (picker, 2026-07-19) "slim `python`, new `python-agent`" over
+"keep `python` full, add slim `python-ci`": honest naming, accepting the hazardous
+direction plus the mitigation below.
+
+### ⚠ THE HAZARD — read this before touching any pin
+
+**The cross-repo pin fan-out PRESERVES the tag prefix when it bumps.** Exactly two
+repos pin the sandbox image for Fabro: `livespec-orchestrator-beads-fabro`
+(`python-`) and `livespec-console-beads-fabro` (`python-rust-`).
+
+If a `livespec-dev-tooling` **release** fires before those two pins carry the
+`-agent-` prefix, the fan-out bumps them onto an **adapter-less image**. Verified
+failure modes, not assumed:
+
+- **Claude runs degrade QUIETLY.** `acp_adapter = "npx -y
+  @agentclientprotocol/claude-agent-acp"` (orchestrator `workflow.toml:104`) is
+  version-less with `-y`, so npx simply **re-downloads the adapter at runtime** —
+  silently reintroducing the exact per-run live-work tax this epic exists to kill.
+- **Codex runs fail LOUDLY**, on missing bubblewrap (a hard codex-acp requirement,
+  and `npx` cannot install an apt package).
+
+**SEQUENCING THAT DEFUSES IT — this uses the release gate as the safety mechanism
+rather than fighting it:**
+
+1. Land the dev-tooling implementation PR with a **`refactor(ci):`** subject.
+   `refactor:` **cuts no release**, so **no fan-out fires** and both consumers stay
+   untouched. The master push still publishes `python-agent-sha-<short>` and
+   `python-rust-agent-sha-<short>` — real, immutable, pullable tags.
+2. Migrate both consumers' Fabro pins to those **sha** tags. Live-exercise a real
+   factory dispatch on each (per the repo's "done means rolled out and exercised
+   live" rule). Land the guard check below.
+3. **Only then** cut a dev-tooling release. The fan-out now preserves the correct
+   `python-agent-` prefix by construction, forever.
+
+**The `refactor(ci):` subject is load-bearing, not stylistic. Do not "fix" it to
+`fix:`.**
+
+**GUARD CHECK to build in step 2:** assert every `.fabro/workflows/*/workflow.toml`
+docker pin uses an `-agent-` prefixed tag. Per the No-Circular-Dependency
+Directive it MUST run **consumer-side** — dev-tooling ships the check code as a
+fleet-universal canonical check and each repo runs it on its own tree; dev-tooling
+must never read INTO a consumer. This converts the silent hazard into a hard CI
+failure in the repo that owns the pin.
+
+### State of play — what is landed vs in flight
+
+| Piece | State |
+|---|---|
+| Spec amendment (`CODEX_ACP_VERSION` ARG home → agent layer), revision **v028** | ✅ **MERGED** — PR [#481](https://github.com/thewoolleyman/livespec-dev-tooling/pull/481) in `livespec-dev-tooling`, full CI green. Independent Fable review: **NO BLOCKERS** |
+| Implementation (new `agent/Dockerfile`, 2 extra build steps, `_CODEX_ACP_DOCKERFILE` move, stale-prose sweep) | **IN FLIGHT** in `livespec-dev-tooling` when this was written — verify against `gh pr list` before assuming anything |
+| Consumer pin migration ×2 + live exercise + guard check | **NOT STARTED** — this is step 2 above, and it is your main remaining work |
+| `livespec-dev-tooling-oik` (buildpack-deps re-base) | **FILED**, blocked behind `a46` |
+| `livespec-dev-tooling-ql1` (third ACP adapter unbaked/unpinned) | **FILED** — see below |
+
+**Verify the implementation PR's state yourself** (`gh pr list --repo
+thewoolleyman/livespec-dev-tooling`) rather than trusting this table. It was
+dispatched to a sub-agent and had not reported when this handoff was written. The
+single most important check on it is the **`Fabro sandbox image`** workflow: on a
+pull_request it builds the whole chain into an ephemeral `localhost:5000` registry,
+which is what proves all five layers still build and that the `FROM`-by-digest
+threading is right.
+
+### A real defect found on the way — `livespec-dev-tooling-ql1` (P2)
+
+Verifying the hazard above turned up something unrelated and worse. The
+orchestrator's Fabro `workflow.toml` declares **three** adapter commands, and the
+image bakes only **two**:
+
+```
+line 104  acp_adapter    = "npx -y @agentclientprotocol/claude-agent-acp"
+line 117  review_adapter = "... npx -y @zed-industries/claude-code-acp@latest"
+```
+
+`@zed-industries/claude-code-acp` is a **distinct package** and appears **nowhere**
+in `livespec-dev-tooling` (verified by ripgrep). So the review node npx-fetches it
+every run — **and it is pinned to `@latest`**, meaning that agent runtime can change
+under the fleet with no commit, no PR, and no gate. Its sibling `codex-acp` has an
+entire contract surface preventing exactly that, down to a live factory gate.
+
+**The asymmetry is invisible from either repo alone**, which is why it survived: the
+Dockerfile looks complete because it bakes "the adapters", and the `workflow.toml`
+looks consistent because all three lines are `npx`. Only reading them together
+shows the third package. The fix rides naturally on `a46`'s new agent layer — one
+more `RUN` line plus a version ARG. **Verify the review node is actually exercised
+before treating it as urgent**; it was found by reading configuration, not by
+observing a run.
+
+### Side findings, logged not chased
+
+- `livespec-runtime` is pinned at `python-v0.43.2` and `livespec-orchestrator-git-jsonl`
+  at `python-v0.50.0`, while the fleet is at `v0.50.3`.
+- `livespec-dev-tooling/ci-runner/warm-ci-cache.sh` hardcodes `python-rust-v0.48.2`
+  and sits **outside** the autodiscovery walk (which scans only `.github/workflows`
+  and `.fabro/workflows`), so it drifts silently.
+- `openbrain` pins the unprefixed pre-split `sha-ea684ad`;
+  `rewrite_layered_docker_tag` documents that an unprefixed tag rewrites to a
+  **bare** `vX.Y.Z`, which the layered build no longer publishes. Latent break, not
+  yet confirmed — and it compounds with `ob-4oku` (cont. 10, item 4 below).
+
+### Still open from cont. 10, unchanged
+
+Items 2–4 of cont. 10's "Then, in order" list are untouched by this session and
+remain live: `livespec-3lev.1` (build the CPU-saturation trigger **and** close the
+observability gap — CI-runner job containers are invisible to `docker_stats`
+because they run under rootless podman while the receiver watches the rootful
+socket), `livespec-3lev.3` bookkeeping (the stale "~18 runner slots" text; SETTLED
+as 6×8=48 deliberate), and the **`livespec-3lev.7` adopter-policy maintainer
+decision**, which is still unanswered and still must be asked with a picker rather
+than self-resolved.
+
+---
+
+## ▶▶ START HERE — cont. 10 (written 2026-07-19 at session end — superseded by cont. 11 above)
 
 **Read the STOP block above first.** Then this. Everything below this section is
 prior trail — accurate, but long; you do not need it to start.
