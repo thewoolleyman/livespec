@@ -310,6 +310,42 @@ broad catches in ordinary helpers guarding a local advisory cache.
 `check-no-except-outside-io` is already live in dev-tooling's own justfile (221/630), so landing
 `qm5` as written turns THIS repo's `just check` red — the Green commit cannot even be made.
 
+### The cost of each rule, measured fleet-wide
+
+Except handlers OUTSIDE each repo's DECLARED io trees. Both columns are UPPER BOUNDS — they do
+not subtract `supervisor_entry_files` / `commands_trees` `main()` exemptions, which shrink the
+BROAD column most.
+
+| repo / tree | BROAD | NARROW | total |
+|---|---|---|---|
+| livespec (core, main tree) | 0 | 3 | 3 |
+| livespec (`.claude/skills/`) | 1 | 35 | 36 |
+| livespec-dev-tooling | 4 | 34 | 38 |
+| **livespec-driver-claude** | **4** | 5 | 9 |
+| **livespec-driver-codex** | **4** | 10 | 14 |
+| livespec-orchestrator-git-jsonl | 0 | 3 | 3 |
+| livespec-orchestrator-beads-fabro | 0 | 6 | 6 |
+| **FLEET TOTAL** | **13** | **96** | **109** |
+
+**Broad-only costs 13 sites. Strict costs 109.** Roughly an 8x difference in remediation scope.
+
+The BROAD column is precisely the target of this sweep: **both Drivers carry exactly 4 broad
+catches each — 8 of the 13 fleet-wide** — and those are the hand-rolled blanket lifts the ROP
+ruling was written to close. Broad-only catches every one while leaving the Drivers' 15 combined
+narrow seam catches alone. dev-tooling's 4 are 2 declarable fail-open hook boundaries plus 2
+genuine violations in `green_token.py`; the overseer's 1 is `supervisor.py`.
+
+Method and its limits, stated plainly: these are AST measurements. The same simulator was
+VALIDATED against real execution on core — it predicted core's 3 offenses with exact file and
+line agreement before the checks were run for real (see `e9j`) — but the other rows are
+simulation-only. `_vendor/` excluded throughout.
+
+**The two Driver repos do NOT share a hook tree path** — `livespec-driver-claude` uses
+`.claude-plugin/hooks/`, `livespec-driver-codex` uses `livespec/hooks/`. Assuming a common path
+initially produced a false ZERO for driver-codex in this very table. Any change declaring
+`source_trees` per repo must read each repo's real layout; a wrong path yields a silent zero,
+not an error.
+
 **Agent recommendation (NOT yet ruled on):** flag BROAD catches only in the flat branch. It still
 catches the Driver drift `qm5` targets (blanket `except Exception` marked `# noqa: BLE001`, and
 BLE001 IS the blind-except rule) without banning the sanctioned narrow form, and reddens
