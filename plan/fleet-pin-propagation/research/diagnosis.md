@@ -117,7 +117,46 @@ The stamp invalidates on **any** `compat.pinned` change, but the capture only
 goes stale when the **orchestrator's declared key set** changes. Narrowing
 the invalidation trigger to what the fixture actually depends on would stop
 core releases from touching this gate at all — which is the majority of the
-backlog. That is a design decision this thread owes, not a settled one.
+backlog. ~~That is a design decision this thread owes, not a settled one.~~
+
+**SETTLED BY EVIDENCE 2026-07-19** (struck above; the reasoning stands, the
+"unsettled" verdict does not). The sharper statement of the defect: **the stamp
+is keyed to the wrong artifact's version.**
+
+- `captured_at_pin` derives from `.livespec.jsonc` `compat.pinned` — the
+  **core (`livespec`)** version.
+- The fixture's *content* is the orchestrator's declared config-key manifest,
+  emitted by `livespec-orchestrator-beads-fabro`'s drive surface. That is a
+  **different repo on a different version line** — its own tags run `v0.9.x`,
+  nothing resembling `v0.16`–`v0.18`.
+
+Measured in `/data/projects/livespec-orchestrator-beads-fabro` at
+`origin/master`: exactly two non-test modules feed the manifest, and their
+complete histories are
+
+| Module | Commits | What they were |
+|---|---|---|
+| `commands/_drive_config_schema.py` (the key-set source) | **1** | `f43a80a` creation |
+| `commands/_drive_config.py` | **2** | `f43a80a` creation, `8858c90` error-handling refactor |
+
+**The fixture's real dependency has not changed since creation. The stamp
+invalidated 13 times.** So this is not a choice between two defensible options —
+one side has zero supporting instances. Every one of those 13 PRs was blocked by
+a staleness signal carrying no information about whether the fixture was stale.
+
+Two things this does **not** license:
+
+- The **(b)-class residual remains**. When the key set genuinely *does* change,
+  refreshing still needs the live orchestrator drive surface plus credentials,
+  which an automated fan-out push lacks. Narrowing the trigger shrinks the
+  problem to its real cases; it does not remove it.
+- **The claim's scope is the commit history of the emitting modules**, not a
+  semantic diff of the emitted JSON at each of the 13 core tags. A key-set change
+  smuggled in via a dependency of those modules would not show up in this
+  evidence. Before implementing, emit the manifest at the old and new pins and
+  diff the key sets directly — a cheap confirming step.
+
+Full working recorded on `livespec-console-beads-fabro-tafkuw`.
 
 ## The classification axis that decides each fix
 
