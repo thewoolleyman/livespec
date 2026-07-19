@@ -86,7 +86,157 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-18
+## ▶ START HERE — updated 2026-07-19 (cont. 7)
+
+## ▶▶ ACTIVE EXECUTION PLAN — cont. 7 (2026-07-19): the two released follow-ups
+
+**The maintainer RELEASED both previously-gated follow-ups on 2026-07-19**, so the
+"MAINTAINER-owned / do NOT self-start" wording everywhere below is SUPERSEDED for
+these two items only. Everything else below remains prior trail.
+
+Two independent tracks. They touch DIFFERENT repos and share no files, so they may
+run concurrently; within a track the steps are strictly ordered.
+
+**Notation used in this section:** a step marked `[ ]` is not started, `[x]` is
+landed on master. "Verified" means a fact was re-derived from committed state in
+this session, not carried over from an earlier note.
+
+---
+
+### Track A — orchestrator `gh` hermeticity, then the baked-image cutover
+
+Repo: **`livespec-orchestrator-beads-fabro`** (the orchestrator plugin — NOT
+`livespec-console-beads-fabro`, the operator console).
+
+**Verified 2026-07-19 against `origin/master`, not assumed:**
+- The fix has **NOT** landed. `ShellCommandRunner.run` in
+  `.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_io.py`
+  still passes `exceptions=(subprocess.TimeoutExpired,)` and maps only that to
+  `exit_code=124`. There is no `FileNotFoundError` handling and nothing maps to 127.
+- The repo is on **plain GitHub-hosted**: every `runs-on:` in
+  `.github/workflows/ci.yml` is a bare `ubuntu-latest`, there is **no `container:`
+  block**, and the **`merge_group:` trigger is still present** (line ~40).
+- The repo's own beads tenant has **no open work-item** for this.
+
+**The bug, in one sentence:** the dispatcher's post-verdict self-update is
+documented FAIL-OPEN (the `0jxs` invariant — it may never change a verdict or crash
+the dispatch), but when the `gh` executable is ABSENT `subprocess.run` raises
+`FileNotFoundError`, which the `attempt(...)` wrapper does not catch, so it
+propagates and crashes the dispatch instead of degrading. A `gh` that RUNS and
+FAILS already degrades correctly; only a MISSING `gh` crashes. In the baked image
+`gh` is a mise shim off the step PATH, which is why this is latent on plain hosted
+(`gh` at `/usr/bin/gh`) and fatal in-container — it must be fixed BEFORE the
+cutover, not after.
+
+- [ ] **A1.** File a work-item in the `livespec-orchestrator-beads-fabro` tenant
+  describing the fail-open violation, so the track is ledger-anchored rather than
+  living only in this document.
+- [ ] **A2.** Production fix, Red-Green-Replay ritual (product `.py`): add
+  `FileNotFoundError` to the caught exceptions and map it to
+  `CommandResult(exit_code=127, stderr="executable not found: …")` — 127 is the
+  POSIX "command not found" convention and callers already treat any non-zero as
+  failure. `TimeoutExpired`→124 stays unchanged. This routes gh-absent through the
+  SAME `() → skip self-update` path as gh-error, restoring `0jxs`. Red stages
+  exactly ONE test file asserting the call returns 127 and does not raise.
+- [ ] **A3.** Make the ~30 dispatcher integration tests hermetic at the Green amend:
+  inject a fake runner through a SHARED seam (`self_update_after_verdict` already
+  takes an injectable `runner`; `main` / `run_dispatch_command` / `run_loop_command`
+  build the real one), and cover every `gh` path — success, non-zero (255), and
+  absent (127) — with focused tests. **Not** a blanket always-succeeds stub: the
+  maintainer was explicit that real `gh` calls have value and the fix is robustness,
+  not hiding. Coverage stays at 100; no gate weakened, no test skipped.
+- [ ] **A4.** PR → auto-merge → **verify the MASTER run**, not just the PR. In this
+  fleet a PR's green does not prove a cutover; the post-merge master run is the
+  live-exercise evidence.
+- [ ] **A5.** Re-apply the cutover as a SEPARATE PR: baked `container:` image at the
+  CURRENT sandbox tag, the flippable
+  `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}`,
+  the `git config --global --add safe.directory '*'` step after `actions/checkout`
+  in every container job, and drop the dead `merge_group:` trigger. Watch GOTCHA #4
+  (a job that already has an `env:` block gets a DUPLICATE `env:` key that
+  `yaml.safe_load` hides and GitHub rejects with zero jobs) — validate with a
+  duplicate-key-STRICT loader.
+
+**The trust-tier gate is NOT spent by this plan, deliberately.** The gate exists
+because this repo hosts the PRIVILEGED on-demand gate-runner, so giving it a
+contained `local-ci` lane would put two trust tiers on one repo's runners. The
+cutover's actual payload is the BAKED IMAGE, which delivers the epic's headline
+("CI runs the same image the Fabro sandbox uses") perfectly well on GitHub-hosted —
+that is exactly what the other 7 repos do today. So A5 registers **NO self-hosted
+runners** and leaves `CI_RUNNER_LABELS` pointed at hosted, keeping this repo at its
+current **0 registered runners**. The two-tier question therefore becomes real only
+on a future flip-back, and is flagged there rather than silently decided here.
+
+---
+
+### Track B — `xb7`: teach pin autodiscovery the `ci.yml` image tag
+
+Repos: **`livespec-dev-tooling`** (the fix), then a fan-out over every cut-over repo.
+
+**The problem:** the `container: image:` tag in each consumer's
+`.github/workflows/ci.yml` is a pin that bump-pin autodiscovery cannot see, so the
+release fan-out never rewrites it and it rots. CI and the Fabro sandbox drift apart,
+which defeats the sentence this epic exists to deliver. The drift is **LATENT** —
+the CI-relevant toolchain is identical across the drifted tags — so this is "stop the
+rot", not an emergency. **Do NOT hand-bump the repos as a workaround**; a manual bump
+re-rots on the next release, which IS the bug.
+
+**Ordering deviation from the earlier scoping, deliberate.** cont. 4 scoped this
+code-first (add the scan, then amend the contract). That is backwards.
+`SPECIFICATION/contracts.md` §"Pin autodiscovery rules" in `livespec-dev-tooling`
+currently defines the fabro-sandbox format as scanning ONLY the `docker =` line in
+Fabro `workflow.toml` files, and separately scopes `.github/workflows/*.yml` to
+`uses:` refs alone. Landing the scan first would ship code that CONTRADICTS the live
+contract. Spec-leads-implementation is the normal direction and the one gap-detection
+exists to handle, so the spec cycle runs FIRST.
+
+- [ ] **B1.** `/livespec:propose-change` against `livespec-dev-tooling`'s
+  `SPECIFICATION/contracts.md` §"Pin autodiscovery rules", extending the
+  **fabro-sandbox docker image tag** bullet to ALSO cover the
+  `container: image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:<tag>` line in
+  `.github/workflows/*.yml`. The amendment must state that a single repo may now
+  yield MULTIPLE records sharing one `pin_key` (the image reference without the tag)
+  distinguished by `file_path`, since the normalized record is
+  `(pin_format, file_path, pin_key, current_value)`. Enumerate that spec-target's
+  own `proposed_changes/` queue first — if a pending proposal already covers this,
+  revise it rather than filing a duplicate.
+- [ ] **B2.** Independent **Fable-model** adversarial review, READ-ONLY, before any
+  ratification — required for every proposed change in every fleet repo. A
+  NO-BLOCKERS verdict is a precondition; a blocker routes to the maintainer with a
+  recommended fix and is never self-waived.
+- [ ] **B3.** `/livespec:revise` to ratify. If the `## ` heading set changes,
+  co-edit `tests/heading-coverage.json` in the same payload (it should NOT change
+  here — this amends prose within an existing section).
+- [ ] **B4.** Implement, Red-Green-Replay ritual: add a
+  `walk_github_workflow_container_image` scan to
+  `livespec_dev_tooling/cross_repo/_pin_directory_scan_formats.py` mirroring
+  `walk_github_workflow_uses`, with the regex scoped to the
+  `livespec-fabro-sandbox` image so no unrelated `container: image:` is captured;
+  emit `pin_format=fabro_sandbox_docker_image` so the EXISTING prefix-preserving
+  `fabro_image_pin_rewrite` reconciles it unchanged (it already rewrites only
+  `vX.Y.Z` and preserves the `python-` / `python-rust-` prefix the layer split
+  depends on); wire it into `pin_autodiscovery.discover()`. Source repo stays
+  HARDCODED to `livespec-dev-tooling`, as the existing format does.
+- [ ] **B5.** One fan-out reconciles every cut-over repo's `ci.yml` tag, after which
+  the surface stays reconciled automatically. Verify by re-running discovery against
+  a live clone and confirming the previously-invisible pin is now found.
+
+**Not a No-Circular-Dependency violation.** bump-pin is the fan-out tool and ALREADY
+scans consumers' `.github/workflows/*.yml` (`uses:`) and their `workflow.toml`
+(`docker =`). This is the same producer-rewrites-consumer-pin pattern on one more
+line of a file it already reads — it adds no new upstream-reads-downstream edge.
+
+---
+
+### Sequencing risk
+
+The account's weekly usage limit resets **2026-07-21 02:00 Europe/Berlin**. Both
+tracks are therefore cut into INDEPENDENTLY LANDABLE steps: no step leaves
+half-applied cross-repo state, and the fan-out (B5) is last precisely because it is
+the only step that touches many repos at once. If work is curtailed mid-track, the
+checkboxes above record exactly where to resume.
+
+---
 
 > **⚡⚡ RESOLVED 2026-07-18 (cont. 4) — fleet CI is BACK ON GITHUB-HOSTED and GREEN across ALL 8 repos. This SUPERSEDES cont. 3's "reverted to self-hosted" state AND the WIND-DOWN NOTE's open actions (this file is now committed; PR #1335 was already closed).** The maintainer directed getting jobs back on GitHub-hosted as the top priority. The blocker that forced cont.3's revert was ROOT-CAUSED and FIXED — it was NOT shallow-history/missing-hooks as cont.3 guessed (`fetch-depth: 0` and the in-job hook-install step were already present). The REAL cause: the baked `container:` runs git **as ROOT over a uid-1001 checkout**, so every git call AFTER `actions/checkout` fails `fatal: detected dubious ownership` (exit 128) — reddening `check-red-green-replay`, `check-commit-pairs-source-and-test`, `check-primary-checkout-commit-refuse-hook-installed`, and every `resolve_repo_root()`-based check (`check-comment-line-anchors`, `check-partition-completeness`, `check-check-coverage-incremental`). `actions/checkout`'s own `safe.directory` is scoped to a TEMP HOME it discards in Post Checkout, AND `livespec_dev_tooling/config.py:resolve_repo_root()` strips all `GIT_*` env before shelling git (so an env-var `GIT_CONFIG_*` safe.directory is invisible to it — an env-var attempt was TRIED and caught failing on the pilot).
 > **THE FIX (proven, fleet-wide): a step `git config --global --add safe.directory '*'` after `actions/checkout` in EVERY container job** — writes to `$HOME/.gitconfig` (HOME=/github/home is preserved across the GIT_* scrub), so every git call, scrubbed or not, reads it. No-op on non-container `ubuntu-latest` jobs; inert on the self-hosted lane. Landed:
