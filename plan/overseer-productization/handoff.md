@@ -1,7 +1,9 @@
 # Plan — overseer-productization
 
-**Owning session:** livespec core, "overseer-productization". **Status:** OPEN,
-EXECUTING Phase 1.
+**Owning session:** livespec core, "overseer-productization". **Status:** OPEN —
+**Phase 1 COMPLETE; Phase 2 committed and anchored to epic `livespec-b1uo`.**
+**Ledger anchor (Phase 2):** epic `livespec-b1uo` (livespec CORE tenant), five
+children. Status is READ from the ledger, never stored here.
 **Decision (maintainer 2026-07-18):** *Gate now, ship as Phase 2.* Bring the overseer
 fully inside the product gates as a first-class LOCAL module (Phase 1), then design
 host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of Phase 2.
@@ -19,9 +21,12 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 **Phase 1 is effectively complete.** Gates A, C, D, and B are merged and
 live-exercised. Gate E needs no code: the ruling landed broad-only and the
 overseer already conforms (verified mechanically — see §"Gate E"). All that is
-left is a role-key declaration that must wait on the rop-sweep thread's `cvz`,
-so **Phase 2's deferred decisions (D4/D5/D6) are now the live question** for
-whoever picks this up.
+left is a role-key declaration that must wait on the rop-sweep thread's `cvz`.
+
+**Phase 2 is now the live work**: all three of its decisions (D4/D5/D6) were
+resolved on 2026-07-19 and it is anchored to epic `livespec-b1uo` with five
+children. Start at `livespec-b1uo.1` — it is foundational and the two Driver
+bindings have nothing to bind to until it lands.
 
 # ✅ Gate B — DONE (was blocked all of 2026-07-19; the blocker is gone)
 
@@ -727,15 +732,56 @@ Goal: an adopter with a fleet manifest can run the overseer. Architecturally pla
   ship the overseer as a tool adopters-as-families MAY run. Recommend deciding this
   early — it gates the whole Phase 2 shape.
 
-### OPEN DECISIONS (Phase 2 — deferred until Phase 1 lands)
+### ✅ ALL THREE PHASE 2 DECISIONS RESOLVED (maintainer, 2026-07-19)
 
-- **D4 — portability target.** "Linux+tmux only, declared requirement" vs. abstract the
-  host boundary for macOS/other. Recommend declared-requirement first (the fleet is
-  Linux+tmux), abstract later if an adopter needs it.
-- **D5 — manifest boundary** (functional shipped contract vs. fleet-self-application).
-- **D6 — anchor a ledger epic?** Phase 2 is multi-repo (CORE + both Drivers) → an epic
-  with per-repo work-items + cross-repo links is the right shape IF Phase 2 proceeds.
-  Phase 1 is single-repo/local and can run as this plan thread without an epic.
+**Phase 2 is COMMITTED and anchored to epic `livespec-b1uo`** (livespec CORE
+tenant), with five children filed. Status is READ from the ledger, never stored
+here.
+
+- **D4 — portability. RESOLVED: Linux + tmux is a DECLARED REQUIREMENT.** Do not
+  abstract the host boundary; that option was considered and rejected as
+  speculative generality. Measured coupling: `claude_sessions.py` reads
+  `/proc/<pid>/stat` (macOS has no `/proc` AT ALL — this is absent, not merely
+  different), all six product modules touch tmux, and it reads
+  `~/.claude/sessions/<pid>.json` plus Codex rollout files. → `livespec-b1uo.2`.
+- **D5 — manifest boundary. RESOLVED: stays FLEET-SELF-APPLICATION.** A shipped
+  overseer MUST NOT depend on `.livespec-fleet-manifest.jsonc` as a functional
+  contract. `non-functional-requirements.md:205` binds that machinery to "the
+  livespec fleet, its adopters, and the reference orchestrators, never a
+  third-party `livespec` consumer or the `/livespec:*` plugin skills core ships"
+  — shipped code reading it would cross that line and need a spec amendment. An
+  adopter FAMILY may still run it against its own manifest, which the spec
+  already contemplates ("an adopter MAY be a fleet itself"). → `livespec-b1uo.3`.
+- **D6 — RESOLVED: drive it now as an epic.** This overrode the recommendation
+  to park Phase 2 until an adopter asked.
+
+### Phase 2 work breakdown — epic `livespec-b1uo`
+
+| Item | Repo | What |
+|---|---|---|
+| `livespec-b1uo.1` | livespec (core) | Relocate the overseer to the shipped plugin surface. **Foundational** — 4 and 5 have nothing to bind to until it lands |
+| `livespec-b1uo.2` | livespec (core) | Declare + enforce the Linux/tmux precondition (D4) |
+| `livespec-b1uo.3` | livespec (core) | Decouple the shipped overseer from the fleet manifest (D5) |
+| `livespec-b1uo.4` | `livespec-driver-claude` | Thin Claude binding |
+| `livespec-b1uo.5` | `livespec-driver-codex` | Thin Codex binding; follows `.4` so the shape is settled once, not twice |
+
+### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
+
+The epic spans three repos, so the instinct is per-tenant items linked by
+cross-tenant `sibling_work_item` refs. **Do not.** Those refs resolve through
+`.livespec.jsonc`'s `cross_repo_targets`, which is DUAL-PURPOSE: it is also the
+input to `doctor-wiring-completeness-cross-repo`, which demands every listed
+sibling wire all 53 canonical PYTHON check slugs. Registering a repo for a
+PLANNING purpose silently enrols it in a CODE-CONFORMANCE check it may not
+satisfy.
+
+That exact mistake red-lined `check-doctor-static` on master for most of
+2026-07-19 and blocked every local push in this repo while CI stayed green — see
+§"Blocker post-mortem". The defect is still open as `livespec-fxxfq6`. Verified
+2026-07-19: `cross_repo_targets` registers only `livespec` and
+`livespec-orchestrator-git-jsonl`; **neither Driver is listed, and neither should
+be added for this epic.** Revisit only once `livespec-fxxfq6` separates the
+planning registry from the conformance registry.
 
 ## Spun out — handoff-durability root-cause fix (maintainer-chosen 2026-07-19)
 
