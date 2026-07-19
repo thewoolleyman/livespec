@@ -1937,6 +1937,20 @@ class Supervisor:
         self._log(f"restarted (codex) {track.repo}::{track.topic} (pane {target})")
 
     @staticmethod
+    def _agent_tmux_tmpdir() -> Path:
+        """Create and return the tmux socket namespace inherited by spawned agents."""
+        path = Path("/tmp") / f"tmux-agents-{os.getuid()}"
+        path.mkdir(mode=0o700, exist_ok=True)
+        path.chmod(0o700)
+        return path
+
+    @staticmethod
+    def _with_agent_tmux_tmpdir(*, command: str) -> str:
+        """Export the agent-scoped tmux socket dir before launching a track process."""
+        tmpdir = Supervisor._agent_tmux_tmpdir()
+        return f"unset TMUX; export TMUX_TMPDIR={shlex.quote(str(tmpdir))}; exec {command}"
+
+    @staticmethod
     def _launch_command(track: registry.Track) -> str:
         """The Claude (re)start command: ``claude --dangerously-skip-permissions -n <topic>``.
 
@@ -1948,11 +1962,17 @@ class Supervisor:
         line (read the handoff) is pasted AFTER launch, since a ``claude "<prompt>"``
         argv only pre-fills without submitting.
 
+        The command also unsets inherited ``TMUX`` and exports an agent-scoped
+        ``TMUX_TMPDIR`` before ``exec`` so any bare tmux command the spawned agent runs
+        resolves to ``/tmp/tmux-agents-<uid>/``
+        instead of the maintainer's default tmux server namespace.
+
         This is the Claude-ONLY command — it must NEVER be aimed at a codex pane (it would
         destroy the session). ``_do_restart`` dispatches a Codex track to
         :meth:`_codex_launch_command` instead.
         """
-        return f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
+        command = f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
+        return Supervisor._with_agent_tmux_tmpdir(command=command)
 
     @staticmethod
     def _codex_launch_command(session_id: str, resume: str) -> str:
@@ -1975,10 +1995,11 @@ class Supervisor:
         unlike the Claude path there is no separate paste. Fields are shell-quoted; the
         flag precedes the positional ``SESSION_ID``/``PROMPT`` per ``codex resume``'s usage.
         """
-        return (
+        command = (
             "codex resume --dangerously-bypass-approvals-and-sandbox "
             f"{shlex.quote(session_id)} {shlex.quote(resume)}"
         )
+        return Supervisor._with_agent_tmux_tmpdir(command=command)
 
     def _await_pane(self, target: str, is_ready: Callable[[str | None], bool]) -> bool:
         """Poll ``#{pane_current_command}`` until ``is_ready(cmd)``, bounded.
