@@ -861,33 +861,37 @@ for the marker's edge-triggered lifecycle.
   `store_path` / `stamp_path` / `watch_repos` / `manifest_path` injectable, but
   **only the beside-tests inject them** (they redirect `registry.DEFAULT_STORE_PATH`
   for CLI isolation) — neither `overseerd` nor the module CLI exposes them.
-- **Deliberately OUTSIDE the product gates.** The folder is excluded from every
-  product Python gate, by four concrete config facts (the design's "PR #1109 /
-  dev-tooling `.claude/` universe exemption" labels are paraphrase for these):
+- **Outside the product STYLE gates; inside the TEST gate.** The beside-tests run
+  in `just check` (see the next bullet). Everything else — lint, types, coverage,
+  import contracts — still excludes the folder, by four concrete config facts (the
+  design's "PR #1109 / dev-tooling `.claude/` universe exemption" labels are
+  paraphrase for these). Bringing each of those inside is tracked as its own
+  decision in `plan/overseer-productization/`:
   - **ruff** — `pyproject.toml` `[tool.ruff].extend-exclude` names
     `.claude/skills/overseer/**` (ruff's repo-wide scan is the one gate whose
     denylist must name the path; precedent `.claude/hooks/**`).
   - **pyright** — `[tool.pyright].include` lists only `.claude-plugin/scripts`
     and `dev-tooling`; the overseer folder is omitted, so it is never
     type-checked.
-  - **coverage** — pytest's `testpaths = ["tests"]` means the product suite
-    never collects the beside-tests, so `fail_under = 100` does not apply to
-    these modules.
+  - **coverage** — pytest's `testpaths = ["tests"]` means the coverage-bearing
+    product suite never collects the beside-tests, so `fail_under = 100` does not
+    apply to these modules. `check-overseer` collects them under their own target
+    WITHOUT `--cov`, precisely so that stays true.
   - **import-linter** — `root_packages = ["livespec"]`; these modules are not
     part of the `livespec` package, so no import contract touches them.
   - The dev-tooling shared checks read their scope from
     `livespec_dev_tooling.config` (`source_tree_prefixes` /
     `target_dirs`), none of which include `.claude/skills/` — so
     `check-claude-md-coverage` and the style checks never reach here.
-- **ALWAYS run the beside-tests before pushing ANY change to this folder — they
-  are the ONLY gate on it.** This folder is outside the product discipline, so
-  `just check`, the pre-push hook, and CI do NOT run these tests (pytest
-  `testpaths = ["tests"]` never collects them; nothing in the justfile or
-  `.github/` references `skills/overseer/`). A broken overseer change will merge
-  green with NOTHING having exercised its behavior — that is exactly how a
-  critical regression once reached master here (the auto-merge landed a green PR
-  whose overseer bug no gate caught). So running them is a **hard pre-push step
-  for the developer**, not optional:
+- **The beside-tests ARE a product gate — `just check-overseer` is a literal
+  member of the `just check` aggregate, so pre-commit, pre-push, and CI all run
+  them.** This reverses the folder's earlier "outside the product gates, the
+  discipline lives in the developer's hands" design. That design was wrong in
+  practice: a broken overseer change merged green with NOTHING having exercised
+  its behavior, more than once. The beside-tests are hermetic (FakeTmux, a fake
+  `/proc`, seam-injected Codex discovery) and the whole suite runs in seconds, so
+  there was never a real cost to wiring them in. Run them directly while
+  iterating:
 
   ```bash
   uv run pytest .claude/skills/overseer/ -q
@@ -895,15 +899,23 @@ for the marker's edge-triggered lifecycle.
 
   (`conftest.py` puts the folder on `sys.path` so `import registry` / `import
   signals` / `import tmuxio` resolve when pytest collects the beside-tests.)
-  Deliberately kept lightweight (a manual pre-push run, no CI wiring) to preserve
-  the "outside the product gates" design — the discipline lives here, in the
-  developer's hands, not in a gate. **And after ANY overseer merge, re-run them
-  against the COMBINED master state — do not trust either PR's own green.** With no
-  CI, two overseer branches can merge git-clean and still leave the folder red: a
-  concurrent change to shared surface (e.g. the `TMUX_TMPDIR`/`exec` wrap added to
-  `_launch_command`) can invalidate the OTHER branch's assertions, which passed on
-  its own base. Proven live 2026-07-18 (the codex-reboot-recovery branch was green
-  on its base, red on combined master; fixed by PR #1373).
+  They need their own justfile target because pytest's `testpaths = ["tests"]`
+  never collects them; the target runs WITHOUT coverage, since these modules are
+  scoped out of the `fail_under = 100` gate. Lint (ruff), types (pyright), and
+  coverage remain scoped out of this folder — bringing those inside the gates is
+  the rest of the `plan/overseer-productization/` thread, and each is a separate
+  decision from this one.
+- **The COMBINED-master-state failure mode, and what now catches it.** Two overseer
+  branches can merge git-clean and still leave the folder red: a concurrent change
+  to shared surface (e.g. the `TMUX_TMPDIR`/`exec` wrap added to `_launch_command`)
+  can invalidate the OTHER branch's assertions, which passed on its own base.
+  Proven live 2026-07-18 (the codex-reboot-recovery branch was green on its base,
+  red on combined master; fixed by PR #1373). CI's `push: branches: [master]` leg
+  now runs `check-overseer` against combined master after every merge, so this is
+  caught rather than silent. It is caught AFTER the merge, though — auto-merge
+  lands a PR before the master run finishes. So when landing an overseer change
+  while another overseer branch is in flight, still re-run the beside-tests against
+  the combined state yourself rather than trusting either PR's own green.
 - **Codex discovery is seam-injected end-to-end, so the suite is hermetic even
   with a live codex on the host (test-isolation, 2026-07-18).** `codex_sessions` was
   already injectable at the FUNCTION level, but the `Supervisor` only threaded
@@ -920,8 +932,8 @@ for the marker's edge-triggered lifecycle.
   (`test_refresh_and_adopt_route_codex_through_injected_seams`) — the proof the
   threading holds; sabotage either call site's seams and it goes red.
 - **Adding a `.py` here?** Keep it stdlib-only. The ruff `**` exclude covers new
-  files automatically, but new beside-tests must be run manually (they will not
-  be collected by `just check`'s product suite).
+  files automatically, and new beside-tests are picked up by `just check-overseer`
+  (which globs the whole folder) with no wiring of their own.
 - **The nested `.claude/CLAUDE.md -> ../AGENTS.md` symlink beside this file** is
   the repo's per-directory nested-memory convention (so Claude Code loads this
   guide when working in the folder). No structural or coverage check objects to
