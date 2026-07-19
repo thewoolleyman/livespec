@@ -276,18 +276,62 @@ failure in the repo that owns the pin.
 | Piece | State |
 |---|---|
 | Spec amendment (`CODEX_ACP_VERSION` ARG home → agent layer), revision **v028** | ✅ **MERGED** — PR [#481](https://github.com/thewoolleyman/livespec-dev-tooling/pull/481) in `livespec-dev-tooling`, full CI green. Independent Fable review: **NO BLOCKERS** |
-| Implementation (new `agent/Dockerfile`, 2 extra build steps, `_CODEX_ACP_DOCKERFILE` move, stale-prose sweep) | **IN FLIGHT** in `livespec-dev-tooling` when this was written — verify against `gh pr list` before assuming anything |
-| Consumer pin migration ×2 + live exercise + guard check | **NOT STARTED** — this is step 2 above, and it is your main remaining work |
+| Implementation (new `agent/Dockerfile`, 2 extra build steps, `_CODEX_ACP_DOCKERFILE` move, stale-prose sweep) | ✅ **MERGED** — PR [#482](https://github.com/thewoolleyman/livespec-dev-tooling/pull/482), `refactor(ci):`, 61 checks pass / 0 fail |
+| Slim images published + **payoff measured live** | ✅ **DONE** — see the table below |
+| Consumer pin migration ×2 + live exercise + guard check | ❌ **NOT STARTED — this is your work.** Step 2 above, and it is the risky step |
 | `livespec-dev-tooling-oik` (buildpack-deps re-base) | **FILED**, blocked behind `a46` |
 | `livespec-dev-tooling-ql1` (third ACP adapter unbaked/unpinned) | **FILED** — see below |
 
-**Verify the implementation PR's state yourself** (`gh pr list --repo
-thewoolleyman/livespec-dev-tooling`) rather than trusting this table. It was
-dispatched to a sub-agent and had not reported when this handoff was written. The
-single most important check on it is the **`Fabro sandbox image`** workflow: on a
-pull_request it builds the whole chain into an ephemeral `localhost:5000` registry,
-which is what proves all five layers still build and that the `FROM`-by-digest
-threading is right.
+### ✅ The payoff, MEASURED against the real registry (master `f1a5a65`)
+
+Not predicted — read back from GHCR after the build published. Every value landed
+within 0.1 MB of the estimate recorded before implementation:
+
+| Layer | Before | After | Change |
+|---|---|---|---|
+| `base` | 706.6 MB | **390.0 MB** | −316.6 MB |
+| `python` | 751.2 MB | **434.6 MB** | **−42%** ← 7 fleet repos' CI |
+| `python-rust` | 975.0 MB | **658.3 MB** | **−32%** ← the console's CI |
+| `python-agent` | — | 751.3 MB | Fabro sandbox: **same bytes as the old `python`** |
+| `python-rust-agent` | — | 975.0 MB | Fabro sandbox: **same bytes as the old `python-rust`** |
+
+**The last two rows are the correctness check, not a footnote.** The `-agent` tags
+coming out byte-for-byte the same size as the pre-split images is what proves the
+restructure MOVED payload rather than dropping any: CI pulls 42%/32% less, and the
+sandbox pulls exactly what it always did.
+
+Verified from the **build log**, not from a green tick (the leg-6 lesson from
+`5r3`): all five layers — `base`, `python`, `python-agent`, `python-rust`,
+`python-rust-agent` — built and pushed, so the five-layer tree and the
+`FROM`-by-digest threading both hold.
+
+### ▶ DO THIS FIRST — step 2, with the tags you need
+
+The agent images now EXIST as immutable sha tags and are ready to pin. **Re-derive
+the sha rather than copying these literals if master has moved**
+(`git rev-parse --short=7 origin/master` in `livespec-dev-tooling`):
+
+```
+ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-agent-sha-f1a5a65
+ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-rust-agent-sha-f1a5a65
+```
+
+1. `livespec-orchestrator-beads-fabro` —
+   `.claude-plugin/.fabro/workflows/implement-work-item/workflow.toml` line ~161:
+   `python-v0.50.3` → `python-agent-sha-<sha>`
+2. `livespec-console-beads-fabro` —
+   `.fabro/workflows/implement-work-item/workflow.toml` line ~129:
+   `python-rust-v0.50.3` → `python-rust-agent-sha-<sha>`
+3. **Live-exercise a real factory dispatch on EACH.** A green CI run is NOT
+   evidence here — CI does not use the agent tags at all, so only a factory
+   dispatch touches them.
+4. Land the consumer-side guard check (above).
+5. **Only then** cut a `livespec-dev-tooling` release.
+
+**Until step 5, do not let a dev-tooling release fire.** A release before steps 1–2
+bumps both consumers onto the now-adapter-less `python-` / `python-rust-` tags.
+Note `chore(deps):` bump commits cut no release, so routine pin traffic is safe —
+it is `feat:` / `fix:` that is dangerous right now.
 
 ### A real defect found on the way — `livespec-dev-tooling-ql1` (P2)
 
