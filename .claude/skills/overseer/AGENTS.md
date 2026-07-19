@@ -393,13 +393,25 @@ for the marker's edge-triggered lifecycle.
    (`…never_issues_the_claude_command`) pins that the routing holds; if you touch this
    area, re-sabotage (route codex → the claude command) and confirm it goes red.
 
-   **Reboot recovery is Claude-ONLY (documented gap).** `recover_missing_sessions` (startup
-   only) always launches the claude command, so a mapped CODEX track that died while the
-   daemon was DOWN would be recreated as claude (rollout orphaned) — non-destructive (only
-   ABSENT sessions are recreated), and unavoidable under the runtime-derived-live design (a
-   dead codex has no live rollout fd, so its id is unknown at recovery). While the daemon is
-   UP, the per-tick restart path above DOES dispatch by runtime. See the
-   `recover_missing_sessions` docstring.
+   **Reboot recovery is RUNTIME-DISPATCHED (defect #5, 2026-07-18).** `recover_missing_sessions`
+   (startup only) no longer always launches the claude command. A dead codex process is absent
+   from the live `self._codex` map (no rollout fd at cold start), so the runtime is derived from
+   the PERSISTENT codex index instead — `session_index.jsonl` SURVIVES the session's death. If
+   the track's TOPIC names a session there (`codex_sessions.latest_session_for_thread_name`, the
+   most-recent by `updated_at`), the track is CODEX: `_recover_codex_track` resumes the SAME
+   rollout via `codex resume <id>` (option c) when it still exists on disk
+   (`codex_sessions.rollout_exists`), else skips + surfaces (option b) — NEVER mis-recreating it
+   as claude (rollout-orphaning). A topic absent from the index is a Claude track and recovers as
+   before. The `session_exists` gate still means only a genuinely ABSENT session is recreated, so
+   no live session is killed. Verified live 2026-07-18: `codex resume` reattached a 26-day-old
+   session with its thread_name intact (so the daemon re-adopts it); the reverse-index + rollout
+   gate resolve correctly against the real `~/.codex`; the latest-by-`updated_at` pick is
+   unambiguous (distinct timestamps per id in real index data). Two interstitials seen live and
+   both self-healing (a `› N.` gate → `blocked:human` → operator clears): codex's directory-trust
+   prompt appears only for a repo codex has NOT trusted — in recovery `track.repo` is where the
+   codex session originally ran, so it is already trusted and the resume is clean; and the
+   working-dir picker appears only when the pane cwd ≠ the session's recorded cwd — recovery sets
+   cwd to `track.repo`, which matches. See the `recover_missing_sessions` docstring.
 
    The abrupt kill is safe **because of** the declaration: the session asserted it
    is at a clean stopping point, and `respawn-pane -k` replaces the PROCESS — every
@@ -980,6 +992,7 @@ consecutive wrong relaunches before the right one).
 |---|---|
 | The JSONL mapping `~/.livespec-overseer.jsonl` — one row per assigned track (topic ↔ tmux name ↔ repo ↔ handoff ↔ resume line). | Every tmux session / window / pane (no `tmux-resurrect` / `tmux-continuum` is installed — a server death loses the whole layout). |
 | Each Claude session's **conversation transcript**: `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, where `<cwd-slug>` is the repo path with every `/` rewritten to `-` (e.g. `/data/projects/livespec` → `-data-projects-livespec`). | Claude Code's pid-keyed live registry `~/.claude/sessions/<pid>.json` (keyed by the now-dead pid). |
+| Each Codex session's **rollout** (`~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<id>.jsonl`) AND the **codex index** (`~/.codex/session_index.jsonl`, mapping id → thread_name = topic). This is what lets `recover_missing_sessions` reverse-look-up a dead codex track's id by topic and `codex resume` it AUTOMATICALLY (defect #5) — no manual step for codex. | The running codex process + its held-open rollout fd (the LIVE signal `self._codex` derives from — gone at cold start, which is why recovery uses the surviving INDEX instead). |
 | Each plan's `plan/<topic>/handoff.md`. | The daemon process + its in-memory round state. |
 
 The transcript is what makes a TRUE resume possible: the tmux pane is gone, but the
@@ -989,13 +1002,16 @@ id. Nothing in tmux persists — the only durable identity is that transcript fi
 ### The daemon does NOT do this for you
 
 `overseerd` is **surface-only** — it never auto-spawns a session (invariant 3), and
-its startup `recover_missing_sessions` deliberately relaunches with the LAUNCH
-command + a handoff paste, **not** `--resume` (see invariant 7 and the
-`recover_missing_sessions` docstring). So the built-in recovery restores a *handoff
-re-read*, never the *live conversation*. Restoring the actual conversations is this
-**manual, human-driven** procedure. (SKILL.md's "Cold-start / crash recovery"
+its startup `recover_missing_sessions` is **split by runtime** (defect #5, 2026-07-18):
+a **Claude** track is relaunched with the LAUNCH command + a handoff paste, **not**
+`--resume`, so it restores a *handoff re-read*, never the *live conversation*; a
+**Codex** track IS resumed by `codex resume <id>`, which reattaches the *live rollout*
+(the codex conversation restores automatically — the Claude gap this section works
+around does not apply to codex). So this **manual, human-driven** procedure is the way
+to restore the actual **Claude** conversations (see invariant 7 and the
+`recover_missing_sessions` docstring). (SKILL.md's "Cold-start / crash recovery"
 section describes the `start`-based path, which is the handoff-re-read one; THIS
-section is the conversation-restore one, and they are different outcomes.)
+section is the Claude conversation-restore one, and they are different outcomes.)
 
 ### The three launch commands that are WRONG (each was tried and failed)
 
@@ -1143,13 +1159,17 @@ it. That self-heals the moment the human answers.
   / env behavior matches what works in production. If the pane already exists (e.g. a
   prior wrong-command attempt), `respawn-pane -k …` alone replaces it.
 
-### Known gap worth closing
+### Known gap worth closing — now CLAUDE-only (codex is closed)
 
-The overseer's own `start` / `recover_missing_sessions` never uses `--resume` — it
-relaunches fresh + pastes a handoff. If native "restore the live conversation after
-a crash" is wanted, that is where it would go: a `--resume <id>` arm that looks the
-topic's id up by `customTitle` in `~/.claude/projects/<cwd-slug>/` (the exact
-computation step 3 automates). Until then, this manual runbook is the procedure.
+For **codex**, `recover_missing_sessions` now DOES restore the live conversation: it
+resumes by `codex resume <id>`, the id recovered from the surviving codex index by plan
+topic (defect #5, 2026-07-18). For **claude**, the gap remains — `start` /
+`recover_missing_sessions` relaunch fresh + paste a handoff rather than `--resume`. If
+native "restore the live CLAUDE conversation after a crash" is wanted, that is where it
+would go: a `claude --resume <id>` arm that looks the topic's id up by `customTitle` in
+`~/.claude/projects/<cwd-slug>/` (the exact computation step 3 automates) — the direct
+analogue of the codex reverse-index lookup just landed. Until then, this manual runbook
+is the procedure for Claude tracks.
 
 ## Pointers
 

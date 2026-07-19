@@ -1,8 +1,9 @@
 # Handoff — overseer daemon known defects (deferred from overseer-rewrite)
 
-**Owning session:** livespec core, "overseer-known-defects". **Status:** IN PROGRESS —
-#4 DONE (merged `a24e3e13`, PR #1348); #5 DECIDED (option c + b-fallback); #6 UNBLOCKED.
-See the PROGRESS section below. These are the overseer daemon's known non-critical
+**Owning session:** livespec core, "overseer-known-defects". **Status:** COMPLETE —
+all three defects landed: #4 DONE (`a24e3e13`, PR #1348); #6 DONE (`ae2b96f2`, PR #1363);
+#5 DONE (this `overseer-codex-reboot-recovery` PR). See the PROGRESS section below. These
+were the overseer daemon's known non-critical
 defects, deferred while the
 **restart-correctness** priority was in flight. That priority is now DONE — R1
 (self-healing resume-submit) + R2 (Claude name-gate + stale-mapping re-point) + the
@@ -32,24 +33,47 @@ hygiene (#6). Work them in the order below; each is independent.
   CI, two overseer branches can merge git-clean and still leave the folder red. After ANY
   concurrent overseer merge, re-run `uv run pytest .claude/skills/overseer/ -q` against
   the COMBINED master state — do not trust either PR's own green.
-- **#5 — DECIDED (maintainer, 2026-07-18): option (c) + (b) fallback.** Give reboot
-  recovery Codex parity: resume a dead codex track via `codex resume <id>` rather than
-  recreating it as claude. The session-id is recovered by REVERSING the persistent codex
-  index (`session_index.jsonl`, which survives the session's death — `read_thread_names`)
-  to find the session(s) for the mapped topic, picking the most-recent by `updated_at`.
-  Resume ONLY if that rollout still exists on disk; otherwise FALL BACK to (b) — skip and
-  surface in NEEDS YOU ("codex track X was down at boot; relaunch it, it'll re-adopt"),
-  never mis-recreating as claude. Rationale: Claude recovery launches a FRESH session +
-  handoff (continuity via the handoff file); codex `resume` reattaches the OLD rollout,
-  which is parity-or-better continuity. Two things to VERIFY LIVE before claiming done
-  (the (b) fallback bounds the risk if either disappoints): (1) `codex resume <old-id>`
-  reliably reattaches a long-dead session; (2) the latest-by-`updated_at` pick is
-  unambiguous in real index data. NOT yet implemented — implement on post-#4 master.
-- **#6 — now UNBLOCKED.** It was held only because the `overseer-tmux-runtime-column`
-  work had uncommitted edits in `supervisor.py` + `test_supervisor.py`; that feature is
-  now merged (`467e9cb3`), so the contention is gone. #6 still edits `codex_sessions.py`
-  + `supervisor.py` + `test_supervisor.py`, which #5 ALSO touches, so **#5 and #6 conflict
-  with each other — sequence them** (original suggested order: #6 then #5).
+- **#6 — DONE, merged (`ae2b96f2`, PR #1363).** `codex_sessions` was already injectable at
+  the FUNCTION level, but the `Supervisor` threaded only `ppid_of` into it, so
+  `adopt_sessions` / `_refresh_codex_sessions` still read the real `/proc` `comm==codex`
+  scan and `~/.codex`. The `Supervisor` now carries `codex_home` + `codex_pids_of_comm` /
+  `codex_fd_targets_of` / `codex_cwd_of` fields (default real, mirroring the Claude
+  `sessions_dir` + `/proc` seams) threaded into BOTH codex call sites; the beside-tests'
+  `_sup` factory defaults `codex_pids_of_comm` to an empty scan + `codex_home` to a
+  non-existent dir, so no adopt/refresh test touches real host state. New sabotage-verified
+  test (`test_refresh_and_adopt_route_codex_through_injected_seams`) simulates a codex
+  session end-to-end through the injected seams; reverting either call site's seams reddens
+  it. Done in the #6-then-#5 order the conflict required (both edit `codex_sessions.py` +
+  `supervisor.py` + `test_supervisor.py`).
+- **#5 — DONE (this `overseer-codex-reboot-recovery` PR), option (c) + (b) fallback as
+  decided.** `recover_missing_sessions` is now RUNTIME-DISPATCHED. A dead codex is absent
+  from the live `self._codex` map (no rollout fd at cold start), so the runtime is derived
+  from the PERSISTENT codex index instead: if the track's TOPIC names a session in
+  `session_index.jsonl` (`codex_sessions.latest_session_for_thread_name`, most-recent by
+  `updated_at`), the track is CODEX — `_recover_codex_track` resumes the SAME rollout via
+  `codex resume <id>` (`_do_codex_launch`) when it still exists on disk
+  (`codex_sessions.rollout_exists`) [option c], else skips + surfaces ("codex track X was
+  down at boot… it will re-adopt") [option b], NEVER mis-recreating as claude. A topic
+  absent from the index is a Claude track and recovers as before. Three sabotage-verified
+  beside-tests (dispatch, rollout-gate, latest-picker) + seven codex_sessions tests; the
+  shared `_read_index_final` parser backs both `read_thread_names` and the new reverse
+  lookup so they cannot drift. **Both required live verifications passed (2026-07-18):**
+  (1) `codex resume --dangerously-bypass-approvals-and-sandbox <id>` reattached a
+  **26-day-old** session (`console-specification-drafting`) with its `thread_name` intact,
+  so the daemon re-adopts it; (2) the latest-by-`updated_at` pick is unambiguous — all four
+  non-companion multi-id topics in the real index have DISTINCT timestamps. Also
+  live-exercised: the reverse-index + `rollout_exists` functions against the real
+  `~/.codex` (correct id, correct present/absent gate), and the shipped `_do_codex_launch`
+  driving a real `respawn` + await against real tmux (returned True, pane came up codex).
+  **Accepted design note (surfaced for the maintainer):** a topic named in the codex index
+  is treated as CODEX at recovery, so a topic that was codex in the past but is now a
+  Claude track would be resumed as codex — the decision (no stored runtime hint; option a
+  was rejected) accepts this, bounded by (b) and by codex `resume` reattaching a real
+  conversation (non-destructive, operator-visible). Two interstitials seen live, both a
+  `› N.` gate → `blocked:human` → operator clears (self-healing): codex's directory-trust
+  prompt (only for a repo codex has NOT trusted — recovery's `track.repo` is where the
+  codex session ran, already trusted) and the working-dir picker (only when pane cwd ≠ the
+  session's recorded cwd — recovery sets cwd to `track.repo`, which matches).
 
 ## Where the code + the discipline live
 
@@ -174,10 +198,18 @@ to the ledger/cross-repo-consistency work, not this daemon. Track it there; it i
 only so it is not lost. The durable fix (read the canonical fetched branch, and/or keep
 local clones fresh, and the orphaned-repo angle) is the ledger track's call.
 
-## Suggested order
+## Order taken (all landed)
 
-1. **#4** first — smallest, self-contained, and the SF5 pattern (`names_by_tmux_session`) is
-   right there to mirror; closes a real monitoring outage.
-2. **#6** next — test hygiene, unblocks confident work on codex paths (a hermetic suite).
-3. **#5** last — needs the maintainer design call (surface options (a)/(b)/(c) first); the
-   smallest correct fix (b) is non-destructive and can land independently.
+The planned order held: **#4** → **#6** → **#5**.
+
+1. **#4** — DONE (`a24e3e13`, PR #1348): the SF5 `(tmux, name)` keying that closed the
+   monitoring outage.
+2. **#6** — DONE (`ae2b96f2`, PR #1363): codex discovery seams threaded through the
+   Supervisor so the beside-tests are hermetic (done before #5 because they conflict).
+3. **#5** — DONE (this `overseer-codex-reboot-recovery` PR): reboot recovery is
+   runtime-dispatched — codex tracks resume the same rollout (option c) or skip+surface
+   (option b), never mis-recreate as claude; both required live verifications passed.
+
+This track is COMPLETE. No further overseer known-defect items remain here.
+`livespec-p9s0` (the ledger cross-repo-wiring staleness) is a separate ledger track (see
+the "Not in this plan" section above), not an overseer defect.

@@ -2108,28 +2108,38 @@ class Supervisor:
         """Recreate any mapped session that is not currently live (design).
 
         Run ONCE at daemon startup: a fresh overseer reads the mapping, and for
-        each row whose ``<repo-slug>--<topic>`` session is gone, creates the
-        session, launches ``claude --dangerously-skip-permissions -n <topic>`` in
-        the repo (:meth:`_launch_command`), and pastes the resume line. Not a
-        per-tick action (a session the user deliberately
-        kills should not be revived every 10s). Returns the recovered names.
+        each row whose ``<repo-slug>--<topic>`` session is gone, recreates it. Not a
+        per-tick action (a session the user deliberately kills should not be revived
+        every 10s). Returns the recovered names.
 
-        KNOWN LIMITATION — reboot recovery is Claude-ONLY (documented gap, not a bug).
-        It always launches the CLAUDE command, so a mapped CODEX track whose session died
-        would be recreated as a Claude one (its rollout orphaned). This is non-destructive
-        — the ``session_exists`` gate below means only a genuinely ABSENT session is ever
-        recreated, so no live codex is killed — but it does not honour the full-citizen
-        story. It is also unavoidable under the runtime-derived-live design: a dead codex
-        process is absent from ``self._codex``, so its session id is unknown at recovery
-        time (there is no live rollout fd to read). A future fix would look the topic up in
-        the codex session store by ``thread_name``; until then, a codex track that dies
-        while the daemon is DOWN is best re-launched by the operator. (While the daemon is
-        UP, the per-tick restart path — which DOES dispatch by runtime — handles it.)
+        RUNTIME-DISPATCHED (defect #5, 2026-07-18). A dead codex process is absent from the
+        live ``self._codex`` map (there is no rollout fd at cold start), so the runtime is
+        derived from the PERSISTENT codex index instead — which SURVIVES the session's death.
+        If the track's TOPIC names a session in ``session_index.jsonl``
+        (:func:`codex_sessions.latest_session_for_thread_name`), the track is CODEX and is
+        recovered by :meth:`_recover_codex_track` — ``codex resume <id>`` reattaches the SAME
+        rollout (option c) when it still exists on disk, else a skip+surface (option b), NEVER
+        a mis-recreation as Claude. Otherwise the track is Claude and is recreated with
+        ``claude --dangerously-skip-permissions -n <topic>`` (:meth:`_launch_command`) + a
+        resume-line paste. Either way the ``session_exists`` gate means only a genuinely
+        ABSENT session is recreated, so no live session is ever killed.
         """
         recovered: list[str] = []
         for track in registry.read_mapping(self.store_path):
             session = self._session_of(track)
             if self.tmux.session_exists(session):
+                continue
+            # Runtime dispatch: a topic named in the persistent codex index is a CODEX track.
+            # The index survives the session's death, so it is the ONLY runtime signal at cold
+            # start. `_recover_codex_track` resumes the same rollout (option c) or skips+surfaces
+            # (option b) — it NEVER falls through to the Claude path below (rollout-orphaning).
+            codex_id = codex_sessions.latest_session_for_thread_name(
+                track.topic, codex_home=self.codex_home
+            )
+            if codex_id is not None:
+                name = self._recover_codex_track(track, session, codex_id)
+                if name is not None:
+                    recovered.append(name)
                 continue
             self.tmux.new_session(session, track.repo)
             # Require the EXACT session to now exist before launching (Codex
@@ -2150,6 +2160,73 @@ class Supervisor:
                     f"reboot-recovery FAILED to launch {session} for {track.repo}::{track.topic}"
                 )
         return recovered
+
+    def _recover_codex_track(
+        self, track: registry.Track, session: str, session_id: str
+    ) -> str | None:
+        """Reboot-recover a CODEX track (defect #5): resume the SAME rollout, or skip+surface.
+
+        **Option (c) — resume.** If the session's rollout still exists on disk
+        (:func:`codex_sessions.rollout_exists`), create the tmux session and respawn it with
+        ``codex resume --dangerously-bypass-approvals-and-sandbox <id> "<kick>"``
+        (:meth:`_do_codex_launch`). ``codex resume`` reattaches the SAME conversation and
+        preserves its ``thread_name``, so the daemon re-adopts the track on the next tick —
+        parity-or-better continuity vs. the Claude path's fresh-session-plus-handoff (verified
+        live 2026-07-18: a 26-day-old session reattached, thread_name intact, and — because the
+        respawn cwd is ``track.repo``, matching the session's recorded cwd — with no working-dir
+        picker).
+
+        **Option (b) — skip + surface.** If the rollout is GONE, ``codex resume`` cannot
+        reattach, so recovery SKIPS the track and surfaces it for the operator, NEVER
+        mis-recreating it as Claude (which would orphan the rollout). A relaunched codex is
+        re-adopted automatically.
+
+        Returns the recovered session name, or None on skip/failure (mirroring the Claude
+        path's ``session_exists``/launch gates).
+        """
+        if not codex_sessions.rollout_exists(session_id, codex_home=self.codex_home):
+            self._surface(
+                f"reboot-recovery: codex track {track.repo}::{track.topic} was down at boot and "
+                f"its rollout is gone (session {session_id}); relaunch it and it will re-adopt"
+            )
+            return None
+        self.tmux.new_session(session, track.repo)
+        if not self.tmux.session_exists(session):
+            self._surface(
+                f"reboot-recovery: new-session did not create {session} "
+                f"for {track.repo}::{track.topic}; skipping"
+            )
+            return None
+        if self._do_codex_launch(track, session, session_id):
+            self._log(
+                f"reboot-recovery resumed codex {session} for {track.repo}::{track.topic} "
+                f"(session {session_id})"
+            )
+            return session
+        self._surface(
+            f"reboot-recovery FAILED to resume codex {session} for {track.repo}::{track.topic}"
+        )
+        return None
+
+    def _do_codex_launch(self, track: registry.Track, session: str, session_id: str) -> bool:
+        """Respawn ``session`` with ``codex resume <id> "<kick>"`` and await a live codex pane.
+
+        The codex twin of :meth:`_do_launch`, and SIMPLER: ``codex resume`` takes the kick as
+        its PROMPT argument and AUTO-SUBMITS it (verified live 2026-07-17), so there is no
+        separate resume-line paste. ``session`` is the just-created session NAME; the pane id
+        is resolved from it and every pane op targets that id (RB3). The respawn cwd is
+        ``track.repo`` — which matches the codex session's recorded cwd — so ``codex resume``
+        reattaches directly. Returns True iff respawn succeeded and the pane became a live
+        codex TUI (a failed respawn / non-codex pane surfaces via the caller).
+        """
+        target = self.tmux.pane_id(session)
+        if target is None:
+            return False
+        resume = track.resume or default_resume(track.repo, track.topic)
+        command = self._codex_launch_command(session_id, resume)
+        if not self.tmux.respawn_pane(target, track.repo, command):
+            return False
+        return self._await_pane(target, signals.pane_is_codex)
 
     def _do_launch(self, track: registry.Track, session: str) -> bool:
         """Launch ``claude --dangerously-skip-permissions -n <topic>`` and paste the resume line.

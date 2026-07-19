@@ -168,6 +168,99 @@ def test_missing_index_is_empty_not_an_error(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# latest_session_for_thread_name + rollout_exists — the reboot-recovery reverse
+# lookup (defect #5). The index SURVIVES a session's death, so a dead codex track's
+# session id is recoverable from its plan topic; the rollout's on-disk presence gates
+# whether `codex resume` can reattach (option c) or recovery must skip+surface (b).
+# --------------------------------------------------------------------------- #
+
+
+def _index_ts(tmp_path, records):
+    """Write a `session_index.jsonl` from (id, thread_name, updated_at) TRIPLES, in order."""
+    home = tmp_path / "codex"
+    home.mkdir(exist_ok=True)
+    lines = [
+        '{"id": "%s", "thread_name": "%s", "updated_at": "%s"}' % (i, n, ts) for i, n, ts in records
+    ]
+    (home / "session_index.jsonl").write_text("\n".join(lines) + "\n")
+    return home
+
+
+def _write_rollout(home, session_id, *, ymd="2026/06/22", ts="2026-06-22T18-35-28"):
+    """Create a real-shape rollout file for `session_id` under `<home>/sessions/YYYY/MM/DD/`."""
+    day = home / "sessions" / ymd
+    day.mkdir(parents=True, exist_ok=True)
+    path = day / f"rollout-{ts}-{session_id}.jsonl"
+    path.write_text("{}\n")  # body is never read; presence is all that matters
+    return path
+
+
+def test_latest_session_for_thread_name_picks_the_newest_by_updated_at(tmp_path):
+    """Two indexed sessions share a topic (the plan was driven by codex more than once);
+    recovery resumes the MOST-RECENT by `updated_at` — distinct per id in real data."""
+    home = _index_ts(
+        tmp_path,
+        [
+            (_ID_A, "cloud-local-memory-cleanup", "2026-07-13T10:00:00Z"),
+            (_ID_B, "cloud-local-memory-cleanup", "2026-07-13T20:17:42Z"),
+        ],
+    )
+    assert (
+        codex_sessions.latest_session_for_thread_name("cloud-local-memory-cleanup", codex_home=home)
+        == _ID_B
+    )
+
+
+def test_latest_session_for_thread_name_is_none_for_an_unknown_topic(tmp_path):
+    """A topic named nowhere in the index is a CLAUDE track — the caller must NOT resume it
+    as codex. None is the signal to fall through to the Claude recovery path."""
+    home = _index_ts(tmp_path, [(_ID_A, "some-codex-topic", "2026-07-13T10:00:00Z")])
+    assert codex_sessions.latest_session_for_thread_name("a-claude-topic", codex_home=home) is None
+
+
+def test_latest_session_for_thread_name_honours_a_rename(tmp_path):
+    """The index is an APPEND log: an id renamed AWAY from the topic (its LAST record names
+    something else) no longer matches, and an id renamed TO the topic does — last record wins,
+    shared with `read_thread_names` via `_read_index_final`."""
+    home = _index_ts(
+        tmp_path,
+        [
+            (_ID_A, "the-topic", "2026-07-13T09:00:00Z"),  # A started as the topic...
+            (_ID_A, "renamed-away", "2026-07-13T09:30:00Z"),  # ...then was renamed away
+            (_ID_B, "was-other", "2026-07-13T10:00:00Z"),  # B started as something else...
+            (_ID_B, "the-topic", "2026-07-13T10:30:00Z"),  # ...then was renamed TO the topic
+        ],
+    )
+    assert codex_sessions.latest_session_for_thread_name("the-topic", codex_home=home) == _ID_B
+
+
+def test_latest_session_for_thread_name_missing_index_is_none(tmp_path):
+    assert codex_sessions.latest_session_for_thread_name("t", codex_home=tmp_path / "nope") is None
+
+
+def test_rollout_exists_finds_a_nested_rollout(tmp_path):
+    home = tmp_path / "codex"
+    home.mkdir()
+    _write_rollout(home, _ID_A)
+    assert codex_sessions.rollout_exists(_ID_A, codex_home=home) is True
+
+
+def test_rollout_exists_is_false_when_the_rollout_is_gone(tmp_path):
+    """Option (b): the index still names the session, but its rollout was pruned — codex
+    resume cannot reattach, so recovery must skip+surface rather than resume."""
+    home = tmp_path / "codex"
+    home.mkdir()
+    _write_rollout(home, _ID_A)  # a DIFFERENT session's rollout is present
+    assert codex_sessions.rollout_exists(_ID_B, codex_home=home) is False
+
+
+def test_rollout_exists_is_false_when_the_sessions_dir_is_absent(tmp_path):
+    home = tmp_path / "codex"
+    home.mkdir()  # no sessions/ subtree at all
+    assert codex_sessions.rollout_exists(_ID_A, codex_home=home) is False
+
+
+# --------------------------------------------------------------------------- #
 # The rollout-id parse (filename ONLY — never the body; see the secrets caution).
 # --------------------------------------------------------------------------- #
 
