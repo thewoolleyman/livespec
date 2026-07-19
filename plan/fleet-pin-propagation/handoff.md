@@ -130,11 +130,26 @@ conflicting closes.
 
 **The groom was cut against a STALE diagnosis** — it predates the recovery, so
 each slice carried "treat the earlier attempt's absence as absence," which is
-no longer true. All three slice bodies have been AMENDED with a `READ FIRST`
-block pointing at `research/recovered/`. The cut itself was left untouched
-(grooming is maintainer-owned). **Anyone dispatching those slices must read the
-amended bodies, not the original framing** — two of them would otherwise
-re-derive an inventory already committed to master.
+no longer true. All three bodies have since been corrected, in two different
+ways (maintainer-approved 2026-07-19; the CUT was left intact, since grooming
+is maintainer-owned):
+
+- `livespec-e7lanq` and `livespec-u7x5zn` were **fully re-scoped**, not merely
+  annotated. `e7lanq` now verifies and completes the recovered 12-gate table
+  instead of producing it. `u7x5zn` was re-scoped twice: its second body told
+  an agent to close six items and file three gaps that a Fable review then
+  found were ALREADY closed and filed (handoff §"COMPLETED 2026-07-19"), so it
+  now carries only the genuine residue — naming the 4 (b)-class gates as owing
+  design decisions, and chasing the `u0x` facet-(b) and `o0x1` residues.
+- `livespec-b7ropo` keeps its original scope (the reverse-hazard search is NOT
+  covered by the recovery) with a `READ FIRST` correction: its worked example
+  `livespec-console-beads-fabro-7wy` is DISPROVEN and closed, so the sweep
+  starts from zero confirmed instances, and its acceptance now admits a
+  zero-instance outcome as a valid result.
+
+**Anyone dispatching those slices must read the current bodies, not the
+original framing** — two of them would otherwise re-derive an inventory already
+committed to master, or re-close closed items.
 
 That session also contributed a measurement this thread lacked: the 8 members
 carry **106 distinct `check-*` recipe names across ~490 instances**, of which
@@ -264,5 +279,14 @@ The superseded-PR count is a snapshot and drifts upward as the fan-out keeps
 opening PRs. CI logs older than roughly a day have aged out on the self-hosted
 runners, so historical red PRs can no longer be diagnosed from their logs —
 re-run a check to observe a live failure rather than trusting a reconstructed
-cause. And the (a)/(b) sweep is genuinely not done: an earlier dispatched
-attempt returned no usable output, so treat its absence as absence.
+cause.
+
+**Superseded 2026-07-19 — this paragraph used to end with a claim that is now
+false.** It read: "the (a)/(b) sweep is genuinely not done: an earlier
+dispatched attempt returned no usable output, so treat its absence as absence."
+The sweep WAS done. Its inventories were lost to a harness fault and have been
+RECOVERED into `research/diagnosis.md` (see its ⚠ MAJOR REVISION section):
+12 reddenable gates, 8 (a)-derivable / 4 (b)-needs-live-system, adopters zero.
+**Do NOT re-run the sweep from scratch** — this file says so above, and the
+stale sentence here contradicted it. What remains is verification of the
+recovered table, not discovery.

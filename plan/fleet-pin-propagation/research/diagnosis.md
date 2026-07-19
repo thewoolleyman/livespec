@@ -366,9 +366,15 @@ Their own explicitly-flagged unknowns, carried forward rather than dropped:
 
 - The superseded-PR count is a snapshot; the fan-out keeps opening PRs, so it
   drifts upward between measurements.
-- The per-gate (a)/(b) sweep has NOT been done. The claim that the console's
+- ~~The per-gate (a)/(b) sweep has NOT been done. The claim that the console's
   manifest is the only (b)-class gate is unproven — it is the only one found
-  so far, which is a much weaker statement.
+  so far, which is a much weaker statement.~~ **SUPERSEDED — both halves are
+  false.** The sweep WAS done, lost to a harness fault, and recovered; see
+  §"⚠ MAJOR REVISION" above and §"The sweep — RECOVERED, 12 gates, 8 (a) /
+  4 (b)". The console's manifest is NOT the only (b)-class gate — there are 4.
+  Struck rather than deleted because this file's preamble promises corrections
+  are marked inline, and a silent deletion would leave a reader who remembers
+  the old text unsure which version won.
 - CI logs older than roughly a day have aged out on the self-hosted runners,
   so the specific assertion behind each historical red PR is no longer
   readable. Re-run a check to see a live failure rather than trusting a
