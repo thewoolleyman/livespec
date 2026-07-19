@@ -14,10 +14,14 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
 | D — pyright strict | **DONE, live-exercised** | livespec PR [#1408](https://github.com/thewoolleyman/livespec/pull/1408), merged 2026-07-19 |
 | B — coverage | **DONE, live-exercised** | livespec PR [#1440](https://github.com/thewoolleyman/livespec/pull/1440), merged 2026-07-19 (`198c62dc` + `108009b5`) |
-| E — ROP railway | **Scope + ordering SETTLED; blocked on one ruling.** Size is 1 site or 35 depending on it — see §"Gate E" | — |
+| E — ROP railway | **CONFORMANT — verified, zero code changes needed.** Ruled broad-only; the one broad catch already carries the exact ratified marker. Remaining work is a role-key DECLARATION sequenced after `cvz` — see §"Gate E" | — |
 
-**Phase 1 is four gates down, one to go.** Gates A, C, D, and B are all merged
-and live-exercised. Only Gate E remains, and its blocking decision is settled.
+**Phase 1 is effectively complete.** Gates A, C, D, and B are merged and
+live-exercised. Gate E needs no code: the ruling landed broad-only and the
+overseer already conforms (verified mechanically — see §"Gate E"). All that is
+left is a role-key declaration that must wait on the rop-sweep thread's `cvz`,
+so **Phase 2's deferred decisions (D4/D5/D6) are now the live question** for
+whoever picks this up.
 
 # ✅ Gate B — DONE (was blocked all of 2026-07-19; the blocker is gone)
 
@@ -391,7 +395,59 @@ They confirmed step 1 does NOT need to wait on us: simulating the check over
 core's main tree yields 3 narrow offenses under the strict rule and **0 under
 broad-only**, so their work proceeds independently.
 
-### ⛔ Gate E is BLOCKED on a ruling — do NOT start the refactor
+### ✅ RULED broad-only (2026-07-19) — and the overseer ALREADY CONFORMS
+
+The maintainer delegated the flat-package rule to the `rop-sweep-fleet-policy`
+thread, which **settled it as broad-only**. Gate E therefore went from 35 sites
+to 1 — and that 1 site turns out to need **NO code change at all**.
+
+**The rule was already ratified text**, which is worth knowing before anyone
+re-opens it. `non-functional-requirements.md:649`: "In a repo without an `io/`
+layered tree (`io_trees` unset …), that check MUST still run rather than no-op,
+but in that mode it polices catch BREADTH rather than Try-node POSITION: a BROAD
+catch outside the `supervisor_entry_files` / `commands_trees` exemptions is an
+offense, while a NARROW, ENUMERATED catch in an entry artifact's helper function
+is PERMITTED and MUST NOT be flagged. Position-policing is a layered-architecture
+concern that does not apply to a flat package."
+
+**Verified conformance, mechanically, not by eye** (AST walk over
+`.claude/skills/overseer/*.py` excluding beside-tests):
+
+| Requirement (source) | Overseer | Verdict |
+|---|---|---|
+| At most one broad catch per supervision loop (`:673`) | exactly **1** broad; 35 narrow | ✅ |
+| Marker from the closed set of five (`:781`) | `— sole loop-iteration bug-catcher: log traceback, continue` | ✅ byte-exact match to form 4 |
+| Direct child of the supervision-loop body (`:673`) | `Try` is a direct child of `while True` at `supervisor.py:2601` | ✅ |
+| MUST log the FULL traceback (`:673`) | `traceback.format_exc()` | ✅ |
+| Silent `pass` forbidden (`:673`) | logs, does not pass | ✅ |
+| MUST NOT exit (`:673`) | continues; no raise/exit in the handler | ✅ |
+
+The 35 narrow typed catches are **explicitly permitted** and MUST NOT be
+flagged — under breadth mode they are the "very seam lifts this section
+prescribes".
+
+**Be precise about what is and is not enforced.** `:649` also says the breadth
+mode "is a spec rule enforced by REVIEW today — the shipped check still no-ops
+when `io_trees` is unset; mechanizing it is tracked follow-up work and MUST NOT
+be described as already enforced." So the table above is conformance with the
+RATIFIED RULE, verified by hand-run AST; the checker itself cannot yet confirm
+it. Do not claim Gate E is mechanically gated until the breadth mode ships.
+
+### What actually remains for Gate E
+
+Measured: core declares **NONE** of the four role keys — `source_trees`,
+`io_trees`, `supervisor_entry_files`, and `commands_trees` are all empty tuples
+in `pyproject.toml`. So the remaining work is declaration, not refactor:
+
+1. **Blocked on theirs**: `cvz` declares core's role keys WITHOUT
+   `.claude/skills/` (agreed step 1).
+2. **Then ours**: when `.claude/skills/` is added to `source_trees` (agreed step
+   3), `supervisor.py` must ALSO be covered by `supervisor_entry_files` (or the
+   equivalent exemption of the day), or the one sanctioned loop-iteration catch
+   will read as an offense in breadth mode. **That is the whole of Gate E's
+   remaining risk** — a missing declaration, not missing conformance.
+
+### Superseded: the pre-ruling analysis (kept so the range is not re-derived)
 
 **Their answer to our design question: declaring the whole folder an `io` tree is
 NOT acceptable.** `io_trees` entries are WHOLESALE EXEMPT, so declaring
