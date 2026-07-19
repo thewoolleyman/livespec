@@ -1,7 +1,7 @@
 """tmuxio.py — the ONE module that shells out to tmux.
 
-Stdlib-only, host-only (see ``registry.py`` header — this whole skill folder is
-deliberately OUTSIDE the livespec product gates). Every other overseer module
+Stdlib-only, host-only (see ``registry.py`` header for the folder's gate
+status). Every other overseer module
 (``registry.py``, ``signals.py``) is pure; this is the single subprocess
 boundary so the daemon can be unit-tested against a *fake* tmux with no real
 tmux running.
@@ -33,9 +33,10 @@ from __future__ import annotations
 import itertools
 import os
 import subprocess
-import sys
 from collections.abc import Callable
 from typing import Any
+
+import streams
 
 __all__ = ["TmuxIO"]
 
@@ -48,6 +49,11 @@ __all__ = ["TmuxIO"]
 _INJECT_BUFFER_PREFIX = "overseer-inject"
 _buffer_counter = itertools.count()
 
+# Fields in one ``list-panes -F`` row: ``#{pane_id}``, ``#{pane_active}``, and the
+# caller's requested field. The row is split with ``maxsplit`` one less than this,
+# so a requested field containing a literal tab stays intact in the last element.
+_PANE_ROW_FIELDS = 3
+
 
 def _next_inject_buffer() -> str:
     return f"{_INJECT_BUFFER_PREFIX}-{os.getpid()}-{next(_buffer_counter)}"
@@ -55,7 +61,7 @@ def _next_inject_buffer() -> str:
 
 def _warn(message: str) -> None:
     """Fail-soft diagnostic to stderr (never crash the caller)."""
-    print(f"overseer.tmuxio: {message}", file=sys.stderr)
+    streams.write_stderr(text=f"overseer.tmuxio: {message}\n")
 
 
 class TmuxIO:
@@ -134,8 +140,8 @@ class TmuxIO:
             parts
             for line in (completed.stdout or "").splitlines()
             if line.strip()
-            for parts in [line.split("\t", 2)]
-            if len(parts) == 3
+            for parts in [line.split("\t", _PANE_ROW_FIELDS - 1)]
+            if len(parts) == _PANE_ROW_FIELDS
         ]
         if not rows:
             return None

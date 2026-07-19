@@ -29,6 +29,7 @@ everything with fakes and never touch real ``/proc`` or ``~/.claude``.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from collections.abc import Callable
@@ -93,13 +94,20 @@ def _proc_stat_fields(pid: int) -> list[str] | None:
     return raw[cut + 1 :].split()
 
 
+# Indices into the post-``)`` remainder of ``/proc/<pid>/stat`` that
+# :func:`_proc_stat_fields` returns. The kernel numbers stat's fields from 1 and
+# that remainder begins at field 3, so the field numbered F sits at index F - 3.
+_PPID_INDEX = 1  # stat field 4
+_STARTTIME_INDEX = 19  # stat field 22
+
+
 def proc_ppid(pid: int) -> int | None:
     """The parent PID of ``pid`` from ``/proc/<pid>/stat`` (field 4), or None."""
     fields = _proc_stat_fields(pid)
-    if fields is None or len(fields) < 2:
+    if fields is None or len(fields) <= _PPID_INDEX:
         return None
     try:
-        return int(fields[1])
+        return int(fields[_PPID_INDEX])
     except ValueError:
         return None
 
@@ -112,9 +120,9 @@ def proc_starttime(pid: int) -> str | None:
     the caller treats as "not live".
     """
     fields = _proc_stat_fields(pid)
-    if fields is None or len(fields) < 20:
+    if fields is None or len(fields) <= _STARTTIME_INDEX:
         return None
-    return fields[19]
+    return fields[_STARTTIME_INDEX]
 
 
 # Shells a background command runs as (a Bash(run_in_background) subprocess of the
@@ -140,10 +148,8 @@ def proc_children(pid: int) -> list[int]:
         return []
     out: list[int] = []
     for token in data.split():
-        try:
+        with contextlib.suppress(ValueError):
             out.append(int(token))
-        except ValueError:
-            pass
     return out
 
 

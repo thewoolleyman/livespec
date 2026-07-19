@@ -1679,12 +1679,20 @@ def test_refresh_claude_status_populates_the_map_from_registry(tmp_path):
     assert sup._claude_status == {"sA": "busy"}
 
 
-def test_adopt_sessions_links_by_registry_name(tmp_path):
+def test_adopt_sessions_links_by_registry_name(tmp_path):  # noqa: PLR0915 — see below
     """adopt maps each LIVE Claude session (from ~/.claude/sessions) to a plan when
     its registry `cwd` is in a fleet repo AND its `name` is an active plan topic,
     joined to the tmux session by PID. Registry membership proves it is a claude
     process, so there is no worker-command guard. Non-matches, a session outside
-    tmux, a dead PID, and an already-mapped (repo, topic) contribute nothing."""
+    tmux, a dead PID, and an already-mapped (repo, topic) contribute nothing.
+
+    Over the statement limit (PLR0915) deliberately: the seven session rows below
+    are seven DIFFERENT adoption outcomes that must be exercised against a single
+    `adopt_sessions()` call, because what is under test is how adoption handles a
+    MIXED population in one pass. Splitting them into seven tests would test seven
+    homogeneous populations instead, and hoisting the fixture to a module-level
+    builder would separate each row from the assertion about it.
+    """
     repo_a, _ = _make_plan(tmp_path, repo_name="repo_a", topic="alpha")
     repo_b, _ = _make_plan(tmp_path, repo_name="repo_b", topic="beta")
     (repo_a / "plan" / "gamma").mkdir(parents=True)
@@ -3124,8 +3132,10 @@ def test_never_seen_is_unassigned_but_once_seen_is_session_gone(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def test_an_UNADOPTED_codex_looking_pane_is_never_restarted(tmp_path):
-    """A `bun` pane NOT proven to be a live codex session (absent from `_codex`) is
+def test_an_unadopted_codex_looking_pane_is_never_restarted(tmp_path):
+    """An UNADOPTED pane is never restarted, however much it looks like codex.
+
+    A `bun` pane NOT proven to be a live codex session (absent from `_codex`) is
     `session-gone`, and is never restarted or keystroked — even declaring `ready`.
 
     Any codex ACT (wrap-up, restart) requires the per-tick `_codex` map to prove a real
@@ -3341,7 +3351,12 @@ def test_a_codex_approval_gate_suppresses_the_wrapup(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
-    gate = "Do you trust the contents of this directory?\n› 1. Yes, continue\n  2. No, quit\n  Context 40% left · topic\n"
+    gate = (
+        "Do you trust the contents of this directory?\n"
+        "› 1. Yes, continue\n"
+        "  2. No, quit\n"
+        "  Context 40% left · topic\n"
+    )
     fake.serve(session, repo, capture=gate, cmd="bun")
     sessions_dir = tmp_path / "sessions"
     sessions_dir.mkdir()
