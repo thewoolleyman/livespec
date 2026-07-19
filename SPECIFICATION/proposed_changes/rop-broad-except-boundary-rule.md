@@ -1,7 +1,7 @@
 ---
 topic: rop-broad-except-boundary-rule
 author: claude-opus-4-8
-created_at: 2026-07-19T10:19:15Z
+created_at: 2026-07-19T10:49:08Z
 ---
 
 ## Proposal: Single-boundary cardinality and the no-rail-lifting-defense rule
@@ -111,7 +111,7 @@ Every supervisor MUST wrap its ROP chain body in one `try/except Exception` bug-
 
 REPLACEMENT:
 
-Every supervisor MUST guarantee the bug contract — an unexpected exception surfaces its FULL traceback and yields the bug-class exit code (`1`), never a domain-failure exit and never silence — in one of two conforming forms. **Implicit (the default):** no catch at all; the exception propagates through `raise SystemExit(main())` and the interpreter prints the full traceback to stderr and exits `1` — zero broad catches is the stricter form. **Explicit:** exactly one `try/except Exception` bug-catcher as a direct child of `main()`, required only when the supervisor must attach structured logging context (`structlog`, with full traceback plus module, function, `run_id`) before returning `1`, or when the process's exit contract forbids a raw-traceback escape — a Driver hook is that second case, and its single boundary catch IS its supervisor: a fail-open hook's boundary is the silent exit-`0` pass-through; a fail-closed guard hook's boundary emits its deny decision, with any mixed policy computed inside that ONE handler from state the body recorded, never via additional broad catches. In every form the cardinality rule is absolute: at most ONE broad catch per process entry artifact, a direct child of `main()`, carrying the standardized `# noqa: BLE001 — sole …` marker (§"Linter rule set"); ZERO further broad catches in the artifact, save a foreign-code isolation catch (accounted separately per extension invocation surface, §"ROP composition") and the loop-iteration catch defined next. **Long-running supervision loop (per-iteration resilience):** a daemon that supervises N independent units MAY carry ONE ADDITIONAL broad catch as a direct child of its supervision-loop body, whose contract is to log the FULL traceback and CONTINUE to the next iteration, never exiting — because a bug while evaluating ONE unit MUST NOT terminate the process and strand the other N-1. It MUST log the full traceback (a silent `pass` is forbidden here), and it MUST NOT be used where the process should exit instead. Its cardinality is ONE PER SUPERVISION LOOP rather than one per entry artifact: an entry artifact running such a loop MAY therefore carry both its `main()` boundary handler and this loop-iteration catch, and no further boundary or loop-iteration catches — foreign-code isolation catches are accounted separately, per invocation surface. Enforcement is SPLIT across mechanisms and none covers the whole rule: ruff `BLE001` polices catch BREADTH; `check-no-except-outside-io` polices catch POSITION (which trees, and which `main()` direct-children are exempt); `check-supervisor-discipline` polices ONLY `sys.exit` / `raise SystemExit` confinement to `bin/*.py` and asserts NOTHING about catch-alls. The per-artifact cardinality rule, the marker-wording closed set, and the requirement that each handler discharge its flavor's contract are therefore spec rules enforced by REVIEW today; mechanizing them is tracked as follow-up work and MUST NOT be described as already enforced.
+Every supervisor MUST guarantee ITS FLAVOR's boundary contract. For a CLI wrapper that is the bug contract — an unexpected exception surfaces its FULL traceback and yields the bug-class exit code (`1`), never a domain-failure exit and never silence — in one of two conforming forms. **Implicit (the default):** no catch at all; the exception propagates through `raise SystemExit(main())` and the interpreter prints the full traceback to stderr and exits `1` — zero broad catches is the stricter form. **Explicit:** exactly one `try/except Exception` bug-catcher as a direct child of `main()`, required only when the supervisor must attach structured logging context (`structlog`, with full traceback plus module, function, `run_id`) before returning `1`, or when the process's exit contract forbids a raw-traceback escape — a Driver hook is that second case, and its single boundary catch IS its supervisor, discharging its flavor's contract IN PLACE OF the CLI bug contract above: a fail-open hook's boundary is the silent exit-`0` pass-through; a fail-closed guard hook's boundary emits its deny decision, with any mixed policy computed inside that ONE handler from state the body recorded, never via additional broad catches. In every form the cardinality rule is absolute: at most ONE broad catch per process entry artifact, a direct child of `main()`, carrying the standardized `# noqa: BLE001 — sole …` marker (§"Linter rule set"); ZERO further broad catches in the artifact, save a foreign-code isolation catch (accounted separately per extension invocation surface, §"ROP composition") and the loop-iteration catch defined next. **Long-running supervision loop (per-iteration resilience):** a daemon that supervises N independent units MAY carry ONE ADDITIONAL broad catch as a direct child of its supervision-loop body, whose contract is to log the FULL traceback and CONTINUE to the next iteration, never exiting — because a bug while evaluating ONE unit MUST NOT terminate the process and strand the other N-1. It MUST log the full traceback (a silent `pass` is forbidden here), and it MUST NOT be used where the process should exit instead. Its cardinality is ONE PER SUPERVISION LOOP rather than one per entry artifact: an entry artifact running such a loop MAY therefore carry both its `main()` boundary handler and this loop-iteration catch, and no further boundary or loop-iteration catches — foreign-code isolation catches are accounted separately, per invocation surface. Enforcement is SPLIT across mechanisms and none covers the whole rule: ruff `BLE001` polices catch BREADTH; `check-no-except-outside-io` polices catch POSITION (which trees, and which `main()` direct-children are exempt); `check-supervisor-discipline` polices ONLY `sys.exit` / `raise SystemExit` confinement to `bin/*.py` and asserts NOTHING about catch-alls. The per-artifact cardinality rule, the marker-wording closed set, and the requirement that each handler discharge its flavor's contract are therefore spec rules enforced by REVIEW today; mechanizing them is tracked as follow-up work and MUST NOT be described as already enforced.
 
 
 ## Proposal: Closed set of standardized noqa BLE001 markers
@@ -411,4 +411,31 @@ CURRENT (verbatim):
 REPLACEMENT:
 
 **Hook failure discipline (fail-open by default).** The DEFAULT is fail-open, and the one declared exception is a fail-closed guard hook (per `non-functional-requirements.md` §"Supervisor discipline"), whose single boundary catch emits its deny decision instead of passing through; it still exits 0 and still acts only on a POSITIVE identification of its gating condition.
+
+
+## Proposal: Make the ANY-hook-failure sentence discharge the declared failure posture
+
+### Target specification files
+
+- contracts.md
+
+### Summary
+
+The sentence immediately following the qualified fail-open lead-in still mandates that ANY hook failure MUST be a silent pass-through with exit 0. For the just-declared fail-closed exception, a malformed-stdin failure carrying a hazard hint yields a DENY emission — the shipped `tmux_fleet_guard.py` behavior — not a silent pass-through. So the paragraph would mandate both behaviors for the same concrete event, one sentence apart, defeating the qualification the previous edit introduced.
+
+### Motivation
+
+Fleet ROP design-authority ruling, 2026-07-19, requested from the rop-sweep-fleet-policy plan thread (livespec repo, plan/rop-sweep-fleet-policy/). Two factory-produced conversion styles disagreed about whether a broad `except Exception` is permitted at an I/O seam when it lifts the exception onto the Result/IOResult failure track. STYLE A (livespec-driver-claude's block_auto_memory.py) used broad catches at the stdin/stdout seams, marked `# noqa: BLE001 - ... captured on IO rail`. STYLE B (livespec-orchestrator-git-jsonl's io/store.py) narrowed every catch. One reviewer called STYLE A's catches violations; another called them legitimate rail-lifting. Both readings were defensible under the current text, which blocked acceptance of three merged conversions and the briefing of ten further conversion slices. The ruling settles it for STYLE B and makes the rule mechanically checkable.
+
+### Proposed Changes
+
+The following current text MUST be replaced verbatim. The replacement target has been verified to occur exactly once in the live file.
+
+CURRENT (verbatim):
+
+ANY hook failure — `python3` absent from `PATH`, malformed hook-input JSON on stdin, unset `CLAUDE_PROJECT_DIR`, missing/unreadable/unparseable `.livespec.jsonc`, missing or malformed transcript — MUST be a silent pass-through with exit 0.
+
+REPLACEMENT:
+
+ANY hook failure — `python3` absent from `PATH`, malformed hook-input JSON on stdin, unset `CLAUDE_PROJECT_DIR`, missing/unreadable/unparseable `.livespec.jsonc`, missing or malformed transcript — MUST discharge the hook's declared failure posture: for a fail-open hook (the default), a silent pass-through with exit 0; for the declared fail-closed guard hook, the deny-per-policy emission described above (still exit 0).
 
