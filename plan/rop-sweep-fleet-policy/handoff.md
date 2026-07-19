@@ -16,9 +16,92 @@
 5. **(2026-07-20) Mutation staging-tree CONSTRUCTION goes in `livespec-dev-tooling` as a shared,
    config-driven accommodation** — core as first consumer, convention VALIDATED against
    `livespec-orchestrator-git-jsonl` before the config surface is frozen. Owned by
-   `livespec-mutreal.1`. See "MUTATION IS NOT CONFIGURABLE" below.
+   `livespec-mutreal.1`. **The recipe is now KNOWN and reproduced at ~85% — see "MUTATION IS
+   SOLVED" below.** Implementation is productizing four small artifact groups, not research.
 
-## 🚫 MUTATION IS NOT CONFIGURABLE — it needs a BUILD STEP that does not exist
+## ✅ MUTATION IS SOLVED — a working recipe exists, REPRODUCED TWICE at ~85%
+
+**Supersedes the section below, which said the build step "does not exist". It does now.** Both
+findings are true and complementary: **config-only is impossible (now rigorously proven)** AND
+**construction works**.
+
+```
+agent run : {"killed": 177, "total": 208, "kill_rate_percent": 85.1}
+my re-run : {"killed": 163, "total": 192, "kill_rate_percent": 84.9}
+```
+Both through the official `check_mutation` entry point, exit 0. Totals differ only because the
+runs were built from different master commits. **Comfortably over the 80% hard floor.** Both
+worktrees destroyed; nothing committed.
+
+### The recipe — four artifact groups, mostly symlinks
+
+1. Root `[tool.livespec_dev_tooling]`: `pure_trees = [".claude-plugin/scripts/livespec/parse",
+   ".claude-plugin/scripts/livespec/validate"]` and `mutation_staging_dir = ".claude-plugin/scripts"`.
+2. **`.claude-plugin/scripts/pyproject.toml` — THE load-bearing piece.** `[tool.mutmut]` with
+   **staging-relative** `paths_to_mutate = ["livespec/parse", "livespec/validate"]`, an `also_copy`
+   list completing the import closure (`livespec/__init__.py`, `context`, `errors`, `templates`,
+   `types`, `schemas`, `io`, `doctor`, `commands`, `_vendor`, plus
+   `.claude-plugin/scripts/livespec/schemas` and `.claude-plugin/specification-templates`), and
+   `[tool.pytest.ini_options]` `testpaths = ["tests"]`, `pythonpath = [".", "_vendor"]`.
+3. `.claude-plugin/scripts/tests/` — scoped test tree via SYMLINKS (`conftest.py`,
+   `livespec/parse`, `livespec/validate`). mutmut's hardwired copy of cwd-relative `tests/`
+   follows symlinks.
+4. Two compat symlinks so the 11 test files anchoring on `parents[3] / ".claude-plugin/…"` resolve
+   inside `mutants/`.
+
+**Staging-relative `paths_to_mutate` IS the entire kill mechanism** — it makes the walked-path
+mutant key equal the runtime `__module__` the trampoline prefix-matches.
+
+### Why nothing less works — proven, not asserted
+
+An exhaustive sweep of all **640 tracked directories** found exactly ONE (the repo root) that can
+feed mutmut a config at all; every other `mutation_staging_dir` value crashes in
+`guess_paths_to_mutate()` before a mutant exists. And the decisive experiment: a MAXIMAL
+config-only setup at repo root — every import, fixture and collection problem solved by
+configuration — still yields **0 killed of 208**, because the namespaces are disjoint:
+
+```
+stats file (runtime __module__):  livespec.parse.cross_repo.x_parse_entry
+mutant key (walked-path-derived): .claude-plugin.scripts.livespec.parse.cross_repo.x_parse_entry__mutmut_1
+```
+
+mutmut 3.2.3 has no key-remapping knob (its Config is exactly `paths_to_mutate`, `also_copy`,
+`do_not_mutate`, `max_stack_depth`, `debug`), and every root-cwd key begins with the literal
+`.claude-plugin.` — a leading dot plus a hyphen, which no importable module's `__module__` can
+ever begin with. **Construction is irreducible.**
+
+### Traps to carry into the implementation
+
+- **NEVER list a `paths_to_mutate` tree in `also_copy`** — `copy_also_copy_files()` runs AFTER
+  mutant generation with mtime-preserving `copy2`, silently clobbering mutants and suppressing
+  regeneration.
+- `mutants/livespec` must be a COMPLETE package; mutmut puts `mutants/` at `sys.path[0]`, so a
+  missing `__init__.py` lets the REAL package win and every mutant survives.
+- Core's existing root `[tool.mutmut]` `runner` / `tests_dir` keys are dead mutmut-2.x and ignored.
+
+### Refinement to the archived doc
+
+`leg-findings` rules out `.claude-plugin/scripts/` because `also_copy` cannot reach above cwd.
+That premise is too strong — it CAN serve as the staging root once symlinks bring `tests/` and the
+fixture paths within cwd reach. The doc's CONCLUSION stands (construction is required), but ruling
+5's implementation may target **either** a purpose-built dir **or** `.claude-plugin/scripts`
+augmented in place. The in-place option is lighter and is the one proven twice.
+
+### Caveats — do not oversell
+
+~85% is measured against ONLY the scoped parse/validate subtrees; the whole suite was deliberately
+not wired (many tests read repo-root files and would fail mutmut's clean-test gate). The ~31
+survivors are plausibly real test-gap signal. All artifacts were untracked scratch —
+**productization is the open work**: committed vs generated, and whether a `pyproject.toml` may
+ship inside `.claude-plugin/scripts/`, which IS the plugin payload.
+
+### A separate defect worth its own item
+
+`check_mutation` MASKS this whole failure class: it tolerates rc 1, treats `total == 0` as an
+unconditional pass, and rewrites the placeholder baseline — so any future misconfiguration passes
+green. **Zero mutants with a non-empty `pure_trees` should be an ERROR.**
+
+## 🚫 (SUPERSEDED — kept for the reasoning) MUTATION IS NOT CONFIGURABLE
 
 Executing ruling 4 established this, and it retires a framing an earlier version of this handoff
 carried ("work out the correct `pure_trees` / `mutation_staging_dir` relationship"). **That was
@@ -89,9 +172,10 @@ evidence.
    - **`livespec-dev-tooling-e9j` (P0)** — the biggest, and it SLICES. Declare core's structural
      role keys **except `pure_trees`** now: that is near-free (0 offenses under broad-only) and
      gets five of seven checks genuinely enforcing in one small PR. **Do NOT declare
-     `pure_trees`** — it is gated on `livespec-mutreal.1` landing the staging construction
-     (ruling 5). Ruling 4's "measure first" cannot even be executed until then; see "MUTATION IS
-     NOT CONFIGURABLE" above.
+     `pure_trees`** — it is gated on `livespec-mutreal.1` productizing the staging construction
+     (ruling 5). Ruling 4's "measure first" is now ANSWERED for core: ~85%, over the 80% floor,
+     reproduced twice. So `pure_trees` becomes safe to declare as soon as the construction is
+     committed rather than scratch. See "MUTATION IS SOLVED" above.
    - **The canonical-marker fix on `livespec-dev-tooling-bbl`** — rule-independent, was always
      landable, ~1 string. Fixes 2 of the ~7 remaining broad sites fleet-wide.
    - **`qm5` re-groom** — the rule is settled; its SCOPE still needs re-cutting (premise
