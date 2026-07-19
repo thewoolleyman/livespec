@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.7](https://github.com/thewoolleyman/livespec/compare/v0.17.6...v0.17.7) (2026-07-19)
+
+
+### Bug Fixes
+
+* scope overseer tmux spawns ([574192a](https://github.com/thewoolleyman/livespec/commit/574192a821071732c27af8628f404e7df468414a))
+
 ## [0.17.6](https://github.com/thewoolleyman/livespec/compare/v0.17.5...v0.17.6) (2026-07-18)
 
 
