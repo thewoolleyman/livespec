@@ -329,6 +329,42 @@ BROAD column most.
 
 **Broad-only costs 13 sites. Strict costs 109.** Roughly an 8x difference in remediation scope.
 
+> **REVISED DOWNWARD — the real broad-only figure is ~7, not 13.** Direct source inspection of
+> all 8 Driver broad catches (not simulation — every one read with its marker) found **6 already
+> carry EXACT sanctioned v169 wording**, `sole` cardinality intact since each sits in a different
+> hook file. The 2 non-conforming ones are **the same file in both repos** —
+> `no_shadow_ledger.py:195`, byte-identical, marked `— fail-open by contract`, which is not in
+> the closed set. Neither Driver owns it: it installs from
+> `livespec_dev_tooling/install_no_shadow_ledger.py:255` under a byte-identical guard. So the
+> genuinely outstanding broad work is **2** (one canonical string) **+ 4** (dev-tooling: 2
+> declarable hook boundaries, 2 real violations in `green_token.py`) **+ 1** (overseer
+> `supervisor.py`) ≈ **7 sites fleet-wide**.
+>
+> **This falsifies `qm5`'s Driver-drift premise — the third false premise found in this thread.**
+> That brief says the Drivers drifted into blanket lifts marked `# noqa: BLE001 - ... captured on
+> IO rail`. **No catch in either Driver hook tree carries that wording.** The drift was
+> evidently remediated by the merged PRs #215 / #219 / #199 this handoff's own DONE table
+> records. Do not plan Driver remediation; it is done.
+>
+> **Caveat:** wording conformance is necessary, NOT sufficient. This pass verified the six
+> markers match the sanctioned strings; it did NOT re-verify that each claimed boundary is
+> genuinely its process's sole boundary, nor that fail-open vs fail-closed is right at each site.
+> The tmux guard is precedent — its comment claimed fail-closed while the body failed open.
+> `livespec-dev-tooling-jjb` remains the right home for mechanizing that.
+
+### The one piece of this sweep that can land NOW
+
+Fixing that canonical marker string is **rule-independent** — it is a BROAD catch, restricted
+under both candidate rules — so unlike `qm5`/`cvz`/`6vz`/`e9j` it does not wait on the ruling.
+Routed onto **`livespec-dev-tooling-bbl`** (same canonical body, already targeted there for
+pyright reasons) rather than filed as a near-duplicate; do both edits in ONE pass or the
+byte-identical guard forces a second regeneration across both Drivers for nothing.
+
+The replacement wording was verified TRUTHFUL against the actual body, not assumed: the catch
+sits in `main()` (the process entry point), sets `warning = None`, writes nothing, and returns 0
+unconditionally — so `sole fail-open hook boundary: silent pass-through, exit 0` describes it
+exactly, clause by clause.
+
 The BROAD column is precisely the target of this sweep: **both Drivers carry exactly 4 broad
 catches each — 8 of the 13 fleet-wide** — and those are the hand-rolled blanket lifts the ROP
 ruling was written to close. Broad-only catches every one while leaving the Drivers' 15 combined
