@@ -18,7 +18,7 @@ def _index(tmp_path, records):
     home = tmp_path / "codex"
     home.mkdir(exist_ok=True)
     lines = [
-        '{"id": "%s", "thread_name": "%s", "updated_at": "2026-07-16T08:00:00Z"}' % (i, n)
+        f'{{"id": "{i}", "thread_name": "{n}", "updated_at": "2026-07-16T08:00:00Z"}}'
         for i, n in records
     ]
     (home / "session_index.jsonl").write_text("\n".join(lines) + "\n")
@@ -154,11 +154,11 @@ def test_index_skips_malformed_lines_and_never_raises(tmp_path):
     home.mkdir()
     (home / "session_index.jsonl").write_text(
         "not json at all\n"
-        '{"id": "%s", "thread_name": "good"}\n'
+        f'{{"id": "{_ID_A}", "thread_name": "good"}}\n'
         "\n"
         '{"id": 17, "thread_name": "id-not-a-string"}\n'
         '{"thread_name": "no-id"}\n'
-        '{"id": "x", "thread_name": ""}\n' % _ID_A
+        '{"id": "x", "thread_name": ""}\n'
     )
     assert codex_sessions.read_thread_names(home) == {_ID_A: "good"}
 
@@ -179,9 +179,7 @@ def _index_ts(tmp_path, records):
     """Write a `session_index.jsonl` from (id, thread_name, updated_at) TRIPLES, in order."""
     home = tmp_path / "codex"
     home.mkdir(exist_ok=True)
-    lines = [
-        '{"id": "%s", "thread_name": "%s", "updated_at": "%s"}' % (i, n, ts) for i, n, ts in records
-    ]
+    lines = [f'{{"id": "{i}", "thread_name": "{n}", "updated_at": "{ts}"}}' for i, n, ts in records]
     (home / "session_index.jsonl").write_text("\n".join(lines) + "\n")
     return home
 

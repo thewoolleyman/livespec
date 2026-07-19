@@ -1,9 +1,11 @@
 """registry.py — overseer mapping store + discovery ⋈ mapping join.
 
-Pure-logic, stdlib-only. Host-only tooling under ``.claude/skills/overseer/``,
-deliberately OUTSIDE the livespec product gates (pyright.include, coverage,
-import-linter, and — since PR #1109 — ruff's whole-repo scan). Precedent:
-``.claude/hooks/livespec_footgun_guard.py``. See ``design.md`` beside this file.
+Pure-logic, stdlib-only. Host-only tooling under ``.claude/skills/overseer/``:
+LOCAL-ONLY and unsynced, but no longer outside the product gates — the folder's
+beside-tests and ruff both gate it (``just check-overseer`` / ``just
+check-lint``). It remains outside pyright.include, coverage, and import-linter;
+those are tracked separately in ``plan/overseer-productization/``. See
+``design.md`` beside this file.
 
 Vocabulary (see design.md, the discovery-join model):
   - A "track" is one plan topic in one repo the overseer watches this run.
@@ -27,11 +29,12 @@ import fcntl
 import json
 import os
 import re
-import sys
 import tempfile
 from collections.abc import Callable, Collection, Iterable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+import streams
 
 __all__ = [
     "DEFAULT_CTX_THRESHOLD",
@@ -123,7 +126,7 @@ _ROW_KEYS = (
 
 def _warn(message: str) -> None:
     """Emit a fail-soft diagnostic to stderr (never crash the caller)."""
-    print(f"overseer.registry: {message}", file=sys.stderr)
+    streams.write_stderr(text=f"overseer.registry: {message}\n")
 
 
 def _norm(repo: str | os.PathLike[str]) -> str:
@@ -298,10 +301,10 @@ def _atomic_write(path: Path, body: str) -> None:
                 handle.write(body)
                 handle.flush()
                 os.fsync(handle.fileno())
-            os.replace(tmp_name, path)
+            Path(tmp_name).replace(path)
         except OSError:
             with contextlib.suppress(OSError):
-                os.unlink(tmp_name)
+                Path(tmp_name).unlink()
             raise
     except OSError as exc:
         _warn(f"could not write {path}: {exc}")
@@ -556,47 +559,74 @@ def join(
     return result
 
 
+def _scan_string_literal(text: str, start: int) -> int:
+    """Index just past the JSON string literal opening at ``start``.
+
+    ``text[start]`` is the opening quote. Backslash escapes are honored, so an
+    escaped quote does not end the literal. An UNTERMINATED literal consumes to
+    the end of the input rather than raising: this is a comment stripper, not a
+    validator, and reporting malformed JSON is :func:`json.loads`'s job.
+    """
+    n = len(text)
+    i = start + 1
+    escape = False
+    while i < n:
+        ch = text[i]
+        if escape:
+            escape = False
+        elif ch == "\\":
+            escape = True
+        elif ch == '"':
+            return i + 1
+        i += 1
+    return n
+
+
+def _scan_line_comment(text: str, start: int) -> int:
+    """Index of the newline ending the ``//`` comment at ``start``.
+
+    The newline itself is NOT consumed, so stripping preserves line structure
+    (and therefore the line numbers in any downstream parse error).
+    """
+    end = text.find("\n", start)
+    return len(text) if end == -1 else end
+
+
+def _scan_block_comment(text: str, start: int) -> int:
+    """Index just past the ``/* */`` comment opening at ``start``.
+
+    An unterminated block comment consumes to the end of the input, matching
+    :func:`_scan_string_literal`'s fail-soft posture.
+    """
+    end = text.find("*/", start + 2)
+    return len(text) if end == -1 else end + 2
+
+
 def _strip_jsonc_comments(text: str) -> str:
     """Strip ``//`` line and ``/* */`` block comments, string-literal-aware.
 
-    A hand-rolled state machine (not a regex) so a ``//`` or ``/*`` inside a
-    JSON string value is preserved. Avoids adding a JSONC/TOML/YAML dependency.
+    A hand-rolled scanner (not a regex) so a ``//`` or ``/*`` inside a JSON
+    string value is preserved. Avoids adding a JSONC/TOML/YAML dependency.
+
+    Each ``_scan_*`` helper takes the index where its construct begins and
+    returns the index just past it, so this loop stays a flat dispatch over
+    "what starts here?" rather than an interleaved multi-flag state machine.
     """
     out: list[str] = []
     i = 0
     n = len(text)
-    in_string = False
-    escape = False
     while i < n:
-        ch = text[i]
-        if in_string:
-            out.append(ch)
-            if escape:
-                escape = False
-            elif ch == "\\":
-                escape = True
-            elif ch == '"':
-                in_string = False
+        if text[i] == '"':
+            end = _scan_string_literal(text, i)
+            out.append(text[i:end])
+            i = end
+        elif text.startswith("//", i):
+            i = _scan_line_comment(text, i)
+        elif text.startswith("/*", i):
+            i = _scan_block_comment(text, i)
+        else:
+            out.append(text[i])
             i += 1
-            continue
-        if ch == '"':
-            in_string = True
-            out.append(ch)
-            i += 1
-            continue
-        if ch == "/" and i + 1 < n and text[i + 1] == "/":
-            i += 2
-            while i < n and text[i] != "\n":
-                i += 1
-            continue
-        if ch == "/" and i + 1 < n and text[i + 1] == "*":
-            i += 2
-            while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
-                i += 1
-            i += 2
-            continue
-        out.append(ch)
-        i += 1
     return "".join(out)
 
 

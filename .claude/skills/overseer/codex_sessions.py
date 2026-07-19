@@ -108,7 +108,7 @@ def proc_fd_targets(pid: int) -> list[str]:
         return out
     for entry in entries:
         try:
-            out.append(os.readlink(entry))
+            out.append(str(entry.readlink()))
         except OSError:
             continue  # the fd closed underneath us; skip it
     return out
@@ -117,7 +117,7 @@ def proc_fd_targets(pid: int) -> list[str]:
 def proc_cwd(pid: int) -> str | None:
     """``/proc/<pid>/cwd`` resolved, or None if unreadable."""
     try:
-        return os.readlink(f"/proc/{pid}/cwd")
+        return str(Path(f"/proc/{pid}/cwd").readlink())
     except OSError:
         return None
 
