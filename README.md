@@ -70,6 +70,19 @@ host), and `install` exits 0 if the plugin is already there, so it is
 safe to re-run. Skipping this leaves the project enabled-but-not-
 installed: no command resolves, and nothing reports an error.
 
+Two commands rewrite that committed file rather than merely touching the
+install record, both observed on Claude Code v2.1.215:
+`claude plugin uninstall <plugin> -s project` empties `enabledPlugins`,
+and `claude plugin disable <plugin> -s project` writes `false` for that
+plugin while keeping the key and the install record. If either was
+unintended, restore `.claude/settings.json` from version control; if you
+are deliberately de-adopting, remove the `enabledPlugins` and
+`extraKnownMarketplaces` blocks together and commit that.
+
+Treat "marketplaces declared, but nothing enabled from them" as a defect
+rather than a clean state — including the partial case, where some keys
+were dropped and one enabled plugin remains.
+
 After installing, restart Claude Code (or run
 `/reload-plugins`). The eight slash commands below become available
 with the `livespec:` namespace prefix (the Driver plugin is

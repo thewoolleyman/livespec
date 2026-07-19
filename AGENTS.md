@@ -157,6 +157,38 @@ does not prove the right project was touched — see
 `SPECIFICATION/contracts.md` §"Plugin distribution" (install
 verification) for the invariant and the `-s project` resolution caveat.
 
+That verification MUST NOT pass vacuously, and "vacuous" has three
+levels — all reachable; the first two observed on Claude Code v2.1.215,
+the third arising from hand edits and merge resolutions rather than from
+a platform command:
+
+- **Empty.** A check enumerating `enabledPlugins` succeeds on zero
+  iterations. `claude plugin uninstall <plugin> -s project` rewrites the
+  COMMITTED `.claude/settings.json` and empties `enabledPlugins` rather
+  than merely dropping the install record. (`claude plugin install` also
+  rewrites the file, cosmetically.)
+- **All-false.** `{"p@m": false}` is a non-empty dict, so an emptiness
+  test alone passes it. `claude plugin disable <plugin> -s project`
+  writes `false` in the same committed file, key retained, install
+  record intact — so count only `true`-valued entries. (`--all` cannot
+  be combined with `--scope`.)
+- **Partially stripped.** Some keys dropped, one left enabled, while
+  `extraKnownMarketplaces` still declares every marketplace. Whole-set
+  non-vacuity passes this. Require each declared marketplace to be
+  referenced by at least one enabled plugin.
+
+The structural cause is that the check derives its expected set from the
+same mutable file every one of these corrupts, so any corruption leaving
+one true entry survives a naive predicate.
+
+So: an uninstall or disable leaves governed config dirty AND disarms a
+naive verification in the same stroke. After one you did not intend,
+restore `.claude/settings.json` from version control before
+re-verifying. If it WAS intended — a deliberate de-adoption — remove the
+`enabledPlugins` and `extraKnownMarketplaces` blocks together and commit
+that. Treat marketplaces-declared-with-nothing-enabled-from-them as a
+defect, never a pass.
+
 Then restart Claude Code or run `/reload-plugins` — a freshly
 installed plugin does not load into the session that installed it —
 and the eight `/livespec:*` slash commands become available with the

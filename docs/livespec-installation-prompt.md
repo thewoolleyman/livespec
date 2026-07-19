@@ -215,15 +215,79 @@ python3 - "$PWD" <<'EOF'
 import json, pathlib, sys
 root = str(pathlib.Path(sys.argv[1]).resolve())
 settings = json.loads(pathlib.Path(".claude/settings.json").read_text())
-installed = json.loads((pathlib.Path.home() /
-    ".claude/plugins/installed_plugins.json").read_text())
+raw = settings.get("enabledPlugins", {})
+markets = settings.get("extraKnownMarketplaces", {})
+if not isinstance(raw, dict) or not isinstance(markets, dict):
+    sys.exit("DEFECT: enabledPlugins and extraKnownMarketplaces must both be "
+             "JSON objects in .claude/settings.json.")
+if any(v is not True and v is not False for v in raw.values()):
+    sys.exit("DEFECT: enabledPlugins values must be JSON booleans; a string "
+             'like "false" is truthy in most languages and would be counted '
+             "as enabled.")
+# Count only TRUE-valued entries. A false value is an explicit disable, not
+# an enablement: `{"p@m": false}` is a non-empty dict, so testing the dict
+# for emptiness alone would let an all-false file slip past the guards below
+# and certify a project with nothing enabled. `claude plugin disable <plugin>
+# -s project` was observed writing exactly that (false, key retained, install
+# record left intact); note `--all` cannot be combined with `--scope`.
+enabled = {k for k, v in raw.items() if v is True}
+if markets and not enabled:
+    sys.exit("DEFECT: extraKnownMarketplaces declared but no plugin is enabled "
+             "(enabledPlugins is empty, absent, or all-false). Restore "
+             ".claude/settings.json from version control, then re-run the "
+             "install step above. If this is a deliberate de-adoption, remove "
+             "BOTH blocks and commit that, rather than leaving them "
+             "inconsistent.")
+if not enabled:
+    sys.exit("DEFECT: no plugin is enabled; there is nothing to verify.")
+# Per-marketplace non-vacuity. Whole-set non-vacuity above still passes a
+# PARTIALLY stripped file: three marketplaces declared but only one plugin
+# left enabled looks healthy, because the expected set is derived from the
+# same mutable file every failure mode here corrupts. Require each declared
+# marketplace to be referenced by at least one enabled plugin.
+disabled = {k for k, v in raw.items() if v is False}
+unreferenced = sorted(
+    m for m in markets
+    if not any(k.split("@", 1)[-1] == m for k in enabled)
+)
+if unreferenced:
+    # Distinguish an explicit disable (key present, value false) from a strip
+    # (key gone). Both fail — a governed project needs its plugins enabled —
+    # but they call for opposite remedies, and sending an operator to hunt
+    # corruption when the state is a visible `false` wastes their time.
+    off = sorted(m for m in unreferenced
+                 if any(k.split("@", 1)[-1] == m for k in disabled))
+    gone = [m for m in unreferenced if m not in off]
+    parts = []
+    if off:
+        parts.append(f"explicitly disabled: {off} — re-enable, or de-adopt by "
+                     "removing both blocks and committing that")
+    if gone:
+        parts.append(f"no enablement entry at all: {gone} — looks partially "
+                     "stripped; compare .claude/settings.json against version "
+                     "control")
+    sys.exit("DEFECT: marketplaces declared with nothing enabled from them. "
+             + "; ".join(parts))
+# Absent registry == nothing installed anywhere. Treat as empty rather than
+# raising: the file legitimately does not exist on a machine where no plugin
+# has ever been installed, and a traceback there reads as tooling breakage
+# rather than the actionable "not installed" it actually is.
+registry = pathlib.Path.home() / ".claude/plugins/installed_plugins.json"
+try:
+    installed = json.loads(registry.read_text()) if registry.is_file() else {}
+except (OSError, json.JSONDecodeError) as exc:
+    sys.exit(f"DEFECT: cannot read {registry}: {exc}")
+if not isinstance(installed, dict) or not isinstance(installed.get("plugins", {}), dict):
+    sys.exit(f"DEFECT: unexpected shape in {registry}; expected an object with "
+             "a 'plugins' object.")
 missing = [
-    name for name in settings.get("enabledPlugins", {})
+    name for name in enabled
     if not any(e.get("projectPath") == root
                for e in installed.get("plugins", {}).get(name, []))
 ]
-print("MISSING:", missing) if missing else print("OK: all enabled plugins installed for", root)
-sys.exit(1 if missing else 0)
+if missing:
+    sys.exit(f"MISSING (enabled but not installed for {root}): {missing}")
+print(f"OK: {len(enabled)} enabled plugins all installed for {root}")
 EOF
 ```
 
@@ -231,6 +295,31 @@ A non-empty `MISSING` list means the plugin is enabled but not
 installed for this project — re-run the install above. Do NOT infer
 success from a command's exit status alone; see the `-s project`
 caveat under the updater hook below.
+
+The `DEFECT` branches matter as much as the `MISSING` one. A check that
+merely enumerates `enabledPlugins` reports success whenever that set is
+effectively empty, and several ordinary operations get it there — each
+observed on Claude Code v2.1.215:
+
+- `claude plugin uninstall <plugin> -s project` rewrites the committed
+  `.claude/settings.json` and empties `enabledPlugins`, rather than
+  merely dropping the install record.
+- `claude plugin disable <plugin> -s project` writes `false` for that
+  plugin in the same committed file, retaining the key and leaving the
+  install record intact. (`--all` cannot be combined with `--scope`.)
+- A single-plugin uninstall, a hand edit, or a merge resolution can drop
+  some keys while leaving others — a partial strip, which whole-set
+  non-vacuity alone still passes.
+
+That is why the check counts only `true`-valued entries, and why it also
+requires every declared marketplace to be referenced by an enabled
+plugin. Without both guards it would certify a stripped project healthy.
+
+After an uninstall or disable you did not intend, restore
+`.claude/settings.json` from version control before re-verifying. If the
+removal WAS intended — you are de-adopting — remove the `enabledPlugins`
+and `extraKnownMarketplaces` blocks together and commit that, rather
+than leaving a half-stripped file that reads as corruption.
 
 Finally, tell the user to restart the session or run `/reload-plugins`
 — a freshly installed plugin does not load into the session that
