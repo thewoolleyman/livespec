@@ -240,15 +240,30 @@ core's own checkout — `public_api_result_typed`, `newtype_domain_primitives`,
 `pbt_coverage_pure_modules`, `no_except_outside_io`, `no_raise_outside_io` all print
 `check no-ops` — while core CI reports every one SUCCESS (verified on PR #1426's rollup).
 
-**Root cause, and it is sharper than "someone forgot a key":** `config.py`'s
-`_livespec_core_config()` fallback applies ONLY when the block is ABSENT. Core HAS a block (for
-`file_lloc_hard_gate` and friends) and declares NONE of the five structural role keys — so the
-fallback named for core never fires for core, and core takes the empty flat baseline.
-Meanwhile `livespec-console-beads-fabro` has no block, so it DOES take the core fallback and
-inherits core paths that do not exist in what is a Rust crate. **The core-shaped fallback misses
-core and lands on a repo it cannot describe.** Declaring one unrelated convenience key silently
-moves a repo from the fallback regime to the empty regime, disarming every gated check in one
-edit, with no diagnostic louder than an INFO line.
+**Root cause — pinned to a commit and a date. The fallback was correct for under 24 hours:**
+
+| When | What |
+|---|---|
+| **2026-05-30 15:53** | livespec-dev-tooling `391662a` introduces `_livespec_core_config()`, the fallback that supplies core's real `io_trees`/`pure_trees`/`dataclasses_tree`. It applies ONLY when the `[tool.livespec_dev_tooling]` block is ABSENT — its docstring says it exists so "livespec-core (which omits the block) stays bit-identical". |
+| **2026-05-31 14:10** | livespec core `8f6ecc59` ADDS that block — solely to declare `scenario_tiers` for an unrelated new heading-coverage check in dev-tooling v0.9.0. It declares no structural role key, and needed none for its purpose. |
+
+That one edit moved core from the fallback regime to the empty flat baseline. **Core's
+structural gate suite has been inert since 2026-05-31 — roughly seven weeks — with CI reporting
+every one of those checks green throughout.**
+
+Four properties hid it: the disarming edit lived in a DIFFERENT repo and reads as a dependency
+bump; the regime switch is implicit in `table is None`, so ANY key flips it; the only signal is
+an INFO line in a suite where passing checks also print nothing and exit 0 — a no-op and a pass
+are visually identical in CI; and `_livespec_core_config`'s docstring still asserts core "omits
+the block", so the function is now dead code with respect to its stated purpose while still
+firing for `livespec-console-beads-fabro`, which has no block and is a Rust crate. **The
+core-shaped fallback misses core and lands on a repo it cannot describe.**
+
+This reframes the fix: the failure was NOT a repo forgetting to declare keys. Core never needed
+to — it was correctly served by the fallback until an unrelated edit silently withdrew it. So
+the load-bearing remedy is making the regime EXPLICIT (a repo declares which layout it intends)
+and making a zero-file inspection LOUD (report the inspected-file count per check, so "inspected
+0" cannot masquerade as "passed").
 
 **Why this bears directly on this thread:** v169's mechanical half is carried by exactly these
 checks. In core and both Drivers they inspect nothing. A ratified ROP policy is being enforced
