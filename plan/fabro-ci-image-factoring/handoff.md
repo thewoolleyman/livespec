@@ -86,15 +86,46 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-19 (cont. 9, final)
+## ▶ START HERE — updated 2026-07-19 (cont. 9, corrected)
 
-## ▶▶ READ THIS FIRST — THIS TRACK IS COMPLETE
+## ▶▶ CORRECTION FIRST — the previous revision of this section was WRONG
 
-**The original epic is DELIVERED and all three defects in the follow-on family are
-FIXED, MERGED, AND LIVE-EXERCISED.** CI and the Fabro sandbox run the SAME image
-across all 8 fleet repos — including, as of 2026-07-19, the PRODUCER — and every
-pin that keeps them aligned is discovered and reconciled automatically with no
-hand-bumping anywhere. **Nothing on this track is outstanding.**
+**The cont. 9 revision of this handoff claimed "nothing on this track is
+outstanding" and "THIS THREAD IS READY TO ARCHIVE". BOTH CLAIMS WERE FALSE, and
+they merged before the error was caught** (PR #1428). The anchoring epic
+`livespec-3lev` has **three children still in BACKLOG** — verified with `bd show`,
+which the wrong revision never ran:
+
+| Child | Scope | Real status |
+|---|---|---|
+| `livespec-3lev.4` | Phase 1 — baked layered images, matrix build, cross-repo pin lockstep, console/orchestrator image switch | **Probably stale-open; needs DISPOSITION, not work.** The images, matrix build, and image switch shipped; the "Rust & Codex-ACP cross-repo pin lockstep" portion was explicitly CANCELLED by the 2026-07-12 maintainer correction as a circular dependency. Verify, then close citing that correction. |
+| `livespec-3lev.7` | Phase 4 — file conversion work-items in the `openbrain` + `resume` adopter ledgers | **GENUINELY OUTSTANDING.** No adopter work-items filed. |
+| `livespec-3lev.8` | Phase 5 — post-rollout efficiency report: before/after CPU-seconds + wall-clock over a real Honeycomb window | **GENUINELY OUTSTANDING**, and it is the epic's own "closing measurement gate" — the evidence that this whole rollout actually paid off. |
+
+**DO NOT ARCHIVE THIS THREAD.** Phases 4 and 5 are real remaining scope.
+
+**How the error happened, because the lesson generalizes.** The cont. 8 handoff said
+"The original epic is DELIVERED... Nothing on the original plan is outstanding."
+cont. 9 propagated that sentence forward while rigorously verifying everything
+AROUND it — every pin, every CI run, every job log, re-measured from
+`origin/master` rather than trusted — but never ran `bd show livespec-3lev` to check
+the epic's own children. This repo's own discipline names the failure exactly:
+*treat a plan's claims about sibling state as hypotheses to confirm.* An inherited
+status sentence is exactly such a claim, and being scrupulous about the facts in
+front of you is no defence against an unchecked premise underneath you.
+
+**Standing rule this earns:** before writing any "track complete", "nothing
+outstanding", or "archivable" line in ANY handoff, enumerate the anchoring epic's
+children and check each status directly. A closed track is a claim about the
+LEDGER, so it must be verified against the ledger.
+
+### What IS genuinely delivered (the narrower, true claim)
+
+The **image-unification work and the three-defect follow-on family are complete and
+live-exercised.** CI and the Fabro sandbox run the SAME image across all 8 fleet
+repos — including, as of 2026-07-19, the PRODUCER — and every pin that keeps them
+aligned is discovered and reconciled automatically with no hand-bumping anywhere.
+That is a real result. It is just not the whole epic.
 
 `livespec-dev-tooling-5r3` was closed with full live-exercise evidence: release
 `v0.50.1` fired the new job unprompted, it opened PR #472 rewriting all six
@@ -104,12 +135,29 @@ self-sourced pins with the `python-` layer prefix preserved, that PR merged, and
 `livespec-fabro-sandbox:python-v0.50.1` read from the job log rather than inferred
 from a green tick. See "THE COMPLETED LOOP" below for the full chain.
 
-**What remains is NOT this track's work:** a single maintainer-owned P3 (`4j3`,
-the release-please `uv.lock` / `Cargo.lock` staleness, which spans two repos and
-belongs to its own thread). **THIS THREAD IS READY TO ARCHIVE** — every item it
-owns is closed and merged, so archive it rather than leaving a finished thread
-open. `4j3` should be carried wherever release-please hygiene is tracked, not used
-as a reason to keep this one alive.
+### ▶ NEXT ACTIONS, in order
+
+1. **Dispose of `livespec-3lev.4`.** Confirm the images / matrix build /
+   console+orchestrator image switch all shipped (they appear to have), then close
+   it citing the 2026-07-12 maintainer correction that CANCELLED its cross-repo
+   pin-lockstep portion as a circular dependency. This is bookkeeping, not work —
+   but leaving it open misrepresents the epic.
+2. **`livespec-3lev.7` — Phase 4, adopter work-items.** File ready conversion
+   work-items in the `openbrain` and `resume` ledgers. Note per
+   `.ai/adding-an-adopter.md` that onboarding is END-USER work in the adopter repo;
+   what this child owns is FILING the work-items, not performing the conversion.
+3. **`livespec-3lev.8` — Phase 5, the closing measurement gate.** Before/after
+   CPU-seconds and wall-clock for factory + CI over a real Honeycomb window. This
+   is the evidence the rollout paid off, and nothing else on the epic substitutes
+   for it. The `livespec-host-metrics` dataset (agent-activity Honeycomb env) has
+   been receiving host + per-container metrics since P-host step 1 landed
+   (`otel-collector` PR #3, commit `417e5d8`), so the "after" window is available;
+   the "before" comparison needs a window predating the cutover.
+4. **Non-blocking, maintainer-owned:** `livespec-dev-tooling-4j3` (release-please
+   bumps `pyproject.toml` but not `uv.lock`, so every `uv run` dirties a clean
+   checkout; `livespec-console-beads-fabro` has the identical stale `Cargo.lock`
+   issue). Fix both together via a release-please post-bump re-lock. It belongs to
+   release-please hygiene rather than this track.
 
 **The family of THREE defects is the useful story.** A 16-release drift survived
 DAILY GREEN freshness runs because three independent failures compounded, and any
