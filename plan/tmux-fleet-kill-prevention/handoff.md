@@ -22,6 +22,36 @@ time this distinction was blurred.
    this thread killed the fleet again on 2026-07-19.** Its five "hard rules" are
    binding on whoever picks this up.
 
+## CORRECTED DIAGNOSIS (2026-07-19, established by live probing)
+
+An earlier version of this document said the Codex guard was "merged but never
+installed". **That was wrong.** It was installed, enabled, trusted, and cached 37
+minutes before the kill, with correct logic and correct wiring — and it still
+protected nothing, because it **crashes on import and fails OPEN**. Anyone
+picking this up should start from these facts, not from the old story:
+
+1. **The guards fail open on an import error.** Shipped hooks import modules that
+   do not exist in the install cache (`_vendor` on Codex, `returns` on the Claude
+   Driver); both live at repo root, outside the packaged subtree. The hook exits
+   1, the runtime logs a terse `PreToolUse Failed`, and the command proceeds.
+   Measured: **8 of 12 active distributed hooks could not start**, including
+   `block_auto_memory.py`. CI stayed green throughout because tests run under
+   `uv`, where the dependency resolves, and never in the install shape.
+2. **The classifiers are CORRECT.** Both guards score 15/15 on a hazard/benign
+   corpus once importable, and Codex sends the Claude-shaped payload
+   (`tool_name: "Bash"`, `tool_input.command`), so the matchers are right too.
+   The defect is packaging alone — do not redesign the classification logic.
+3. **Codex re-extracts its plugin cache on every run.** Patching a cached file is
+   silently reverted; a fix reaches Codex only by shipping in a release.
+4. **Codex silently skips UNTRUSTED hooks.** A changed `hooks.json` invalidates
+   its `trusted_hash`, after which every hook from that plugin is skipped with no
+   warning. Any version bump can disarm the guard invisibly — check
+   `[hooks.state]` after every update.
+
+**Only the host guard is real protection today** (`~/.claude/hooks/tmux-fleet-guard.py`,
+15/15, Claude runtime on this host only). **Codex is entirely unguarded** —
+do not run a Codex agent until the fixed release lands and a firing probe passes.
+
 ## HARD RULES (violating any of these has already destroyed the fleet once)
 
 1. **Never put a destructive command in a sub-agent brief** — not as an example,
@@ -41,8 +71,8 @@ time this distinction was blurred.
 |---|---|---|
 | **L2-host** guard `livespec-6dyst6` (repo `vps-info`) | n/a | **YES** — `~/.claude/hooks/tmux-fleet-guard.py` + `~/.claude/settings.json` `PreToolUse`. Live-verified (fresh headless session denied a guarded command). Version-carried at `vps-info@5cdbcd8` `services/claude-code-hooks/`. Item CLOSED. Covers Claude Code on this host ONLY. |
 | **L1 overseer** `livespec-wa7ry3` (repo `livespec`) | yes — PR #1367, `574192a8` | **UNVERIFIED** — `.claude/skills/overseer/supervisor.py` ships `unset TMUX; export TMUX_TMPDIR=/tmp/tmux-agents-<uid>; exec …`. Item CLOSED, but a *running* overseerd may predate it. |
-| **L2 Claude Driver** mirror `livespec-driver-claude-w6f` | yes — PR #206, `340dff81` | **NO** — plugin loads from a pinned cache/`release` ref; hook not proven loaded. |
-| **L2 Codex** mirror `livespec-driver-codex-72z` | yes — PR #192, `e53bcea1` | **NO — this is the hole that killed the fleet on 2026-07-19.** Never installed into `~/.codex/config.toml`. |
+| **L2 Claude Driver** mirror `livespec-driver-claude-w6f` | yes — PR #206, `340dff81` | **NO — installed but DEAD ON ARRIVAL.** Present in the cache and wired, but crashes on `ModuleNotFoundError: returns` before classifying; fails OPEN. 0/15 on the payload corpus. |
+| **L2 Codex** mirror `livespec-driver-codex-72z` | yes — PR #192, `e53bcea1` | **NO — installed, enabled, trusted, and DEAD ON ARRIVAL.** This is the hole that killed the fleet on 2026-07-19. It was NOT "never installed" (the earlier claim here was wrong): it was cached 37 min before the kill and crashes on `ModuleNotFoundError: _vendor`, failing OPEN. 0/15 on the payload corpus. |
 | **L1 sandbox** mirror `bd-ib-zaq3` (orchestrator) | yes — PR #780, `861e40c3` | **NO** — orchestrator runs from cached plugin; covers Fabro dispatch sandboxes only, never ad-hoc sub-agents. |
 | **L3 console harness** mirror `livespec-console-beads-fabro-f2k` | yes — PR #290, `85b2976d` | **NO** — test-only; not run on host since merge. |
 | **L4 resilience** `livespec-4vzhwp` (repo `livespec` + host) | no | **NOT STARTED** — `blocked`, maintainer-gated host systemd leg. Recovery has now cost real time 3×. |
@@ -65,26 +95,47 @@ This handoff and `research/incident-2026-07-19-agent-brief-kill.md` are committe
 on `master` (PR #1391, merge `1f9add96`; this correction followed it). Nothing to
 do here — start at step 1.
 
-### 1. Install + live-verify the **Codex** guard (closes the 2026-07-19 hole) — DO THIS FIRST
-Host-wide registration (per `CLAUDE.md` §"Codex dogfooding"):
-```bash
-codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release
-codex plugin add livespec@livespec-driver-codex
-```
-Confirm a `[plugins."livespec@livespec-driver-codex"] enabled = true` entry lands
-in `~/.codex/config.toml`. **NOTE:** the marketplace tracks `release` — verify a
-release tag CONTAINS PR #192 (`e53bcea1`); if not, a release must be cut first.
-**Live-verify payload-only:** feed a default-socket kill *string* to
-`livespec/hooks/livespec_footgun_guard.py` on stdin and confirm it returns a
-DENY verdict; feed a scoped `-L <name>` string and confirm ALLOW. **Never execute
-a tmux command to test.**
+### 1. Ship + live-verify the **Codex** guard (closes the 2026-07-19 hole) — DO THIS FIRST
 
-### 2. Install + live-verify the **Claude Driver** guard (`w6f`)
-The Driver marketplace is pinned to `ref: release`. Verify a release contains
-PR #206 (`340dff81`); cut/await one if not. Then `/plugin update
-livespec@livespec-driver-claude` (or reinstall) and confirm
-`.claude-plugin/hooks/tmux_fleet_guard.py` is present in the installed cache and
-wired via that plugin's `hooks.json`. **Live-verify payload-only** as above.
+**The installation step is already done and is NOT the problem.** The plugin is
+registered, enabled, and trusted in `~/.codex/config.toml`, and the guard is in
+the cache with correct logic and correct wiring. It nevertheless protects nothing,
+because it crashes on import (`_vendor` is not inside the packaged `./livespec`
+subtree) and therefore fails OPEN. Do not spend time on `codex plugin add`.
+
+What is actually required:
+
+1. **Fix the packaging** so every shipped hook runs under bare `python3` with no
+   venv and no third-party packages — the maintainer's decision is a stdlib-only
+   sibling `_result.py` shim plus an install-shaped test that stages ONLY the
+   packaged subtree and asserts real verdicts. (In flight; see §"Corrected
+   diagnosis" below.)
+2. **Cut a release.** The marketplace tracks `ref: release`, and — critically —
+   **Codex re-extracts its plugin cache on every run**, so patching the cache as a
+   stopgap does NOT work; it is silently reverted. A fix reaches Codex only via a
+   release.
+3. **Re-establish hook trust.** Codex SILENTLY skips untrusted hooks, and a
+   changed `hooks.json` invalidates its `trusted_hash`. After the update, confirm
+   `[hooks.state]` carries entries for the plugin — otherwise the guard is absent
+   with no warning whatsoever.
+4. **Verify in two stages, both required.** (a) Payload corpus against the
+   INSTALLED artifact — 15/15. (b) A **firing probe** proving the hook actually
+   blocks: use the guard's unrelated `--no-verify` deny rule inside a throwaway
+   git repository, which is harmless whether it is blocked or executed. **Never
+   execute a tmux command to test.** Stage (a) alone is what created the last
+   false-confidence report — a perfect classifier that never runs.
+
+### 2. Ship + live-verify the **Claude Driver** guard (`w6f`)
+
+Identical defect, identical remedy: installed and wired, but dies on
+`ModuleNotFoundError: returns` and fails OPEN. Fix packaging, release, update the
+plugin, then verify with BOTH the payload corpus and a firing probe.
+
+Note the asymmetry while this is open: Claude Code on this host is still covered
+by the **host guard** (`~/.claude/hooks/tmux-fleet-guard.py`, payload-verified
+15/15), which is independent of the plugin. **Codex has no such fallback and is
+therefore completely unguarded until step 1 lands.** Do not run any Codex agent
+until it does.
 
 ### 3. Verify the **sandbox** env inversion (`zaq3`) is live
 Confirm the *installed* orchestrator plugin cache (not just origin/master)
@@ -175,6 +226,16 @@ complete and verified.
   review agents, no `fabro-exec` wrappers).
 - These plan docs are committed on `master` (PR #1391, `1f9add96`) — step 0 is done.
 - Nothing beyond the L2-host guard has been claimed done. The four mirrors are
-  merged and parked in `acceptance` — they are NOT accepted and NOT installed.
-  Do not report this epic complete until every step 0–10 is finished and each
-  guard is payload-proven on its own runtime.
+  merged and parked in `acceptance` — they are NOT accepted, and the two Driver
+  guards are installed but non-functional. Do not report this epic complete until
+  every step 0–10 is finished and each guard is proven to FIRE on its own runtime
+  (payload corpus alone is insufficient — see CORRECTED DIAGNOSIS).
+- **Verification recipe that works, for reuse.** Payload-probe a guard by feeding
+  `{"tool_name":"Bash","tool_input":{"command":"<STRING>"}}` to its stdin and
+  reading the verdict; nothing is ever executed. Then prove FIRING with a payload
+  the guard denies for an unrelated, inert reason — `git commit --no-verify` in a
+  throwaway git repository — which is harmless whether blocked or executed. To
+  inspect Codex hook behavior without touching host config, point `CODEX_HOME` at
+  a scratch directory (copy `auth.json` in, delete the whole directory after) and
+  use `codex exec --dangerously-bypass-hook-trust` with a diagnostic recorder
+  plugin. That is how the payload shape above was established.
