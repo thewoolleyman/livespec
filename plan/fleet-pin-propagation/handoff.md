@@ -225,9 +225,40 @@ SUBSET. Reconciling those two numbers is the sharpest remaining sweep task.
 
 ## NEXT ACTION
 
-**Blocked on the maintainer — one acceptance.** The grooming session dispatched
-both `READY` slices; both are merged and their artifacts are on master. The
-thread cannot advance further without a human acceptance.
+**Blocked on the maintainer — TWO acceptances, then a grooming queue.** The
+grooming session dispatched both `READY` slices; both are merged and their
+artifacts are on master. No further work here is agent-eligible.
+
+**Correction:** an earlier revision of this section said "one acceptance". It is
+**two** — `livespec-e7lanq` AND `livespec-b7ropo` are both at `acceptance`.
+Verified live 2026-07-20.
+
+Everything else in the thread has now been re-verified against `origin/master`
+and needs exactly one thing: **grooming**, which is maintainer-owned by design
+(the `groom` operation's cut belongs to the maintainer, and none of these items
+carries an autonomy tier yet). The evidence work is done; the cuts are not.
+
+Ids are written tenant-prefixed IN FULL, and each tenant repo is named in full,
+because this queue spans three tenants and a bare suffix cannot be turned into a
+command. Read each tenant from its own clone (`/data/projects/<repo>`) — the read
+surfaces resolve the tenant from the working directory.
+
+| Item | Tenant repo | Verified state | What grooming must decide |
+|---|---|---|---|
+| `livespec-fxxfq6` | `livespec` | backlog | Which of the two fixes; **both are single-repo edits** (the "cross-repo + pin bump" claim was false). Re-read its corrected workflow-permission paragraph first |
+| `livespec-p9s0` | `livespec` | LIVE | Whether to make the canonical ref the default rather than the fallback. Design with `livespec-fxxfq6` in view — same weakness |
+| `livespec-bg47fr` | `livespec` | LIVE, understated | Whether adopters get the SAME fan-out as members or only a staleness signal. Note `openbrain` is at `v0.6.10` — staler than `resume`, and the body never measured it |
+| `livespec-console-beads-fabro-tafkuw` | `livespec-console-beads-fabro` | LIVE, design settled | Only the implementation shape remains; the invalidation-trigger question is answered (see diagnosis §"scope question") |
+| `livespec-dev-tooling-q37xxt` | `livespec-dev-tooling` | backlog CLEARED | Automation only. Must handle BOTH supersession categories |
+| `livespec-dev-tooling-y6kqgr` | `livespec-dev-tooling` | CONFIRMED live | Dedupe design; co-design with `livespec-dev-tooling-q37xxt` — same `(source_repo, target_version, consumer)` tuple |
+| `livespec-dev-tooling-tuyje7` | `livespec-dev-tooling` | CONFIRMED live | Docs-vs-implementation contradiction; decide whether to fix the prose or add the step |
+| `livespec-dev-tooling-f5or5c` | `livespec-dev-tooling` | evidence STALE | **Re-scope before grooming** — "nothing fans out to it" is wrong; the real defect is sporadic-with-skips |
+
+**A trap for whoever grooms `y6kqgr` or `q37xxt`:** the duplicate-PR evidence is
+no longer observable in the open-PR population, because that population went
+43 → 13 and the four PRs that demonstrated it (`livespec-runtime` #206–#209) are
+among the 30 closed. Validate a fix against the fan-out's dedupe logic or the
+next real releases — **not** by inspecting today's open PRs.
 
 **Accept (or reject) `livespec-e7lanq`.** It sits at `acceptance` under
 `acceptance_policy: ai-then-human`; the AI pass verdict was PASS. It was
