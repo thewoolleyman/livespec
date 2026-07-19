@@ -1,69 +1,90 @@
-# rop-sweep-fleet-policy — COMPLETE (planning done; 6 children READY for the factory)
+# rop-sweep-fleet-policy — full-ROP railway backfill; briefs rewritten; EXECUTING autonomously
 
-**This planning thread's work is DONE.** Spec + template landed; the backfill epic
-+ 6 per-repo children are filed and all at `ready`. The only remaining work is the
-FACTORY implementation of those 6 children — NOT a planning-session task. If the
-overseer restarts this session, there is nothing to plan here.
+**State (2026-07-19).** Planning is refined and the maintainer authorized **in-session
+autonomous execution** (overriding the earlier "do not implement in-session" guard). The
+epic `livespec-y2lkf4` + its 6 per-repo children are filed; all `ready`. The children's
+briefs were **rewritten** to mandate the full ROP railway everywhere (see below) after a
+code-level audit showed the earlier "thin repo / decide vendoring returns" framing was
+factually wrong. Status is READ from the ledger (`bd dep tree livespec-y2lkf4` /
+`list-work-items` / `next`), never stored here.
 
-## ⛔ DO NOT run `groom livespec-y2lkf4`
+## ⛔ DO NOT run `groom livespec-y2lkf4` (the EPIC)
 
-The epic is ALREADY decomposed (its 6 children were filed during the plan step).
-The `groom` operation decomposes a `backlog` epic into FRESH slices and then closes
-the epic — running it here would file 6 DUPLICATE slices and orphan the originals.
-The children were advanced `pending-approval → ready` via the admission valve
-(`drive --action approve:<id>`), which is the correct operation — not groom.
+The epic is ALREADY decomposed into its 6 children. Epic-level `groom` re-decomposes a
+`backlog` epic into FRESH slices and closes it — that would duplicate/orphan the 6.
+Children were admitted `pending-approval → ready` via `drive --action approve:<id>`.
+**Individual-child groom IS allowed and expected** for the oversized children (`qgp2jt`,
+possibly `apiiwc`): `groom <child-id>` slices ONE child — a different operation from the
+forbidden epic groom.
 
-## What landed (all merged / filed)
+## What the flat-full-ROP decision actually means here (code-audited 2026-07-19)
 
-- **Spec** — livespec PR [#1321](https://github.com/thewoolleyman/livespec/pull/1321),
-  merged. `non-functional-requirements.md` revise **v165**: §"ROP composition"
-  observability pass-through-tap rule; §"Linter rule set" ruff `BLE` (27→28);
-  §"Shared content provenance" the full-ROP fleet+adopter-wide bar (fail-open hooks
-  conform via their silent pass-through; sole exemption = zero-first-party-Python).
-- **Template** — same PR: `templates/orchestrator-plugin/…pyproject.toml.jinja` now
-  emits the parameterized `[tool.livespec_dev_tooling]` block (Part D drift-prevention;
-  pairs with the already-landed `source_trees_scoped_to_consumer` detection) + `BLE`.
-- **Handoff bookkeeping** — livespec PR #1331, merged.
-- **Epic + children** — in livespec CORE's ledger (single coordinating tenant; the
-  factory dispatches each child into its target repo). Status is READ from the ledger
-  (`list-work-items` / `next`), never stored here.
+Ref #1 (below) mandates: every Python-carrying fleet repo vendors `returns` + is on the
+`Result`/`IOResult` railway, **Drivers and dev-tooling included**, sole exemption =
+zero-first-party-Python (the Rust console). A code audit of every target repo:
 
-## The epic (verify with `bd dep tree livespec-y2lkf4` under the credential wrapper)
+| Child | Repo | first-party Python | on railway now? | slice |
+|---|---|---|---|---|
+| `ftbvgc` | livespec (core) | returns vendored, 83 files on railway, reportUnusedCallResult | ✅ reference | add `BLE` only (HIGH) |
+| `unc45o` | livespec-orchestrator-git-jsonl | not on railway | ❌ | vendor returns + railway + `BLE` (MEDIUM) |
+| `apiiwc` | livespec-runtime | ~3,900 LOC / 31 files, 27 tests | ❌ | vendor returns + railway + narrow `retry.py:49` + `BLE` (MEDIUM) |
+| `heejvw` | livespec-driver-claude | ~800 LOC / 4 hooks, 9 tests | ❌ | vendor returns + railway (hook bodies) + `BLE` + reportUnusedCallResult (MEDIUM) |
+| `kumh3e` | livespec-driver-codex | ~1,073 LOC / 6 hooks, 12 tests | ❌ | same as driver-claude (MEDIUM) |
+| `qgp2jt` | livespec-dev-tooling | **~23,700 LOC / 122 files** | ❌ (returns in 2 files) | **LARGE — groom into slices first**; adopt returns + railway + `BLE` |
+| — | livespec-console-beads-fabro | Rust, zero first-party Python | — | no child (sole exemption) |
 
-`livespec-y2lkf4` (epic, `backlog`) `tracks` 6 children, all `ready`:
+**Two corrections the rewrite fixed:** (1) `apiiwc`/`heejvw`/`kumh3e` said "decide vendoring
+returns" — now MUST, per Ref #1. (2) The "noqa the fail-open/supervisor catchers" step in
+`ftbvgc`/`heejvw`/`kumh3e` was moot — those catchers sit in ruff-EXCLUDED dirs
+(`.claude/hooks/**`, `.claude-plugin/hooks/**`, `livespec/hooks/**`,
+`.claude/skills/overseer/**`), so `BLE` never flags them. For the Driver hooks the
+substantive guard is pyright `reportUnusedCallResult` (pyright DOES include the hook dirs);
+the real work is the railway adoption, not noqa.
 
-- `livespec-ftbvgc` — livespec (core): add `"BLE"` to ruff select; `# noqa: BLE001`
-  the legit supervisor bug-catcher(s) (`commands/*/main`, doctor `run_static.py`).
-  `.claude/hooks/**` + `.claude/skills/overseer/**` already ruff-excluded.
-- `livespec-unc45o` — livespec-orchestrator-git-jsonl: vendor `dry-python/returns`;
-  put product logic on the Result/IOResult railway; add `"BLE"`. Heaviest slice.
-- `livespec-apiiwc` — livespec-runtime: narrow `cross_repo/retry.py:49`'s broad
-  `except Exception` to named transport exceptions; add `"BLE"`; decide vendoring `returns`.
-- `livespec-heejvw` — livespec-driver-claude: add `"BLE"` + `reportUnusedCallResult`;
-  fail-open hooks keep `# noqa: BLE001 — fail-open by contract`.
-- `livespec-kumh3e` — livespec-driver-codex: same as driver-claude.
-- `livespec-qgp2jt` — livespec-dev-tooling: add `"BLE"`; audit its own product catches
-  (`green_token.py`, `agent_hooks/*`, `install_no_shadow_ledger.py`) — narrow or noqa each.
-- livespec-console-beads-fabro: NO child (Rust, zero first-party Python = the exemption).
+## Scale caveat (surfaced to the maintainer)
 
-## Next action (if any) — FACTORY, not planning
+"Full ROP everywhere" is ~29k LOC of railway conversion fleet-wide. `dev-tooling` (23.7k)
+and `runtime` (3.9k) are real library conversions, not config tweaks. Execution order:
+land the bounded wins first (`ftbvgc` add-BLE), then the Driver/git-jsonl railway slices,
+and GROOM `qgp2jt` (and slice `apiiwc` if a single run proves too big) before running them.
 
-The 6 children are `ready`, i.e. factory-dispatchable. To implement:
-`drive --action impl:<id>` per child, or let the Dispatcher drain `ready` items — under
-the janitor gate (`just check` + `/livespec:doctor`). Do NOT implement in-session.
-`git-jsonl` (`unc45o`) is the heaviest (railway adoption).
+## What landed earlier (all merged / filed)
+
+- **Spec** — livespec PR #1321, merged. nfr.md v165: §"ROP composition" observability
+  pass-through-tap; §"Linter rule set" ruff `BLE` (27→28); §"Shared content provenance"
+  full-ROP fleet+adopter-wide bar (Drivers/dev-tooling included; sole exemption =
+  zero-first-party-Python).
+- **Template** — same PR: `templates/orchestrator-plugin/…pyproject.toml.jinja` emits the
+  parameterized `[tool.livespec_dev_tooling]` block + `BLE`.
+- **Handoff bookkeeping** — livespec PRs #1331, #1344 (finalize), merged.
+- **Epic + children** — livespec CORE ledger (single coordinating tenant; factory
+  dispatches each child into its target repo).
+
+## Next action — EXECUTE (in-session, autonomous — authorized 2026-07-19)
+
+Drive each `ready` child to `done` under the hard janitor gate (`just check` +
+`/livespec:doctor`), each in its own worktree/sandbox, PR → merge, then re-verify. Order:
+1. `ftbvgc` (core add-BLE — bounded, validates the cycle).
+2. `heejvw`, `kumh3e`, `unc45o`, `apiiwc` (railway slices; slice `apiiwc` if too big).
+3. `qgp2jt` — `groom` into per-subpackage slices, then run the slices.
+Do NOT run epic-level groom. Do NOT `--no-verify`. Cross-repo work-item edits land in the
+Dolt ledger (not git); the only git artifact for THIS plan is this handoff.
 
 ## Close-out
 
-When all 6 children are `done`, the epic `livespec-y2lkf4` can close, and this plan
-thread archives to `plan/archive/rop-sweep-fleet-policy/` (per the plan operation's
-epic-close → archive rule). Until then, nothing here needs a planning session.
+When all children (and any groomed slices) are `done`, the epic `livespec-y2lkf4` closes
+and this thread archives to `plan/archive/rop-sweep-fleet-policy/`.
 
-## Reference — 2026-07-18 maintainer decisions (context for the backfill)
+## Reference — maintainer decisions
 
-1. **Fleet bar = "flat: full ROP everywhere"** — every Python-carrying fleet repo
-   vendors `returns` + is on the railway, Drivers included (chosen over the tiered rec).
+1. **Fleet bar = "flat: full ROP everywhere"** (2026-07-18) — every Python-carrying fleet
+   repo vendors `returns` + is on the railway, Drivers included (chosen over the tiered
+   rec). Re-affirmed 2026-07-19 after the code audit: these are real, substantial,
+   tested repos, so all owe the full railway + discipline stack.
 2. **ruff `BLE` = "add to template + backfill fleet."**
-Both sibling `rop-sweep-*` plans had already merged before this slice ran
-(`rop-sweep-consumer-cleanup` in beads-fabro `3d2ff13`; `rop-sweep-library-checks` in
-dev-tooling, archived `0b0125e`).
+3. **Execution = in-session, autonomous** (2026-07-19) — override of the earlier
+   factory-only / do-not-implement-in-session posture.
+
+Both sibling `rop-sweep-*` plans merged before this slice
+(`rop-sweep-consumer-cleanup` beads-fabro `3d2ff13`; `rop-sweep-library-checks` dev-tooling
+archived `0b0125e`).
