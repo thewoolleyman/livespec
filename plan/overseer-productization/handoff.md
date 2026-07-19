@@ -11,9 +11,65 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 | Gate | State | Where |
 |---|---|---|
 | A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
-| C — ruff | NEXT | — |
-| D — pyright strict | not started | — |
+| C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
+| D — pyright strict | NEXT | — |
 | B + E — coverage + ROP railway | blocked on D1/D2 | — |
+
+## Gate C — ruff (PR #1396, merged 2026-07-19)
+
+**Live-exercise evidence.** Post-merge master CI run
+[29677133101](https://github.com/thewoolleyman/livespec/actions/runs/29677133101):
+`check-lint`, `check-format`, and `check-overseer` all ran and passed against
+combined master. Sabotage-verified before the PR — adding a `print` to `tmuxio.py`
+turned `just check-lint` red; removing it turned it green.
+
+**Measured outcome.** 929 raw findings → zero, with NO behavior change (the 304
+beside-tests passed unchanged throughout). The handoff's 2026-07-18 estimate held up:
+the cost really was concentrated in a handful of places, not spread thin.
+
+How they resolved, so Gate D does not re-litigate any of it:
+
+- **35 ambiguous-unicode** → `[tool.ruff.lint].allowed-confusables = ["❯", "›"]`.
+  These are domain vocabulary (the prompt glyphs Claude Code and Codex print), and a
+  two-codepoint repo-wide whitelist is NARROWER than a per-file-ignore, which would
+  disable RUF001/2/3 across whole files and hide a genuinely confusable character
+  introduced later. The repo was at zero findings for those rules, so it masks nothing.
+- **~790 test-file findings** → one per-file-ignore for `.claude/skills/overseer/test_*.py`
+  inheriting the `tests/**.py` rationale, plus three beside-test-specific entries:
+  SLF001 (testing private decision helpers directly IS the point of a beside-test),
+  ARG001/2 (signature-matching test doubles must accept args they do not use), S108
+  (the real `/tmp` tmux socket paths are the fixture).
+- **12 `print`** → refactored away, NOT exempted. The repo has zero T201 escapes and
+  `SPECIFICATION/constraints.md` names ruff `T20` as the mechanical enforcement of its
+  stdout-reservation rule. New stdlib-only `.claude/skills/overseer/streams.py` mirrors
+  the product's `livespec/io/streams.py` one-hop indirection, with 5 beside-tests. The
+  daemon's table render already used an injectable stream and was untouched.
+- **~25 genuine fixes** → pathlib over `os.path`, named constants for the `/proc` stat
+  field indices and the `list-panes` row width, `contextlib.suppress`, a keyword-only
+  bool arg, line wraps, and three inline `# noqa: <CODE> — <reason>` escapes for cases
+  correct as written (PATH `git`, the uid-scoped `/tmp` tmux socket namespace, the
+  daemon loop's outermost bug-catcher boundary).
+
+**The `evaluate` decision (maintainer-chosen 2026-07-19): split observe from decide.**
+A new `Supervisor._observe` gathers the 16 facts the guard cascade reads and returns a
+frozen `_Observation`. That took `evaluate` from 106 statements / 38 branches /
+complexity 34 to **83 / 33 / 31** — a real reduction, but NOT under the thresholds
+(10 branches, 30 statements). The residual is the decision cascade itself, whose
+ORDERING is the design: the cardinal rule is enforced by which guard comes first. So
+C901/PLR0911/PLR0912/PLR0915 are suppressed on that ONE function via an inline noqa,
+with the full reasoning in its docstring; every other function in the module is still
+held to them. Full decomposition was considered and rejected — it would scatter the
+precedence order across call sites where no reader can verify it in one pass.
+
+**Two facts Gate D should know:**
+
+1. **`check-doctor-static` ALREADY reaches `.claude/skills/overseer/`.** It rejected a
+   heading-level spec citation (`§"…"`) in the new `streams.py` docstring — the folder
+   was never as far outside the gates as its own docs claimed. Cite spec FILES, not
+   headings, in overseer code.
+2. **Never `git checkout <file>` to undo a sabotage probe.** It reverts to HEAD, not to
+   your working state, and silently discarded a whole file's worth of Gate C edits mid-run.
+   Copy to the scratch dir and restore from there.
 
 **Gate A live-exercise evidence (not merely merged + CI-green).** The post-merge master
 CI run [29673873687](https://github.com/thewoolleyman/livespec/actions/runs/29673873687)
@@ -138,14 +194,12 @@ documented severity lever, not a silent skip, per the enforcement discipline).
 
 Proposed sequence (each its own small PR; Gate A first for the immediate win):
 
-1. **Gate A — wire the hermetic beside-tests into `just check`.** Add a `check-overseer`
-   justfile slug (`uv run pytest .claude/skills/overseer/ -q`, NO coverage) and make it
-   a literal member of `check`, so a red overseer test blocks pre-push + CI + every
-   merge. Cheapest, highest-value, closes today's regression. Land standalone.
-2. **Gate C — ruff.** Remove `.claude/skills/overseer/**` from `[tool.ruff].extend-exclude`;
-   add the unicode-glyph allowance (scoped, self-documenting) and a `print`-in-daemon
-   allowance (or route daemon output through a single sink); fix the ~20 trivial items.
-   Add a `test_*`-scoped per-file-ignore mirroring the product `tests/` treatment.
+1. ~~**Gate A — wire the hermetic beside-tests into `just check`.**~~ **DONE** (PR #1387).
+2. ~~**Gate C — ruff.**~~ **DONE** (PR #1396). Landed as planned, with one deviation worth
+   noting: the `print`-in-daemon *allowance* the plan offered as an option was NOT taken —
+   the prints were refactored through a new `streams.py` sink instead, because the repo has
+   zero T201 escapes and the spec names `T20` as the enforcement of a normative rule. See
+   the Gate C section above.
 3. **Gate D — pyright strict.** Add the folder to `[tool.pyright].include`; work the 163
    errors (mostly typing the injectable seams — a `Protocol` for the tmux boundary
    instead of `object`, typed session maps).
@@ -177,13 +231,22 @@ Proposed sequence (each its own small PR; Gate A first for the immediate win):
 resolving it.** That thread's ratified fleet policy (livespec PR #1321, merged;
 `non-functional-requirements.md` v165) mandates the FULL `Result`/`IOResult` railway for
 every Python-carrying fleet repo — Drivers and dev-tooling included — with the sole
-exemption being a repo with zero first-party Python. Its code audit also established a
-fact that directly bears on Gate E: `.claude/skills/overseer/**` is a **ruff-EXCLUDED**
-directory, so the new `BLE` (blind-except) rule never reaches the overseer today. That
-means Gate C (removing the ruff exclude) is what would newly subject the overseer to
-`BLE`, and Gate E's railway question rides on it. Sequence C before E, and confirm with
-the rop-sweep thread whether the repo-level policy bar is intended to reach a
-`.claude/skills/` host-tooling folder or only the `livespec` package.
+exemption being a repo with zero first-party Python.
+
+⚠️ **Gate C invalidated one of that thread's stated facts — tell it.** The rop-sweep
+audit recorded that the "noqa the fail-open/supervisor catchers" step was moot because
+those catchers sit in ruff-EXCLUDED directories, and it listed
+`.claude/skills/overseer/**` among them. **That is no longer true as of PR #1396**:
+the overseer is inside ruff now, `BLE` reaches it, and its single blind catch — the
+daemon loop's outermost bug-catcher — already carries an explicit
+`# noqa: BLE001 — outermost supervisor boundary`. The other listed directories
+(`.claude/hooks/**`, `.claude-plugin/hooks/**`, `livespec/hooks/**`) are unaffected.
+
+So D2's remaining question is narrower than it was: not "will `BLE` ever reach the
+overseer" (it does, and the one site is resolved), but whether the repo-level full-ROP
+bar is intended to reach a `.claude/skills/` host-tooling folder at all, or only the
+`livespec` package. Confirm that with the rop-sweep thread — its wind-down handoff says
+a Fable ROP ruling is its step 1, which is the natural place to settle it.
 
 ## Phase 2 — ship it (design exploration, not yet committed)
 
