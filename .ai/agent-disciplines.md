@@ -73,6 +73,73 @@ The agent MUST:
 A final recap must not say "nothing to do" while a maintainer-gated action
 remains. The correct state is "ready for maintainer confirmation."
 
+## Genuinely blocked? Say so immediately — never manufacture busywork
+
+The section above covers the case where a gated action is still *actionable* by
+asking. This one is its complement: when the real work is gated on a human and
+there is nothing you can legitimately advance, **declare it at once**.
+
+Write `blocked: <one-line reason>` to your tracked-session state file (or say it
+plainly if you have no state file) the moment you determine it, not after a
+plausible-looking interval.
+
+The failure mode this exists to prevent, observed 2026-07-19 in a console-tenant
+session: everything substantive needed maintainer decisions for hours, and
+instead of declaring `blocked:`, the session manufactured low-value
+documentation to look productive, then sat idle for 48 minutes with the
+blocked-marker CLEARED — so nobody was paged and the maintainer's time was lost
+twice over (once to the wait, once to reviewing the filler).
+
+Two rules follow:
+
+1. **A cleared blocked-marker is a claim that you are making progress.** Do not
+   clear it, or leave it cleared, while you are actually waiting. Clearing it to
+   avoid looking stuck is a false status report.
+2. **Filler is worse than idleness.** Documentation nobody asked for, ledger
+   commentary, and restating known facts all consume review attention and — where
+   they touch a credentialed store — shared quota. If the honest answer is "I need
+   a decision", that sentence IS the deliverable.
+
+## Ledger-write economy under a shared secret wrapper
+
+Every `with-<id>-env.sh` invocation is an `op run`, and the 1Password **daily
+quota is shared account-wide across every tenant** — not per-repo and not
+per-session. Exhausting it blocks `git push` and every ledger write fleet-wide,
+for every other session too, until it recovers.
+
+- **Batch ledger reads.** One `bd list --json -n 0` cached to a scratch file,
+  then parsed locally as many times as needed, instead of one call per question.
+  The same applies to multi-item detail fetches — loop inside a single wrapper
+  invocation rather than wrapping each command.
+- **Never narrate into the ledger.** Comments that restate what a session did,
+  or record reasoning already captured in a plan thread or commit message, cost
+  quota and add nothing a reader needs. Comment when you are recording evidence,
+  a correction, or a decision — not to leave a trail.
+
+## Verify delivery before dispatching or valving
+
+Before spending a maintainer valve, a dispatch, or your own implementation time
+on a work-item, **check whether it is already delivered**. In one 2026-07-19
+console-tenant sweep, every item then in the queue turned out to be a phantom —
+already shipped, with the record left open. That was a cleared historical
+backlog rather than a live filing defect, but the cost of not checking is a
+maintainer decision spent on nothing, or a session re-implementing shipped work.
+
+Corollary, and the sharper edge of the same rule: **a `ready` lane is not
+dispatch authorization.** Read the code, not the record.
+
+## Cite evidence per acceptance-criterion CLAUSE, not per item
+
+When closing a work-item, evidence must be attached to each clause of its
+acceptance criteria separately. A two-part criterion closed "met in full" after
+weighing only one part is an overstated close, and it is invisible afterwards —
+the record reads as verified.
+
+This bites hardest where items carry no structured `acceptance_criteria` at all
+and their requirements live in description prose, which is easy to skim past.
+When that is the case, enumerate the implied clauses explicitly in the close
+note before claiming any of them.
+
 ## Overseer / long-running-coordinator discipline
 
 A long-running **manual coordinator** — an overseer session that dispatches and
@@ -319,3 +386,28 @@ named section before acting; do not rely on this summary alone.
   multiplexed factory compute. Never re-ask an already-authorized action because
   unrelated work is running. Detail: this file §"The Fabro factory is a shared
   concurrency surface — never gate on other runs".
+- **Declare `blocked:` immediately; never manufacture busywork** — when the real
+  work is gated on a human and nothing can legitimately advance, say so at once
+  rather than producing filler to look productive. A cleared blocked-marker is a
+  claim that you are progressing; leaving it cleared while waiting is a false
+  status report, and filler costs review attention and shared quota. Complements
+  §"Maintainer-gated actions are prompts, not blockers", which covers the case
+  where the gated action is still actionable by asking. Detail: this file
+  §"Genuinely blocked? Say so immediately — never manufacture busywork".
+- **Ledger-write economy under a shared secret wrapper** — every wrapper call is
+  an `op run` against a 1Password daily quota shared ACCOUNT-WIDE across every
+  tenant; exhausting it blocks push and ledger writes fleet-wide for every other
+  session. Batch reads into one invocation and cache locally; never narrate into
+  the ledger. Detail: this file §"Ledger-write economy under a shared secret
+  wrapper".
+- **Verify delivery before dispatching or valving** — check that a work-item is
+  not ALREADY delivered before spending a maintainer valve, a dispatch, or
+  implementation time on it; a whole queue of phantom records has happened. A
+  `ready` lane is not dispatch authorization — read the code, not the record.
+  Detail: this file §"Verify delivery before dispatching or valving".
+- **Cite evidence per acceptance-criterion CLAUSE** — attach evidence to each
+  clause separately; a two-part criterion closed "met in full" after weighing one
+  part is an overstated close that reads afterwards as verified. Where an item has
+  no structured `acceptance_criteria` and its requirements live in prose,
+  enumerate the implied clauses in the close note first. Detail: this file §"Cite
+  evidence per acceptance-criterion CLAUSE, not per item".

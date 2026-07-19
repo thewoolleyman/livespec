@@ -826,6 +826,17 @@ above:
   enough that `head -30` truncates `-p, --prefix`. Not a bug,
   but the flag is one of the more important ones; consider
   surfacing it in the synopsis line.
+- **`bd list` SILENTLY truncates at 50 rows — always pass `-n 0`.**
+  This one is not cosmetic like the `--help` entry above: the
+  default limit applies to `--json` too, and nothing in the output
+  says the result set was cut. An agent that reads `bd list --json`
+  and counts what it got will under-report the ledger and can
+  conclude an item does not exist when it does. Every read must be
+  `bd list --json -n 0`. Recorded 2026-07-19 after a console-tenant
+  session hit it; worth raising upstream as "warn or exit non-zero
+  when a limit elides rows in `--json` mode", since silent
+  truncation of a machine-readable format is a correctness trap
+  rather than a display nicety.
 
 These can graduate to numbered entries above if they accumulate
 enough friction to warrant filing.
