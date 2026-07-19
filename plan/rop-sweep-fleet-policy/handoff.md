@@ -279,6 +279,45 @@ and making a zero-file inspection LOUD (report the inspected-file count per chec
 checks. In core and both Drivers they inspect nothing. A ratified ROP policy is being enforced
 by gates that are structurally inert in the repos that define and ship it.
 
+### THE RELEASE GATE IS AFFECTED TOO — and it weakens the fleet's pinning warrant
+
+`check_mutation` has **two independent skip paths in series**: an env lever
+(`LIVESPEC_RUN_MUTATION`, legitimately armed at `.github/workflows/release-tag.yml:47`) and
+then the role-key early return. Run exactly as the release workflow invokes it, against
+master's real config:
+
+```
+LIVESPEC_RUN_MUTATION=true python -m livespec_dev_tooling.checks.check_mutation
+  -> {"role": "pure_trees", "event": "role key absent — check no-ops"}   exit 0
+```
+
+**Core's release gate has been running mutation testing that does nothing since 2026-05-31** —
+same date, same commit `8f6ecc59`, as everything else here.
+
+That matters beyond one more inert check, because core's CLAUDE.md justifies the fleet's whole
+pinning strategy on it: *"Dogfooding pins track the latest RELEASE, not raw master … because a
+release carries release-gate validation (release-tag.yml's **mutation testing**, full heading
+coverage, no LLOC soft-warnings) … a release is the more-validated artifact."* Mutation testing
+is named FIRST among the three, and for core that leg has been inert. Every sibling pinning
+core's latest release tag has inherited an assurance that, on this axis, was not performed. The
+policy is not wrong; its stated warrant is currently overstated.
+
+**Scope is bounded — the other two release legs are FINE.** Of the three strict-mode levers
+release-tag.yml arms job-wide, only `check_mutation` is role-key gated; `heading_coverage` and
+`no_lloc_soft_warnings` do not carry the `role key absent` early return and are unaffected. One
+of three legs degraded, not a broken gate.
+
+**Design lesson for the fix:** two skip paths in series log almost identically at INFO, so a CI
+log reader cannot distinguish *(a)* deliberately skipped for speed on a per-commit run — correct
+— from *(b)* armed for release but silently disarmed by config — the defect. A legitimate skip
+mechanism is CAMOUFLAGING an illegitimate one. **When a run-lever is explicitly ARMED and the
+check then no-ops on missing config, that must be an ERROR, not an INFO** — someone deliberately
+asked for it to run.
+
+**Still unmeasured:** what `check_mutation` would actually report on core's `parse/` + `validate/`
+(16 files, ~1364 lines, 14 paired tests) with BOTH gates open. That combination does real
+mutation testing of genuinely unknown runtime and wants a background run.
+
 Defect #2 distorted a real design decision: restoring protocol conformance vs. tracking the
 divergence was argued partly on whether unwrapping would trip that check. It wouldn't have.
 
