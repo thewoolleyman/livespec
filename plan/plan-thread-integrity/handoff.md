@@ -52,7 +52,7 @@ Driver bug.
 
 | Home | Posture available | Spec cycle | Repos covered |
 |---|---|---|---|
-| `livespec_dev_tooling.agent_hooks` | free — blocking already shipped there | none | 7 (wired in each committed `.claude/settings.json`) |
+| `livespec_dev_tooling.agent_hooks` | free — blocking already shipped there | none | 6 of 8 (wired in each committed `.claude/settings.json`) |
 | Driver bundle | WARN-only by contract | yes, incl. any posture change | all governed repos |
 | livespec-core-local | free | none | 1 |
 

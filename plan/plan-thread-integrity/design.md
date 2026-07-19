@@ -119,11 +119,28 @@ that the contract stops at *written*. Do not file this as a Driver bug.
 
 ## The home question has a third answer, and it is coupled to the posture
 
-**MEASURED** — per-repo `hooks` keys in each `/data/projects/livespec*/.claude/settings.json`:
-seven repos wire `PreToolUse` + `SessionStart` + `SubagentStop`; **zero wire
-`Stop` locally** (the Driver bundle supplies `Stop`). So the local-only option
-recommended below would fix **one repo of eight** while leaving the same gap
-open in the other seven.
+**MEASURED** — per-repo `hooks` keys in each `/data/projects/livespec*/.claude/settings.json`
+(eight repos carry the file): **six** repos wire `PreToolUse` + `SessionStart` +
+`SubagentStop` — `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
+`livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl`,
+`livespec-runtime`; the remaining two (`livespec-console-beads-fabro`,
+`livespec-driver-codex`) wire `SessionStart` only. **Zero wire `Stop` locally**
+(the Driver bundle supplies `Stop`). So the local-only option recommended below
+would fix **one repo of eight** while leaving the same gap open in the other
+seven.
+
+> **CORRECTION, 2026-07-19.** This paragraph first shipped saying "seven repos",
+> under a MEASURED label. The correct count is **six**; re-running the survey and
+> counting the named repos gives six, and `grep -l 'SubagentStop'
+> /data/projects/livespec*/.claude/settings.json | wc -l` returns `6`. The error
+> was mine, in the same commit that added this section, and it is the third
+> unverified claim this document has shipped — after two adversarial review
+> rounds caught the first two. The conclusion is unchanged (six of eight still
+> dwarfs one of eight), which is exactly why the error survived a re-read: a
+> wrong number that does not change the answer is the kind this document's
+> labeling convention exists to catch, and the label alone did not catch it.
+> Enumerating the members, as the corrected text now does, is what makes the
+> count checkable rather than merely asserted.
 
 **MEASURED** — `livespec_dev_tooling/agent_hooks/` in the upstream
 `livespec-dev-tooling` repo contains `subagent_stop_guard.py`,
