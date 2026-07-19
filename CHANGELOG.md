@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.2](https://github.com/thewoolleyman/livespec/compare/v0.18.1...v0.18.2) (2026-07-19)
+
+
+### Bug Fixes
+
+* **overseer:** remove the L1 tmux env inversion — spawned agents see the real fleet ([bcc3c72](https://github.com/thewoolleyman/livespec/commit/bcc3c7277657442adcca92381601cec51f3b2765))
+
 ## [0.18.1](https://github.com/thewoolleyman/livespec/compare/v0.18.0...v0.18.1) (2026-07-19)
 
 
