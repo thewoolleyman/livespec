@@ -278,7 +278,9 @@ failure in the repo that owns the pin.
 | Spec amendment (`CODEX_ACP_VERSION` ARG home → agent layer), revision **v028** | ✅ **MERGED** — PR [#481](https://github.com/thewoolleyman/livespec-dev-tooling/pull/481) in `livespec-dev-tooling`, full CI green. Independent Fable review: **NO BLOCKERS** |
 | Implementation (new `agent/Dockerfile`, 2 extra build steps, `_CODEX_ACP_DOCKERFILE` move, stale-prose sweep) | ✅ **MERGED** — PR [#482](https://github.com/thewoolleyman/livespec-dev-tooling/pull/482), `refactor(ci):`, 61 checks pass / 0 fail |
 | Slim images published + **payoff measured live** | ✅ **DONE** — see the table below |
-| Consumer pin migration ×2 + live exercise + guard check | ❌ **NOT STARTED — this is your work.** Step 2 above, and it is the risky step |
+| Consumer pin migration ×2 | ⚠️ **FORCED EARLY by a release firing** — see the incident section. Orchestrator [#819](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/819) (open, carries the fix), console [#324](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/324) (open). **Both must merge.** |
+| Live-exercise a factory dispatch on each consumer | ❌ **NOT DONE — this is your work.** A green CI run is NOT evidence: CI never touches the agent tags |
+| Consumer-side guard check | ❌ **NOT BUILT** — and the incident below is the argument for building it *before* the next migration rather than after |
 | `livespec-dev-tooling-oik` (buildpack-deps re-base) | **FILED**, blocked behind `a46` |
 | `livespec-dev-tooling-ql1` (third ACP adapter unbaked/unpinned) | **FILED** — see below |
 
@@ -304,6 +306,60 @@ Verified from the **build log**, not from a green tick (the leg-6 lesson from
 `5r3`): all five layers — `base`, `python`, `python-agent`, `python-rust`,
 `python-rust-agent` — built and pushed, so the five-layer tree and the
 `FROM`-by-digest threading both hold.
+
+### ⚠️ THE HAZARD FIRED — 4 minutes after the impl merged. Read this before any future prefix migration.
+
+The mitigation described above **did not hold**, and the reason generalizes.
+
+| Time (UTC) | Event |
+|---|---|
+| 22:58 | impl PR #482 merged as `refactor(ci):` — which cuts no release, exactly as planned |
+| 23:02 | **`chore(master): release 0.50.4` — a release fired anyway** |
+| 23:03 | v0.50.4 published: slim `python-v0.50.4` plus both `-agent-` tags |
+| 23:04 | fan-out opened bump PRs in **both** Fabro consumers, **auto-merge armed**, each rewriting the sandbox pin to the now-adapter-less slim tag |
+| 23:08 | `livespec-console-beads-fabro` PR #323 **merged before it could be corrected** |
+
+**Why the mitigation failed.** The plan said: land it as `refactor(ci):`, that cuts
+no release, therefore no fan-out fires. The first two clauses are true; **the third
+does not follow.** `refactor:` stops *my own commit* from cutting a release. It does
+nothing about release-please's **pending release PR**, which had been accumulating
+*other people's* `fix:`/`feat:` commits and merged on its own minutes later. The
+plan reasoned about the commit it controlled and mistook that for control over the
+release train.
+
+**This was foreseeable from this document's own record.** The `5r3` section below
+already says that exercise "depended on somebody else's release firing", which
+"came 24 minutes later", at a measured cadence of "five releases in 2.5 hours".
+Same repo, same release train, same trap — written down, read, and not transferred.
+
+**What would actually have closed it** — any one of these, for the next prefix
+migration:
+
+- **(a) Migrate the consumers FIRST**, onto the `-agent-sha-<short>` tags the master
+  push publishes, before any release can fire. Sequence consumers *ahead* of the
+  producer, not after.
+- **(b)** Land producer and consumers in one window with the release train
+  **parked** (there is a release-park surface).
+- **(c) Ship the guard check FIRST**, so a wrong prefix fails the consumer's CI
+  instead of merging silently.
+
+Checking "has a release fired?" afterwards is **not** a mitigation — by then the
+bump PRs are open with auto-merge armed and it is a race.
+
+**Repair, and what was left alone.** In both repos the `ci.yml` pins were left on
+the slim tags — that is correct and is the entire point of the split; only the
+single `.fabro/.../workflow.toml` line per repo was wrong.
+
+- `livespec-orchestrator-beads-fabro` [#819](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/819) — fix pushed **onto the bump branch** before it merged, so its pin never entered the bad state.
+- `livespec-console-beads-fabro` [#324](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/324) — its bump merged first, so master carried the adapter-less pin for a window; repaired on master.
+
+**Blast radius, stated rather than minimized.** The console's sandbox was pinned to
+an adapter-less image from 23:08 until #324 lands. The failure is **silent** for
+Claude runs — `npx -y` re-downloads the adapter at runtime, so a dispatch in that
+window would have **succeeded** while paying the very per-run tax this epic exists
+to remove. A Codex run would have failed loudly on missing bubblewrap. No dispatch
+is known to have run in the window, but "no evidence of a run" is not "no run
+occurred", and the Claude path would leave no obvious trace.
 
 ### ▶ DO THIS FIRST — step 2, with the tags you need
 
