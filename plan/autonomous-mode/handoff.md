@@ -1,5 +1,33 @@
 # Autonomous-mode MVP — overall plan handoff (livespec core)
 
+> # ⚠ SUPERSEDED 2026-07-19 — DO NOT RESUME FROM THIS FILE
+>
+> This thread reached 3220 lines and was judged coupled, non-cohesive, and off
+> track. It has been **SPLIT INTO TWO successor threads**. Nothing below is a
+> live instruction; read it as history.
+>
+> | Successor | Owns |
+> |---|---|
+> | **`plan/autonomous-mode-acceptance/handoff.md`** (epic `livespec-j4odoz`) | The MVP acceptance — real fleet items end-to-end through the live console TUI, then the maintainer's accept. The only live work this thread still owned. |
+> | **`plan/autonomous-mode-retirement/handoff.md`** (epic `livespec-33opqs`) | Retiring this thread: the design-record citation repair, both archive moves, the operating-directive migration, and the findings sweep. |
+>
+> **The console programme was never this thread's to own.** B1–B5 shipped;
+> B6/B7/B8 and the real-TUI E2E backfill are owned by
+> `livespec-console-beads-fabro:plan/cockpit-ux-docs-release/`. This thread's
+> copy of that state is a stale duplicate — the duplication is what caused the
+> cont.22 "lost pointer" crisis. Do not resume console work from here.
+>
+> **⚠ THIS FILE IS STILL CITED AS A DESIGN RECORD — do not move or delete it.**
+> Three LIVE-SPEC citations name this path: orchestrator
+> `SPECIFICATION/contracts.md:1594` and `:1649`, console
+> `SPECIFICATION/spec.md:340`. All three cite the
+> `SESSION UPDATE — 2026-07-14 (cont. 12)` section ("THE RE-LOCKED DESIGN"),
+> and in this fleet the cited design record is the **TIEBREAKER** over shipped
+> spec text. The retirement thread amends those citations BEFORE archiving this
+> file. Until then it stays exactly where it is.
+>
+> Everything below is preserved AS WRITTEN and is **stale by design**.
+
 ## OPERATING DIRECTIVES (standing — maintainer-declared 2026-07-12)
 1. **Hand off at 50% context.** When driver/overseer context passes ~50%, STOP
    at a clean boundary and hand off to a fresh session by LANDING THE PLAN IN
