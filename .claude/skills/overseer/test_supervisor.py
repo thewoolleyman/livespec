@@ -2063,12 +2063,11 @@ def test_recover_still_recreates_a_claude_track_as_claude(tmp_path):
 
     recovered = sup.recover_missing_sessions()
     assert recovered == [session]
-    assert (
-        "respawn",
-        session,
-        str(repo),
-        f"claude --dangerously-skip-permissions -n {topic}",
-    ) in fake.calls
+    # Build the expected from `_launch_command` (parallel to the codex test's use of
+    # `_codex_launch_command`) so this stays correct through the `TMUX_TMPDIR`/`exec`
+    # wrap `_launch_command` applies — no hardcoded command string to drift.
+    expected = supervisor.Supervisor._launch_command(_mapped_track(repo, topic, session))
+    assert ("respawn", session, str(repo), expected) in fake.calls
 
 
 # --------------------------------------------------------------------------- #
