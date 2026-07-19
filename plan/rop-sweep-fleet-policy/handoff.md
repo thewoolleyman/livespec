@@ -17,9 +17,19 @@ evidence.
    file read tells you for free.
 2. **If dispatch works:** land `bd-ib-47gr`, then run ONE combined dual review over
    `bd-ib-sw0i` + `bd-ib-47gr` (see HELD below — `sw0i` needs it on two counts).
-3. **If dispatch is still down:** everything factory-side is blocked. The unblocked work is
-   the dev-tooling gate items — but see the qm5 re-groom below before touching `qm5`, and
-   note `livespec-dev-tooling-6vz` hinges on the same unresolved rule.
+3. **If dispatch is still down:** everything factory-side is blocked — AND so are all four
+   dev-tooling gate items. **Do NOT start `qm5`, `cvz`, `6vz`, or `e9j`.** Every one of them
+   waits on the same unresolved flat-package rule (see THE OPEN DESIGN QUESTION). An earlier
+   version of this line pointed here as "the unblocked work"; that is no longer true, and
+   starting any of them risks doing remediation the ruling makes unnecessary — under
+   broad-only the fleet cost is 13 sites, under strict 109.
+
+   **What IS genuinely actionable with both blocks in place:** nothing in this thread's
+   critical path. The honest move is to surface the two maintainer decisions rather than
+   manufacture work. If you want useful non-blocking work, the measurement gaps named in
+   `e9j` are real: `check_mutation` has never been run under restored role keys (too slow for
+   the earlier pass), and only livespec core has been measured by EXECUTION — every other
+   repo's figure in the cost table is AST simulation.
 
 ## STATE AS OF 2026-07-19 (this session)
 
@@ -293,7 +303,7 @@ Driver coverage.
   `6vz`'s does. **Fixing `6vz` alone immediately reddens beads-fabro with 47 findings.** The
   warn-tier severity lever its brief already sanctions is likely required, not optional.
 
-## THE OPEN DESIGN QUESTION — blocks `qm5`, `cvz`, and `6vz`
+## THE OPEN DESIGN QUESTION — blocks `qm5`, `cvz`, `6vz`, `e9j`, AND the overseer thread's Gate E
 
 **v169 ratified "narrow at the seam; broad only at the boundary." But
 `no_except_outside_io` bans ALL `try/except` outside `io/`, narrow included.** That is coherent
