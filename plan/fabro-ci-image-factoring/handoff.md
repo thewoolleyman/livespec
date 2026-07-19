@@ -132,6 +132,27 @@ it survived original review.
 done-means-exercised discipline, it is not closeable until a real release run has
 opened the self-bump PR.
 
+**THE BEFORE-PICTURE — measured on `origin/master` at 2026-07-19 ~11:30Z, by
+reading every workflow file in each repo and counting matching lines.** This is the
+baseline the exercise gets verified against; re-measure rather than trusting it:
+
+| Repo | CI image pin lines | Tag |
+|---|---|---|
+| `livespec` | 5 | `python-v0.50.0` |
+| `livespec-driver-claude` | 3 | `python-v0.50.0` |
+| `livespec-driver-codex` | 3 | `python-v0.50.0` |
+| `livespec-runtime` | 3 | `python-v0.50.0` |
+| `livespec-orchestrator-git-jsonl` | 5 | `python-v0.50.0` |
+| `livespec-orchestrator-beads-fabro` | 5 | `python-v0.50.0` |
+| `livespec-console-beads-fabro` | 3 | `python-rust-v0.50.0` |
+| **`livespec-dev-tooling`** | **2** | **`python-v0.43.2` — 7 releases behind** |
+
+Seven of eight are current and self-healing; the PRODUCER alone is stale. That one
+row flipping to `python-v0.50.x` is exactly what `5r3` delivers, and is the
+clearest single check that the exercise succeeded. Note the console's
+`python-rust-` prefix — that it survives every fan-out is the standing proof the
+prefix-preserving rewriter works.
+
 **What to check, concretely:**
 
 1. Has any release of `livespec-dev-tooling` been cut since 2026-07-19 11:13Z
@@ -161,19 +182,21 @@ rather than swallowing.
 re-rots on the next release — that is the whole bug this family exists to end.
 Fix the job instead.
 
-### Also open (both non-blocking, neither on the critical path)
+### Also open (non-blocking, not on the critical path)
 
-- **`livespec-dev-tooling-3tu` (P3, filed cont. 9)** — `reusable-pin-freshness.yml`
-  resolves the SAME `pin_staleness` module two different ways inside one step:
-  line 147 from the CONSUMER's env (plain `uv run`), line 213 from the master
-  support checkout (`--project .livespec-dev-tooling`). `pin_staleness` is a TOOL,
-  so line 213 is the correct form and line 147 is the wrong one — it creates an
-  undocumented coupling to the consumer's pinned version for logic that has no
-  reason to be version-matched. **Exposure verified to be ZERO today** (all 7 fleet
-  consumers hold the workflow pin and the package pin in lockstep; `livespec-runtime`
-  runs the older workflow that lacks line 147 entirely; consumer `uv.lock`s are not
-  lagging; no adopter carries a freshness shim). One-word fix. Deliberately NOT
-  typed `fix:` — with no exposure that would be dishonest release-cutting.
+- **`livespec-dev-tooling-3tu` (P3) — FIXED AND MERGED cont. 9**, PR #470
+  (`refactor(cross-repo):`), master green. `reusable-pin-freshness.yml` resolved the
+  SAME `pin_staleness` module two different ways inside one step. Enumerating all
+  four `uv run` calls settled it — lines 115 / 214 / 278 used the master support
+  checkout and line 147 alone did not, so it was an **oversight, not a design
+  choice**: `p73` introduced both the module and the outlier call, and the later
+  `ews` change added the second call with the correct form. Consumer-env resolution
+  coupled the scan to the consumer having `livespec-dev-tooling >= v0.49.3`
+  importable from its OWN environment; below that (or with no such Python
+  dependency) the scan would have died on `ModuleNotFoundError` under
+  `set -euo pipefail`, taking the whole freshness net down for that repo.
+  **Exposure was ZERO** — verified four ways, not assumed — which is why it landed
+  as `refactor:` and not `fix:`.
 - **`livespec-dev-tooling-4j3` (P3, maintainer-owned)** — release-please bumps
   `pyproject.toml` but not `uv.lock`, so every `uv run` dirties a clean checkout.
   Observed repeatedly during cont. 9 (the lock regenerates 0.49.1 → 0.50.0 on any
@@ -205,11 +228,26 @@ defect. Two lessons worth carrying:
 - **Do not let a desired side effect pick the commit type.** `3tu`'s fix would have
   cut a release, which would in turn have live-exercised `5r3` — a genuinely
   tempting two-birds move. But with no exposure, typing it `fix:` to obtain that
-  release would be manufacturing a release under a false label. It was filed
-  instead, and `5r3`'s exercise left to wait for real work.
+  release would be manufacturing a release under a false label. It landed as
+  `refactor:` (PR #470), and `5r3`'s exercise was left to wait for real work.
+- **Enumerate the whole family before judging one member.** `3tu` only became
+  decisive when all FOUR `uv run` calls in the file were listed side by side: one
+  outlier against three is an oversight, whereas two-and-two would have suggested a
+  deliberate split worth preserving. The one-line diff was never the hard part —
+  establishing there was no design intent to protect was.
 
-**Where to look next:** the remaining shell in the `open-bump-pr` job (lines
-~276–378 of `reusable-pin-freshness.yml`) has still not been read with this lens.
+**Where to look next.** The `open-bump-pr` job's shell (lines ~276–378) WAS read
+during cont. 9 and produced **no finding** — recorded so the next session does not
+re-spend the effort. It is mostly `jq -nc` with correct quoting; the codex-acp
+dispatch block reconstructs the composite's branch name verbatim (`chore/freshness-bump-<source>-<tag>`)
+and the slash inside `zed-industries/codex-acp` is legal in a git ref, so the two
+sides agree. That is a "found nothing on one pass", NOT a clearance — the `ews`
+defect also survived an original review.
+
+Remaining untested-shell surface across the family, in rough order of suspicion:
+the `bump-pin-rewrite` composite Action's own steps (the largest concentration of
+untested bash left, and it runs in EVERY bump on EVERY repo), then
+`reusable-release-dispatch.yml`, then `reusable-release-park.yml`.
 
 Also: every proposed change on this track went through the mandatory independent
 Fable review, and it found real blockers EVERY time — including one draft that would
