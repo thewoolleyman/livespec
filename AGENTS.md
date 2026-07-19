@@ -130,15 +130,39 @@ machine-wide:
 }
 ```
 
-After committing the settings (restart Claude Code or `/reload-plugins`),
-the eight `/livespec:*` slash commands become available with the
+Committing the settings is NOT enough on its own. `enabledPlugins`
+enables a plugin that is already installed; it installs nothing. Each
+enabled plugin must ALSO be installed into project scope, from the
+project root:
+
+```bash
+claude plugin install livespec@livespec -s project
+claude plugin install livespec@livespec-driver-claude -s project
+claude plugin install livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro -s project
+```
+
+`-s project` keeps the install scoped to this project; the default
+`-s user` installs into EVERY project on the host. `install` exits 0
+when already installed, so the step is idempotent. This repo automates
+exactly this via `just ensure-plugins`
+(`livespec_dev_tooling/fleet/ensure_plugins.py`, which derives the set
+from the committed settings and runs `install` then `update`); a
+third-party adopter with no justfile must run the commands above.
+
+Verify before relying on it: for every `enabledPlugins` key,
+`~/.claude/plugins/installed_plugins.json` must hold an entry whose
+`projectPath` equals this project's root. Enabled-but-not-installed
+resolves no operations and reports no error, and a zero exit status
+does not prove the right project was touched — see
+`SPECIFICATION/contracts.md` §"Plugin distribution" (install
+verification) for the invariant and the `-s project` resolution caveat.
+
+Then restart Claude Code or run `/reload-plugins` — a freshly
+installed plugin does not load into the session that installed it —
+and the eight `/livespec:*` slash commands become available with the
 `livespec:` namespace prefix (the Driver plugin is deliberately NAMED
 `livespec` so the established surface is preserved; core's plugin
 carries the prose, CLIs, and templates the Driver resolves at runtime).
-A machine-wide `/plugin install livespec@livespec` +
-`/plugin install livespec@livespec-driver-claude` still works but
-enables the plugins in EVERY project on the host; prefer the committed
-project-scoped form above.
 
 ## Daily dogfooding (maintainer development)
 

@@ -54,7 +54,23 @@ Because enablement is committed at **project scope**, clones, CI, and
 sandboxes all resolve the same remote-GitHub marketplaces, and
 unrelated projects on the same machine are untouched.
 
-After committing the settings, restart Claude Code (or run
+Committing the settings enables the plugins but does **not** install
+them — `enabledPlugins` turns on a plugin that is already installed.
+Install each one into project scope, from the project root:
+
+```bash
+claude plugin install livespec@livespec -s project
+claude plugin install livespec@livespec-driver-claude -s project
+claude plugin install livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro -s project
+```
+
+Use your own `enabledPlugins` keys. `-s project` keeps the install
+scoped to this project (`-s user` installs into every project on the
+host), and `install` exits 0 if the plugin is already there, so it is
+safe to re-run. Skipping this leaves the project enabled-but-not-
+installed: no command resolves, and nothing reports an error.
+
+After installing, restart Claude Code (or run
 `/reload-plugins`). The eight slash commands below become available
 with the `livespec:` namespace prefix (the Driver plugin is
 deliberately named `livespec` to preserve the established surface).
