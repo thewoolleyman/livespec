@@ -128,6 +128,12 @@ was working. **Dispatch is theirs**; maintainer-directed 2026-07-19, this
 session stood down from dispatching rather than risk duplicate worktrees and
 conflicting closes.
 
+**RESOLVED — the grooming session dispatched them, so this coordination note is
+now history rather than an open hazard.** `livespec-e7lanq` and
+`livespec-b7ropo` are both merged (PRs #1459 / #1462); `livespec-u7x5zn` waits
+on the acceptance gate. No duplicate worktrees or conflicting closes occurred.
+See §"NEXT ACTION" for the single remaining human step.
+
 **The groom was cut against a STALE diagnosis** — it predates the recovery, so
 each slice carried "treat the earlier attempt's absence as absence," which is
 no longer true. All three bodies have since been corrected, in two different
@@ -159,13 +165,58 @@ SUBSET. Reconciling those two numbers is the sharpest remaining sweep task.
 
 ## NEXT ACTION
 
-**Nothing is owed by this session.** `livespec-xw65el` is closed (regroomed
-out), its answerable tasks are complete (below), and dispatch of the successor
-slices belongs to the other session.
+**Blocked on the maintainer — one acceptance.** The grooming session dispatched
+both `READY` slices; both are merged and their artifacts are on master. The
+thread cannot advance further without a human acceptance.
 
-A resuming driver should: confirm with the grooming session before dispatching
-`livespec-e7lanq` / `livespec-b7ropo` (both `READY`), and route
-`livespec-u7x5zn` (`pending-approval`) through the admission valve.
+**Accept (or reject) `livespec-e7lanq`.** It sits at `acceptance` under
+`acceptance_policy: ai-then-human`; the AI pass verdict was PASS. It was
+deliberately NOT self-accepted — that policy exists to require a human, and an
+operator accepting on the maintainer's behalf would defeat it.
+
+That one acceptance is load-bearing for the rest of the thread:
+`livespec-u7x5zn` is `pending-approval` and NOT rankable, because its blocker
+`livespec-e7lanq` must reach `done`, which only the acceptance produces. Note
+the `approve:` valve does NOT apply to it — `approve:` requires an
+effective-MANUAL item, and `u7x5zn` carries `admission_policy: auto`, so it
+routes itself into `ready` once the dependency clears. Do not try to force it.
+
+| Slice | State | What landed |
+|---|---|---|
+| `livespec-e7lanq` | `acceptance` — **awaits human** | PR #1459 (`63c62dc5`) → `research/recovered-gate-verification.md` |
+| `livespec-b7ropo` | merged, dispatcher green | PR #1462 (`805a9dcc`) → `research/reverse-hazard.md` |
+| `livespec-u7x5zn` | `pending-approval` | blocked until `e7lanq` is `done` |
+
+**What the two artifacts settled:**
+
+- The recovered 12-gate table is VERIFIED against live sibling clones at named
+  SHAs — 9 clean, 3 verified-with-correction (reusable-workflow refs and Fabro
+  image tags have moved `v0.49.2` → `v0.50.3`). Both (b) classifications held.
+  One recovered unknown resolved (`_vendor` is excluded by both
+  `tests_mirror_pairing` and `partition_completeness`); the `f5380aa8`
+  auto-merge-bypass unknown remains honestly unconfirmable (Actions history
+  aged out). No missed gate found, by a stated method — the fan-out's managed
+  pin formats compared against the recipes reading those artifacts. That
+  negative is scoped to fan-out-managed artifacts, NOT to all ~106 recipes.
+- The reverse-hazard sweep found **ZERO live instances**, and that is a real
+  result rather than an absence of effort: the dev-tooling canonical check tree
+  is byte-identical from every active consumer's pinned ref (`v0.50.3`) to
+  `origin/master`, the core doctor static-check tree is byte-identical from
+  every consumer's core pin to master INCLUDING the console's older `v0.16.0`,
+  and the reusable-workflow callable contracts are unchanged. The disproven
+  `…-7wy` example was re-confirmed disproven from a third direction (identical
+  tree object `c6e69209…` at both refs).
+
+**A defect found while dispatching — read before trusting any `drive` verdict.**
+`drive --action impl:<id>` reported `status: green` / "Dispatcher reported
+green" for `livespec-b7ropo` while dispatching NOTHING; the item stayed `ready`.
+Cause: `drive`'s impl path runs the dispatcher with `--budget 1 --parallel 1`,
+so with another item already `active` there was no capacity, the loop ran zero
+iterations, and `commands/drive.py::_dispatch_status` maps an EMPTY journal plus
+exit 0 onto `green`. Filed as **`bd-ib-c4jfp6`** in the
+`livespec-orchestrator-beads-fabro` tenant. Until it is fixed, **always confirm
+a dispatch by re-reading the item's status** — never trust the green alone. The
+re-dispatch after capacity freed worked normally.
 
 ## COMPLETED 2026-07-19 — the answerable half of `livespec-xw65el`
 
