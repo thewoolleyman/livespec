@@ -159,7 +159,7 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-# 27 categories total. v011 baseline (11) + v012 additions (16).
+# 28 categories total. v011 baseline (11) + v012 additions (16) + ROP sweep (1).
 # Per python-skill-script-style-requirements.md §"Linter and
 # formatter".
 select = [
@@ -197,6 +197,7 @@ select = [
     # ISC003 stay active to flag genuine multi-line concats.
     "T20",   # flake8-print — bans print/pprint (pairs with check-no-write-direct)
     "S",     # flake8-bandit — security anti-patterns
+    "BLE",   # flake8-blind-except -- expected errors ride Result/IOResult rails
 ]
 ignore = [
     "ISC001",  # implicit-str-concat on one line; conflicts with the formatter
