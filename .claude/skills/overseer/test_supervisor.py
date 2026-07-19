@@ -3806,3 +3806,901 @@ def test_pending_retry_does_not_false_close_on_hook_busy_with_text_in_box(tmp_pa
     assert registry.read_resume_pending(str(repo), topic, sup.stamp_path) is True
     assert any(c[0] == "keys" and c[2] == "Enter" for c in fake.calls)  # it DID re-send Enter
     assert not fake.has("respawn")
+
+
+# --------------------------------------------------------------------------- #
+# Fail-soft marker I/O. The state file is written by the SESSION and read by the
+# daemon, so every marker read/write/delete can fail on a tick (a directory in
+# the file's place, an unwritable marker dir). Each failure must be LOGGED and
+# the surrounding decision left in its safe default — never raised out of the
+# tick, which would strand every other track the daemon is supervising.
+# --------------------------------------------------------------------------- #
+
+
+def _undeletable_state_file(repo, topic):
+    """Put a DIRECTORY where the ``.overseer-state`` file belongs.
+
+    ``unlink`` on a directory always fails (``EISDIR``) for every user including
+    root, so this models an undeletable marker without a chmod the CI container
+    (which runs as root) would ignore.
+    """
+    path = signals.state_path(str(repo), topic)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.mkdir()
+    return path
+
+
+def test_clear_state_logs_an_undeletable_marker_and_still_closes_the_round(tmp_path):
+    """`_clear_state` must not raise when the marker cannot be deleted: it logs the
+    failure and still performs the REST of the clear (stamp + in-memory round), so a
+    single unlink failure cannot abort the tick mid-restart."""
+    repo, topic = _make_plan(tmp_path)
+    _undeletable_state_file(repo, topic)
+    sup = _sup(tmp_path, FakeTmux())
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    key = _key_for(repo, topic)
+    sup._inject[key] = supervisor._InjectState(last_ctx=30)
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup._clear_state(_mapped_track(repo, topic, "sesA"))
+
+    assert "could not delete state file" in err.getvalue()
+    assert topic in err.getvalue()
+    # The round still closed: the durable stamp is gone and the in-memory state popped.
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
+    assert key not in sup._inject
+
+
+def test_unreadable_ready_marker_leaves_the_ready_flag_as_is(tmp_path):
+    """`_void_if_stale` voids a declaration it can prove is stale. An UNREADABLE marker
+    proves nothing, so the flag comes back untouched and nothing is cleared —
+    `ready_valid` is the gate that already refused to trust it."""
+    repo, topic = _make_plan(tmp_path)
+    sup = _sup(tmp_path, FakeTmux())
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    track = _mapped_track(repo, topic, "sesA")
+
+    assert sup._void_if_stale(track, ready=True) is True  # no state file → unreadable
+    # and the round was NOT closed behind the daemon's back
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0
+
+
+def test_void_stale_blocked_keeps_the_reason_when_the_marker_no_longer_declares_one(tmp_path):
+    """`_void_stale_blocked` only retires a `blocked:` it can still SEE on disk. An
+    unreadable file, or one that now declares something else, leaves the caller's reason
+    untouched — voiding on a read it could not make would destroy a live declaration."""
+    repo, topic = _make_plan(tmp_path)
+    sup = _sup(tmp_path, FakeTmux())
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    track = _mapped_track(repo, topic, "sesA")
+    blocked = "blocked: waiting on the schema call"
+
+    # (a) no state file at all → unreadable
+    assert sup._void_stale_blocked(track, blocked, generating=True) == blocked
+    # (b) the file exists but the session has since declared `ready` — not a block anymore
+    _arm_ready_marker(repo, topic, mtime=1.0)  # far past the grace, so only the token gates
+    assert sup._void_stale_blocked(track, blocked, generating=True) == blocked
+    # Neither path ran `_clear_state`, so the round is intact.
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0
+
+
+def test_idle_nudge_marker_write_failure_is_logged_not_raised(tmp_path):
+    """The daemon-owned `idle-with-context-left` marker lives under a per-topic dir. When
+    that dir cannot be created the write is logged and skipped — never raised — and no
+    marker is left behind, so the next idle tick simply re-nudges."""
+    repo, topic = _make_plan(tmp_path)
+    marker_dir = signals.state_path(str(repo), topic).parent
+    marker_dir.parent.mkdir(parents=True, exist_ok=True)
+    marker_dir.write_text("a FILE where the marker dir belongs\n", encoding="utf-8")
+    sup = _sup(tmp_path, FakeTmux())
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup._write_idle_nudge_state(_mapped_track(repo, topic, "sesA"))
+
+    assert "could not write idle-nudge marker" in err.getvalue()
+    assert signals.read_state(str(repo), topic) is None  # nothing was written
+
+
+def test_failed_nudge_alerts_and_writes_no_marker_so_it_retries(tmp_path):
+    """The nudge marker is written only AFTER the paste lands. A failed paste must
+    ALERT (naming the tmux coordinate) and leave the episode unmarked, so the next tick
+    re-nudges rather than silently recording a keep-going prompt that never arrived."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=73))  # idle, well above threshold
+    fake.paste_ok = False  # the bracketed paste does not land
+    clock = {"t": 1000.0}
+    sup = _sup(tmp_path, fake, now=lambda: clock["t"])
+    sup._claude_status = {session: "idle"}
+    track = _mapped_track(repo, topic, session)
+
+    sup.evaluate(track, act=True)  # stamps idle_since
+    clock["t"] += supervisor._IDLE_NUDGE_AFTER + 1
+    err = _io.StringIO()
+    with contextlib.redirect_stderr(err):
+        view = sup.evaluate(track, act=True)
+
+    assert view.status == "idle-with-context-left"
+    assert "idle-with-context-left nudge FAILED" in err.getvalue()
+    assert session in err.getvalue()  # the alert names where to go
+    assert signals.read_state(str(repo), topic) is None  # episode NOT marked handled
+    # Unmarked means un-given-up-on: the next idle tick tries the nudge again.
+    clock["t"] += supervisor._IDLE_NUDGE_AFTER + 1
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.evaluate(track, act=True)
+    assert _nudge_count(fake) == 2  # re-attempted, not silently marked handled
+
+
+# --------------------------------------------------------------------------- #
+# Panes that vanish or never come up. Every step of an act is a hard gate: an
+# unresolvable pane, a respawn whose pane never becomes the expected runtime, and
+# a fresh TUI sitting on a gate all STOP the act with the declaration preserved.
+# --------------------------------------------------------------------------- #
+
+
+def _on_respawn(fake, after):
+    """Run ``after(session)`` right after a SUCCESSFUL FakeTmux respawn.
+
+    Models what the pane actually BECOMES once the respawn lands — a bare shell (the
+    launch never came up), or a fresh TUI that opened on a trust/update gate.
+    """
+    inner = fake.respawn_pane
+
+    def respawn(session, cwd, command):
+        landed = inner(session, cwd, command)
+        if landed:
+            after(session)
+        return landed
+
+    fake.respawn_pane = respawn
+
+
+def test_pane_that_vanishes_mid_tick_is_session_gone_and_never_acted_on(tmp_path):
+    """RB3: the mapped session passes `session_exists` but dies before its pane id is
+    resolved. With no pane id there is nothing safe to target — a bare `-t <name>` could
+    fall back to a live SIBLING session and `respawn-pane -k` could kill IT — so the row
+    degrades to `session-gone` and no pane op runs, even on a valid `ready`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # no live Claude for the topic outside tmux either
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {})
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+    exists = fake.session_exists
+
+    def vanishing_exists(name):
+        answer = exists(name)
+        fake.sessions.discard(session)  # the pane dies right after we looked
+        return answer
+
+    fake.session_exists = vanishing_exists
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+
+    assert view.status == "session-gone"
+    assert view.tmux is None  # never name a session that is not there
+    assert not fake.has("respawn")  # nothing was targeted...
+    assert not fake.has("paste")
+    assert marker.exists()  # ...and the declaration survives for a later tick
+
+
+def test_restart_keeps_the_marker_when_the_respawned_pane_never_becomes_claude(tmp_path):
+    """B5: the respawn SUCCEEDS but the pane comes up as a bare shell (the launch died
+    immediately). The round must NOT be closed — the daemon alerts and keeps the `ready`
+    declaration + stamp so the restart retries, rather than reporting a launch it could
+    not verify. The Claude twin of the Codex `never becomes codex` guard."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    _on_respawn(fake, lambda s: fake.cmds.__setitem__(s, "zsh"))  # comes up a shell
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+
+    assert "respawned pane never became Claude" in err.getvalue()
+    assert session in err.getvalue()  # the alert names where to go
+    assert marker.exists()  # declaration preserved for the retry
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0
+    assert supervisor.default_resume(str(repo), topic) not in fake.paste_texts()
+
+
+def test_freshly_restarted_pane_on_a_gate_pends_the_resume_instead_of_keystroking_it(tmp_path):
+    """Blocker #6: the fresh Claude came up on a trust/update/permissions PICKER. Pasting
+    the resume line + Enter there would auto-accept the picker's default, so the daemon
+    keystrokes NOTHING: it records a round-scoped `resume_pending`, alerts, and leaves the
+    `ready` marker in place for the next tick to retry once the human clears the gate."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    gate = "Do you want to proceed?\n❯ 1. Yes\n  2. No\n"
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    _on_respawn(fake, lambda s: fake.panes.__setitem__(s, gate))  # fresh TUI opens on a gate
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+
+    assert "freshly-restarted pane is on a gate" in err.getvalue()
+    assert not fake.has("paste")  # NEVER keystroked the picker
+    assert not any(c[0] == "keys" for c in fake.calls)
+    assert registry.read_resume_pending(str(repo), topic, sup.stamp_path) is True
+    assert marker.exists()  # round left open for the retry
+
+
+def test_codex_restart_alerts_when_the_codex_session_vanished_before_the_respawn(tmp_path):
+    """#4/B5: `_do_codex_restart` resolves the session id from the live per-tick map. If
+    the codex process died between the map refresh and the restart, there is no id to
+    resume — so it must alert and KEEP the declaration, never respawn a guessed target."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_codex_idle_capture(ctx=40), cmd="bun")
+    sup = _sup(tmp_path, fake)  # `_codex` left EMPTY: the session is gone
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup._do_codex_restart(_mapped_track(repo, topic, session), session)
+
+    assert "codex session vanished before restart" in err.getvalue()
+    assert session in err.getvalue()
+    assert not fake.has("respawn")  # nothing respawned without a resolved session id
+    assert marker.exists()
+
+
+# --------------------------------------------------------------------------- #
+# Watch-set resolution, GC fail-soft, and the post-auto-link re-join.
+# --------------------------------------------------------------------------- #
+
+
+def _fleet_manifest(tmp_path, *repo_names):
+    """A tmp `.livespec-fleet-manifest.jsonc` naming ``repo_names`` as fleet members.
+
+    `registry.watch_set` resolves each name against the manifest repo's PARENT, so the
+    manifest lives one level down (`<tmp>/core/`) and the repos are its siblings.
+    """
+    core = tmp_path / "core"
+    core.mkdir(exist_ok=True)
+    manifest = core / ".livespec-fleet-manifest.jsonc"
+    manifest.write_text(
+        json.dumps({"fleet": [{"repo": name} for name in repo_names]}), encoding="utf-8"
+    )
+    return manifest
+
+
+def test_watch_set_comes_from_the_fleet_manifest_when_no_repos_are_injected(tmp_path):
+    """With no explicit `watch_repos`, the daemon watches the fleet the manifest names —
+    but only checkouts that EXIST and carry a `plan/` dir, so a manifest entry that is not
+    cloned locally is silently absent rather than a phantom watched repo."""
+    alpha, _ = _make_plan(tmp_path, repo_name="alpha")
+    (tmp_path / "gamma").mkdir()  # cloned, but no plan/ dir
+    manifest = _fleet_manifest(tmp_path, "alpha", "beta", "gamma")  # beta is not cloned
+    sup = _sup(tmp_path, FakeTmux(), manifest_path=str(manifest))
+
+    assert sup._resolve_watch() == [os.path.normpath(str(alpha))]
+
+
+def test_archive_gc_keeps_a_row_it_cannot_evaluate(tmp_path):
+    """Fail-soft: a malformed mapping row (a non-string repo) cannot be evaluated for
+    archival, so the GC KEEPS it rather than dropping data it does not understand."""
+    sup = _sup(tmp_path, FakeTmux())
+    raw = json.dumps({"repo": 42, "topic": "t", "tmux": "sesA"}) + "\n"
+    Path(sup.store_path).write_text(raw, encoding="utf-8")
+
+    assert sup.archive_gc() == 0
+    assert Path(sup.store_path).read_text(encoding="utf-8") == raw  # byte-identical
+
+
+def test_build_rows_rejoins_after_auto_link_so_the_row_is_mapped_this_tick(tmp_path):
+    """An auto-link MUTATES the store mid-tick, so `build_rows` must re-join afterwards.
+    Without the re-join the tick would evaluate the stale pre-link snapshot and render the
+    plan `unassigned` for a full interval despite having just linked its live session."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.sessions.add(session)
+    fake.paths[session] = str(repo / "plan" / topic)  # cwd inside the repo → linkable
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()  # empty Claude registry: only auto-link can create the row
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {}, watch_repos=[str(repo)])
+
+    rows = sup.build_rows(act=True)
+
+    assert [(r.topic, r.tmux) for r in rows] == [(topic, session)]
+    assert not rows[0].is_unassigned  # the re-joined row, not the stale unassigned one
+
+
+def test_codex_track_is_rejected_when_its_live_session_runs_outside_the_repo(tmp_path):
+    """`_is_codex_track` pins BOTH the (tmux, topic) key AND the repo. A live codex
+    session named for this topic but running in a DIFFERENT repo is not this track's
+    session, so no codex act (wrap-up, `codex resume` restart) may be aimed at it."""
+    repo, topic = _make_plan(tmp_path)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_codex_idle_capture(ctx=40), cmd="bun")
+    sup = _sup(tmp_path, fake)
+    sup._codex = {
+        (session, topic): codex_sessions.CodexSession(
+            pid=4242,
+            name=topic,
+            cwd=str(elsewhere),  # the ONE thing that differs
+            session_id="019f6a1e-266d-7fc2-8eb2-15ec9d324fb8",
+        )
+    }
+
+    assert sup._is_codex_track(session, str(repo), topic, session) is False
+
+
+# --------------------------------------------------------------------------- #
+# Reboot-recovery edges: an already-live session is skipped, and every launch
+# failure (Claude or Codex) is SURFACED rather than counted as recovered.
+# --------------------------------------------------------------------------- #
+
+
+def test_recover_skips_a_track_whose_session_is_already_live(tmp_path):
+    """Recovery recreates only ABSENT sessions. A live one is skipped outright — the
+    `session_exists` gate is what makes startup recovery safe to run at all."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture())  # the session IS live
+    sup = _sup(tmp_path, fake)
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    assert sup.recover_missing_sessions() == []
+    assert not fake.has("new")  # never re-created a live session...
+    assert not fake.has("respawn")  # ...and never respawn-killed it
+
+
+def test_recover_surfaces_a_claude_track_whose_launch_fails(tmp_path, capsys):
+    """B5: `_do_launch` returning False must be SURFACED and the track left out of the
+    recovered list — never a silent claim that a session was recreated."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session absent → created, then the respawn fails
+    fake.respawn_ok = False
+    sup = _sup(tmp_path, fake)
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    assert sup.recover_missing_sessions() == []
+
+    err = capsys.readouterr().err
+    assert "reboot-recovery FAILED to launch" in err
+    assert session in err and topic in err
+
+
+def test_recover_codex_skips_when_new_session_does_not_create_the_session(tmp_path, capsys):
+    """Codex re-review #3, Codex arm: if `new-session` did not create the EXACT session,
+    recovery must not proceed to a respawn that could target a prefix-matched sibling."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    fake = FakeTmux()
+    fake.new_session_ok = False
+    sup = _sup(tmp_path, fake, codex_home=str(_codex_home_with(tmp_path, topic, sid)))
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    assert sup.recover_missing_sessions() == []
+    assert not fake.has("respawn")
+
+    err = capsys.readouterr().err
+    assert "new-session did not create" in err and session in err
+
+
+def test_recover_codex_surfaces_when_the_codex_resume_launch_fails(tmp_path, capsys):
+    """B5, Codex arm: the session was created but `codex resume` never landed. The track
+    is surfaced and NOT reported as recovered, so the operator relaunches it by hand."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    fake = FakeTmux()
+    fake.respawn_ok = False  # the session is created, but the codex respawn fails
+    sup = _sup(tmp_path, fake, codex_home=str(_codex_home_with(tmp_path, topic, sid)))
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    assert sup.recover_missing_sessions() == []
+    assert fake.has("new")  # it got as far as creating the session...
+    assert fake.has("respawn")  # ...and attempting the resume
+
+    err = capsys.readouterr().err
+    assert "FAILED to resume codex" in err and session in err
+
+
+def test_launch_helpers_refuse_a_session_with_no_resolvable_pane(tmp_path):
+    """RB3 for BOTH launch arms: with no pane id there is no exact target, so each helper
+    returns False WITHOUT respawning — a bare `-t <name>` could hit a live sibling."""
+    repo, topic = _make_plan(tmp_path)
+    fake = FakeTmux()  # no sessions at all → pane_id is None for anything
+    sup = _sup(tmp_path, fake)
+    track = _mapped_track(repo, topic, "no-such-session")
+
+    assert sup._do_launch(track, "no-such-session") is False
+    assert sup._do_codex_launch(track, "no-such-session", "aaaa-bbbb") is False
+    assert not fake.has("respawn")
+
+
+def test_do_launch_is_false_when_the_pane_never_becomes_claude(tmp_path):
+    """B5: a respawn that lands but never yields a live Claude TUI is a FAILED launch —
+    False, and the resume line is never pasted into whatever is sitting there instead."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture())
+    _on_respawn(fake, lambda s: fake.cmds.__setitem__(s, "zsh"))  # comes up a shell
+    sup = _sup(tmp_path, fake)
+
+    assert sup._do_launch(_mapped_track(repo, topic, session), session) is False
+    assert fake.has("respawn")  # it did try...
+    assert not fake.has("paste")  # ...but never pasted into the un-verified pane
+
+
+# --------------------------------------------------------------------------- #
+# The daemon loop: the per-store singleton lock, startup recovery, the sleep
+# between ticks, and a clean exit on Ctrl-C.
+# --------------------------------------------------------------------------- #
+
+
+def test_run_refuses_to_start_when_another_daemon_holds_the_store_lock(tmp_path):
+    """B6: two daemons on one store double-inject and double-restart — B's
+    `respawn-pane -k` can kill the fresh session A just resumed. The second daemon
+    surfaces the contended lock path and returns WITHOUT ticking."""
+    holder = _sup(tmp_path, FakeTmux())
+    handle = holder._acquire_singleton_lock()
+    assert handle is not None
+    try:
+        sup = _sup(tmp_path, FakeTmux())  # same store path → same lock
+        ticked = []
+        sup.tick = lambda *, act: ticked.append(act)  # type: ignore[assignment]  # spy
+        err = _io.StringIO()
+        with contextlib.redirect_stderr(err):
+            sup.run(once=True)
+        assert ticked == []  # NO tick ran
+        assert "refusing to start" in err.getvalue()
+        assert str(sup._singleton_lock_path()) in err.getvalue()
+    finally:
+        supervisor.Supervisor._release_singleton_lock(handle)
+
+
+def test_singleton_lock_is_treated_as_contended_when_the_lockfile_cannot_be_created(tmp_path):
+    """Fail-soft: any OSError acquiring the lock reads as CONTENDED (None), so a broken
+    lock path refuses to start a second daemon rather than assuming it is alone."""
+    sup = _sup(tmp_path, FakeTmux())
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("a FILE where the store's parent dir belongs\n", encoding="utf-8")
+    sup.store_path = str(blocker / "map.jsonl")  # mkdir of the parent must fail
+
+    assert sup._acquire_singleton_lock() is None
+
+
+def test_run_with_recover_recreates_missing_sessions_before_the_first_tick(tmp_path):
+    """`run(recover=True)` performs startup recovery once, BEFORE the loop — so a
+    post-reboot daemon has its mapped sessions back by the time the first tick renders."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # session absent → recovery recreates it
+    fake.panes[session] = _idle_capture()  # post-launch empty box so the resume confirms
+    sup = _sup(tmp_path, fake)
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+    ticked = []
+    sup.tick = lambda *, act: ticked.append(act)  # type: ignore[assignment]  # spy
+
+    with contextlib.redirect_stderr(_io.StringIO()):
+        sup.run(once=True, recover=True)
+
+    assert ("new", session, str(repo)) in fake.calls  # recovery ran...
+    assert ticked == [True]  # ...and then exactly one tick
+
+
+def test_run_sleeps_between_ticks_and_exits_cleanly_on_keyboard_interrupt(tmp_path):
+    """The loop paces itself with the injected `sleep(interval)` between ticks, and a
+    Ctrl-C during a tick exits by RETURNING (logged) rather than propagating — so the
+    `finally` releases the singleton lock instead of leaving it held."""
+    slept = []
+    sup = _sup(tmp_path, FakeTmux(), sleep=slept.append)
+    ticks = []
+
+    def tick(*, act):
+        ticks.append(act)
+        if len(ticks) == 2:  # the operator hits Ctrl-C during the second tick
+            raise KeyboardInterrupt
+
+    sup.tick = tick  # type: ignore[assignment]
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup.run(interval=7.0, once=False)  # must RETURN, not raise
+
+    assert ticks == [True, True]
+    assert slept == [7.0]  # slept exactly once, between the two ticks
+    assert "interrupted; exiting" in err.getvalue()
+
+
+# --------------------------------------------------------------------------- #
+# The startup gitignore probe. `git check-ignore -q` is the one real subprocess
+# in this module; only a ZERO exit may be read as "ignored", and a spawn failure
+# fails soft to "not ignored" (which REFUSES to start).
+# --------------------------------------------------------------------------- #
+
+
+def _completed(returncode):
+    """A `subprocess.CompletedProcess` reached via the supervisor module, so this
+    test file needs no `import subprocess` of its own."""
+    return supervisor.subprocess.CompletedProcess(args=[], returncode=returncode)
+
+
+def test_gitignore_check_is_true_only_on_a_zero_exit(monkeypatch):
+    """`git check-ignore -q` exits 0 when ignored, 1 when not, 128 on error — so only a
+    0 means ignored. Reading 128 as "ignored" would let the daemon start against a repo
+    where its markers dirty the tracked tree."""
+    codes = [0, 1, 128]
+    argvs = []
+
+    def fake_run(argv, **_kwargs):
+        argvs.append(argv)
+        return _completed(codes.pop(0))
+
+    monkeypatch.setattr(supervisor.subprocess, "run", fake_run)
+
+    assert supervisor.default_gitignore_check("/x/repo") is True  # 0 → ignored
+    assert supervisor.default_gitignore_check("/x/repo") is False  # 1 → NOT ignored
+    assert supervisor.default_gitignore_check("/x/repo") is False  # 128 → git errored
+    assert argvs[0] == ["git", "-C", "/x/repo", "check-ignore", "-q", "tmp/overseer"]
+
+
+def test_gitignore_check_fails_soft_to_not_ignored_when_git_cannot_spawn(monkeypatch):
+    """A spawn failure (no git on PATH) fails soft to False — "not ignored" — which makes
+    the daemon REFUSE to start. Failing soft to True would be the unsafe direction."""
+
+    def boom(argv, **_kwargs):
+        raise OSError("no git on PATH")
+
+    monkeypatch.setattr(supervisor.subprocess, "run", boom)
+
+    assert supervisor.default_gitignore_check("/x/repo") is False
+
+
+# --------------------------------------------------------------------------- #
+# CLI wiring: the fixed fleet manifest, the no-knob Supervisor builder, and the
+# `list` / `adopt` / failing-`start` subcommand bodies.
+# --------------------------------------------------------------------------- #
+
+
+def test_default_manifest_resolves_to_the_core_repo_checkout_not_the_cwd(tmp_path):
+    """The daemon runs from an arbitrary cwd, so the fleet manifest is resolved relative
+    to THIS module's own checkout. The returned path must be the manifest of the core repo
+    that owns `supervisor.py` — a wrong number of `parents[]` hops would miss it."""
+    manifest = supervisor._default_manifest()
+
+    assert manifest.name == ".livespec-fleet-manifest.jsonc"
+    owner = manifest.parent / ".claude" / "skills" / "overseer" / "supervisor.py"
+    assert owner.is_file()  # the manifest's dir IS the checkout holding this module
+
+
+def test_build_supervisor_has_no_knobs_and_badges_its_own_tmux_pane(monkeypatch):
+    """The de-gold-plated builder: the watch-set is the fleet manifest and the store /
+    stamp paths are the hard-coded registry defaults (None → the module default), with
+    `own_pane` read from `$TMUX_PANE` so the window badge works without a flag."""
+    monkeypatch.setenv("TMUX_PANE", "%42")
+    sup = supervisor._build_supervisor()
+
+    assert sup.manifest_path == supervisor._default_manifest()
+    assert sup.own_pane == "%42"
+    assert sup.watch_repos is None  # no --repos knob
+    assert sup.store_path is None and sup.stamp_path is None  # no --store / --stamp knobs
+
+    monkeypatch.delenv("TMUX_PANE")
+    assert supervisor._build_supervisor().own_pane is None  # not under tmux → no badge
+
+
+def test_cli_colliding_reads_the_same_fleet_watch_set_the_daemon_does(tmp_path, monkeypatch):
+    """A one-shot `add`/`start` must name its session EXACTLY as the daemon would, so it
+    computes collisions over the same manifest-derived watch-set: only a topic present in
+    TWO repos is repo-qualified; a topic unique to one repo stays bare."""
+    _make_plan(tmp_path, repo_name="alpha", topic="shared")
+    _make_plan(tmp_path, repo_name="alpha", topic="only-alpha")
+    _make_plan(tmp_path, repo_name="beta", topic="shared")
+    manifest = _fleet_manifest(tmp_path, "alpha", "beta")
+    monkeypatch.setattr(supervisor, "_default_manifest", lambda: manifest)
+
+    assert supervisor._cli_colliding() == frozenset({"shared"})
+
+
+def test_cli_list_renders_exactly_one_read_only_tick(monkeypatch):
+    """`overseer list` builds the fleet Supervisor and ticks it ONCE with `act=False` —
+    the advertised read-only render: no injection, no restart, no store mutation."""
+    ticks = []
+
+    class _TickOnlySup:
+        def tick(self, *, act):
+            ticks.append(act)
+            return []
+
+    monkeypatch.setattr(supervisor, "_build_supervisor", lambda: _TickOnlySup())
+
+    assert supervisor.main(["list"]) == 0
+    assert ticks == [False]
+
+
+def test_cli_adopt_reports_every_adopted_session_and_the_total(monkeypatch, capsys):
+    """`overseer adopt` names each newly-adopted session with its (repo, topic) and then
+    reports the count — the operator's confirmation that a hand-started session is now
+    supervised."""
+    adopted = [
+        registry.Track(topic="alpha", repo="/x/repo_a", tmux="sesA"),
+        registry.Track(topic="beta", repo="/x/repo_b", tmux="sesB"),
+    ]
+
+    class _AdoptOnlySup:
+        def adopt_sessions(self):
+            return adopted
+
+    monkeypatch.setattr(supervisor, "_build_supervisor", lambda: _AdoptOnlySup())
+
+    assert supervisor.main(["adopt"]) == 0
+
+    out = capsys.readouterr().out
+    assert "adopted sesA → /x/repo_a::alpha" in out
+    assert "adopted sesB → /x/repo_b::beta" in out
+    assert "adopted 2 existing session(s)" in out
+
+
+def test_cli_start_fails_when_the_tmux_session_cannot_be_created(tmp_path, monkeypatch, capsys):
+    """Codex re-review #3: `new-session` failing must abort `start` with a nonzero exit —
+    proceeding to `_do_launch` would respawn whatever the bare name prefix-matched. And a
+    start that never launched must leave NO mapping row claiming it did."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    store = _isolate_store(tmp_path, monkeypatch)
+    fake = FakeTmux()  # session absent
+    fake.new_session_ok = False
+    monkeypatch.setattr(supervisor.tmuxio, "TmuxIO", lambda: fake)
+
+    assert supervisor.main(["start", "--repo", str(repo), "--topic", topic]) == 1
+    assert ("new", session, str(repo)) in fake.calls
+    assert not fake.has("respawn")  # never respawned a prefix-matched sibling
+    assert "could not create tmux session" in capsys.readouterr().err
+    assert registry.read_mapping(store) == []  # nothing mapped
+
+
+def test_cli_start_fails_when_the_launch_does_not_land(tmp_path, monkeypatch, capsys):
+    """B5 at the CLI: `_do_launch` returning False exits nonzero and reports, rather than
+    printing `started …` for a session that never came up — and again maps nothing."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    store = _isolate_store(tmp_path, monkeypatch)
+    fake = FakeTmux()  # session absent → created, then the respawn fails
+    fake.respawn_ok = False
+    monkeypatch.setattr(supervisor.tmuxio, "TmuxIO", lambda: fake)
+
+    assert supervisor.main(["start", "--repo", str(repo), "--topic", topic]) == 1
+    assert ("new", session, str(repo)) in fake.calls
+    assert fake.has("respawn")
+
+    err = capsys.readouterr().err
+    assert "start FAILED to launch" in err and session in err
+    assert registry.read_mapping(store) == []  # nothing mapped
+
+
+# --------------------------------------------------------------------------- #
+# The read-only render (`/overseer list` → `tick(act=False)`) must DERIVE every
+# status the daemon would while performing NO side effect: no paste, no respawn,
+# no alert, no injection stamp, and no marker written or retired. Each test below
+# picks a branch whose act=True twin is already covered and pins the act=False
+# side. `list` runs against a LIVE daemon's store, so a side effect leaking into
+# it is exactly the bug these close.
+# --------------------------------------------------------------------------- #
+
+
+def test_read_only_list_reports_a_malformed_state_file_without_alerting(tmp_path):
+    """A typo'd declaration still shows in the row's note under `list`, but the operator
+    ALERT is an event-history line the DAEMON owns — emitting it from the read-only render
+    would re-spam the log on every `list`."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    _declare(repo, topic, "redy", mtime=1001.0)  # typo
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=False)
+
+    assert view.note is not None and "redy" in view.note  # the operator still sees it
+    assert "MALFORMED state file" not in err.getvalue()  # but no alert was emitted
+    assert not fake.has("paste")
+    assert not fake.has("respawn")
+
+
+def test_read_only_list_reports_working_without_retiring_a_stale_block(tmp_path):
+    """A `blocked:` a generating session has outlived is retired by the DAEMON (it deletes
+    the marker). `list` must render the same `working` row carrying that reason and leave
+    the marker on disk — retiring it is a filesystem mutation, and the teeth here are that
+    the identical act=True tick DOES void it."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture="esc to interrupt\n  Ctx: 40% left\n")  # generating
+    sup = _sup(tmp_path, fake)
+    _declare(repo, topic, "blocked: waiting on a human", mtime=1.0)  # far past the grace
+    track = _mapped_track(repo, topic, session)
+
+    view = sup.evaluate(track, act=False)
+
+    assert view.status == "working"
+    assert view.note is not None and "waiting on a human" in view.note  # reason still shown
+    state = signals.read_state(str(repo), topic)
+    assert state is not None and state.token == signals.STATE_BLOCKED  # marker untouched
+
+    # Teeth: the SAME tick with act=True is the one allowed to retire it.
+    with contextlib.redirect_stderr(_io.StringIO()):
+        assert sup.evaluate(track, act=True).note is None
+    assert signals.read_state(str(repo), topic) is None
+
+
+def test_read_only_list_reports_restarting_without_respawning(tmp_path):
+    """`restarting` is a DERIVED status — the row shows what the daemon would do next. Under
+    `list` no respawn may fire and the `ready` declaration + round must survive intact, or a
+    read-only render would have consumed the session's one restart authorization."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=30))
+    sup = _sup(tmp_path, fake)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)
+    marker = _arm_ready_marker(repo, topic, mtime=1001.0)
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=False)
+
+    assert view.status == "restarting"
+    assert not fake.has("respawn")  # the session was NOT killed by a `list`
+    assert not fake.has("paste")
+    assert marker.exists()  # the authorization survives for the daemon's own tick
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0
+
+
+def test_read_only_list_reports_danger_without_injecting_or_alerting(tmp_path):
+    """At/below the danger line the daemon injects a wrap-up and alerts that the track is
+    NOT RESPONDING. `list` shows the same `danger` row and does neither — and above all
+    opens no injection round, which would move the certification anchor a later `ready`
+    is compared against."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=15))  # <= DANGER_CTX_REMAINING
+    sup = _sup(tmp_path, fake)
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        view = sup.evaluate(_mapped_track(repo, topic, session), act=False)
+
+    assert view.status == "danger"
+    assert err.getvalue() == ""  # no NOT RESPONDING alert from a read-only render
+    assert _wrapup_count(fake) == 0  # and nothing keystroked
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) is None
+
+
+# --------------------------------------------------------------------------- #
+# Remaining single-branch edges: an unreported self-status, a failed paste in an
+# ALREADY-open round, a failed window rename, and `start` on a proven-dead pane.
+# --------------------------------------------------------------------------- #
+
+
+def test_live_outside_tmux_note_omits_the_suffix_when_no_status_is_reported(tmp_path):
+    """The live-outside-tmux note appends Claude's own self-reported status only when the
+    registry actually carries one. With none reported the note stops at the pid — never a
+    dangling `self-reported status ` with nothing after it."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()  # mapped tmux session absent → routes to the no-managed-pane row
+    sessions_dir = tmp_path / "sessions"
+    sessions_dir.mkdir()
+    _write_session(sessions_dir, 100, name=topic, cwd=str(repo), status="")  # no self-report
+    sup = _adopt_sup(tmp_path, fake, sessions_dir, {}, {100: "pt"})
+
+    view = sup.evaluate(_mapped_track(repo, topic, session), act=True)
+
+    assert view.status == "live-outside-tmux"
+    assert view.note == (
+        "live Claude session (pid 100) running OUTSIDE tmux — daemon cannot manage it"
+    )
+    assert "self-reported status" not in view.note
+
+
+def test_failed_paste_in_an_already_open_round_keeps_the_rounds_stamp(tmp_path):
+    """The rollback on a failed wrap-up paste applies ONLY to a round this tick just
+    OPENED. A re-warn at a lower band runs inside a round opened earlier, and clearing that
+    round's `at` would reset the anchor `ready_valid` compares a declaration against — so
+    the stamp is left alone and only the alert fires."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.serve(session, repo, capture=_idle_capture(ctx=40))  # a LOWER band than 50
+    fake.paste_ok = False  # the re-warn paste does not land
+    sup = _sup(tmp_path, fake, warn_percent=50)
+    registry.write_injection_stamp(str(repo), topic, 1000.0, sup.stamp_path)  # round ALREADY open
+    registry.add_notified_band(str(repo), topic, 50, sup.stamp_path)  # the 50 band already sent
+    err = _io.StringIO()
+
+    with contextlib.redirect_stderr(err):
+        sup.evaluate(_mapped_track(repo, topic, session), act=True)
+
+    assert "wrap-up injection FAILED" in err.getvalue()
+    assert registry.read_injection_stamp(str(repo), topic, sup.stamp_path) == 1000.0  # kept
+    # The undelivered band is NOT marked notified, so the next tick re-tries it.
+    assert 40 not in set(registry.read_notified_bands(str(repo), topic, sup.stamp_path))
+
+
+def test_window_badge_is_retried_when_the_rename_fails(tmp_path):
+    """The badge is memoized so an unchanged count costs no tmux call — but only on
+    SUCCESS. A rename that fails must not be remembered as written, or the attention count
+    would be permanently absent from the window name until the count happened to change."""
+    fake = FakeTmux()
+    inner = fake.rename_window
+
+    def failing_rename(pane, name):
+        _ = inner(pane, name)
+        return False  # tmux refused the rename
+
+    fake.rename_window = failing_rename
+    sup = _sup(tmp_path, fake, own_pane="%1")
+
+    sup._refresh_window_name(2)
+    sup._refresh_window_name(2)
+
+    assert fake.renames() == ["overseer(2!)", "overseer(2!)"]  # retried, not memoized
+    assert sup._window_name is None  # nothing recorded as written
+
+
+def test_releasing_the_singleton_lock_frees_it_and_releasing_none_is_a_no_op(tmp_path):
+    """Release must actually free the flock (else a daemon restart could never re-acquire
+    its own store's lock), and must tolerate the `None` a contended acquire returns."""
+    sup = _sup(tmp_path, FakeTmux())
+    handle = sup._acquire_singleton_lock()
+    assert handle is not None
+
+    supervisor.Supervisor._release_singleton_lock(handle)
+
+    regained = _sup(tmp_path, FakeTmux())._acquire_singleton_lock()
+    assert regained is not None  # the same store's lock is genuinely free again
+    supervisor.Supervisor._release_singleton_lock(regained)
+    # Releasing a lock that was never acquired is a safe no-op, not a crash.
+    assert supervisor.Supervisor._release_singleton_lock(None) is None
+
+
+def test_cli_start_respawns_a_session_proven_dead_by_its_bare_shell(tmp_path, monkeypatch, capsys):
+    """RB4: `start` fails CLOSED, refusing to respawn-kill anything not PROVEN dead. A bare
+    SHELL is that proof (a live Claude reports `node`, a live Codex `bun`), so this is the
+    one no-`--force` path that may respawn an EXISTING session."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    store = _isolate_store(tmp_path, monkeypatch)
+    fake = FakeTmux()
+    # The session exists but its pane dropped to a shell — proven dead.
+    fake.serve(session, repo, capture=_idle_capture(), cmd="zsh")
+    monkeypatch.setattr(supervisor.tmuxio, "TmuxIO", lambda: fake)
+
+    assert supervisor.main(["start", "--repo", str(repo), "--topic", topic]) == 0
+
+    assert fake.has("respawn")  # the dead shell's pane WAS relaunched
+    assert not fake.has("new")  # ...in place; the session already existed
+    assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
+    assert [(r.topic, r.tmux) for r in registry.read_mapping(store)] == [(topic, session)]
+    assert f"started {os.path.normpath(str(repo))}::{topic}" in capsys.readouterr().out

@@ -132,6 +132,56 @@ def test_list_sessions_parses_lines():
     assert io2.list_sessions() == []
 
 
+def test_pane_pid_parses_int_and_fails_soft():
+    # The pane PID is read through the same `list-panes` row as every other
+    # per-pane field, then int-parsed; anything unparseable fails soft to None.
+    io, fake = _io(stdout="%5\t1\t482913\n")
+    assert io.pane_pid("s") == 482913
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "list-panes",
+        "-t",
+        "s",
+        "-F",
+        "#{pane_id}\t#{pane_active}\t#{pane_pid}",
+    ]
+    io2, _ = _io(stdout="%5\t1\tnot-a-pid\n")  # non-numeric value → None
+    assert io2.pane_pid("s") is None
+    io3, _ = _io(stdout="%5\t1\t   \n")  # unreadable/empty field → None
+    assert io3.pane_pid("s") is None
+    io4, _ = _io(returncode=1)  # session gone → None (fail-soft)
+    assert io4.pane_pid("s") is None
+
+
+def test_pane_pid_sessions_parses_every_pane_across_sessions():
+    # The process-side of the registry→tmux join: EVERY pane, all sessions.
+    io, fake = _io(stdout="482913\tlivespec:a\n482920\tlivespec:a\n99001\tother:b\n")
+    assert io.pane_pid_sessions() == {
+        482913: "livespec:a",
+        482920: "livespec:a",
+        99001: "other:b",
+    }
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "list-panes",
+        "-a",
+        "-F",
+        "#{pane_pid}\t#{session_name}",
+    ]
+
+
+def test_pane_pid_sessions_skips_malformed_rows():
+    # A non-integer pid, a blank line, and a row with no session name are each
+    # skipped fail-soft rather than crashing the whole enumeration.
+    io, _ = _io(stdout="482913\tlivespec:a\nnot-a-pid\tlivespec:b\n\n7\t   \n99001\tother:b\n")
+    assert io.pane_pid_sessions() == {482913: "livespec:a", 99001: "other:b"}
+
+
+def test_pane_pid_sessions_empty_on_error():
+    io, _ = _io(returncode=1, stdout="482913\tlivespec:a\n")
+    assert io.pane_pid_sessions() == {}
+
+
 # --------------------------------------------------------------------------- #
 # Writes.
 # --------------------------------------------------------------------------- #
@@ -247,6 +297,57 @@ def test_select_layout_even_argv():
     assert fake.calls[0]["argv"] == ["tmux", "select-layout", "-t", "%20", "even-vertical"]
     io2, _ = _io(returncode=1)  # fail-soft
     assert io2.select_layout_even("%20") is False
+
+
+def test_pane_by_title_finds_matching_pane_id():
+    # The idempotent-path read: which pane in THIS window carries the title.
+    io, fake = _io(stdout="%20\tzsh\n%47\toverseer-daemon\n")
+    assert io.pane_by_title("%20", "overseer-daemon") == "%47"
+    assert fake.calls[0]["argv"] == [
+        "tmux",
+        "list-panes",
+        "-t",
+        "%20",
+        "-F",
+        "#{pane_id}\t#{pane_title}",
+    ]
+    io2, _ = _io(stdout="%20\tzsh\n")  # title absent in this window → None
+    assert io2.pane_by_title("%20", "overseer-daemon") is None
+    io3, _ = _io(returncode=1)  # list failed → None (fail-soft)
+    assert io3.pane_by_title("%20", "overseer-daemon") is None
+
+
+def test_set_pane_height_percent_argv():
+    # Percentage sizing (tmux 3.5a) — the `%` suffix is what makes it a share of
+    # the window rather than an absolute row count.
+    io, fake = _io()
+    assert io.set_pane_height_percent("%47", 25) is True
+    assert fake.calls[0]["argv"] == ["tmux", "resize-pane", "-t", "%47", "-y", "25%"]
+    io2, _ = _io(returncode=1)  # fail-soft
+    assert io2.set_pane_height_percent("%47", 25) is False
+
+
+def test_rename_window_renames_then_pins_automatic_rename_off():
+    # Pinning is PART of renaming: without `automatic-rename off` tmux re-derives
+    # the window name from its foreground command and overwrites NAME.
+    io, fake = _io()
+    assert io.rename_window("%20", "overseer") is True
+    assert fake.calls[0]["argv"] == ["tmux", "rename-window", "-t", "%20", "overseer"]
+    assert fake.calls[1]["argv"] == [
+        "tmux",
+        "set-window-option",
+        "-t",
+        "%20",
+        "automatic-rename",
+        "off",
+    ]
+
+
+def test_rename_window_false_when_rename_fails_and_skips_the_pin():
+    io, fake = _io(returncode=1)
+    assert io.rename_window("%20", "overseer") is False
+    # the pin is never attempted once the rename itself failed
+    assert len(fake.calls) == 1
 
 
 def test_window_pane_titles_parses_and_fail_soft():

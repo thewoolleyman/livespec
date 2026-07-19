@@ -160,6 +160,16 @@ extend-exclude = [
     ".claude/hooks/**",
 ]
 
+# `ruff check .` walks a directory tree by EXTENSION, so a Python file with no
+# `.py` suffix is silently skipped — it is never reported as excluded, it simply
+# never appears. The overseer's two executables (`overseer-start`, `overseerd`)
+# are exactly that: Python with a shebang, invoked by bare name, so they sat
+# outside the lint gate even after the folder entered it. The glob matches the
+# folder's naming convention (every executable there is named `overseer*`), so a
+# new launcher is covered by following the convention rather than by remembering
+# to edit this list.
+extend-include = [".claude/skills/overseer/overseer*"]
+
 [tool.ruff.lint]
 # 28 categories total. v011 baseline (11) + v012 additions (16) + ROP sweep (1).
 # Per python-skill-script-style-requirements.md §"Linter and
@@ -353,7 +363,17 @@ ban-relative-imports = "all"
 # ---------------------------------------------------------------------------
 
 [tool.pyright]
-include = [".claude-plugin/scripts", "dev-tooling", ".claude/skills/overseer"]
+# The two extensionless entries are the overseer's executables (Python with a
+# shebang, invoked by bare name). A directory scan resolves files by EXTENSION,
+# so `.claude/skills/overseer` alone does NOT reach them — they are named
+# individually, the same blind spot `[tool.ruff].extend-include` closes above.
+include = [
+    ".claude-plugin/scripts",
+    "dev-tooling",
+    ".claude/skills/overseer",
+    ".claude/skills/overseer/overseer-start",
+    ".claude/skills/overseer/overseerd",
+]
 exclude = [
     "**/_vendor/**",
     "**/__pycache__/**",
@@ -514,6 +534,16 @@ omit = [
     # mutmut working directory — instrumented copies of source files;
     # measured during mutation testing but not first-party code.
     "mutants/*",
+    # The overseer's beside-tests. Coverage measures the code under test, not
+    # the test code — which is why the note above says `tests/` needs no entry:
+    # pytest-cov excludes test files by default when it discovers them under
+    # `tests/`. These live BESIDE their source and are reached by an explicit
+    # `--cov=.claude/skills/overseer`, so the same rule takes an explicit omit.
+    # Mirrors `[tool.pyright].exclude`, which scopes them out for the identical
+    # reason. Measuring them would also mean every defensive branch in a test
+    # DOUBLE had to be exercised, which is coverage theatre.
+    ".claude/skills/overseer/test_*.py",
+    ".claude/skills/overseer/conftest.py",
 ]
 
 [tool.coverage.report]

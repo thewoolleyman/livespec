@@ -347,6 +347,52 @@ def test_pane_is_codex_is_loose_and_must_never_gate_alone():
     assert signals.pane_is_codex(None) is False
 
 
+def test_codex_prompt_present_requires_the_codex_statusline_not_just_the_glyph():
+    """STRUCTURAL, never glyph-only: a `›` line alone is not a Codex TUI. Claude's own
+    statusline says `Ctx: N% left`, Codex's says `Context N% left` — without the Codex
+    form this must be False, or a Claude pane that happens to render a `›` (quoted text,
+    a prompt char) would be driven through the Codex restart path."""
+    claude_pane = "\n".join(
+        [
+            "● the doc quotes a codex line:",
+            "› Find and fix a bug in @filename",
+            "  Opus 4.8 | /x/repo | Ctx: 73% left",
+            "  ? for shortcuts",
+        ]
+    )
+    assert signals.codex_prompt_present(claude_pane) is False
+    assert signals.is_codex_idle_input(claude_pane) is False
+
+
+def test_is_codex_idle_input_false_while_the_codex_pane_is_busy():
+    """A generating Codex pane still shows its `›` prompt AND its statusline, so the
+    prompt check alone would call it idle. Busy must dominate — otherwise the daemon
+    pastes the wrap-up into a session mid-generation."""
+    busy_codex = "\n".join(
+        [
+            "✻ Working… (running tests… · 24s · ↓ 1.4k tokens)",
+            "› ",
+            "  gpt-5.5 high · /data/projects/x · Context 66% left · some-topic",
+        ]
+    )
+    assert signals.codex_prompt_present(busy_codex) is True  # the prompt IS present...
+    assert signals.is_busy(busy_codex) is True
+    assert signals.is_codex_idle_input(busy_codex) is False  # ...but busy wins
+
+
+def test_read_state_is_none_when_the_state_file_is_unreadable(tmp_path):
+    """Fail-closed: a PRESENT but unreadable indicator reads as "no state", never raises —
+    so an unreadable file can never authorize a restart (it is not a `ready`)."""
+    repo, topic = _setup_track(tmp_path)
+    path = _declare(repo, topic, "ready\n", mtime=1001.0)
+    path.chmod(0o000)
+    try:
+        assert signals.read_state(str(repo), topic) is None
+        assert signals.ready_valid(str(repo), topic, injection_stamp=1000.0) is False
+    finally:
+        path.chmod(0o600)
+
+
 def test_only_a_shell_proves_a_pane_is_dead():
     """The rule `start`'s fail-closed guard relies on: proof of DEATH, not "not Claude".
     Enumerating the live runtimes did not scale to a second one — a live codex pane

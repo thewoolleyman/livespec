@@ -741,13 +741,17 @@ check-prompts:
 # .claude/skills/overseer/. They live beside the modules they cover
 # rather than under tests/, so the default pytest `testpaths =
 # ["tests"]` never collects them and they need their own target. They
-# are hermetic (FakeTmux + a fake /proc), so they run anywhere. No
-# coverage: .claude/skills/overseer/** is scoped out of ruff, pyright,
-# and import-linter as host tmux-coordination tooling rather than
-# product or dev-tooling Python, and running it under --cov would
-# feed unmeasured host-glue modules into the fail_under = 100 gate.
+# are hermetic (FakeTmux + a fake /proc + injected tmux layout), so
+# they run anywhere.
+#
+# WITH coverage, at the same fail_under = 100 every other module is
+# held to — the threshold comes from [tool.coverage.report], so there
+# is no second number here to drift. COVERAGE_FILE points at a
+# separate data file so this run can never clobber the main suite's
+# .coverage, which check-coverage reads back.
 check-overseer:
-    uv run pytest .claude/skills/overseer/ -q
+    COVERAGE_FILE=.coverage.overseer uv run pytest .claude/skills/overseer/ -q \
+        --cov=.claude/skills/overseer --cov-report=term-missing
 
 # Doctor deterministic static-phase coverage gate. Per SPECIFICATION/
 # non-functional-requirements.md §"Enforcement-suite invocation" →

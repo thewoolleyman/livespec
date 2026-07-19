@@ -189,6 +189,92 @@ def test_rewrite_mapping_preserves_unknown_keys(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Fail-soft store resilience (B6/B7): a corrupt, unreadable, or unwritable store
+# must degrade ONE reader/writer and never crash the daemon that supervises all
+# tracks. Every case asserts the fail-soft RESULT, not merely that nothing raised.
+# --------------------------------------------------------------------------- #
+
+
+def test_file_lock_proceeds_unlocked_when_the_lock_cannot_be_acquired(
+    tmp_path, monkeypatch, capsys
+):
+    """B7: losing the lock race is better than losing the daemon — an unlockable
+    store falls back to an UNLOCKED read-modify-write and the append still lands."""
+    store = tmp_path / "map.jsonl"
+
+    def _refuse_flock(_fd, _operation):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(registry.fcntl, "flock", _refuse_flock)
+    registry.append_mapping(Track(topic="a", repo="/r", tmux="r-a"), store)
+
+    assert [t.topic for t in registry.read_mapping(store)] == ["a"]  # write still landed
+    assert "could not acquire lock" in capsys.readouterr().err
+
+
+def test_file_lock_proceeds_unlocked_when_the_lock_file_cannot_be_opened(tmp_path, capsys):
+    """B7: the lock sidecar failing to OPEN (no handle was ever acquired) takes the
+    same unlocked fallback — the caller runs and reports, and the daemon lives."""
+    unwritable = tmp_path / "unwritable"
+    unwritable.mkdir()
+    unwritable.chmod(0o500)  # readable + traversable, but nothing may be created in it
+    store = unwritable / "map.jsonl"
+    try:
+        registry.append_mapping(Track(topic="a", repo="/r"), store)
+        assert registry.read_mapping(store) == []  # the append itself also failed soft
+    finally:
+        unwritable.chmod(0o755)
+
+    err = capsys.readouterr().err
+    assert "could not acquire lock" in err
+    assert "could not append to" in err
+    assert not (unwritable / "map.jsonl.lock").exists()  # no lock sidecar was created
+
+
+def test_read_mapping_fail_soft_on_an_unreadable_store(tmp_path, capsys):
+    """B7: a store that exists but cannot be read yields an EMPTY mapping (naming
+    the offender), not a propagated PermissionError."""
+    store = tmp_path / "map.jsonl"
+    store.write_text(json.dumps({"topic": "a", "repo": "/r"}) + "\n", encoding="utf-8")
+    store.chmod(0o000)
+    try:
+        assert registry.read_mapping(store) == []
+    finally:
+        store.chmod(0o600)
+    assert "unreadable mapping store" in capsys.readouterr().err
+
+
+def test_atomic_write_fail_soft_leaves_the_store_intact_and_removes_the_temp(
+    tmp_path, monkeypatch, capsys
+):
+    """B6/B7: a mid-write failure must never truncate the store nor leave a ``.tmp``
+    turd behind — the temp file is unlinked and the old content survives whole."""
+    store = tmp_path / "map.jsonl"
+    store.write_text(json.dumps({"topic": "keep", "repo": "/r"}) + "\n", encoding="utf-8")
+
+    def _boom(_fd):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(registry.os, "fsync", _boom)
+    registry._write_rows([{"topic": "replacement", "repo": "/r"}], store)
+
+    assert [t.topic for t in registry.read_mapping(store)] == ["keep"]  # not truncated
+    assert [p.name for p in tmp_path.iterdir()] == ["map.jsonl"]  # temp file cleaned up
+    assert "could not write" in capsys.readouterr().err
+
+
+def test_append_mapping_fail_soft_when_the_store_cannot_be_opened(tmp_path, capsys):
+    """B7: an unopenable store path (here a DIRECTORY sitting where the file
+    belongs) drops the append with a warning instead of crashing the caller."""
+    store = tmp_path / "map.jsonl"
+    store.mkdir()
+    registry.append_mapping(Track(topic="a", repo="/r"), store)
+
+    assert registry.read_mapping(store) == []  # nothing recorded, nothing raised
+    assert "could not append to" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------- #
 # Discovery.
 # --------------------------------------------------------------------------- #
 
@@ -227,6 +313,42 @@ def test_discover_plans_fail_soft_on_missing_plan_dir(tmp_path):
     repo = tmp_path / "repo-without-plan"
     repo.mkdir()
     assert registry.discover_plans([repo]) == []
+
+
+def test_discover_plans_fail_soft_on_an_unreadable_plan_dir(tmp_path, capsys):
+    """B7: a plan/ that becomes unlistable between the is_dir check and iterdir
+    (chmod, NFS hiccup, mid-clone) skips that ONE repo — every other watched repo
+    still contributes, rather than the whole discovery pass crashing the daemon."""
+    poisoned = tmp_path / "repo-poisoned"
+    _make_plan(poisoned, "topic-a")
+    healthy = tmp_path / "repo-healthy"
+    _make_plan(healthy, "topic-b")
+    (poisoned / "plan").chmod(0o000)  # unlistable, but still stats as a dir
+    try:
+        triples = registry.discover_plans([poisoned, healthy])
+    finally:
+        (poisoned / "plan").chmod(0o755)
+
+    assert [(registry.repo_slug(r), t) for r, t, _h in triples] == [("repo-healthy", "topic-b")]
+    assert "unreadable plan dir" in capsys.readouterr().err
+
+
+def test_discover_plans_fail_soft_on_an_unreadable_plan_child(tmp_path, capsys):
+    """B7: with plan/ readable but not traversable (r--), iterdir still lists the
+    children while stat'ing one raises — that child is dropped and named, and the
+    rest of the discovery set survives."""
+    poisoned = tmp_path / "repo-poisoned"
+    _make_plan(poisoned, "unstattable")
+    healthy = tmp_path / "repo-healthy"
+    _make_plan(healthy, "topic-b")
+    (poisoned / "plan").chmod(0o444)
+    try:
+        triples = registry.discover_plans([poisoned, healthy])
+    finally:
+        (poisoned / "plan").chmod(0o755)
+
+    assert [(registry.repo_slug(r), t) for r, t, _h in triples] == [("repo-healthy", "topic-b")]
+    assert "unreadable plan child" in capsys.readouterr().err
 
 
 # --------------------------------------------------------------------------- #
@@ -341,6 +463,61 @@ def test_parse_jsonc_is_string_aware_and_tolerates_trailing_comma():
     assert parsed["items"] == ["a", "b"]
 
 
+def test_parse_jsonc_honors_backslash_escapes_inside_a_string_literal():
+    # A BACKSLASH-ESCAPED quote does not end the literal, so the `//` and `/*` that
+    # follow it are still INSIDE the string and must survive stripping. An escaped
+    # backslash is likewise consumed as one character, not as an escape of the quote.
+    parsed = registry._parse_jsonc(r'{"a": "x\"y // z /* w */", "b": "trailing\\"}')
+    assert parsed["a"] == 'x"y // z /* w */'
+    assert parsed["b"] == "trailing\\"
+
+
+def test_strip_jsonc_comments_consumes_an_unterminated_string_literal():
+    # The stripper is not a validator: an unterminated literal runs to the end of
+    # the input, so the `//` inside it is preserved rather than treated as the
+    # start of a comment. Reporting the malformed JSON is json.loads's job.
+    text = '{"a": "unterminated // not-a-comment'
+    assert registry._strip_jsonc_comments(text) == text
+    with pytest.raises(json.JSONDecodeError):
+        registry._parse_jsonc(text)
+
+
+def test_watch_set_skips_a_non_list_section_and_non_dict_entries(tmp_path):
+    """The manifest walk is fail-soft over shape: a section that is not an array,
+    and array members that are not objects, contribute nothing while the
+    well-formed entries in the same manifest still resolve."""
+    projects_root = tmp_path / "projects"
+    core = projects_root / "livespec"
+    core.mkdir(parents=True)
+    manifest_path = core / ".livespec-fleet-manifest.jsonc"
+    manifest_path.write_text(
+        "{\n"
+        '  "fleet": "not-a-list",\n'  # non-list section → skipped wholesale
+        '  "adopters": ["bare-string", 7, null, { "repo": 7 }, { "repo": "sibling-a" }]\n'
+        "}\n",
+        encoding="utf-8",
+    )
+    (projects_root / "sibling-a" / "plan").mkdir(parents=True)
+
+    result = registry.watch_set(manifest_path)
+    assert [registry.repo_slug(p) for p in result] == ["sibling-a"]
+
+
+def test_watch_set_dedupes_extras_against_the_manifest_and_skips_missing_ones(tmp_path):
+    """An extra_repo that the manifest ALREADY selected appears exactly once — a repo
+    listed twice would be discovered, and therefore supervised, twice. An extra with
+    no checkout on disk contributes nothing."""
+    projects_root = tmp_path / "projects"
+    manifest_path = _write_manifest(projects_root, fleet_names=["sibling-a"])
+    (projects_root / "sibling-a" / "plan").mkdir(parents=True)
+
+    result = registry.watch_set(
+        manifest_path,
+        [projects_root / "sibling-a", tmp_path / "no-such-checkout"],
+    )
+    assert [registry.repo_slug(p) for p in result] == ["sibling-a"]
+
+
 # --------------------------------------------------------------------------- #
 # archive-GC.
 # --------------------------------------------------------------------------- #
@@ -402,6 +579,19 @@ def test_archived_or_gone_active_wins_over_same_named_archive(tmp_path):
 def test_repo_root_present(tmp_path):
     assert registry.repo_root_present(str(tmp_path)) is True
     assert registry.repo_root_present(str(tmp_path / "nope")) is False
+
+
+def test_repo_root_present_is_false_when_the_root_cannot_be_stated(tmp_path):
+    """B6: a root that raises rather than answering (an untraversable parent — the
+    unmounted-volume / mid-move case) reads as ABSENT, so the daemon's GC keeps the
+    mapping row instead of crashing the tick."""
+    parent = tmp_path / "untraversable"
+    (parent / "repo").mkdir(parents=True)
+    parent.chmod(0o000)
+    try:
+        assert registry.repo_root_present(str(parent / "repo")) is False
+    finally:
+        parent.chmod(0o755)
 
 
 def test_clear_injection_stamp(tmp_path):
@@ -520,3 +710,92 @@ def test_repoint_tmux_rewrites_only_the_matching_row_and_is_idempotent(tmp_path)
     assert registry.repoint_tmux("/r", "a", "new", store) is False  # already correct → no-op
     assert store.stat().st_mtime_ns == before  # not rewritten
     assert registry.repoint_tmux("/r", "missing", "x", store) is False  # no such row → no-op
+
+
+# --------------------------------------------------------------------------- #
+# Injection-stamp sidecar: fail-soft over a corrupt / legacy / half-shaped value.
+# --------------------------------------------------------------------------- #
+
+
+def test_injection_stamp_fail_soft_when_the_sidecar_is_not_a_json_object(tmp_path, capsys):
+    """Well-formed JSON of the WRONG shape (a bare array) is reported distinctly
+    from malformed JSON, and every reader degrades to its empty answer."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(json.dumps([1, 2]), encoding="utf-8")
+
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+    assert registry.read_notified_bands("/r", "t", stamp) == []
+    assert registry.read_resume_pending("/r", "t", stamp) is False
+    assert "is not a JSON object" in capsys.readouterr().err
+
+
+def test_read_injection_stamp_is_none_when_the_round_dict_has_no_at(tmp_path):
+    """A dict-shaped value that never opened a round (no ``at``) has no timestamp —
+    but the rest of the entry is still readable, so it is not discarded wholesale."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(
+        json.dumps({"/r\tt": {"bands": [45], "resume_pending": True}}), encoding="utf-8"
+    )
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+    assert registry.read_notified_bands("/r", "t", stamp) == [45]
+    assert registry.read_resume_pending("/r", "t", stamp) is True
+
+
+def test_read_injection_stamp_warns_and_returns_none_on_a_non_numeric_stamp(tmp_path, capsys):
+    """Both sidecar shapes name the offending track on an unusable ``at``. ``true``
+    is deliberately NOT numeric (jsonio.as_float rejects bool, which is an int
+    subclass), so it must not silently read back as 1.0."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(
+        json.dumps({"/r\tdict": {"at": True}, "/r\tlegacy": "not-a-number"}), encoding="utf-8"
+    )
+    assert registry.read_injection_stamp("/r", "dict", stamp) is None
+    assert registry.read_injection_stamp("/r", "legacy", stamp) is None
+
+    err = capsys.readouterr().err
+    assert "non-numeric injection stamp for /r::dict" in err
+    assert "non-numeric injection stamp for /r::legacy" in err
+
+
+def test_read_notified_bands_ignores_a_non_list_bands_member(tmp_path):
+    """A ``bands`` member of the wrong type reads as "nothing notified yet" without
+    costing the entry its still-usable ``at``."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(json.dumps({"/r\tt": {"at": 500.0, "bands": "45"}}), encoding="utf-8")
+    assert registry.read_notified_bands("/r", "t", stamp) == []
+    assert registry.read_injection_stamp("/r", "t", stamp) == 500.0
+
+
+def test_add_notified_band_on_a_track_with_no_open_round(tmp_path):
+    """Part 2: an absent key yields a bare bands-only entry — the band is recorded
+    without inventing an ``at`` (no round was opened, so none may certify)."""
+    stamp = tmp_path / "stamps.json"
+    registry.add_notified_band("/r", "t", 45, stamp)
+    assert registry.read_notified_bands("/r", "t", stamp) == [45]
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+
+
+def test_set_resume_pending_on_a_track_with_no_open_round(tmp_path):
+    """R1: the retry keys on the FLAG, not on ``at`` — an absent key is written as a
+    bare {"resume_pending": true} so the submit still retries."""
+    stamp = tmp_path / "stamps.json"
+    registry.set_resume_pending("/r", "t", stamp)
+    assert registry.read_resume_pending("/r", "t", stamp) is True
+    assert registry.read_injection_stamp("/r", "t", stamp) is None
+
+
+def test_set_resume_pending_upgrades_a_legacy_bare_scalar_value(tmp_path):
+    """R1 back-compat: a legacy bare-float value is upgraded to the dict shape with
+    the float preserved as ``at``; a legacy bare NON-numeric value is unusable, so
+    the upgrade keeps only the flag."""
+    stamp = tmp_path / "stamps.json"
+    stamp.write_text(
+        json.dumps({"/r\tnumeric": 321.0, "/r\tjunk": "not-a-number"}), encoding="utf-8"
+    )
+    registry.set_resume_pending("/r", "numeric", stamp)
+    registry.set_resume_pending("/r", "junk", stamp)
+
+    assert registry.read_resume_pending("/r", "numeric", stamp) is True
+    assert registry.read_injection_stamp("/r", "numeric", stamp) == 321.0  # `at` preserved
+    assert registry.read_resume_pending("/r", "junk", stamp) is True
+    assert registry.read_injection_stamp("/r", "junk", stamp) is None  # unusable → dropped
