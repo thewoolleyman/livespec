@@ -169,6 +169,10 @@ evidence.
 3. **If dispatch is still down:** factory-side work is blocked, but the gate items are NOT —
    the flat rule was ruled 2026-07-20 (broad-only), which unblocked all four. In rough order:
 
+   - **`livespec-dev-tooling-z45` (P1) FIRST if you want one clean win.** Self-contained, one
+     repo, no dependencies, obvious Red (an armed check reporting `total == 0` must exit
+     non-zero — it exits 0 today). Landing it makes every future regression in `e9j` /
+     `mutreal.1` LOUD instead of silent, which is why it is worth doing before them.
    - **`livespec-dev-tooling-e9j` (P0)** — the biggest, and it SLICES. Declare core's structural
      role keys **except `pure_trees`** now: that is near-free (0 offenses under broad-only) and
      gets five of seven checks genuinely enforcing in one small PR. **Do NOT declare
@@ -197,6 +201,9 @@ evidence.
   rule that blocked it is ruled, its premise was disproved, and its scope still needs
   re-cutting. Nothing landed.
 - **`livespec-dev-tooling-cvz` (P1) filed** — the third vacuous gate.
+- **`livespec-dev-tooling-z45` (P1) filed** — `check_mutation` masks its own failure class.
+- **Mutation is SOLVED** — recipe reproduced twice at ~85%, over the 80% floor. See "MUTATION IS
+  SOLVED" near the top. Remaining work is productization, not research.
 - **`livespec-dev-tooling-e9j` is P0** — the SYSTEMIC finding that supersedes `cvz`: role-key
   non-declaration silently disarms SEVEN checks fleet-wide, four of which have never enforced
   anything in any repo. Core runs 5+ structural gates vacuous while CI reports them green, and
@@ -370,6 +377,8 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
 | `livespec-dev-tooling-e9j` | livespec-dev-tooling | **P0** | Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. Raised to P0 2026-07-20. Superset of `cvz` |
 | `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Blast radius is beads-fabro (47 sites), NOT git-jsonl (2) as its brief says.** Hinges on the same unresolved flat-package rule as qm5 |
+| `livespec-dev-tooling-z45` | livespec-dev-tooling | P1 | **NEW 2026-07-20.** `check_mutation` masks its own failure class — a crashed or misconfigured run passes GREEN. This is HOW e9j stayed invisible. Independent of e9j and mutreal.1; landing it FIRST makes future regressions loud |
+| `livespec-mutreal.1` | **livespec tenant** | — | Staging-tree construction. Recipe now KNOWN + reproduced twice at ~85%; remaining work is productization (committed vs generated). Gates only `pure_trees`, not the rest of e9j |
 | `livespec-dev-tooling-jjb` | livespec-dev-tooling | P2 | Mechanize cardinality + marker wording (the ratified spec says these are review-enforced today) |
 | `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Canonical no-shadow-ledger body: type-checkable + **the non-conforming ROP marker (rule-independent, landable NOW, fixes 2 of ~7 remaining broad sites)** |
 
