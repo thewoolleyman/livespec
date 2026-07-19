@@ -53,6 +53,21 @@ Do NOT duplicate it, and do NOT touch that branch or worktree — it is another 
 (the cross-session force-push/clobber ban in `AGENTS.md` applies). Gate B lands the
 moment it merges.
 
+⚠️ **That fix is STALLED and the blast radius is wider than "pushes are blocked".**
+As of 2026-07-19 ~12:20 the branch is pushed to `origin` but **no PR was ever opened**
+for it, and master has moved on (now `a28374da`, dev-tooling pin already at v0.50.3).
+Opening that PR is a one-step unblock for the whole repo, but it is ANOTHER SESSION'S
+branch and an outward-facing action — get maintainer or that session's agreement first;
+do not open it unilaterally.
+
+**The blocker also breaks the SPEC LIFECYCLE, which was not previously recorded.** The
+propose-change CLI runs doctor static as BOTH a pre-step and a post-step
+(`prose/propose-change.md` Steps 8 / Post-CLI). `--skip-pre-check` suppresses only the
+pre-step; the POST-step still fires and still exits 3. So while the blocker stands,
+`/livespec:propose-change` cannot complete cleanly — the proposed-change file lands on
+disk but the CLI reports exit 3. Any spec amendment is effectively frozen, not merely
+un-pushable. This is why the root-cause work below is filed rather than driven.
+
 ## Step 2 — land Gate B (only once Step 1 is exit 0)
 
 ```bash
@@ -616,6 +631,44 @@ Goal: an adopter with a fleet manifest can run the overseer. Architecturally pla
 - **D6 — anchor a ledger epic?** Phase 2 is multi-repo (CORE + both Drivers) → an epic
   with per-repo work-items + cross-repo links is the right shape IF Phase 2 proceeds.
   Phase 1 is single-repo/local and can run as this plan thread without an epic.
+
+## Spun out — handoff-durability root-cause fix (maintainer-chosen 2026-07-19)
+
+Prompted by this thread losing 153 unversioned lines: **why did nothing catch a dirty
+handoff?** Root cause found, and it is a SCOPE GAP in an existing proven invariant, not
+a missing concept.
+
+`SPECIFICATION/contracts.md` §"master-direct-uncommitted-spec-edits" already mandates
+that every worktree whose HEAD is the default branch MUST NOT carry uncommitted
+modifications — enumerating worktrees, running `git status --porcelain`, firing `warn`
+with corrective narration. It is scoped to `<spec-root>/` ONLY. Demonstrated live: in
+this session's first `check-doctor-static` run it reported
+*"no worktrees on master carry uncommitted spec-tree edits (1 worktree(s) scanned)"* —
+`pass` — while that very worktree carried the dirty handoff. The guard ran and looked
+straight past it.
+
+`plan/` is already first-class to the check suite (`check-plan-thread-anchor-declared`,
+`check-plan-thread-epic-parity` are canonical slugs), so widening scope is not a
+boundary violation.
+
+**Maintainer chose: extend the check AND add a SessionStart surface.** Two moments, two
+mechanisms — the check makes it an enforced invariant in `just check`/CI; the hook
+catches it at session start, the one moment the damage is still preventable. Neither
+alone suffices: the check is `warn` and only fires when someone runs doctor, which no
+one does at session start.
+
+Sequencing constraints found while scoping it:
+
+- The check is **spec-backed**, and `contracts.md:105` cites it BY NAME as the canonical
+  example of the `warn` status. Extending the implementation past its contract would be
+  exactly the drift livespec exists to catch, so it needs propose-change → independent
+  Fable review → revise. **Blocked**: the spec lifecycle is frozen by the blocker above.
+- Its name would then misdescribe it. Recommend renaming the slug (touches
+  `contracts.md:105`, the `### ` heading at `:153`, the registry in
+  `doctor/static/__init__.py`, the module filename, `check_id`, and tests) over keeping
+  a stale name. Not yet decided.
+- The **SessionStart hook half needs no spec change** — it is project-local config in
+  `.claude/settings.json` — and is the part that can move first.
 
 ## Discipline (this folder)
 
