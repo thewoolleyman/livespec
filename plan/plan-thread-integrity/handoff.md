@@ -31,13 +31,30 @@ enforcement would repeat the error this thread exists to correct.
 
 ## Start here
 
-Nothing is in flight. No branch, no worktree, no pull request belongs to this
-thread yet.
+> **READ [`plan.md`](./plan.md) FIRST — it is authoritative and it supersedes
+> this section.** Added 2026-07-19 after two independent adversarial reviews
+> (Fable and Codex) each raised the staleness of this section as a BLOCKER.
+>
+> **The blocking session-end (`Stop`) hook recommended below is WITHDRAWN.** Do
+> NOT build it. It would stall overseer-managed tracks past the 120s
+> `_MARKER_VOID_GRACE`, and a careless agent can satisfy the block by running
+> `git checkout -- plan/` — destroying the file the block exists to save.
+> `plan.md` §"What this plan does NOT build, and why" carries the full
+> reasoning.
+>
+> This matters because the overseer hands a respawned session exactly one
+> prompt — "read this handoff and follow it" — so a successor reading only the
+> text below would build the withdrawn mechanism. That is the failure both
+> reviewers named.
 
-Recommended first move is **layer 1**, the session-end check. A 2026-07-19
+Nothing is in flight apart from the plan itself, which is on branch
+`docs/plan-thread-integrity-mechanism-plan`.
+
+~~Recommended first move is **layer 1**, the session-end check.~~ A 2026-07-19
 investigation reshaped what that means; read `design.md` §"A `Stop` hook already
 ships, already ran, and encodes the root cause" and §"The home question has a
-third answer, and it is coupled to the posture" before estimating anything.
+third answer, and it is coupled to the posture" for the evidence — but take the
+DISPOSITION from `plan.md`, not from this file.
 
 **Layer 1 is not a greenfield build.** The Claude Driver bundle already
 registers two `Stop` hooks, and one of them —
@@ -56,7 +73,12 @@ Driver bug.
 | Driver bundle | WARN-only by contract | yes, incl. any posture change | all governed repos |
 | livespec-core-local | free | none | 1 |
 
-**The recommendation flipped to blocking, in `livespec_dev_tooling.agent_hooks`.**
+~~**The recommendation flipped to blocking, in `livespec_dev_tooling.agent_hooks`.**~~
+**RETRACTED 2026-07-19 — see [`plan.md`](./plan.md).** The blocking posture was
+recommended on reasoning that did not survive review: it stalls overseer tracks,
+and it hands a careless agent a destructive way to satisfy the block. The
+paragraph below is preserved for its reasoning trail, not as a live
+recommendation.
 A WARN-only Stop hook lets the session end, so nothing commits the file — it
 cannot produce this thread's outcome. Only exit `2` hands control back while the
 authoring session can still act. The trap risk that argued for surface-only is
