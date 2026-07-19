@@ -10,10 +10,17 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 
 | Gate | State | Where |
 |---|---|---|
-| A — tests in `just check`/CI | **IN FLIGHT** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387) |
-| C — ruff | not started | — |
+| A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
+| C — ruff | NEXT | — |
 | D — pyright strict | not started | — |
 | B + E — coverage + ROP railway | blocked on D1/D2 | — |
+
+**Gate A live-exercise evidence (not merely merged + CI-green).** The post-merge master
+CI run [29673873687](https://github.com/thewoolleyman/livespec/actions/runs/29673873687)
+carried a `check-overseer` job that ran and passed against combined master — so the gate
+is real in the environment it exists to protect, not only in a PR sandbox. Sabotage was
+verified locally before the PR: appending a failing beside-test turned
+`just check-overseer` red with a non-zero recipe exit; restoring it turned it green.
 
 **Gate A (2026-07-19, PR #1387).** Adds a livespec-private `check-overseer` justfile
 target (`uv run pytest .claude/skills/overseer/ -q`, **no coverage**), makes it a literal
@@ -37,6 +44,21 @@ justfile-target dimension.
 The target deliberately runs WITHOUT `--cov` so host-glue modules never enter the
 `fail_under = 100` gate, and it sorts after `check-coverage`/`check-per-file-coverage` in
 the aggregate — keep it there if it ever moves.
+
+Two operational lessons from landing it, both worth carrying into Gates C/D:
+
+- **A conflicting PR gets NO CI run at all.** GitHub only creates a `pull_request` run
+  when it can compute the merge ref, so a branch that conflicts with master silently
+  reports zero checks rather than a failure — it looks like CI never fired. Master moves
+  fast here (three unrelated threads landed commits during this one PR), so rebase onto
+  `origin/master` and re-push the moment `gh pr view --json mergeStateStatus` reports
+  `DIRTY`/`CONFLICTING`.
+- **`.claude/skills/overseer/AGENTS.md` is contended surface.** The `overseer-known-defects`
+  thread edited the same paragraph concurrently. Its addition — the *combined-master-state*
+  warning (two overseer branches merging git-clean can still leave the folder red) — was
+  PRESERVED and rewritten, not dropped: master CI now catches that case post-merge, but
+  auto-merge lands before the master run finishes, so the manual combined-state re-run is
+  still the advice while another overseer branch is in flight.
 
 ## Why this thread exists
 
