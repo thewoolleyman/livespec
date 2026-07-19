@@ -93,13 +93,32 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 **The cont. 9 revision of this handoff claimed "nothing on this track is
 outstanding" and "THIS THREAD IS READY TO ARCHIVE". BOTH CLAIMS WERE FALSE** (PR
 #1428). A first correction (PR #1430) said three children were open. **That was
-ALSO wrong — there are SEVEN.** This is the measured picture.
+ALSO wrong.** The epic has **EIGHT children**; seven were open when that
+correction was written, and **six are open now** (`.2` was already closed; `.4` was
+closed 2026-07-19 — see the table below). This is the measured picture.
 
-> **`bd show <epic>` UNDER-REPORTS ITS OWN CHILDREN.** `bd show livespec-3lev`
-> listed only 4 (`.2 .4 .7 .8`); `bd list` shows 7 open plus the closed `.2`. The
-> first correction trusted the `bd show` CHILDREN block and inherited its gap.
-> **Enumerate children with `bd list`, never with `bd show`.** Worth carrying to
-> `.ai/beads-gaps-workarounds.md`.
+> **RETRACTED — there is NO beads gap here, and `bd` is not at fault.** An earlier
+> revision of this block asserted that `bd show <epic>` under-reports its own
+> children, and recommended carrying that to `.ai/beads-gaps-workarounds.md`.
+> **That was wrong.** `bd show livespec-3lev` reports all 8 children correctly and
+> prints a `2/8 complete (25%)` tally. The truncation was **self-inflicted**: the
+> original invocation was piped through `head -25`, and the CHILDREN block sits at
+> the END of the output, so `head` cut it at exactly 4 entries. Reproduced
+> deliberately — re-running with `head -25` yields the identical 4-entry list, and
+> re-running without it yields all 8.
+>
+> **Do NOT add this to `.ai/beads-gaps-workarounds.md`.** A fabricated tool defect
+> in a shared catalogue is worse than the original mistake: other agents would
+> distrust a working command and carry a pointless workaround forever.
+>
+> **The real lesson, and it is the sharper one: when a tool looks wrong, suspect
+> your own invocation first.** The evidence that it was self-inflicted was sitting
+> in the command line the whole time. Blaming the tool was the more flattering
+> explanation and it was reached for first, immediately after two status errors —
+> which is exactly when the temptation to externalize a mistake is strongest.
+> Pipelines that `head`/`tail`/`grep` a rich command's output are a standing source
+> of this: **when a listing looks short, re-run it raw before drawing any conclusion
+> from its length.**
 
 ### The epic's THREE stated goals, measured
 
@@ -125,7 +144,11 @@ gate was explicitly not spent) — but it means Phases 2 and 3 are **not met as
 written**, and the phrase "cut over" has been used for both image adoption and
 runner adoption. **Always say which.**
 
-### All seven open children
+### Every child, with measured status
+
+Eight total. `.2` (P-factory) closed earlier; `.4` closed 2026-07-19. **Six open.**
+Verify with an UNTRUNCATED `bd show livespec-3lev` — it prints an `N/8 complete`
+tally, which is the quickest check that you are seeing the whole set.
 
 | Child | Real status |
 |---|---|
@@ -151,19 +174,37 @@ front of you is no defence against an unchecked premise underneath you.
 
 **Standing rule this earns:** before writing any "track complete", "nothing
 outstanding", or "archivable" line in ANY handoff, enumerate the anchoring epic's
-children **with `bd list`** and check each status directly. A closed track is a
-claim about the LEDGER, so it must be verified against the ledger.
+children and check each status directly — and read the enumeration **untruncated**.
+A closed track is a claim about the LEDGER, so it must be verified against the
+ledger.
 
-**The correction needed correcting, which is the sharper lesson.** The first fix
-(PR #1430) used `bd show livespec-3lev`, got 4 children, and confidently reported
-3 open. `bd list` shows 7 open. So a verification step was performed, produced a
-number, and the number was still wrong — because the TOOL under-reported and its
-output looked complete. Getting caught once and reaching for the nearest
-verification is not the same as verifying. **When a check yields a suspiciously
-tidy answer right after you have been wrong, cross-check it with a second tool
-before publishing.** Here the tell was available and ignored: `bd close
-livespec-3lev.4` failed with "blocked by open issues [livespec-3lev.1]" — naming a
-child that the `bd show` listing had never mentioned.
+**The correction needed correcting — twice — and the second time is the sharper
+lesson.** The first fix (PR #1430) ran `bd show livespec-3lev`, saw 4 children, and
+confidently reported 3 open. There are 8 children, 7 then open. So a verification
+step was performed, produced a number, and the number was still wrong.
+
+The second fix (PR #1431) then diagnosed that as a `bd` defect — "`bd show`
+under-reports its own children" — and recommended recording it in
+`.ai/beads-gaps-workarounds.md`. **That diagnosis was also wrong, and worse than
+the thing it explained.** `bd show` reports all 8 correctly, with a `2/8 complete`
+tally. The 4-entry list came from piping it through **`head -25`** — the CHILDREN
+block is at the end of the output, so `head` truncated it. Reproduced both ways to
+be sure.
+
+Three compounding lessons, in increasing order of how easily they generalize:
+
+1. **Getting caught once and reaching for the nearest verification is not the same
+   as verifying.** The tell was available and ignored both times: `bd close
+   livespec-3lev.4` failed with "blocked by open issues [livespec-3lev.1]", naming
+   a child the truncated listing never showed.
+2. **When a listing looks short, re-run it raw.** `head`/`tail`/`grep` pipelines
+   over a rich command are a standing source of phantom "missing data", and length
+   is the one property they most obviously destroy.
+3. **When a tool looks wrong, suspect your own invocation first.** Blaming `bd` was
+   the more flattering explanation and it was reached for immediately after two
+   status errors — precisely when the pull toward externalizing a mistake is
+   strongest. Had it not been caught, a fabricated defect would have entered a
+   shared catalogue and taught every future agent to distrust a working command.
 
 **And a third layer, worth naming separately.** Even the corrected child list
 understated things, because several children were open for a reason no status
