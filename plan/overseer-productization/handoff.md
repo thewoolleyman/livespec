@@ -12,8 +12,73 @@ host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of 
 |---|---|---|
 | A — tests in `just check`/CI | **DONE, live-exercised** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387), merged 2026-07-19 |
 | C — ruff lint + format | **DONE, live-exercised** | livespec PR [#1396](https://github.com/thewoolleyman/livespec/pull/1396), merged 2026-07-19 |
-| D — pyright strict | NEXT | — |
-| B + E — coverage + ROP railway | BLOCKED on D1/D2 — see the D2 blocker below | — |
+| D — pyright strict | **DONE, live-exercised** | livespec PR [#1408](https://github.com/thewoolleyman/livespec/pull/1408), merged 2026-07-19 |
+| B — coverage | NEXT — needs D1 decided | — |
+| E — ROP railway | BLOCKED on D2 — see below | — |
+
+## Gate D — pyright strict (PR #1408, merged 2026-07-19)
+
+**Live-exercise evidence.** Post-merge master CI run
+[29679815083](https://github.com/thewoolleyman/livespec/actions/runs/29679815083):
+`check-types`, `check-lint`, `check-format`, and `check-overseer` all passed against
+combined master. Sabotage-verified — a function returning `int` from a `-> str`
+signature turned `just check-types` red.
+
+**Clean under strict mode with NO pragma and NO suppression anywhere.** 174 product-module
+errors → 0, no behavior change (344 beside-tests pass; 304 pre-existing + 40 new).
+
+**The scope decision, which was NOT in the plan and matters most.** The plan estimated
+163 errors. The true first measurement was **3116** — because the beside-tests are
+unannotated (`def test_x(tmp_path):`) and generate ~2942 `reportMissingParameterType` and
+friends. The resolution is not a carve-out: **pyright checks SOURCE, not tests,
+repo-wide** — the product `tests/` tree is out of scope simply by never appearing in
+`[tool.pyright].include`. The overseer's tests live BESIDE their source, so applying the
+identical rule takes an explicit `exclude` entry rather than an omission. Do not read
+that exclude as an overseer exemption; it is the repo's existing rule, spelled out.
+
+| step | errors |
+|---|---|
+| baseline (product modules only) | 174 |
+| `PaneDriver` Protocol for the tmux seam | 57 |
+| `_codex` / `out` given their real types | 24 |
+| `jsonio` narrowing at the JSON boundary | 2 |
+| final two narrowings | **0** |
+
+What each step was, so Gate B/E does not re-derive it:
+
+- **`tmux: object` was over half the total.** `tmuxio.PaneDriver` is a `Protocol`
+  declaring the TWELVE methods `Supervisor` calls, not all nineteen `TmuxIO` exposes.
+  `TmuxIO` and `FakeTmux` satisfy it structurally — what a Protocol is for, and where the
+  no-inheritance rule points. The narrow surface states what a substitute must implement
+  to BE substitutable, so a future test double is complete when it satisfies this.
+- **`_codex` and `out` already had real types.** `_codex` is
+  `dict[tuple[str, str], CodexSession]`; typing it retired a `# type: ignore[attr-defined]`
+  that existed only to paper over `object`. `out` is `IO[str]` and is no longer Optional:
+  nothing ever passed `None`, so `__post_init__` existed solely to re-default it. A
+  `default_factory` resolves it at construction, keeping the late binding tests rely on.
+- **New `jsonio.py`** (stdlib-only, 40 beside-tests) narrows parsed JSON at the boundary.
+  `json.loads` returns `Any` and `isinstance(x, dict)` narrows only to
+  `dict[Unknown, Unknown]`, so every `.get()` went unknown and the per-field isinstance
+  guards the call sites ALREADY performed stopped meaning anything to the checker.
+  `as_object` / `as_list` / `as_float` fix it once. Two deliberate details: `as_object` is
+  separate from `parse_object` so the two registry readers that report malformed-file and
+  non-object-file with DIFFERENT diagnostics keep them; `as_float` rejects `bool` because
+  it is an `int` subclass and a bare numeric check would turn `true` into `1.0`.
+  The rejected alternative was the file-level `# pyright: reportUnknown...=none` pragma
+  the product tree uses in one helpers module — right there (a pure-helper module),
+  wrong here (a few parsing lines inside modules full of unrelated logic).
+- **One source change rather than a type change:** `eff_ctx` is guarded by
+  `has_context_left`, but pyright cannot narrow through an intermediate boolean, so the
+  `is not None` is spelled out at the branch. VERIFIED not a latent bug — the guard
+  already made `None` unreachable.
+- The remaining 24 were `reportUnusedCallResult`, discharged with `_ =`.
+
+**Trap for whoever automates a bulk edit here.** A script that rewrote lines via
+`re.match(r"^(\s*)(\S.*)$", line)` silently DROPPED each line's trailing newline, merging
+it with the next and producing syntax errors across two modules. Recovery was only cheap
+because the other edits to those files were few and re-appliable from a clean `git
+checkout`. Preserve the line terminator explicitly (`^([ \t]*)(.*?)(\r?\n?)$`), and
+prefer per-file verification after any scripted rewrite.
 
 ## Gate C — ruff (PR #1396, merged 2026-07-19)
 
@@ -200,11 +265,13 @@ Proposed sequence (each its own small PR; Gate A first for the immediate win):
    the prints were refactored through a new `streams.py` sink instead, because the repo has
    zero T201 escapes and the spec names `T20` as the enforcement of a normative rule. See
    the Gate C section above.
-3. **Gate D — pyright strict.** Add the folder to `[tool.pyright].include`; work the 163
-   errors (mostly typing the injectable seams — a `Protocol` for the tmux boundary
-   instead of `object`, typed session maps).
+3. ~~**Gate D — pyright strict.**~~ **DONE** (PR #1408). The plan's prediction was right
+   about the shape — a `Protocol` for the tmux boundary and typed session maps WERE the
+   bulk — and wrong about the count only because it did not anticipate the beside-tests.
+   See the Gate D section above.
 4. **Gate B + E — coverage + ROP railway.** The real design decision (below): how
-   host-glue reaches 100% and whether it goes on the `Result` railway.
+   host-glue reaches 100% and whether it goes on the `Result` railway. B needs D1; E is
+   blocked on D2's remaining scope question.
 
 ### OPEN DECISIONS (resolve one at a time)
 
@@ -250,7 +317,40 @@ bar is intended to reach a `.claude/skills/` host-tooling folder at all, or only
 Both facts were RELAYED to the live `rop-sweep-fleet-policy` tmux session on 2026-07-19
 (pane idle, bracketed-paste). Nothing here was edited on their behalf.
 
-### ⚠️ D2 blocker — the overseer's daemon catch fits none of the proposed markers
+### ✅ D2 marker blocker — RESOLVED by the rop-sweep thread (2026-07-19)
+
+The gap below was relayed to the `rop-sweep-fleet-policy` session, which **adopted a
+fifth marker** in commit `98dfb144`, using the suggested wording verbatim:
+
+> `— sole loop-iteration bug-catcher: log traceback, continue`
+
+Its contract: a daemon supervising N independent units MAY carry ONE ADDITIONAL broad
+catch as a direct child of its supervision-loop body; it MUST log the FULL traceback
+(a silent `pass` is forbidden), MUST NOT exit, and its cardinality is one per
+SUPERVISION LOOP rather than one per entry artifact — so an entry artifact running such
+a loop may carry both its `main()` boundary handler and this one, and no more. The
+proposal now cites the overseer as the worked example for the category.
+
+The overseer's marker was updated to the conforming wording in PR #1408's second commit,
+so the worked example no longer contradicts the text citing it. The proposal is still
+UNRATIFIED, so nothing is binding yet.
+
+Two follow-ups the proposal itself flags, neither owned by this thread:
+
+1. `check-supervisor-discipline` scopes on `source_tree_prefixes`, which does NOT include
+   `.claude/skills/`, so nothing mechanically enforces this over the overseer. The
+   proposal explicitly tracks extending that scope separately.
+2. The proposal ALSO resolves a spec-versus-implementation divergence it found on the
+   way: the current text mandates an explicit `try/except Exception` bug-catcher in every
+   supervisor, but shipped core supervisors carry none and CI is green.
+
+**What remains open for D2** is only the original scope question, unchanged: whether the
+repo-level full-ROP bar reaches a `.claude/skills/` host-tooling folder at all, or only
+the `livespec` package. Gate E stays blocked on that.
+
+### The original gap (kept for the record)
+
+⚠️ **The overseer's daemon catch fit none of the FOUR original markers**
 
 `SPECIFICATION/proposed_changes/rop-broad-except-boundary-rule.md` (filed by the
 rop-sweep thread, commit `985a4322`, under Fable review at the time of writing) defines a
