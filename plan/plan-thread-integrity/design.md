@@ -3,11 +3,15 @@
 **Bottom line.** A plan handoff written to disk is not saved. On 2026-07-19 a
 handoff carrying 153 unversioned lines sat dirty in the primary checkout, one
 `git checkout` from being lost, and every mechanism that could have noticed it
-either did not cover `plan/` or did not run at the moment that mattered. The
-root cause is that **"persisted to disk" was mistaken for "durable"** — by the
-session that wrote it, and by the gates that scanned right past it. This
-document proposes the mechanism that closes that gap and is explicit about
-which parts prevent the failure and which parts merely detect it.
+either did not cover `plan/`, ~~or did not run at the moment that mattered~~
+**did not run at the moment that mattered, or ran at exactly that moment and
+returned silent by construction** (corrected 2026-07-19 — see §"A `Stop` hook
+already ships, already ran, and encodes the root cause"). The root cause is that
+**"persisted to disk" was mistaken for "durable"** — by the session that wrote
+it, by the gates that scanned right past it, and, it turns out, by a shipped
+hook at a nameable line. This document proposes the mechanism that closes that
+gap and is explicit about which parts prevent the failure and which parts merely
+detect it.
 
 ## How to read the evidence labels
 
@@ -78,6 +82,102 @@ demonstrates the point rather than merely asserting it.
 `plan/` tree is already first-class to the check suite, so widening an invariant
 to cover it is not a boundary violation.
 
+## A `Stop` hook already ships, already ran, and encodes the root cause
+
+Added 2026-07-19. This section corrects the bottom line above and materially
+changes the decisions in §"Constraints that will waste a session if discovered
+late". Layer 1 is **not** a greenfield build.
+
+**MEASURED** — `cat /data/projects/livespec-driver-claude/.claude-plugin/hooks/hooks.json`:
+the Claude Driver bundle registers **two** hooks on the `Stop` event —
+`warn_plan_persistence.py` and `no_shadow_ledger.py`. The Driver is enabled at
+project scope in this repo, so both fired at the end of the session that left
+the handoff dirty.
+
+**MEASURED** — `warn_plan_persistence.py:155-156`:
+
+```python
+if tool_names & PERSISTING_TOOLS:
+    return None
+```
+
+where `PERSISTING_TOOLS = frozenset({"Write", "Edit", "MultiEdit",
+"NotebookEdit"})` (`:47`). The session wrote the handoff, so `Write` was in the
+turn's tool set, so the hook returned `None` and emitted nothing.
+
+**The hook whose stated purpose is "completion includes persistence" treats a
+single `Write` as proof of durability, and stayed silent for exactly that
+reason.** The root-cause sentence of this thread is not just a description of
+how a session behaved — it is encoded in shipped code at a nameable line. That
+is the strongest available argument that the conflation is structural rather
+than a lapse of discipline.
+
+To be precise about blame: the hook is **correct as specified**. Its contract
+(`SPECIFICATION/contracts.md` §"Stop plan-persistence WARN") is "planned but did
+not write a file," and for that contract the early exit is right. The defect is
+that the contract stops at *written*. Do not file this as a Driver bug.
+
+## The home question has a third answer, and it is coupled to the posture
+
+**MEASURED** — per-repo `hooks` keys in each `/data/projects/livespec*/.claude/settings.json`:
+seven repos wire `PreToolUse` + `SessionStart` + `SubagentStop`; **zero wire
+`Stop` locally** (the Driver bundle supplies `Stop`). So the local-only option
+recommended below would fix **one repo of eight** while leaving the same gap
+open in the other seven.
+
+**MEASURED** — `livespec_dev_tooling/agent_hooks/` in the upstream
+`livespec-dev-tooling` repo contains `subagent_stop_guard.py`,
+`pretooluse_background_guard.py`, and their shared transcript helper. This repo's
+committed `.claude/settings.json` invokes both by module path. This is a **third
+home** the constraint below does not consider, and it is neither local-only nor
+the Driver bundle.
+
+**MEASURED** — `grep -rln 'agent_hooks\|SubagentStop'
+/data/projects/livespec-dev-tooling/SPECIFICATION/` returns nothing.
+`livespec-dev-tooling`'s own spec does not govern `agent_hooks` at all;
+`subagent_stop_guard` landed under work-item `livespec-dev-tooling-7us.2` (its
+docstring, `:5`). **A sibling hook there needs no propose-change cycle in any
+repo.**
+
+**MEASURED** — `subagent_stop_guard.py:304` returns `2`, blocking the turn-end
+and feeding its reason back to the agent. The fleet has therefore **already
+adopted the interruptive posture**, and already solved the trap risk that
+motivates the surface-only recommendation below: `_MAX_BLOCKS_PER_SESSION = 3`
+(`:84`) with a per-session counter file, plus fail-open on every error path
+including a bare-`Exception` boundary (`:311`).
+
+### The coupling
+
+The design below treats "where does the hook live" and "what posture does it
+take" as two independent open decisions. **They are not independent.**
+
+| Home | Posture available | Spec cycle |
+|---|---|---|
+| Driver bundle | WARN-only **by contract** — both `Stop` bullets say the hook "MUST NOT block the stop," and `contracts.md:242` makes a posture change a propose-change cycle | Yes |
+| `livespec_dev_tooling.agent_hooks` | Free; interruptive already precedented and shipped | No |
+| livespec-core-local | Free, but covers 1 repo of 8 | No |
+
+Choosing the home chooses the posture. Settle them as one decision.
+
+### Why warn-only cannot achieve this thread's goal
+
+**INFERRED**, from the Stop-hook protocol as used by the two existing hooks: a
+WARN-only Stop hook emits a `systemMessage` and **allows the stop to proceed**.
+The session then ends. Nothing commits the file. The warning lands in a
+transcript that, by the shape of this incident, no one reads until the next
+session — by which point the mechanism is recovery (layer 3), not prevention.
+
+Only the blocking posture returns control to the agent while it can still act:
+exit `2` blocks the stop and feeds stderr back, the agent commits, the next stop
+succeeds. **A warn-only layer 1 would ship a mechanism structurally incapable of
+producing the outcome this thread exists to produce** — and would repeat, in a
+new place, the same error as calling a `warn` check enforcement.
+
+This disposes of the "start surface-only and escalate if insufficient"
+recommendation below: surface-only is not a weaker version of the fix, it is a
+different layer (an earlier-firing detector). It is worth having, but it is not
+layer 1.
+
 ## Prevention versus detection — the distinction this design turns on
 
 The obvious fix is to widen the existing invariant to cover `plan/`. That is
@@ -115,10 +215,18 @@ Three layers, named honestly by what each actually does:
    it. Prevention in the strict sense requires the check to be interruptive —
    to hold the session until the handoff is committed or the condition is
    explicitly waived. Decide this before building, and do not let the layer keep
-   the "prevention" label if the surface-only variant is chosen. Recommend
+   the "prevention" label if the surface-only variant is chosen. ~~Recommend
    starting surface-only and escalating only if it proves insufficient, since an
    interruptive Stop hook that misfires can trap a session, which is a worse
-   failure than the one being fixed.
+   failure than the one being fixed.~~
+
+   **SUPERSEDED 2026-07-19 — now recommend interruptive.** Two measurements
+   overturned this. First, surface-only cannot produce the outcome: a WARN-only
+   Stop hook lets the session end, so nothing commits the file. Second, the trap
+   risk it was hedging against is already solved in-fleet — `subagent_stop_guard`
+   blocks with exit `2` and caps blocks at three per session with fail-open on
+   every error path. The hedge was reasonable before those were known; it is not
+   a live objection now. See §"Why warn-only cannot achieve this thread's goal".
 2. **Detection — widen the existing invariant to cover `plan/`.** This makes the
    condition visible to `just check`, to CI, and to every other session, rather
    than only to the one that caused it. Severity stays `warn`: a dirty handoff
@@ -150,10 +258,20 @@ Three layers, named honestly by what each actually does:
   a hook's posture (block vs. warn) requires a propose-change cycle against this
   section." So a hook shipped in the Driver bundle needs the full spec cycle,
   while a livespec-core-local hook in `.claude/settings.json` does not. Settle
-  this BEFORE estimating layer 1. Recommend local-only first: gate coverage and
+  this BEFORE estimating layer 1. ~~Recommend local-only first: gate coverage and
   distribution are independent concerns, and the same reasoning already applied
   when the overseer folder was brought inside the gates without changing its
-  local-only status.
+  local-only status.~~
+
+  **SUPERSEDED 2026-07-19** — the framing was a false binary and the
+  recommendation followed from it. A third home exists
+  (`livespec_dev_tooling.agent_hooks`), it needs no spec cycle in any repo, and
+  it is the only one of the three that both reaches all eight repos and permits
+  the blocking posture. Local-only is now the WEAKEST option, not the cheapest
+  one: it covers one repo of eight, and the "gate coverage and distribution are
+  independent" reasoning does not transfer, because a hook that does not load in
+  a repo does not gate it. See §"The home question has a third answer, and it is
+  coupled to the posture".
 - **A red `doctor-static` obstructs the spec lifecycle**, which affects layer 2
   specifically. **MEASURED** — `.claude-plugin/prose/propose-change.md:326` and
   `:380`: the propose-change CLI runs doctor static as BOTH a pre-step and a
