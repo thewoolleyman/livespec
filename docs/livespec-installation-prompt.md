@@ -187,8 +187,54 @@ Idempotency checks for this step: an entry that already exists with
 `"ref": "release"` is "already present"; an entry that exists WITHOUT
 the `ref` pin gets the pin added and is "updated". Commit the settings
 file (project-scoped enablement is the contract default precisely so
-that clones, CI, and sandboxes resolve the same plugins), then tell
-the user to restart the session or run `/reload-plugins`.
+that clones, CI, and sandboxes resolve the same plugins).
+
+**Then install each plugin — the settings file alone does NOT install
+anything.** `enabledPlugins` enables a plugin that is already
+installed; it never fetches one. Run, from the project root, once per
+enabled plugin:
+
+```bash
+claude plugin install livespec@livespec -s project
+claude plugin install livespec@livespec-driver-claude -s project
+claude plugin install livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro -s project
+```
+
+Substitute the project's OWN `enabledPlugins` keys. `-s project` is
+required: the default `-s user` scope installs into every project on
+the host. `install` exits 0 when the plugin is already installed, so
+this step is idempotent and safe to re-run.
+
+**Verify the install landed on THIS project** before moving on. This is
+the check that catches the enabled-but-not-installed state, which
+otherwise produces no error at all — every operation simply fails to
+resolve:
+
+```bash
+python3 - "$PWD" <<'EOF'
+import json, pathlib, sys
+root = str(pathlib.Path(sys.argv[1]).resolve())
+settings = json.loads(pathlib.Path(".claude/settings.json").read_text())
+installed = json.loads((pathlib.Path.home() /
+    ".claude/plugins/installed_plugins.json").read_text())
+missing = [
+    name for name in settings.get("enabledPlugins", {})
+    if not any(e.get("projectPath") == root
+               for e in installed.get("plugins", {}).get(name, []))
+]
+print("MISSING:", missing) if missing else print("OK: all enabled plugins installed for", root)
+sys.exit(1 if missing else 0)
+EOF
+```
+
+A non-empty `MISSING` list means the plugin is enabled but not
+installed for this project — re-run the install above. Do NOT infer
+success from a command's exit status alone; see the `-s project`
+caveat under the updater hook below.
+
+Finally, tell the user to restart the session or run `/reload-plugins`
+— a freshly installed plugin does not load into the session that
+installed it.
 
 **Codex** — for each selected plugin, skip any marketplace/plugin the
 survey found already registered in `~/.codex/config.toml`:
@@ -271,14 +317,36 @@ realized by the marketplace `ref` PLUS that hook:
   Substitute the project's OWN enabled plugins for the `for` list —
   exactly the `enabledPlugins` keys committed in Phase 3, each spelled
   `plugin@marketplace` (drop the orchestrator entry if it was
-  deferred). Two load-bearing details:
+  deferred). Three load-bearing details:
 
-  - **`-s project` is load-bearing.** The default `-s user` scope is a
-    silent no-op (or failure) against a project-scope install, so an
-    updater missing `-s project` never actually advances the build —
-    the exact `resume`-adopter trap. `claude plugin marketplace
-    update` with no name refreshes ALL registered marketplaces to
-    their pinned refs, so it needs no per-marketplace list.
+  - **`-s project` is load-bearing, and still not sufficient.** The
+    default `-s user` scope is a silent no-op (or failure) against a
+    project-scope install, so an updater missing `-s project` never
+    advances the build — the exact `resume`-adopter trap. But
+    `-s project` resolves against the set of project-scoped install
+    RECORDS rather than binding to the invoking project root: run from
+    a project that has no record of its own, it can act on ANOTHER
+    project's record and still exit 0. Observed in the field:
+
+    ```text
+    $ cd /data/projects/homelab      # no install record of its own
+    $ claude plugin update livespec-orchestrator-git-jsonl@... -s project
+    ✔ Plugin "..." updated ... for scope project (/data/projects/resume).
+    EXIT=0
+    ```
+
+    So a zero exit proves nothing about the invoking project. `claude
+    plugin marketplace update` with no name refreshes ALL registered
+    marketplaces to their pinned refs, so it needs no per-marketplace
+    list.
+  - **The hook cannot bootstrap a missing install.** `claude plugin
+    update` only advances an ALREADY-INSTALLED plugin, and the hook
+    swallows output with `>/dev/null 2>&1 || true`. Combined with the
+    previous point the failure is structurally invisible: the exit
+    code is genuinely 0, so removing `|| true` would not surface it
+    either. The install step in Phase 3 — not this hook — is what
+    provisions a project; re-run the Phase-3 verification snippet if
+    operations stop resolving.
   - **Never track `release` WITHOUT this hook.** That "illegal middle"
     — a moving `release` ref and no updater — freezes the installed
     build in place while the marketplace advances underneath it, so
@@ -351,10 +419,13 @@ already present / added / updated".
 Choosing an orchestrator in Phase 2 has TWO independent effects, and
 the install is not done until BOTH are in place:
 
-- **Enablement** (Phase 3) — the `.claude/settings.json`
-  `enabledPlugins` entry (Claude) or the `codex plugin add`
-  registration (Codex) makes the orchestrator's `/<plugin>:*` skills
-  *available* in the harness.
+- **Enablement + install** (Phase 3) — on Claude, the
+  `.claude/settings.json` `enabledPlugins` entry AND the paired
+  `claude plugin install <plugin>@<marketplace> -s project`; on Codex,
+  the `codex plugin add` registration. Both halves are required on
+  Claude: enablement alone leaves the orchestrator's `/<plugin>:*`
+  skills unavailable. Together they make those skills *available* in
+  the harness.
 - **Selection** (this phase) — the `implementation.plugin` key in
   `.livespec.jsonc` *names* that orchestrator as THIS project's
   active one. This is the key livespec's OWN prose reads to route to
