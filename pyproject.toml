@@ -353,8 +353,18 @@ ban-relative-imports = "all"
 # ---------------------------------------------------------------------------
 
 [tool.pyright]
-include = [".claude-plugin/scripts", "dev-tooling"]
-exclude = ["**/_vendor/**", "**/__pycache__/**", "**/_stubs/**"]
+include = [".claude-plugin/scripts", "dev-tooling", ".claude/skills/overseer"]
+exclude = [
+    "**/_vendor/**",
+    "**/__pycache__/**",
+    "**/_stubs/**",
+    # pyright checks SOURCE, not tests, repo-wide: the product `tests/` tree
+    # is out of scope simply by not being in `include`. The overseer's tests
+    # live BESIDE their source rather than in a separate tree, so applying the
+    # same rule to them takes an explicit exclude rather than an omission.
+    ".claude/skills/overseer/test_*.py",
+    ".claude/skills/overseer/conftest.py",
+]
 extraPaths = [".claude-plugin/scripts", ".claude-plugin/scripts/_vendor"]
 stubPath = ".claude-plugin/scripts/_stubs"
 pythonVersion = "3.10"

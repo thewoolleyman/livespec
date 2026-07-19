@@ -34,11 +34,56 @@ import itertools
 import os
 import subprocess
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 import streams
 
-__all__ = ["TmuxIO"]
+__all__ = ["PaneDriver", "TmuxIO"]
+
+
+class PaneDriver(Protocol):
+    """The tmux surface the daemon actually depends on — its injectable seam.
+
+    :class:`TmuxIO` satisfies this structurally, and so does the beside-tests'
+    ``FakeTmux``; neither declares it, because a ``Protocol`` is checked by shape
+    rather than by inheritance (the project bans inheritance in favor of exactly
+    this). Typing ``Supervisor.tmux`` as ``PaneDriver`` instead of ``object`` is
+    what lets a type checker see through the seam at all.
+
+    It declares the TWELVE methods the ``Supervisor`` calls, not all nineteen
+    :class:`TmuxIO` exposes. The narrower surface is the point: it states what a
+    substitute must implement to be substitutable, so a test double is complete
+    when it satisfies this and not before. The seven omitted methods
+    (``list_sessions``, ``split_window_top``, ``set_pane_title``,
+    ``select_layout_even``, ``pane_by_title``, ``set_pane_height_percent``,
+    ``window_pane_titles``) drive the two-pane LAYOUT from the CLI entry points,
+    which hold a concrete ``TmuxIO`` rather than reaching through this seam.
+    """
+
+    def capture_pane(self, session: str) -> str: ...
+
+    def pane_id(self, session: str) -> str | None: ...
+
+    def pane_pid(self, session: str) -> int | None: ...
+
+    def pane_current_command(self, session: str) -> str | None: ...
+
+    def pane_current_path(self, session: str) -> str | None: ...
+
+    def session_exists(self, session: str) -> bool: ...
+
+    def pane_pid_sessions(self) -> dict[int, str]: ...
+
+    def send_keys(self, session: str, keys: str) -> bool: ...
+
+    def bracketed_paste(self, session: str, text: str) -> bool: ...
+
+    def respawn_pane(self, session: str, cwd: str, command: str) -> bool: ...
+
+    def new_session(self, name: str, cwd: str) -> bool: ...
+
+    def rename_window(self, pane: str, name: str) -> bool: ...
+
 
 # The tmux paste buffer the injector loads into. A UNIQUE name per paste (pid +
 # monotonic counter) so two overseer instances — or a daemon and the bottom-pane

@@ -548,7 +548,7 @@ class Supervisor:
     be given explicitly (tests) or computed from a fleet manifest (daemon CLI).
     """
 
-    tmux: object = field(default_factory=tmuxio.TmuxIO)
+    tmux: tmuxio.PaneDriver = field(default_factory=tmuxio.TmuxIO)
     store_path: str | os.PathLike[str] | None = None
     stamp_path: str | os.PathLike[str] | None = None
     watch_repos: list[str] | None = None
@@ -558,7 +558,9 @@ class Supervisor:
     # fires) for any track WITHOUT a per-track ``ctx_threshold`` override. Set from
     # ``overseerd --warn-percent`` via ``run_daemon``; a track's own override wins.
     warn_percent: int = registry.DEFAULT_CTX_THRESHOLD
-    out: object = None  # writable stream for the table (default: sys.stdout)
+    # Resolved at CONSTRUCTION rather than at import, so a caller (or a test)
+    # that redirects sys.stdout first still gets the stream it expects.
+    out: IO[str] = field(default_factory=lambda: sys.stdout)
     now: Callable[[], float] = time.time
     sleep: Callable[[float], None] = time.sleep
     # Claude session-registry adoption seams (default: real ~/.claude/sessions + /proc;
@@ -623,7 +625,9 @@ class Supervisor:
     # tick beside _claude_status. Membership IS the exact answer to "is this pane
     # Codex?" — the pane command says `bun` (the launcher), which is too generic to
     # trust. Typed loosely to keep the dataclass free of a codex_sessions import cycle.
-    _codex: dict[tuple[str, str], object] = field(default_factory=dict, init=False)
+    _codex: dict[tuple[str, str], codex_sessions.CodexSession] = field(
+        default_factory=dict, init=False
+    )
     # Topics that appear in >=2 watched repos this tick, recomputed at the top of
     # `build_rows` (before adopt/auto_link/evaluate run, so every session-name
     # derivation this tick sees the same set). `registry.tmux_id` repo-qualifies
@@ -632,10 +636,6 @@ class Supervisor:
     # direct-`evaluate` beside-tests that don't run `build_rows` — which yields the
     # bare-topic name, the correct default for a single-repo fixture.
     _colliding: frozenset[str] = field(default_factory=frozenset, init=False)
-
-    def __post_init__(self) -> None:
-        if self.out is None:
-            self.out = sys.stdout
 
     # ----------------------------------------------------------------- #
     # Diagnostics.
@@ -939,12 +939,12 @@ class Supervisor:
         self._colliding = registry.colliding_topics(discovered)
         if not act:
             return registry.join(discovered, registry.read_mapping(self.store_path))
-        self.archive_gc()
+        _ = self.archive_gc()
         # Continuous adoption (not just at bootstrap): pick up any live Claude
         # session whose registry name is now an active topic — so a session that
         # was mid-prompt, renamed, or launched after startup is tracked within one
         # tick rather than being missed forever.
-        self.adopt_sessions()
+        _ = self.adopt_sessions()
         rows = registry.join(discovered, registry.read_mapping(self.store_path))
         linked_any = False
         for row in rows:
@@ -1025,7 +1025,7 @@ class Supervisor:
         if live is None:
             return False
         # The (tmux, topic) key already pins name == topic; only the repo remains to check.
-        if not signals.path_in_repo(live.cwd, repo):  # type: ignore[attr-defined]
+        if not signals.path_in_repo(live.cwd, repo):
             return False
         if target is None:
             return True  # no pane to check against (callers that only have the mapping)
@@ -1098,7 +1098,7 @@ class Supervisor:
         except OSError as exc:
             self._log(f"could not delete state file for {track.repo}::{track.topic}: {exc}")
         registry.clear_injection_stamp(track.repo, track.topic, self.stamp_path)
-        self._inject.pop(_key(track.repo, track.topic), None)
+        _ = self._inject.pop(_key(track.repo, track.topic), None)
 
     def _void_if_stale(self, track: registry.Track, *, ready: bool) -> bool:
         """Void a stale ``ready`` declaration on a busy tick ONLY if past the grace.
@@ -1183,7 +1183,7 @@ class Supervisor:
         path = signals.state_path(track.repo, track.topic)
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(signals.STATE_IDLE_WITH_CONTEXT_LEFT + "\n", encoding="utf-8")
+            _ = path.write_text(signals.STATE_IDLE_WITH_CONTEXT_LEFT + "\n", encoding="utf-8")
         except OSError as exc:
             self._log(f"could not write idle-nudge marker for {track.repo}::{track.topic}: {exc}")
 
@@ -1753,7 +1753,16 @@ class Supervisor:
             # question a YOLO session cannot raise as a prompt), that IS "a blocking
             # question for the human" — so it must NOT be nudged to keep going.
             waiting_on_human = claude_status == "waiting"
-            if has_context_left and not waiting_on_human and (declared is None or nudged_already):
+            # `eff_ctx is not None` is spelled out here as well as inside
+            # `has_context_left` so the type checker can narrow it for the
+            # `_nudge_idle_with_context` call below. It is not redundant to a reader
+            # either: a nudge needs a KNOWN remaining-context percentage to quote.
+            if (
+                eff_ctx is not None
+                and has_context_left
+                and not waiting_on_human
+                and (declared is None or nudged_already)
+            ):
                 status = "idle-with-context-left"
                 # Fire the nudge ONLY after the session has been continuously idle for at
                 # least `_IDLE_NUDGE_AFTER` (maintainer 2026-07-18: the nudge was "too
@@ -1784,7 +1793,7 @@ class Supervisor:
         # time it goes bad it reports afresh rather than being suppressed as a duplicate
         # of the condition it was in hours ago.
         if act and not needs_attention(view):
-            self._alerted.pop(key, None)
+            _ = self._alerted.pop(key, None)
         return view
 
     def _alert_non_responder(
@@ -1957,7 +1966,7 @@ class Supervisor:
         # which is exactly what stranded resumes live (2026-07-17). Best-effort: if the
         # box never appears in time, proceed anyway and let the submit-retry below (and
         # the next tick's `resume_pending` retry) recover.
-        self._await_input_box(target)
+        _ = self._await_input_box(target)
         # If the fresh TUI came up on a picker (a trust / update / bypass-permissions
         # gate), NEVER keystroke into it (blocker #6) — pasting + Enter would auto-accept
         # its default. Defer to the `resume_pending` retry, which reports the gate as
@@ -1975,7 +1984,7 @@ class Supervisor:
         resume = track.resume or default_resume(track.repo, track.topic)
         if self._submit_prompt(target, resume):
             self._clear_state(track)
-            self._inject.pop(_key(track.repo, track.topic), None)
+            _ = self._inject.pop(_key(track.repo, track.topic), None)
             self._log(f"restarted {track.repo}::{track.topic} (pane {target})")
             return
         # The fresh Claude IS up, but the resume line did not submit (the fresh TUI
@@ -2045,7 +2054,7 @@ class Supervisor:
             return
         # The kick was submitted BY the `codex resume` argument — no separate paste step.
         self._clear_state(track)
-        self._inject.pop(_key(track.repo, track.topic), None)
+        _ = self._inject.pop(_key(track.repo, track.topic), None)
         self._log(f"restarted (codex) {track.repo}::{track.topic} (pane {target})")
 
     @staticmethod
@@ -2164,7 +2173,7 @@ class Supervisor:
         prompt is a harmless no-op.
         """
         for _ in range(_SUBMIT_MAX_ENTERS):
-            self.tmux.send_keys(target, "Enter")
+            _ = self.tmux.send_keys(target, "Enter")
             self.sleep(_SUBMIT_POLL)
             if signals.input_box_ready(self.tmux.capture_pane(target)):
                 return True
@@ -2208,7 +2217,7 @@ class Supervisor:
             return False
         self.sleep(_RESTART_POLL_INTERVAL)
         for _ in range(_SUBMIT_MAX_ENTERS):
-            self.tmux.send_keys(target, "Enter")
+            _ = self.tmux.send_keys(target, "Enter")
             self.sleep(_SUBMIT_POLL)
             capture = self.tmux.capture_pane(target)
             submitted = (
@@ -2260,7 +2269,7 @@ class Supervisor:
                 if name is not None:
                     recovered.append(name)
                 continue
-            self.tmux.new_session(session, track.repo)
+            _ = self.tmux.new_session(session, track.repo)
             # Require the EXACT session to now exist before launching (Codex
             # re-review #3): if `new-session` failed, `_do_launch`'s pane-id
             # resolution + `respawn-pane` would target the bare name, which could
@@ -2309,7 +2318,7 @@ class Supervisor:
                 f"its rollout is gone (session {session_id}); relaunch it and it will re-adopt"
             )
             return None
-        self.tmux.new_session(session, track.repo)
+        _ = self.tmux.new_session(session, track.repo)
         if not self.tmux.session_exists(session):
             self._surface(
                 f"reboot-recovery: new-session did not create {session} "
@@ -2388,7 +2397,7 @@ class Supervisor:
         lines: list[str] = []
         lines.append(f"overseer — {_iso_now()} — {len(rows)} track(s)")
         header = ("Status", "Topic", "tmux", "Ctx%", "Repo")
-        table = [header]
+        table: list[tuple[str, ...]] = [header]
         for row in rows:
             # Elide the session-authored note so an over-long / multi-line value cannot
             # blow up the Status column width or break the row (the full note still
@@ -2422,7 +2431,7 @@ class Supervisor:
             lines.append(f"{color}{line}{_ANSI_RESET}" if color else line)
         lines.extend(self._attention_lines(rows))
         # Clear scrollback + screen + home, then the table.
-        self.out.write("\x1b[3J\x1b[2J\x1b[H" + "\n".join(lines) + "\n")
+        _ = self.out.write("\x1b[3J\x1b[2J\x1b[H" + "\n".join(lines) + "\n")
         self.out.flush()
 
     def _attention_lines(self, rows: list[RowView]) -> list[str]:
@@ -2579,10 +2588,10 @@ class Supervisor:
             return
         try:
             if recover:
-                self.recover_missing_sessions()
+                _ = self.recover_missing_sessions()
             while True:
                 try:
-                    self.tick(act=True)
+                    _ = self.tick(act=True)
                 except KeyboardInterrupt:
                     self._log("interrupted; exiting")
                     return
@@ -2645,7 +2654,7 @@ def _cli_colliding() -> frozenset[str]:
 def _upsert(track: registry.Track) -> None:
     """Replace any existing (repo, topic) mapping row in the hard-coded store, then
     append (one row each)."""
-    registry.remove_mapping(track.repo, track.topic, None)
+    _ = registry.remove_mapping(track.repo, track.topic, None)
     registry.append_mapping(track, None, added_at=_iso_now())
 
 
@@ -2676,7 +2685,7 @@ def run_daemon(warn_percent: int | None = None) -> int:
 
 def _cmd_list(_args: argparse.Namespace) -> int:
     sup = _build_supervisor()
-    sup.tick(act=False)  # read-only render: no injection/restart
+    _ = sup.tick(act=False)  # read-only render: no injection/restart
     return 0
 
 
@@ -2757,7 +2766,7 @@ def _cmd_start(args: argparse.Namespace) -> int:
             )
             return 0
     if not io.session_exists(session):
-        io.new_session(session, repo)
+        _ = io.new_session(session, repo)
         # Require the EXACT session to exist before launching (Codex re-review #3):
         # a failed `new-session` must not let `_do_launch` respawn a prefix-matched
         # sibling.
@@ -2791,8 +2800,10 @@ def _add_track_args(parser: argparse.ArgumentParser) -> None:
     it prompts for whichever is omitted and passes both. Required here so a stray
     bare invocation fails loudly rather than acting on a half-specified track.
     """
-    parser.add_argument("--repo", required=True, help="repo checkout path the plan lives in")
-    parser.add_argument("--topic", required=True, help="plan topic (the plan/<topic>/ dir name)")
+    _ = parser.add_argument("--repo", required=True, help="repo checkout path the plan lives in")
+    _ = parser.add_argument(
+        "--topic", required=True, help="plan topic (the plan/<topic>/ dir name)"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2834,7 +2845,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_start = sub.add_parser("start", help="surface-only: launch a session for a plan and map it")
     _add_track_args(p_start)
-    p_start.add_argument(
+    _ = p_start.add_argument(
         "--force",
         action="store_true",
         help="respawn even if the session already runs a live Claude (kills it)",
