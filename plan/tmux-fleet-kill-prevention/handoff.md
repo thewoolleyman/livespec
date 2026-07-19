@@ -22,6 +22,67 @@ time this distinction was blurred.
    this thread killed the fleet again on 2026-07-19.** Its five "hard rules" are
    binding on whoever picks this up.
 
+## STATUS 2026-07-19 — BOTH DRIVER GUARDS ARE NOW LIVE AND PROVEN TO FIRE
+
+The packaging defect described under CORRECTED DIAGNOSIS is **fixed, released,
+installed, and firing-verified on both runtimes.** This supersedes the "DEAD ON
+ARRIVAL" rows in the TRUE STATE table below for the two Driver mirrors.
+
+| | Codex (`livespec-driver-codex-72z`) | Claude Driver (`livespec-driver-claude-w6f`) |
+|---|---|---|
+| Fix merged | PR #196 → `7979da2` | PR #213 → `fced250` + `b1b339d` |
+| Released | `v0.5.1`; `release` ref confirmed to contain the fix | `v0.4.1`; `release` ref confirmed |
+| Installed | cache `0.5.1`, ships `hooks/_result.py`, **zero `_vendor`** | project scope `b79a386e52d7` → `2b4be46808b9` |
+| Payload corpus vs INSTALLED artifact | **15/15** | **15/15** |
+| Hook trust | 7 `[hooks.state]` entries intact (`hooks.json` unchanged, so the bump did not disarm it) | n/a |
+| **FIRING PROBE** | **`hook: PreToolUse Blocked` — `BLOCKED by livespec_footgun_guard.py`, no commit created** | **Write BLOCKED in a fresh session, file not created; the old cached version dies on `ModuleNotFoundError` for contrast** |
+
+**The fix**: a stdlib-only `_result.py` shim placed INSIDE each packaged subtree,
+imported as a plain sibling, with every `sys.path`/`_REPO_ROOT` arithmetic block
+deleted and repo-root `_vendor` removed. Both repos also gained an
+**install-shaped test** that stages ONLY the packaged subtree and runs each hook
+under a bare interpreter with `PYTHONPATH` cleared, asserting real deny/allow
+verdicts — the Claude repo's version is 21 tests, 19 of which fail against the
+unmodified hooks. That test is the durable guard against this defect class
+recurring; the old suites passed under `uv`, where the dependency resolved.
+
+All three guards (host, Claude Driver, Codex) now score 15/15 on the same corpus.
+Nothing was ever executed to verify them: hazard commands were fed as inert
+strings on stdin, and firing was proven with the guards' unrelated `--no-verify`
+/ memory-write deny paths, which are harmless whether blocked or executed.
+
+**Blast radius was fleet-wide and is fully closed**: 8 of 12 active distributed
+hooks could not start, including `block_auto_memory.py`. Only the two Driver
+plugins ship Python hooks — core, the orchestrator, and Honeycomb ship none or
+shell-only — so no third plugin carries this defect.
+
+### Also verified live in this pass
+
+- **L1 overseer (`livespec-wa7ry3`) — CONFIRMED LIVE.** A running overseer-spawned
+  track process carries `TMUX_TMPDIR=/tmp/tmux-agents-1000`, and that agent-scoped
+  socket dir exists and is actively in use. Verified by reading `/proc/<pid>/environ`
+  — no tmux command run. The running daemon postdates `574192a8`.
+- **L1 sandbox (`bd-ib-zaq3`) — code present in the INSTALLED cache**
+  (`_SANDBOX_TMUX_TMPDIR = "/workspace/.tmux"` with `mkdir -p … && chmod 700`).
+  Still outstanding: confirming a real dispatch's sandbox env table carries it.
+- **L3 console (`livespec-console-beads-fabro-f2k`) — CI green** (`check-e2e-tmux`
+  passes on master incl. `85b2976d`), and `console-arch-check` passes locally.
+  Static audit: tmux usage is confined to ONE file, every invocation double-scoped
+  (`TMUX_TMPDIR` + `-L`), AST-enforced, and the shipped binary never invokes tmux.
+  **The host e2e run was deliberately DEFERRED by the maintainer** (2026-07-19)
+  because the fleet was carrying ~13 live agent sessions and CI already proves the
+  suite; it is an explicit residual, not a completed step.
+
+### Known process gap surfaced by this work (needs a work-item)
+
+`red_green_replay._IMPL_PREFIXES` (livespec-dev-tooling) omits
+`.claude-plugin/hooks/`. In a repo whose only source tree lives there, `impl_paths`
+is always empty, so a `fix:`/`feat:` subject routes every commit-msg invocation to
+Red mode and the Green amend can never complete (`test-passed-at-red`). The ritual
+silently degrades to a Red commit plus a separately-verified paired commit.
+Occurrences: `b73260ee` (earlier) and `fced250`/`b1b339d` (this work). Both are
+gate-clean with no `--no-verify`, but the mechanical Green pairing is absent.
+
 ## CORRECTED DIAGNOSIS (2026-07-19, established by live probing)
 
 An earlier version of this document said the Codex guard was "merged but never
@@ -48,9 +109,12 @@ picking this up should start from these facts, not from the old story:
    warning. Any version bump can disarm the guard invisibly — check
    `[hooks.state]` after every update.
 
-**Only the host guard is real protection today** (`~/.claude/hooks/tmux-fleet-guard.py`,
-15/15, Claude runtime on this host only). **Codex is entirely unguarded** —
-do not run a Codex agent until the fixed release lands and a firing probe passes.
+~~**Only the host guard is real protection today.** **Codex is entirely unguarded** —
+do not run a Codex agent until the fixed release lands and a firing probe passes.~~
+**SUPERSEDED — see STATUS above.** That was true when this diagnosis was written.
+Both Driver guards have since been fixed, released, installed, and firing-verified,
+and the host guard (`~/.claude/hooks/tmux-fleet-guard.py`, 15/15) remains wired as
+an independent Claude-runtime backstop. Codex is no longer unguarded.
 
 ## HARD RULES (violating any of these has already destroyed the fleet once)
 
