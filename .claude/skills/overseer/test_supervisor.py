@@ -1950,6 +1950,96 @@ def test_recover_skips_when_new_session_fails(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Reboot recovery is runtime-dispatched (defect #5): a dead track whose TOPIC names a
+# session in the persistent codex index is a CODEX track — resumed via `codex resume <id>`
+# (option c) when its rollout survives, else skip+surface (option b), NEVER recreated as
+# Claude. A topic absent from the index is a Claude track and recovers as before.
+# --------------------------------------------------------------------------- #
+
+
+def _codex_home_with(tmp_path, topic, session_id, *, rollout=True):
+    """A fake ~/.codex naming `session_id` for `topic`, optionally with its rollout on disk."""
+    home = tmp_path / "codex-home"
+    home.mkdir(exist_ok=True)
+    (home / "session_index.jsonl").write_text(
+        json.dumps({"id": session_id, "thread_name": topic, "updated_at": "2026-07-18T00:00:00Z"})
+        + "\n",
+        encoding="utf-8",
+    )
+    if rollout:
+        day = home / "sessions" / "2026" / "07" / "18"
+        day.mkdir(parents=True)
+        (day / f"rollout-2026-07-18T00-00-00-{session_id}.jsonl").write_text("{}\n")
+    return home
+
+
+def test_recover_resumes_a_codex_track_via_codex_resume(tmp_path):
+    """Option (c): a dead track whose topic is in the codex index WITH its rollout on disk is
+    resumed by `codex resume <id>` (reattaching the SAME rollout), NEVER the claude command."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    fake = FakeTmux()  # session absent → must be recreated
+    sup = _sup(tmp_path, fake, codex_home=str(_codex_home_with(tmp_path, topic, sid)))
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    recovered = sup.recover_missing_sessions()
+    assert recovered == [session]
+    assert ("new", session, str(repo)) in fake.calls
+    expected = supervisor.Supervisor._codex_launch_command(
+        sid, supervisor.default_resume(str(repo), topic)
+    )
+    assert ("respawn", session, str(repo), expected) in fake.calls
+    # THE guard: the destructive Claude command is NEVER aimed at a codex track.
+    assert not any(c[0] == "respawn" and "claude" in c[3] for c in fake.calls)
+    assert not fake.has("paste")  # codex resume auto-submits the kick — no separate paste
+
+
+def test_recover_skips_and_surfaces_a_codex_track_whose_rollout_is_gone(tmp_path, capsys):
+    """Option (b): the topic is in the codex index but its rollout was pruned — codex resume
+    cannot reattach, so recovery SKIPS and surfaces it, NEVER recreating it as Claude."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    fake = FakeTmux()
+    sup = _sup(
+        tmp_path, fake, codex_home=str(_codex_home_with(tmp_path, topic, sid, rollout=False))
+    )
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    recovered = sup.recover_missing_sessions()
+    assert recovered == []
+    assert not fake.has("new")  # never created the session...
+    assert not fake.has("respawn")  # ...and never launched anything (no mis-recreate as Claude)
+    err = capsys.readouterr().err
+    assert topic in err and "rollout is gone" in err and "re-adopt" in err
+
+
+def test_recover_still_recreates_a_claude_track_as_claude(tmp_path):
+    """A topic absent from the codex index (even when OTHER topics are indexed) is a Claude
+    track — recovered with the claude command, exactly as before the #5 dispatch."""
+    repo, topic = _make_plan(tmp_path)
+    session = registry.tmux_id(str(repo), topic)
+    fake = FakeTmux()
+    fake.panes[session] = _idle_capture()  # post-launch empty box so the resume submit confirms
+    # A codex index that names a DIFFERENT topic — the dispatch must not match this track.
+    home = _codex_home_with(
+        tmp_path, "a-different-codex-topic", "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff"
+    )
+    sup = _sup(tmp_path, fake, codex_home=str(home))
+    registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path)
+
+    recovered = sup.recover_missing_sessions()
+    assert recovered == [session]
+    assert (
+        "respawn",
+        session,
+        str(repo),
+        f"claude --dangerously-skip-permissions -n {topic}",
+    ) in fake.calls
+
+
+# --------------------------------------------------------------------------- #
 # B7: one bad input must NOT kill the whole loop.
 # --------------------------------------------------------------------------- #
 
