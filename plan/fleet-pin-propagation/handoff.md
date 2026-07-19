@@ -266,6 +266,39 @@ SUBSET. Reconciling those two numbers is the sharpest remaining sweep task.
 
 ## NEXT ACTION
 
+**DONE 2026-07-20 — both acceptances and the whole grooming queue are
+COMPLETE.** A Fable agent, acting as the maintainer's explicit written
+delegate, accepted `livespec-e7lanq` and `livespec-b7ropo` (clause-by-clause
+verification with live spot-checks, journaled on each item) and groomed all
+eight queue items through the sanctioned path (`drive
+resolve-blocked:<id>:backlog` where needed, then the `groom` operation). The
+full acceptance evidence, the per-item cuts, and the replacement-slice map are
+journaled on the epic `livespec-n4ptl2` (comment dated 2026-07-20) and on each
+original item's regroomed-out close record. Everything below this paragraph in
+this section is the pre-completion state, kept for the reasoning.
+
+The thread's NEW next actions:
+
+1. **Dispatch the four READY slices** (no open dependencies):
+   `livespec-2hya5g` (registry split, livespec),
+   `livespec-dev-tooling-5o6ssu` (close-superseded automation),
+   `livespec-dev-tooling-gbjuua` (fan-out prose fix),
+   `livespec-console-beads-fabro-5kd56a` (re-key the completeness stamp).
+2. **Groom `livespec-dev-tooling-9j8.6`** — the sequencing call gated three
+   slices (`livespec-dev-tooling-qrunmn`, `livespec-dev-tooling-z7wxbd`,
+   `livespec-dev-tooling-zm5cbp`) on that extraction, so it is now this
+   thread's critical path. It belongs to the shell-logic-hardening epic, not
+   this one; groom it in its own context.
+3. `livespec-u7x5zn` self-routes now that `livespec-e7lanq` is `done`
+   (admission auto) — no action needed, just don't re-block it.
+
+One defect found while grooming, filed as `bd-ib-dvmh`
+(`livespec-orchestrator-beads-fabro` tenant): groom's cross-repo slices mint
+local-prefix ids the target tenant's bd prefix guard rejects; worked around by
+minting native ids and repointing `livespec-qhxcsp`'s sibling refs.
+
+---
+
 **Blocked on the maintainer — TWO acceptances, then a grooming queue.** The
 grooming session dispatched both `READY` slices; both are merged and their
 artifacts are on master. No further work here is agent-eligible.
