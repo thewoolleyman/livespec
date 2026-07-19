@@ -64,6 +64,21 @@
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
       "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
       "default_branch": "master"
+    },
+    // Added 2026-07-19 so cross-tenant work-item references resolve for the
+    // fleet-pin-propagation epic (livespec-n4ptl2), whose children live in
+    // these two tenants. Per .ai/no-circular-dependency.md §"Scope", a
+    // work-item reference is a planning record, not a code dependency, so it
+    // may point in either direction across repos.
+    "livespec-dev-tooling": {
+      "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
+      "local_clone": "/data/projects/livespec-dev-tooling",
+      "default_branch": "master"
+    },
+    "livespec-console-beads-fabro": {
+      "github_url": "https://github.com/thewoolleyman/livespec-console-beads-fabro",
+      "local_clone": "/data/projects/livespec-console-beads-fabro",
+      "default_branch": "master"
     }
   }
 }
