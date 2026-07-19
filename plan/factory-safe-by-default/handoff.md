@@ -6,9 +6,10 @@
 Slices A, B, and C are all merged; the janitor fix (`bd-gj-9sj`) and the
 legacy-fallback retirement (`bd-ib-y2o1`) are done. All affected repos' master CI
 is green. **There is NO ripe implementation work left in this thread — do NOT
-dispatch or groom anything.** What remains: the maintainer's human accept legs
-(live evidence now journaled), ONE open finding against C3, and Slice D
-(coordinated under `z2ctra`).
+dispatch or groom anything.** The one finding this thread's live exercise
+surfaced (the C3 impl-lane contradiction) is FIXED and verified on merged
+master. What remains: ONLY the maintainer's human accept legs (all now carry
+live evidence) and Slice D (coordinated under `z2ctra`).
 
 **Thread summary:** invert livespec's factory doctrine to factory-safe by default —
 assume any work-item runs in the factory, require a machine-readable
@@ -59,7 +60,9 @@ in `acceptance`. Full detail is on each item's comment thread.
 - **C2 `bd-ib-ayga` — GREEN.** The same real row surfaced as
   `kind='host-only'`, `urgency='high'`, with a `shell` host-route handoff.
   beads-fabro's `impl_next` correctly EXCLUDES not-factory-safe items.
-- **C3 `bd-gj-5u8` — surfacing GREEN, but see the open finding below.**
+- **C3 `bd-gj-5u8` — GREEN** (after the parity fix below). The shipped git-jsonl
+  needs-attention CLI, run against an isolated real-codec store, emits
+  `kind='host-only'` with a `shell` handoff and no longer contradicts itself.
 
 Method note: B2 was exercised through the exact functions the admission valve
 calls, not the full `dispatcher loop`, because the loop's post-verdict legs
@@ -67,34 +70,51 @@ calls, not the full `dispatcher loop`, because the loop's post-verdict legs
 interactively merely to demonstrate a refusal. A refused item never reaches
 `dispatch_one`, so no sandbox or token path is involved either way.
 
-## Open finding — argues against accepting C3 as-is
+## Finding found and FIXED — git-jsonl impl-lane contradiction (2026-07-19)
 
-The shipped git-jsonl needs-attention emits, in ONE output, BOTH
-`kind='host-only'` ("host-route this; do not dispatch to Fabro") AND
-`kind='impl'` ("this is your next item to drive") for the SAME not-factory-safe
-work-item — self-contradictory operator guidance. Root cause:
-`attention_impl.impl_next` passes `rank_candidates` UNFILTERED, where the
+The live exercise caught a defect C3 had shipped: the git-jsonl
+needs-attention emitted, in ONE output, BOTH `kind='host-only'` ("host-route
+this; do not dispatch to Fabro") AND `kind='impl'` ("this is your next item to
+drive") for the SAME not-factory-safe work-item. Cause:
+`attention_impl.impl_next` passed `rank_candidates` UNFILTERED, where the
 beads-fabro sibling filters `[item for item in items if item.factory_safety is
 None]` at the analogous call site. `livespec-orchestrator-git-jsonl` runs NO
-dispatcher and has NO admission gate, so nothing backstops that recommendation.
-C3's tests assert only that the host-only item appears, never its absence from
-the impl lane.
+dispatcher and has NO admission gate, so nothing backstopped it.
 
-**Maintainer decision needed (deliberately NOT filed unilaterally):** neither
-repo's `next.py` `rank_candidates` filters on `factory_safety` — the filter lives
-only at beads-fabro's `impl_next` call site. So the fix is either a
-git-jsonl-only `impl_next` parity patch, or a broader both-repos `next`-ranking
-exclusion. Scope it, then file the work-item.
+**FIXED** — `livespec-orchestrator-git-jsonl` PR #333 (merged, master
+`d4c4999`, master CI green): `impl_next` now applies the same filter. A
+one-line parity change, authored Red→Green under the `red_green_replay` ritual;
+no shim, no gate weakened, no test skipped. The new test
+`test_build_attention_omits_not_factory_safe_item_from_impl_lane` closes the
+hole that let this survive merge + CI + AI acceptance (the pre-existing test
+asserted only that the host-only item APPEARS, never its ABSENCE from the impl
+lane) and also asserts the lane falls through to the next FACTORY-SAFE
+candidate, so the filter cannot regress into silently emptying it.
+
+Live before/after (real CLI, same store — not-factory-safe `gj-host`
+outranking factory-safe `gj-safe`):
+
+```
+BEFORE  host-only=['gj-host']  impl=['gj-host']  CONTRADICTORY=['gj-host']
+AFTER   host-only=['gj-host']  impl=['gj-safe']  CONTRADICTORY=NONE
+```
+
+**Deliberately NOT changed** (parity means matching, not over-reaching):
+neither repo's `next.py` `rank_candidates` filters on `factory_safety`, so
+leaving it alone IS the consistent choice; and git-jsonl having no admission
+gate is correct-by-design (no dispatcher), not a gap. The rest of git-jsonl's
+`factory_safety` surface — store decode, schema validation, host-only
+surfacing — was already present.
 
 ## Next actions (in order) — NONE are dispatch/groom work
 
-1. **Decide the C3 finding's scope** (above) and file the resulting work-item.
-2. **Human accept legs — MAINTAINER-OWNED, do NOT auto-accept.** B1/B2/B3,
-   `bd-gj-9sj`, `bd-ib-y2o1`, C1(/C1b) and C2 now carry live evidence and are
-   ready for the maintainer's accept. C3 should wait on the finding above.
-3. **Slice D** — capability-widening (per-toolchain workflows + the Fabro
+1. **Human accept legs — MAINTAINER-OWNED, do NOT auto-accept.** B1/B2/B3,
+   `bd-gj-9sj`, `bd-ib-y2o1`, C1(/C1b), C2 and C3 ALL now carry live-exercise
+   evidence journaled on their items, and every affected repo's master CI is
+   green. This is the only work left in the thread.
+2. **Slice D** — capability-widening (per-toolchain workflows + the Fabro
    GitHub-App-token 60-min-TTL candidate) stays under `z2ctra`. No action here.
-4. **Optional cleanup:** the blessed reaper DECLINES the stale git-jsonl janitor
+3. **Optional cleanup:** the blessed reaper DECLINES the stale git-jsonl janitor
    worktrees — `janitor-bd-gj-5i1` and `-cn4` sit under the repo-local
    `worktrees/` dir (outside the reaper's `~/.worktrees` scan) and `-7adugd` is a
    protected detached-HEAD janitor worktree. Do NOT hand-delete them. The C3
@@ -113,7 +133,10 @@ exclusion. Scope it, then file the work-item.
   already bumped, re-dispatch on top of the stable master.
 - **Live exercise beats CI (third time):** the C3 impl/host-only contradiction
   survived merge, CI, and AI acceptance, and surfaced only on the first real
-  exercise of the shipped surface.
+  exercise of the shipped surface. Fixed in `livespec-orchestrator-git-jsonl`
+  PR #333. The generalizable lesson: a test that asserts a new lane APPEARS
+  does not assert the item is ABSENT from the lanes it now contradicts — assert
+  both sides whenever a change splits items across mutually-exclusive lanes.
 
 ## Standing constraints
 
