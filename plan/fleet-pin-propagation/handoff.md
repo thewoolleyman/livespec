@@ -64,6 +64,43 @@ breakages — ~29 are superseded PRs nothing ever closed, and exactly one repo
 by a gate the fan-out structurally cannot satisfy. Do not read the red check
 names on a superseded PR as a symptom list; its branch is simply stale.
 
+**The noise half is now CLEARED (2026-07-19).** The paragraph above is the
+original diagnosis and is kept for the reasoning; the counts in it are
+historical. Re-measured immediately before cleanup: **43** open bump PRs, not
+41 — it had drifted up by 2 exactly as predicted. Each was classified
+individually (target version vs. the version its own master carries for the
+same source repo): **30 provably superseded, 13 not, 0 ambiguous.** The 30 were
+closed with an explanatory comment and their branches deleted.
+
+**Fleet-wide open bump PRs: 43 → 13. Seven of eight member repos now carry
+ZERO.** All 13 remaining are `livespec-console-beads-fabro`, so "exactly one
+repo is genuinely blocked" is now directly visible in the PR listing instead of
+buried under the noise. Subsequent fleet sweeps read true.
+
+**A third supersession category the diagnosis did not name.** Of those 13
+console PRs, only **one** is genuinely live — `#320`, targeting the latest
+`v0.18.2`. The other **twelve** are superseded by a *newer open sibling PR*
+rather than by master (console pins core at `v0.16.0`; they target `v0.17.0` ..
+`v0.18.1`, all newer than the pin but older than #320). So:
+
+| Category | Count | Disposition |
+|---|---|---|
+| Superseded by master | 30 | CLOSED by this pass |
+| Superseded by a newer OPEN sibling PR | 12 | left open deliberately |
+| Genuinely live | 1 (console `#320`) | left open |
+
+The twelve were left open on purpose: they are the console's own blocked pin
+train, and collapsing it belongs to `livespec-console-beads-fabro-tafkuw`, not
+to the cleanup. **Whoever implements the `livespec-dev-tooling-q37xxt`
+automation must handle BOTH supersession categories**, or the console
+re-accumulates a stack the moment it unblocks.
+
+The one-time cleanup is DONE and journaled on `livespec-dev-tooling-q37xxt`;
+that item now tracks the AUTOMATION only. The same pass also confirmed
+`livespec-dev-tooling-y6kqgr`'s duplicate defect live: `livespec-runtime`
+#206/#208 both targeted dev-tooling `v0.44.0`, and #207/#209 both targeted core
+`v0.10.1`.
+
 ## Filed this session (children of `livespec-n4ptl2`)
 
 Cited read-only; check live status in the ledger before acting.
