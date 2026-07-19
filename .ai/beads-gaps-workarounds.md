@@ -804,6 +804,83 @@ upstream:
 
 ---
 
+## Entry 13 — `.beads/interactions.jsonl` records only `status` value changes, silently omitting reason/label/metadata edits
+
+### Observation
+
+The interactions log is not a complete change trail. It appears to
+emit a `field_change` entry only when an issue's `status` VALUE
+transitions; an edit that changes `close_reason`, labels, or
+metadata while leaving `status` unchanged produces NO entry at all,
+with no warning.
+
+Observed 2026-07-19/20 in the `livespec` tenant. `livespec-bg47fr`
+was closed at `2026-07-19T23:04:14Z` with a `close_reason` naming
+only one of its three replacement slices. A correction re-ran
+`bd close livespec-bg47fr --reason-file <file>` to name all three.
+The correction succeeded — `bd show --json` afterward reports:
+
+```
+"status":     "closed"
+"created_at": "2026-07-19T18:13:35Z"   <- unchanged (correct)
+"updated_at": "2026-07-19T23:41:31Z"   <- moved forward (correct)
+"closed_at":  "2026-07-19T23:41:31Z"   <- moved forward (correct)
+```
+
+…but `.beads/interactions.jsonl` shows NO entry for the correction.
+Grepping the full log for the issue id returns four entries, the
+newest still the ORIGINAL close at `23:04:14Z` carrying the OLD,
+now-superseded single-id reason. Status went `closed → closed`
+(unchanged), so nothing was logged, even though the reason text —
+the very field that carries the disposition — was rewritten.
+
+The gap is easy to miss precisely because the log looks healthy: it
+is well-formed, contains entries for that issue, and simply stops
+short. A reader auditing "what replaced this item" from the log
+alone reads the superseded reason and gets the wrong answer, with
+no signal that a later correction exists.
+
+### Current workaround
+
+Do not treat `.beads/interactions.jsonl` as authoritative for
+anything other than status transitions. To establish what an issue
+actually says now, read `bd show <id>` / `bd show <id> --json`
+directly; to detect that a non-status edit happened at all, compare
+`updated_at` against the newest interactions entry for that issue —
+a forward gap means at least one unlogged edit.
+
+When a correction MUST be auditable, record it in a field the log
+cannot lose: livespec writes the correction inline in the edited
+text itself (the `livespec-bg47fr` reason carries a dated
+`CORRECTION …` paragraph explaining what changed and why), so the
+record is self-describing even though the interaction is absent.
+
+### Proposed upstream change
+
+Emit a `field_change` interaction for every mutated field, not only
+`status` — minimally `close_reason`, labels, and metadata, each
+carrying old and new values like the existing status entries do.
+Failing that, emit a single generic `issue_updated` interaction
+naming which fields changed, so the log at least signals that
+something happened and points a reader at `bd show` for detail.
+
+Either shape restores the property callers reasonably assume: that
+an issue's history in the log is complete enough to explain its
+current state.
+
+### Status / pointers
+
+Not yet filed upstream. Found by an independent adversarial review
+of a cross-repo grooming pass; the underlying reason-field defect it
+was correcting is tracked separately as `bd-ib-dvmh` in the
+`livespec-orchestrator-beads-fabro` tenant (groom records only LOCAL
+slices in a regroomed-out reason, so cross-tenant replacements are
+omitted). Note the two compound badly: the groom defect writes an
+incomplete disposition, and this logging gap then hides the
+correction of it.
+
+---
+
 ## Entries to consider but not yet itemized
 
 Lower-priority ergonomic concerns we noticed but haven't itemized
