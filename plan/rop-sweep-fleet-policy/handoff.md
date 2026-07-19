@@ -1,62 +1,131 @@
-# rop-sweep-fleet-policy — full-ROP railway backfill; briefs rewritten; EXECUTING (cross-tenant mirrors)
+# rop-sweep-fleet-policy — EXECUTING. Critical path: re-dispatch the Fable ROP ruling (STEP 1 below)
 
-**State (2026-07-19).** Planning refined; maintainer authorized in-session autonomous execution.
-The 6 child briefs are rewritten to mandate the full ROP railway everywhere (a code audit showed
-the earlier "thin repo / decide vendoring returns" framing was wrong). Execution is UNDERWAY via
-the factory, with two hard-won mechanics below. Status is READ from the ledgers, not stored here.
+**Read this whole file before acting.** Planning is done; execution is underway and partly
+blocked on ONE design ruling. Status is READ from the ledgers (`bd`), never stored here.
+Ledger note on epic `livespec-y2lkf4` carries the maintainer decisions; per-mirror notes carry
+the review blockers.
 
-## ⛔ DO NOT run `groom livespec-y2lkf4` (the EPIC)
-Epic-level groom re-decomposes + closes; it would duplicate/orphan the 6 children. Individual-child
-`groom <child-id>` IS allowed/expected for the oversized ones (`qgp2jt`, likely `apiiwc`).
+## ⛔ Guards
+- **DO NOT run `groom livespec-y2lkf4`** (the EPIC). It re-decomposes + closes; the epic is
+  already decomposed (6 children + 10 slices). Individual-child `groom <id>` is fine.
+- **DO NOT accept any work-item** without BOTH a separate Codex reviewer AND a separate Opus
+  reviewer clearing it (maintainer rule, 2026-07-19).
+- Dispatch DETACHED only (see playbook); a killed foreground dispatch strands the item `active`.
 
-## ‼️ Execution mechanics learned the hard way (2026-07-19)
+## Maintainer decisions (2026-07-19) — binding
+1. **Railway scope** = convert ONLY the **expected-failure paths** (I/O, subprocess, network,
+   parsing, error-handling) to the `returns` Result/IOResult railway + vendor `returns` + enable
+   ruff `BLE` and pyright `reportUnusedCallResult`. Do NOT rewrite pure-transform functions.
+2. **Grooming** = decompose the large children autonomously, no approval gate. (DONE — 10 slices.)
+3. **Accept gate** = the agent runs `drive --action accept:<id>`, but ONLY after a separate
+   **Codex** reviewer AND a separate **Opus** reviewer both clear the merged PR.
 
-**1. Factory dispatch requires item-tenant == target-repo-tenant.** The epic + tracking children
-live in the **livespec** tenant, but a child can only be DISPATCHED into the repo whose tenant it
-lives in. So only `ftbvgc` (targets livespec itself) was directly dispatchable. Each of the 5
-sibling-targeting children needs a **dispatch-mirror filed in its target repo's tenant** (the
-maintainer-blessed `bd-ib-zaq3` = mirror-of-`livespec-kiwfyv` pattern). The livespec-tenant child
-stays for epic tracking; the mirror carries the brief and is what gets dispatched. On completion
-close BOTH the mirror and the tracking child. (This corrects the earlier handoff's WRONG claim that
-"the single coordinating tenant dispatches each child into its target repo".)
+## STEP 1 (do this FIRST) — re-dispatch the Fable ROP ruling
+The maintainer asked for a Fable subagent to settle an ambiguity that BLOCKS accepting heejvw and
+BLOCKS briefing the 10 slices. It was dispatched and killed by a fleet-wide tmux kill-server (NOT
+cancelled). Re-dispatch it with `Agent(subagent_type: "general-purpose", model: "fable")` using
+this brief:
 
-**Mirror playbook (per sibling child):**
-- `cd <target-repo>`; `bd create --title "<same>" --type task -p 2 --labels origin:freeform,rop-sweep-mirror --body-file <brief-with-mirror-header> --acceptance "<same>"`
-- `bd update <mirror-id> --status ready`
-- Dispatch DETACHED (see #2): `drive.py --action impl:<mirror-id> --repo <target-repo> --json`
-- Target tenants: git-jsonl=`livespec-orchestrator-git-jsonl` (prefix bd-gj), driver-claude=`livespec-driver-claude`, driver-codex=`livespec-driver-codex`, runtime + dev-tooling similarly.
+> You are the DESIGN AUTHORITY for the livespec fleet's ROP error-handling architecture. Author the
+> definitive, unambiguous rule for when broad exception handling is permitted. Read
+> `/data/projects/livespec/SPECIFICATION/non-functional-requirements.md` §"ROP composition",
+> §"Shared content provenance" (~line 114), §"Supervisor discipline", §"Linter rule set" (ruff BLE),
+> and the vendored idioms in `/data/projects/livespec-driver-claude/.claude-plugin/scripts/_vendor/returns/`
+> (`@safe`, `@impure_safe`, `Result`, `IOResult`).
+> **Ambiguity:** nfr.md says "The ONLY permitted broad `except Exception` is a single outermost
+> boundary handler" (CLI supervisor bug-catcher, or a fail-open hook's silent pass-through). But
+> railway code must catch at I/O seams to LIFT exceptions onto the failure track — which is exactly
+> what `@impure_safe` does internally. Two real factory-produced styles disagree:
+> • STYLE A — `/data/projects/livespec-driver-claude/.claude-plugin/hooks/block_auto_memory.py`:
+>   `except Exception as exc:  # noqa: BLE001 - stdin boundary captured on IO rail` at I/O seams
+>   (lifts exc onto IOResult), PLUS narrow `except (OSError, ValueError)` for decision logic, PLUS
+>   one final `except Exception:  # noqa: BLE001 — fail-open by contract`.
+> • STYLE B — `/data/projects/livespec-orchestrator-git-jsonl/.claude-plugin/scripts/livespec_orchestrator_git_jsonl/io/store.py`
+>   and `.../store.py`: ZERO broad `except` — every catch narrowed and lifted to Failure/IOFailure.
+> One reviewer called STYLE A's I/O-lift catches violations; another called them legitimate
+> rail-lifting distinct from the fail-open boundary. Both defensible — settle it authoritatively.
+> **Deliverable (return the full document):** (1) the most disciplined architecture that is
+> pragmatically achievable in ALL cases — precisely when a broad `except Exception` is permitted vs.
+> must be narrowed, covering the fail-open/supervisor boundary, I/O-seam lifting, the
+> `@impure_safe`/`@safe` route vs. hand-rolled catches, and any difference for fail-open hooks vs.
+> CLI supervisors vs. libraries; state it so a reviewer gets exactly ONE answer per site.
+> (2) Proposed nfr.md prose updates — quote the EXACT current sentence(s), give the EXACT
+> replacement. (3) GOOD/ACCEPTABLE vs BAD/UNACCEPTABLE code examples for: I/O-seam lift,
+> decision-logic catch, fail-open/supervisor boundary, a discarded Result (bad), a swallowed bug
+> (bad) vs a propagating bug (good). Standardize the `# noqa: BLE001` marker wording.
+> READ-ONLY: edit nothing, commit nothing.
 
-**2. Dispatch = ~20-45 min, un-backgroundable via the harness, foreground caps at 20 min.**
-A KILLED foreground dispatch leaves the item stuck `active` (state machine: ready→active→acceptance
-→done; only the running dispatcher advances active→acceptance→done). So dispatch **DETACHED** on a
-SCOPED tmux socket (never the default socket — that's what was killing sessions):
-`/usr/bin/tmux -L rop-drain new -d -s <name> "python3 <drive.py> --action impl:<id> --repo <repo> --json > <log> 2>&1; echo __EXIT=\$? >> <log>"`
-(`/usr/bin/tmux` directly — the zsh tmux alias fails non-interactively.) The detached dispatch runs
-to completion (auto-merge PR + close) surviving this pane. Re-invoking `drive impl` on a non-`ready`
-item is REFUSED (`not in the ready set`) — so it can never duplicate a PR.
+Then: land its prose via the spec lifecycle (`/livespec:propose-change` → independent review →
+`/livespec:revise`), and use the ruling for STEP 2 and STEP 3.
 
-## Execution status (READ the ledgers for truth)
-- `ftbvgc` (core): PR #1381 MERGED, BLE live, CI green — but item stuck `active` (killed its
-  FOREGROUND dispatch mid-gate). Needs a proper reconcile to `done` (accept valve wants `acceptance`
-  state; re-dispatch refused as non-ready). Do NOT hack-close (bypasses evidence-journaling).
-- `heejvw` (driver-claude): mirror **livespec-driver-claude-7u7** filed + ready + dispatched DETACHED
-  (session `heejvw` on socket `rop-drain`). In flight.
-- `unc45o` (git-jsonl), `kumh3e` (driver-codex): bounded — mirror + dispatch next (same playbook).
-- `apiiwc` (runtime ~3.9k LOC), `qgp2jt` (dev-tooling ~23.7k LOC): LARGE — `groom <child-id>` into
-  per-subpackage slices FIRST (maintainer owns the cut), then mirror + dispatch each slice.
+## STEP 2 — disposition the 3 merged conversions (all parked in `acceptance`, NONE accepted)
+Each mirror carries a `bd` note with full blocker detail. Summary:
 
-## The rewrite that landed (livespec PR #1376, merged)
-6 briefs mandate: vendor `returns` + Result/IOResult railway + `BLE` (+ `reportUnusedCallResult` for
-the Drivers). Core (`ftbvgc`) is the reference (already on the railway) → BLE only. Per-repo LOC +
-"on railway now?" table: see git history of this file / the ledger briefs.
+| Child (tracking) | Mirror / repo | PR | Review | Disposition |
+|---|---|---|---|---|
+| `livespec-heejvw` | `livespec-driver-claude-7u7` / livespec-driver-claude | #210 | Codex BLOCKERS vs **Opus CLEAR** | Pure I/O-lift dispute → **accept if Fable permits I/O-seam rail-lifting**, else narrow the I/O catches |
+| `livespec-kumh3e` | `livespec-driver-codex-96q` / livespec-driver-codex | #194 | both BLOCKERS | **Fix regardless**: undocumented whole-file `ignore` of `reportUnusedCallResult` for `no_shadow_ledger.py` (fix the gate, not the bypass — use `_ = sys.stdout.write(...)` or a line-level ignore); 2nd internal broad except at `livespec_footgun_guard.py:213` |
+| `livespec-unc45o` | `bd-gj-hab` / livespec-orchestrator-git-jsonl | #335 | both BLOCKERS | **Fix regardless**: store `read/append → IOResult` broke the shared `WorkItemStore` protocol and the PR **DELETED** the `_: type[WorkItemStore]` conformance binding instead of reconciling; discarded `IOResult` in `migration/beads_to_jsonl.py:74` and `migration/merge_evidence_backfill_core.py:81` (append failures reported as success); stale docstrings. NOTE: zero broad except here, so the I/O-lift question does NOT apply |
 
-## Reference — maintainer decisions
-1. **Flat: full ROP everywhere** (2026-07-18, re-affirmed after the 2026-07-19 code audit) — every
-   Python-carrying fleet repo vendors `returns` + is on the railway, Drivers + dev-tooling included;
-   sole exemption = zero-first-party-Python (Rust console).
-2. **ruff `BLE`** = add to template + backfill fleet.
-3. **Execution = in-session, autonomous** (2026-07-19).
+For each fix: file a fix work-item **in that repo's own tenant**, dispatch detached, re-run the
+dual review, then `drive --action accept:<mirror-id>` and close the livespec-tenant tracking child.
+
+## STEP 3 — the 10 groomed slices (filed `backlog`, deliberately HELD)
+`livespec-apiiwc` and `livespec-qgp2jt` are **blocked/superseded**; do not dispatch them whole.
+Their replacements, all linked to the epic via `tracks`:
+- **livespec-runtime**: `livespec-4nlb` (**ANCHOR** — vendors `returns`, enables BLE, narrows
+  `retry.py:49`, railways `cross_repo/`), then `livespec-p41z` (`github_auth/`),
+  `livespec-shz8` (`work_items/`), `livespec-0bpr` (`hygiene_scan_*`).
+- **livespec-dev-tooling**: `livespec-h2hs` (**ANCHOR** — vendors `returns`, enables BLE, routes the
+  5 product blind-catches), then `livespec-9cts` (checks/external-tool), `livespec-ss2j`
+  (checks/source-scan+AST), `livespec-5dpg` (`cross_repo/`), `livespec-tvlq` (`fleet/`),
+  `livespec-gcsn` (agent_hooks + driver_checks + workflow_checks + installers).
+Each conversion slice `depends_on` its repo's ANCHOR (the anchor vendors returns + enables BLE
+repo-wide), so land anchors first, then the rest can run in parallel.
+**Before promoting any slice to `ready`: bake the Fable ruling into its brief** so the factory
+implements to the right bar first time. Then mirror + dispatch (playbook below).
+
+## STEP 4 — reconcile `ftbvgc`
+Core's `BLE` add MERGED and is live (livespec PR #1381), but the item is stuck `active`: an earlier
+FOREGROUND dispatch was killed mid-gate so it never transitioned active→acceptance. `drive impl` on
+it is refused (`not in the ready set`) and `accept:` refuses (`expected acceptance source state;
+found active`). Do NOT hack-close it (bypasses evidence-journaling). Investigate the dispatcher's
+post-merge path (`dispatcher.py janitor-check`, `_dispatcher_valves.py`) for the legitimate
+reconcile, or surface to the maintainer.
+
+## Mechanics (hard-won — do not rediscover)
+- **Cross-tenant rule: factory dispatch requires item-tenant == target-repo-tenant.** The epic +
+  tracking children live in the **livespec** tenant, so a child targeting a sibling repo CANNOT be
+  dispatched directly. File a **dispatch-mirror in the target repo's tenant** (the `bd-ib-zaq3`
+  pattern), dispatch that, and close BOTH on completion. Only core-targeting items dispatch directly.
+  - Mirror playbook: `cd <target-repo>` → `bd create --title "<same>" --type task -p 2 --labels
+    "origin:freeform,rop-sweep-mirror" --body-file <brief-with-mirror-header> --acceptance "<same>"`
+    → `bd update <mirror-id> --status ready` → dispatch detached.
+  - Target tenants: git-jsonl=`bd-gj`, driver-claude=`livespec-driver-claude`,
+    driver-codex=`livespec-driver-codex`, runtime/dev-tooling similarly.
+- **Detached dispatch playbook** (~20-45 min each; foreground caps at 20 min and the harness blocks
+  backgrounding it; a killed foreground dispatch STRANDS the item `active`):
+  `/usr/bin/tmux -L rop-drain new -d -s <name> "python3 <plugin-root>/scripts/bin/drive.py --action impl:<id> --repo <repo> --json > <log> 2>&1; echo __EXIT=\$? >> <log>"`
+  Use `/usr/bin/tmux` directly (the zsh tmux alias fails non-interactively) and a SCOPED `-L` socket
+  (never the default socket). `drive.py` self-wraps under the credential wrapper.
+- **State machine**: `ready → active → acceptance → done`. Only a running dispatcher advances
+  active→acceptance. Re-invoking `drive impl` on a non-`ready` item is refused, so it can never
+  duplicate a PR.
+- All `bd` calls go through `/data/projects/1password-env-wrapper/with-livespec-env.sh`. The
+  `auto-backup failed … command denied` warning is correct-by-design, not a fault.
+
+## Meta-finding (worth acting on)
+The factory's conversions pass the mechanical janitor gate (`just check` green) but carry ROP-
+**semantic** defects — bypass-ignores, discarded Results, a broken protocol with its guard deleted.
+The dual-review gate is what caught this. Expect a review→fix loop per conversion; the clarified
+nfr.md rule (STEP 1) should raise first-pass quality for the 10 slices.
+
+## What already landed
+- Spec + template: livespec PR #1321 (nfr.md v165 — ROP observability rule, ruff `BLE` 27→28,
+  full-ROP fleet+adopter bar). Handoff/bookkeeping: PRs #1331, #1344, #1376, #1384 (all merged).
+- Core `BLE` (ftbvgc): livespec PR #1381 merged.
+- Railway conversions merged (pending accept): driver-claude #210, driver-codex #194, git-jsonl #335.
 
 ## Close-out
-When all children (+ groomed slices + mirrors) are `done`, the epic closes and this thread archives
-to `plan/archive/rop-sweep-fleet-policy/`.
+When all children + slices are `done`, epic `livespec-y2lkf4` closes and this thread archives to
+`plan/archive/rop-sweep-fleet-policy/`.
