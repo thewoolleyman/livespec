@@ -1,9 +1,42 @@
 # Plan — overseer-productization
 
-**Owning session:** livespec core, "overseer-productization". **Status:** OPEN, planning.
+**Owning session:** livespec core, "overseer-productization". **Status:** OPEN,
+EXECUTING Phase 1.
 **Decision (maintainer 2026-07-18):** *Gate now, ship as Phase 2.* Bring the overseer
 fully inside the product gates as a first-class LOCAL module (Phase 1), then design
 host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of Phase 2.
+
+## Progress
+
+| Gate | State | Where |
+|---|---|---|
+| A — tests in `just check`/CI | **IN FLIGHT** | livespec PR [#1387](https://github.com/thewoolleyman/livespec/pull/1387) |
+| C — ruff | not started | — |
+| D — pyright strict | not started | — |
+| B + E — coverage + ROP railway | blocked on D1/D2 | — |
+
+**Gate A (2026-07-19, PR #1387).** Adds a livespec-private `check-overseer` justfile
+target (`uv run pytest .claude/skills/overseer/ -q`, **no coverage**), makes it a literal
+member of the `just check` aggregate, and adds the matching `check-python` CI matrix leg
+(`py_changed`-gated). Sabotage-verified. Also rewrites the overseer `AGENTS.md` paragraph
+that documented the now-reversed "deliberately outside the product gates" design (D3).
+
+Wiring facts learned (do NOT re-derive): `check-overseer` is a **livespec-private**
+slug — it is not a module under `livespec_dev_tooling/checks/`, so
+`canonical_check_slugs()` never emits it and the canonical meta-checks are inert. Only
+two things are mandatory: the justfile recipe, and aggregate membership **anywhere after
+the last canonical slug** (`check-aggregate-completeness` only enforces alphabetical
+order WITHIN the canonical block, plus "no extras interleaved before it"). The CI matrix
+leg is required by intent, not by a gate (`check-ci-matrix-completeness` is
+canonical-scoped; `check-tool-backed-check-completeness` uses a fixed 4-slug policy).
+`branch-protection.json` needs NO change — `ci-green` is the sole live required context,
+and a matrix leg absent from the required list is a warning, exit 0. No test asserts over
+the live justfile target list or CI matrix; `tests/heading-coverage.json` has no
+justfile-target dimension.
+
+The target deliberately runs WITHOUT `--cov` so host-glue modules never enter the
+`fail_under = 100` gate, and it sorts after `check-coverage`/`check-per-file-coverage` in
+the aggregate — keep it there if it ever moves.
 
 ## Why this thread exists
 
@@ -112,11 +145,23 @@ Proposed sequence (each its own small PR; Gate A first for the immediate win):
   host-glue like the `.claude/hooks/` footgun-guard (which is NOT on the railway)? The
   spec's railway rule is fleet+adopter-wide for "first-party Python"; the overseer is
   `.claude/skills/` host tooling. RESOLVE before Gate B/E work.
-- **D3 — does "inside the gates" change the LOCAL-ONLY status?** No, by default: gate
-  coverage (quality) is independent of distribution. The folder stays local-only in
-  Phase 1; the AGENTS.md paragraph asserting "deliberately outside the product gates …
-  the discipline lives in the developer's hands" must be REWRITTEN (it's the documented
-  decision being reversed).
+- **D3 — does "inside the gates" change the LOCAL-ONLY status?** RESOLVED (no, by
+  default): gate coverage (quality) is independent of distribution. The folder stays
+  local-only in Phase 1. The AGENTS.md paragraph asserting "deliberately outside the
+  product gates … the discipline lives in the developer's hands" was REWRITTEN in
+  PR #1387 (it was the documented decision being reversed).
+
+**Cross-thread input for D2 — read `plan/rop-sweep-fleet-policy/handoff.md` before
+resolving it.** That thread's ratified fleet policy (livespec PR #1321, merged;
+`non-functional-requirements.md` v165) mandates the FULL `Result`/`IOResult` railway for
+every Python-carrying fleet repo — Drivers and dev-tooling included — with the sole
+exemption being a repo with zero first-party Python. Its code audit also established a
+fact that directly bears on Gate E: `.claude/skills/overseer/**` is a **ruff-EXCLUDED**
+directory, so the new `BLE` (blind-except) rule never reaches the overseer today. That
+means Gate C (removing the ruff exclude) is what would newly subject the overseer to
+`BLE`, and Gate E's railway question rides on it. Sequence C before E, and confirm with
+the rop-sweep thread whether the repo-level policy bar is intended to reach a
+`.claude/skills/` host-tooling folder or only the `livespec` package.
 
 ## Phase 2 — ship it (design exploration, not yet committed)
 
