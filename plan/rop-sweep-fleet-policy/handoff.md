@@ -319,6 +319,49 @@ exempt" and the maintainer ruled that row correct as written. The recommendation
 "wholesale" as TREE-level, not "every individual catch is an offense". If the stricter reading is
 intended, broad-only is off the table and ~32 narrow catches need remediation or declaration.
 
+## COORDINATION WITH `plan/overseer-productization/` — settled 2026-07-19
+
+That thread asked how `.claude/skills/` interacts with `cvz` declaring core's `source_trees`.
+**Maintainer ruling relayed by that session: `.claude/skills/` is NOT excluded from the ROP bar —
+"it should follow discipline."** Deferring WHEN it enters `source_trees` is sequencing, not
+exemption, and is consistent with that ruling.
+
+**Agreed split and ordering:**
+
+1. **`cvz` (this thread)** declares core's `source_trees`/`io_trees` **without** `.claude/skills/`.
+2. **Gate E (overseer-productization thread)** brings the overseer folder to conformance.
+3. **Either thread, only after (2)** adds `.claude/skills/` to `source_trees` — enforcement
+   arrives after adoption, per `.ai/ci-gate-discipline.md`.
+
+**Two measurements that change the size of this work — do not plan against the estimates:**
+
+- **Step 1 is nearly free.** Simulating `no_except_outside_io` over core's main tree with the
+  fallback's role keys restored yields **3 offenses, ALL NARROW** — `SyntaxError` /
+  `IndentationError` / `tokenize.TokenError` in `doctor/static/no_spec_section_citation_in_code.py`
+  (parsing arbitrary Python) and `ModuleNotFoundError` in
+  `doctor/static/wiring_completeness_cross_repo.py` (optional-import probe). Under the recommended
+  broad-only rule that is **0 offenses — core's main tree is already clean**. Under the strict
+  rule it is 3, all textbook foreign-code isolation. So `cvz` step 1 can land immediately and does
+  NOT need to wait on Gate E.
+- **Gate E's size depends ENTIRELY on the unresolved flat rule.** The overseer folder carries
+  **36 except handlers of which exactly ONE is broad** (`supervisor.py`); the other 35 are narrow
+  typed catches, spread across `registry.py` (11), `claude_sessions.py` (6), `codex_sessions.py`
+  (6), `supervisor.py` (6), `tmuxio.py` (3), `jsonio.py` (2), `signals.py` (1).
+  - Under **broad-only**: Gate E is **1 site** — declare `supervisor.py`'s sole `except Exception`
+    as a boundary. No `io/` layer, no refactor.
+  - Under **strict**: 35 sites need an `io/` split or equivalent.
+
+  **So Gate E should NOT begin its refactor until the flat rule is ruled on**, or it risks doing
+  35 sites of work that the ruling makes unnecessary.
+
+**Answer to that thread's design question — declaring the whole folder an `io` tree is NOT
+acceptable.** `io_trees` entries are **wholesale exempt**, so declaring `.claude/skills/overseer/`
+an io tree would make all 36 handlers instantly legal and the check vacuous over that tree. That
+is a bypass wearing a declaration's clothes — the same "fabricate a boundary that does not exist"
+move already rejected for `livespec-dev-tooling` in `qm5`'s ledger note, and forbidden by
+`.ai/ci-gate-discipline.md`'s "fix the gate, not the bypass". Whether the folder should instead
+grow a REAL `io/` layer is premature: under broad-only it needs none.
+
 ## WHAT THE REVIEW GATE CAUGHT (do not weaken it)
 
 Every finding below passed all mechanical gates:
