@@ -1,5 +1,20 @@
 # Additional requirements — maintainer messages, verbatim (autonomous-mode MVP)
 
+> **⚠ SUPERSEDED / STALE (2026-07-18).** This capture is INCOMPLETE. It missed
+> an entire program of requirements — N1–N10: the all-sources-unavailable bug,
+> the always-empty status line, top-pane focus/horizontal-scroll, the Help
+> MODAL's real spec (left-menu/right-pane, up/down scroll, per-pane + global
+> sections, `?`-auto-focus, 3-char-border window, "esc to exit" always shown),
+> the `docs/` tree, the key-by-key lifecycle walkthrough, the "ALL SPEC-DRIVEN"
+> directive, the real-TUI **tmux E2E harness**, and Samsung-Fold default
+> dimensions — and its 10-item status matrix predates the cont.20/21 console
+> work (W3/W4/W5-valves/W6/W7/binary are ALL now DONE). The AUTHORITATIVE
+> remaining-MVP requirement set is the spec-driven program in
+> **`livespec-console-beads-fabro:plan/cockpit-ux-docs-release/handoff.md`**
+> (deliverable #0 + B1–B8). Do NOT drive work from this file's matrix — use the
+> cockpit handoff. Kept only as a verbatim-quote archive. (Full re-derivation:
+> sub-agent `reqs-rederive`, 2026-07-18.)
+
 **Purpose.** This file is a durable, verbatim capture of the maintainer's
 requirement-bearing messages for the autonomous-mode MVP, extracted directly from
 the session transcripts under

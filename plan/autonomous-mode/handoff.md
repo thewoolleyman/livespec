@@ -65,6 +65,267 @@ The discipline this imposes: if a plan deliverable "can't" be a factory
 work-item, that is a smell — re-groom it until it can, or confirm it is the
 narrow plumbing exception.
 
+## SESSION UPDATE — 2026-07-19 (cont. 24): B3 IMPL DONE (Scenario 20 — top/header pane focus + horizontal scroll) MERGED to console master (`4e8598f`) + TWO-REPO LIVE-VERIFIED against real tenants; B5 propose-change #280 (Fable NO-BLOCKERS) MERGED; the tmux E2E harness now uses a DEDICATED per-test socket (root-caused + fixed non-deterministic pane width). NEXT is B5 revise → v028, then B5 impl.
+
+### RESUME — READ FIRST
+- **Console master tip `6953a5b` (v028).** B1 / B2 (spec+impl) / B3 (spec v027 + impl) / B4 are ALL MERGED; **B5 spec is fully ratified — propose #280 merged AND revise → v028 merged (`6953a5b`, PR #288)**. **Only B5 IMPL remains** (in flight, agent `b5-impl`, worktree `b5-panes-impl`).
+- **QUOTA NOTE (important):** the `b3-impl` SUB-AGENT FAILED mid-run on an ACCOUNT WEEKLY LIMIT ("resets Jul 21, 2am Europe/Berlin"). The driver SALVAGED its fully-applied-but-uncommitted work in the worktree and finished B3 INLINE. **Until the weekly cap resets, prefer INLINE heavy work over spawning sub-agents on the default tier — a fresh sub-agent hits the same cap; the MAIN session tier kept working.**
+- **NEXT = B5 IMPL** (in flight: agent `b5-impl`, worktree `b5-panes-impl` off `6953a5b`) — sweep + remove baked-in doc prose from console-tui pane bodies + the Scenario 21 tmux E2E. Detailed below. After B5 impl: B6/B7 docs, B8 capstone, backfill real-TUI E2E, Stage-2 LAST (all in the cont.23 section).
+- **LATENT (non-blocking, console-repo follow-up owed):** a pre-existing `§"…"` spec-citation at `crates/console-application/src/lib.rs:1987` (`contracts.md §"Initial Adapters"; scenarios.md Scenario 12`) trips CORE MASTER's stricter `doctor-no-spec-section-citation-in-code`, but NOT the console's released-core-pin (`v0.16.0`) gate — so console CI/merge stay green. It WILL bite when the console bumps its core pin to a release carrying that stricter check; rewrite the citation to file-level first. (Same class as the cont.23-flagged citation; confirmed at this line by the b5-revise agent, which drove CORE master's revise CLI whose post-step-doctor surfaced it.)
+
+### B3 impl — DONE (PR #286 `4e8598f`)
+Implements the ratified B3 §"TUI Contract" clause (v027): `FocusPane::Header` joins the Tab/Shift-Tab focus ring (Nav→Content→Detail→Header); Left/Right horizontally scroll the focused header (render-measured clamp mirroring `detail_max_scroll`); a focused header renders the FULL un-degraded line panned by the offset while blurred keeps shrink-to-fit `fit_header_line` (preserves B1's cockpit-blind indicator); blur resets `header_scroll`→0 centralized in `with_focus`; `[focus]` title tag; new LAST "Header" help section (`HELP_SECTION_COUNT`+1, `?`-auto-focus); `footer()` header hints when focused. Scenario 20 tmux E2E `tmux_tui_e2e_top_pane_focus_hscroll` (narrow 56-col + wide) + unit tests; **100% line coverage; ALL 14 CI checks green incl. `check-e2e-tmux`**; `tests/heading-coverage.json` Scenario-20 `test` link filled. **TWO-REPO LIVE-VERIFY DONE** against real tenants via `with-livespec-env.sh` in a dedicated tmux socket: orch (`attention:44`) + console (`attention:18`) — blurred shrink-to-fit (no `[focus]`) → 3×Tab shows `[focus]`+full line → 8×Right pans (`fleet` off-left, clipped right fields revealed) → Tab blur snaps back. All correct on real data.
+- **HARNESS FIX (folded into #286, REQUIRED for the narrow E2E; `crates/console-cli/tests/support/mod.rs`):** the harness was using the **maintainer-owned DEFAULT tmux socket** (no `-L`), so on the busy shared server the pinned `-x 56` width was INFLATED to the outer terminal width (rendered 112 → the narrow shrink-to-fit never triggered → the B3 E2E `fleet: livespec`-dropped assertion failed). Fix: each `TmuxConsole` uses a **DEDICATED per-test socket** (`-L <session>`); a detached `-x` session on an isolated socket honors the width deterministically (proven by direct probe). `Drop` now `kill-server`s the isolated socket (safe; never the default socket). Also brings the harness into line with the repo's tmux-socket discipline. All 6 E2E green locally AND in CI.
+- **COVERAGE-CONVENTION LESSON (bake into future console E2E work):** the 100%-line-coverage gate is INCOMPATIBLE with MULTI-LINE `assert!`/`assert_eq!` carrying interpolated failure messages — the message line only executes on panic → llvm-cov marks it uncovered. Use SINGLE-LINE bare asserts (a single-line assert WITH a message is fine — same line as the condition). The salvaged tests had 10 such multi-line messages; collapsed to bare asserts.
+
+### B5 propose-change #280 — MERGED (`08d671c`), Fable NO-BLOCKERS
+The amended `88093e9` (operational-help carve-out: Status-line hints / modal Help / Settings per-row inline help excluded from the sweep) was pushed, independently Fable re-reviewed (**NO-BLOCKERS** — Blocker-1 resolved, replacement-target byte-identical, ground-truth arithmetic + CHANGE-1-one-physical-line verified), and merged. Proposal now queued on master.
+
+### B5 revise → v028 — DONE (merged `6953a5b`, PR #288)
+Ratified via CORE's reference `bin/revise.py` driven with `--project-root`/`--spec-target` into a `b5-revise` worktree (the console declares no `spec_clis`), replicating v027. Derived clause gap-id **`gap-xiziukv6`** linked (validated by reproducing B3's known `gap-lepclyx4` on the same tree; `check-behavior-coverage` 0 unlinked / 0 untested); ground-truth bumped **`72→73`/`161→162`**; clause landed as ONE unwrapped physical line; all 4 resulting_files applied (incl. `crates/console-spec-check/src/tests.rs`, added to `resulting_files[]` per the NOTE); `just check` EXIT 0 + all 14 CI checks green; `history/v028/` on master, `proposed_changes/` drained to README. Fable note (a) honored (wrap-insensitive second-anchor match). The plan it executed is kept below for the record.
+Original plan (executed): drive `/livespec:revise` accepting topic `panes-no-doc-prose` against the CONSOLE repo. It creates `SPECIFICATION/history/v028/` and applies FOUR `resulting_files[]` (the merged propose-change's NOTE documents all four):
+1. `SPECIFICATION/contracts.md` — CHANGE 1's clause as ONE unwrapped physical line (bears both "MUST render" + "MUST NOT carry" → counts +1 rule).
+2. `SPECIFICATION/scenarios.md` — Scenario 21 appended (after Scenario 20's closing gherkin fence at EOF).
+3. `../tests/heading-coverage.json` — the Scenario 21 entry (drafted in propose-change CHANGE 3, `test:"TODO"`) PLUS link the newly-derived B5 clause `gap_id` into its `clauses[]` (derive via `derive_gap_id` from the final clause line's `(spec_file, heading_path, line_text)`; mirrors Scenario 20's `gap-lepclyx4`).
+4. `../crates/console-spec-check/src/tests.rs` — ground-truth bump **`("contracts.md", 72)`→`73`, `total 161`→`162`** (spec.md 15 / constraints.md 22 / non-functional-requirements.md 52 unchanged) + update the adjacent comment (mirror the B3 v027 comment). **⚠ THIS FILE IS NOT in the propose-change's "Target specification files" list — you MUST add it to the revise `resulting_files[]` yourself per the NOTE (the B2 lockstep lesson: omit it and `just check`'s console-spec-check goes RED the moment the clause lands).**
+Precedent: v027 revise commit `c6b1c1c` (`chore(spec): revise — ratify … (v027)`, its bump was 71→72/160→161). Fable's non-blocking notes to honor at revise: **(a)** CHANGE 1's SECOND position anchor is hard-wrapped in the live `contracts.md` — match wrap-insensitively; **(c)** re-verify 72/161 at revise time if more spec-clause commits landed first (still 72/161 at `4e8598f`). Then merge the revise PR (rebase); confirm `just check` green.
+
+### B5 impl — IN FLIGHT (agent `b5-impl`, worktree `b5-panes-impl` off `6953a5b`)
+Sweep + REMOVE baked-in explanatory doc prose from console-tui pane BODIES (e.g. "Spec lifecycle status is projected from LiveSpec adapter observations." / "Revise-required events stay visible in the Spec view until resolved."), KEEPING the carved-out operational help surfaces (Status-line hints B2, modal Help B4, Settings per-row inline help). Scenario 21 tmux E2E asserting the named sentences are ABSENT from pane bodies. Same `crates/console-tui/src/lib.rs` as B2/B3 — but B3 impl is already merged, so it's ONE worktree with no active lockstep conflict. Two-repo live-verify. impl_followup id-hint `tui-panes-no-doc-prose`.
+
+### Worktrees / env
+- **Reaped my 4 merged worktrees** (b3-top-pane-impl, b3-revise, b2-status-hints-impl, b5-no-doc-prose-propose). Primary console checkout clean on `4e8598f`.
+- **5 OTHER-SESSION worktrees LEFT UNTOUCHED** (do NOT reap without confirming their owning sessions are done): `cap-test-parallelism`, `ci-concurrency-group`, `console-release-pipeline` (B8 capstone), `docs-console-tui-usage` (B6/B7 docs), `phase3-selfhosted-cutover`. The reaper flags 4 as "would reap" (branches merged) but the declared owners may still be active.
+- After B5 (revise+impl): B6/B7 docs (coordinate w/ `docs-console-tui-usage`), B8 capstone (`console-release-pipeline`), backfill real-TUI E2E for existing scenarios, then Stage-2 LAST (maintainer-gated).
+
+## SESSION UPDATE — 2026-07-18 (cont. 23): E2E CI gate REPAIRED (two distinct root causes) + B1 (source-availability honesty) and B4 (pane-specific modal Help) BOTH MERGED to console master — two ratified cockpit behaviors landed, harness now truly hermetic, worktrees reaped; NEXT is B2→B3→B5 (spec-first, SEQUENCED on console-tui)
+
+### POST-RESTART STATUS (2026-07-18, session resumed after a restart — READ FIRST)
+Landed on console master (`f97ec42` tip): **B1** (`2bf6841`), **B4** (`aa4281c`+`e4d0259`), **B2 spec v026** (`78be28c`), **B3 propose-change #273** (`85eae09`) — all MERGED. Two behaviors were IN FLIGHT and INTERRUPTED by the restart, but their work is FULLY APPLIED + UNCOMMITTED (SALVAGEABLE) in worktrees, and finish-agents are relaunched to verify+commit+PR+merge each:
+- **SALVAGE COMPLETE — both interrupted works MERGED:** B2 impl `15c301a` (#278) + B3 revise v027 `c6b1c1c` (#277). **B2 is now DONE** (spec v026 + impl, two-repo live-verified, 100% coverage, E2E green). **B3 spec ratified** (v027); B3 IMPL now in flight. Console master tip `c6b1c1c`.
+- **B3 impl — NOT DONE, RESUME from worktree `b3-top-pane-impl`** (off `c6b1c1c`): the Scenario-20 E2E test is WRITTEN + UNCOMMITTED (`crates/console-cli/tests/tmux_tui_e2e.rs`, `tmux_tui_e2e_top_pane_focus_hscroll`, 56-col + 112-col cases); the IMPL (console-tui) is NOT started. DON'T re-derive, DON'T discard the E2E test — finish the impl→GREEN per the LOCKED DESIGN, then `just check` + `just check-e2e-tmux` green, update the Scenario-20 heading-coverage `test:TODO`→the E2E path, two-repo live-verify, PR→merge. **LOCKED DESIGN (in `crates/console-tui/src/lib.rs`):** add `FocusPane::Header`; Tab/Shift-Tab cycle focus across ALL panes incl. header (arrows stay the spatial body walk; Left/Right = horizontal scroll while header-focused, render-measured clamp like `detail_max_scroll`; up/down inert; Esc/Tab leave); focused header renders the FULL un-degraded header line panned by the scroll offset while BLURRED keeps the existing shrink-to-fit `fit_header_line` (preserves B1's cockpit-blind indicator); blur resets `header_scroll→0` centralized in `with_focus`; `[focus]` title tag; `HELP_SECTION_COUNT` +1 (new "Header" help section, last) so `?` while header-focused opens to it; `footer()` returns header-pane hints when `focus==Header` (keep B2/B4 tests passing).
+- **B5 spec — propose #280 amended but UNPUSHED, RESUME:** the independent Fable review of #280 found 1 BLOCKER — the unqualified sweep/summary contradicted the spec-REQUIRED Settings per-row inline help (a pane-body operational help surface B4 preserved). The fix (self-resolved internal-consistency repair, Fable's exact recommendation: add the operational-help carve-out — Status-line hints / modal Help / Settings inline help — to CHANGE 1's summary + qualify Scenario 21's sweep line to the clause's 3 categories; text-only, CHANGE 1 stays ONE physical line so 72→73 holds) **IS COMMITTED as `88093e9` in worktree `b5-no-doc-prose-propose` but is NOT PUSHED** — remote `#280` head is still the pre-fix `a6c050f`. **RESUME:** (1) `mise exec -- git -C ~/.worktrees/livespec-console-beads-fabro/b5-no-doc-prose-propose push` to update #280; (2) run a FRESH independent Fable re-review of the amended #280 (confirm Blocker-1 resolved, no new issue, anchors/arithmetic intact — do NOT skip; the amended version was never independently reviewed); (3) merge #280 then `/livespec:revise` accept `panes-no-doc-prose` → **v028** — the revise MUST link the new B5 clause gap-id in `heading-coverage.json` AND bump `console-spec-check` ground-truth `contracts.md 72→73 / total 161→162`, landing CHANGE 1 as ONE line (the B2/B3 lockstep lesson); (4) B5 impl (sweep + remove baked-in doc prose from console-tui panes + Scenario-21 E2E — WAITS for B3 impl, same file).
+- **If THIS session restarts again:** the two worktrees above hold the salvageable work — check them FIRST (`git -C <wt> status` / `log`), do NOT re-derive. Console master tip ~`a2ab0be` (B1/B4/B2-full/B3-spec-v027 all merged; no B3 impl on master yet). The 3 stale propose/revise worktrees are ALREADY reaped. After B3 impl + B5 land: B6/B7 docs + B8 release capstone (OTHER sessions' `docs-console-tui-usage`/`console-release-pipeline` worktrees — coordinate, don't duplicate), backfill real-TUI E2E for existing scenarios, **Stage-2 last** (autonomous-mode MVP acceptance, maintainer-gated).
+- **Separate (NOT my track):** livespec-core pin-bump PRs #257/#260/#270/#275 (v0.17.0–.3) are piling up red on `check-completeness` (pin-stamp / API-key completeness fixture not co-updated) — surfaced to maintainer; another owner's domain. The latent `console-tui/src/lib.rs:1836` `§"…"` doctor citation (breaks on a core-pin bump past v0.16.0) is DISTINCT from that.
+
+### What cont.23 did (all in `livespec-console-beads-fabro`)
+- **E2E CI gate now GREEN on master — fixed TWO distinct root causes.** The advisory `check-e2e-tmux` job had been RED on master since the harness (#262) landed (masked because it is NOT in `ci-green.needs`). (1) **CARGO_TARGET_DIR:** the `check-e2e-tmux` recipe hardcoded `{{justfile_directory()}}/target/release/…`, ignoring the self-hosted runner's redirect of `CARGO_TARGET_DIR` to `/opt/ci-cache/target`, so the E2E test could not find the release binary it built — FIXED via **PR #264 (`79305bc`)**, respect `CARGO_TARGET_DIR`. (2) With the binary found, the pre-existing smoke test then failed on `contains("mode: tui")`: at the pinned 112-col width a phantom `sources: N unavailable` suffix (the B1 bug) bloats the header, triggering `console-application` `fit_header_line`'s width-shrink to shed the low-value constant fields (`mode: tui`, then `fleet: livespec`) — the smoke test asserted a droppable field, and passed only on wide interactive terminals. FIXED two complementary ways: B4's `e4d0259` re-points the smoke assertion to the PRESERVED priority fields (`view:`/`attention:`), and B1 fixes the actual source-classification so no phantom unavailability exists.
+- **B4 (Scenario 18 — navigable pane-specific modal Help): MERGED PR #267 (`aa4281c`+`e4d0259`).** `TuiOverlay::Help { selected_section, scroll }`; `HELP_SECTION_COUNT = 1 + TuiView::all().len()` = 7 (Global actions + one per view); `?` auto-focuses the focused pane's section; **Esc-ONLY close** (keymap `question_input` returns `None` while open; every letter/`q`/valve key inert behind the overlay); 3-char-border near-full-viewport window, never wider than viewport; left menu + up/down-only right pane; `esc to exit` always shown; per-row inline Settings help untouched. `tmux_tui_e2e_modal_help_scenario_18` RED→GREEN (all 6 clauses); 100% coverage; `tests/heading-coverage.json` Scenario-18 test link filled; fully-live two-repo verify (orch 41 items + console 15).
+- **B1 (Scenario 13 — source-availability honesty): MERGED PR #268 (`2bf6841`).** 7-part fix: (1) fabro abs-path resolution (`$HOME/.local/bin/fabro`, env override still wins); (2) livespec adapter → real `livespec next` (was being clobbered by the orchestrator `next.py`); (3) dispatcher journal ABSOLUTE path + absent-journal → observed-idle; (4) empty payload (`{}`/`[]`/null/blank) → `SourceObservedIdle` marker, never a not-observed finding; (5) latest-per-source projection in `unavailable_sources` (a later positive observation CLEARS an earlier not-observed — kills the old sticky monotonic brand); (6) persist the human-readable not-observed reason into `payload_json` (was dropped to `{}`); (7) `LIVESPEC_CONSOLE_GH_PROGRAM` env override for the github source. Added `EventType::SourceObservedFindingObserved`. **ALSO hardened the tmux harness to be TRULY hermetic** (`support/mod.rs`): the launcher now sets a MINIMAL scrubbed PATH `{scratch}:/usr/local/bin:/usr/bin:/bin` (NOT inherited) and drives every source through its `*_PROGRAM` override — previously it only PREPENDED stubs, so LOCALLY real CLIs leaked and sources falsely resolved available (local green ≠ CI; this is why the smoke test passed locally but failed in CI). New hermetic E2E `tmux_tui_e2e_all_reachable_sources_are_idle_not_unavailable` + `tmux_tui_e2e_unreachable_source_is_counted_named_and_reasoned`; unit tests for idle-payload variants, recovered-clears/latest-per-source, reason persistence, absolute journal path. 100% coverage. Two-repo live-verify: orch tenant `sources: 1 unavailable (livespec)` (genuinely-absent binary, correctly named; 42 real items observed), console tenant no unavailability suffix, all real sources reached.
+- **Follow-up filed: `livespec-console-beads-fabro-25rvmd`** (CONSOLE tenant ledger; task / origin:freeform / status:blocked-pending-grooming) — a transition-epoch fidelity gap: in a persistent CROSS-RUN store, a source going down→up→down can show available because the re-down dedups (stable per-(source,repo) not-observed event id) to the low-seq original while a stale prior-run positive outranks it. It is a STRICT improvement over the old sticky projection; fresh-store Scenario 13 is fully satisfied + E2E-proven; the full fix needs a transition-epoch / fresh-event-per-transition redesign entangled with the adapter's at-least-once checkpoint/idempotency semantics. Re-triage from `blocked` at grooming.
+- **Housekeeping:** reaped ALL 6 merged worktrees (mine + cont.22-owed: `b1-source-availability`, `ci-e2e-targetdir-fix`, `docs-b1-source-availability-honesty-propose`, `docs-tui-modal-help-propose`, `revise-b4-b1`, `tmux-tui-e2e-harness`); LEFT the 5 other-session worktrees untouched (`cap-test-parallelism`, `ci-concurrency-group`, `console-release-pipeline`, `docs-console-tui-usage`, `phase3-selfhosted-cutover`); refreshed the primary console checkout to `2bf6841`. Other sessions landed CI-infra fixes on master meanwhile (`05532aa` cap test parallelism to 4, plus a concurrency-group change) to fight the severe self-hosted-runner backlog this session (PRs queued 15–40 min).
+
+### RESUME — NEXT is B2→B3→B5 (spec-first, SEQUENCED on `crates/console-tui/src/lib.rs`)
+Authoritative program tracker: **`livespec-console-beads-fabro:plan/cockpit-ux-docs-release/handoff.md`**. Its RESUME ORDER: deliverable #0 [DONE], B1 [DONE], **B2→B3→B5** next (all touch `console-tui/src/lib.rs` render/input → ONE worktree at a time; do NOT parallelize), then B4 [DONE], B6/B7 docs, B8 capstone, Stage-2 LAST. Each behavior: `/livespec:propose-change` → independent Fable review (NO-BLOCKERS precondition) → `/livespec:revise` → tmux-E2E-RED → impl-GREEN → two-repo live-verify. The E2E gate is now GREEN and TRUSTWORTHY (truly hermetic), so RED→GREEN is reliable.
+- **B2** (status line always empty → context-specific hints): the Status pane hint line must render context-specific key hints that CHANGE with the focused pane and any open modal. Propose a Scenario + TUI-Contract clause; E2E: focus each pane / open each modal, assert the hint text changes.
+- **B3** (top/header pane focusable + horizontal-scrollable on narrow viewports; snaps back on blur).
+- **B5** (sweep + REMOVE baked-in explanatory doc prose from the TUI panes; relocate genuinely-useful bits into the B6 docs tree).
+- **B6/B7 docs** are held by OTHER sessions (`docs-console-tui-usage` / `console-release-pipeline` worktrees) — coordinate, do NOT duplicate.
+- **B8 capstone** (`console-release-pipeline` worktree, other session): v0.2.0 released; the download-from-`/tmp` two-repo run + README de-gate remain.
+- **Backfill** real-TUI tmux E2E for existing scenarios (5/9/11/13) interleaved; **Stage-2** last (autonomous-mode MVP acceptance, still maintainer-gated).
+
+### cont.23 continued — B2 ratified (v026); B2 impl + B3 spec IN FLIGHT
+- **B2 SPEC RATIFIED — `history/v026/` on console master `78be28c`.** propose-change #269 (Scenario 19 + TUI-Contract Status-line clause) → independent Fable review NO-BLOCKERS (spot-checked) → merged #269 (`c4b362f`) → `/livespec:revise` accept → revise PR #271 merged (`78be28c`); proposed_changes drained to README.
+- **B2 IMPL in flight** (agent `b2-impl`): tmux-E2E-RED for Scenario 19 → status-line hints in `console-tui/src/lib.rs` → update the heading-coverage `test:TODO` → two-repo live-verify. Two impl notes carried: E2E binds to Scenario 19's "hints DIFFER between panes"; modal hints must render VISIBLY under the Scenario-18 help modal's 3-char bottom border.
+- **B3 SPEC in flight** (agent `b3-propose`): propose-change for top-pane focus + horizontal scroll (will be Scenario 20). Running in PARALLEL with B2 impl (spec files vs console-tui impl — no conflict). B3 IMPL still waits for B2 impl (same file). B5 spec is HELD until B3's Scenario-20 lands (avoid a Scenario-number collision).
+- **TWO LESSONS (bake into B3/B5 + Fable criteria):**
+  1. **A propose-change that adds a new MUST clause needs, AT REVISE TIME, its clause linked in `tests/heading-coverage.json` (non-empty `clauses`) AND the `console-spec-check` ground-truth clause count bumped** (contracts.md +1, total +1) — this repo's `check-behavior-coverage` + `console-spec-check` gates fail the MOMENT the clause lands, NOT at impl time. The B2 propose-change used `clauses: []` "filled at impl time" and left `just check` RED on 4 targets; the `b2-revise` agent caught + fixed it via the lockstep co-edit (precedent `3b230f7`/`78be28c`). Fable's NO-BLOCKERS did NOT catch this — add it as a Fable-review criterion.
+  2. **LATENT (non-blocking) — `console-tui/src/lib.rs:1836` `§"…"` spec-citation:** flagged by core MASTER-TIP's newer doctor check but NOT by the repo-pinned **v0.16.0** core CI uses (master CI green). It will bite the next `/livespec:revise` post-step doctor (and possibly CI) when the console repo bumps its core pin past v0.16.0. Not introduced by B2; fix before that pin bump.
+- **Env:** Console master `78be28c` (v026); E2E gate GREEN. Other sessions landed `e746a5b` (dev-tooling pin v0.49.0) + `05532aa`/concurrency-group CI-infra fixes meanwhile. cont.23 sub-agents ci-e2e-targetdir-fix, b4-modal-help-impl, b1-source-availability-impl, b2-propose, b2-fable-review, b2-revise all stopped/signed-off; b2-impl + b3-propose ACTIVE. No orphaned worktrees of mine (b2-impl/b3-propose worktrees active; will reap on merge).
+
+### Env / agents
+- Console master `2bf6841`; E2E gate GREEN. All cont.23 sub-agents (`ci-e2e-targetdir-fix`, `b4-modal-help-impl`, `b1-source-availability-impl`) stopped/signed-off; no orphaned worktrees of mine.
+
+## SESSION UPDATE — 2026-07-18 (cont. 22): CRITICAL REORIENTATION — this handoff tracked only Stage-2 + release; the REAL remaining MVP body is the console's `cockpit-ux-docs-release` program (deliverable #0 + B1–B8), which this thread had lost the pointer to. Release v0.2.0 published; the "Stage-2 accept" done this session was on a THROWAWAY and does NOT satisfy req #9.
+
+### READ THIS FIRST — the remaining MVP work lives on a DIFFERENT plan thread
+The authoritative remaining-MVP plan is **`livespec-console-beads-fabro:plan/cockpit-ux-docs-release/handoff.md`** (spec-driven, B0–B8). This `autonomous-mode` handoff only ever tracked **Stage-2 acceptance + the console release** — so every resuming session (this one included, at first) mistakes "operator surface done" (Settings/move/valves — genuinely DONE: W3/W4/W5-valves/W6/W7) for "MVP done." It is NOT. The real remaining body, all NOT-DONE/unbuilt:
+- **Deliverable #0** — real-TUI **tmux E2E harness**. The interactive TUI has ZERO automated coverage today (`run_interactive_tui` is `#[cfg]`-compiled out of every test) — which is why BOTH live-update regressions shipped past 100% green. Everything below depends on it.
+- **B1** sources-unavailable bug (the "sources: N unavailable" header) · **B2** empty status line → context hints · **B3** top-pane focus + h-scroll · **B4** Help modal · **B5** strip baked-in doc prose · **B6** `docs/` tree (4 sub-docs) · **B7** key-by-key lifecycle walkthrough · **B8** release capstone (download asset → run from `/tmp` against TWO repos, then de-gate README) · backfill real-TUI E2E · THEN Stage-2.
+
+### Why the prior requirement doc was incomplete (do not trust it)
+`research/additional-requirements-messages.md` (2026-07-16) MISSED N1/N2/N3/N6/N7/N8/N9 entirely and dropped the detail of N4 (help modal) + N5 (docs tree) — all from two 2026-07-12/-13 messages it never fully decomposed. A full transcript re-derivation (sub-agent `reqs-rederive`, this session; 1,699 human messages across 266 transcripts) mapped every requirement onto cockpit-ux-docs-release B0–B8 and confirmed W3/W4/W5-valves/W6/W7/binary are ALL NOW DONE (the repo moved on since 2026-07-16). Treat the cockpit handoff as authoritative; treat `additional-requirements-messages.md` as SUPERSEDED/STALE.
+
+### What cont.22 (2026-07-18) actually did
+- **Merged console release PR #246 → v0.2.0 published** (asset `livespec-console-beads-fabro-v0.2.0-x86_64-unknown-linux-gnu` + `.sha256` live, not draft). B8's release LEG done; B8's download-from-`/tmp`-two-repo CAPSTONE still NOT verified.
+- **Maintainer's `c` accept on throwaway `bd-ib-dqt`** proved the TUI-accept MECHANISM live (valve fired, item CLOSED, reflected live in the cockpit Events stream) — but bd-ib-dqt is a THROWAWAY, so this does NOT satisfy Stage-2/req #9 (drive MULTIPLE REAL fleet items end-to-end via the TUI). Stage-2 remains NOT-DONE.
+- **Filed + enriched console propose-change PR #259** (`docs-tui-modal-help-propose`) = the **B4 Help-modal spec**. First filing under-captured B4; enriched to the FULL spec (left-menu/right-pane, up/down-only scroll, Global-actions + per-pane sections, `?`-auto-focus to the focused pane, 3-char-border near-full-viewport window, "esc to exit" always shown). OPEN, awaiting Fable review + `/livespec:revise`; its tmux-E2E needs deliverable #0 first.
+
+### cont.22 cockpit-program progress (2026-07-18) — deliverable #0 built, B1+B4 ratifying
+This session began DRIVING the cockpit program (maintainer: keep working). Live state, console repo `livespec-console-beads-fabro`:
+- **Deliverable #0 (tmux real-TUI E2E harness): MERGED** (PR **#262**, commits `a48e253`+`c5a10cc` on console master). a Rust integration test shelling to tmux — launches the release binary in a pinned pane, send-keys/capture-pane, asserts rendered content + store side-effects, two-repo parameterized. Independent review (`review-harness-262`) found + FIXED a real hermeticity leak (the github source fired a live authenticated `gh pr list` on the synchronous first-render path — now PATH-shadow-stubbed + a baked-in regression guard), a capture/render tearing race (settled-frame waits), and a silent-pass gap (`--ignored` exiting green on 0 tests). Stress-verified green (idle+oversubscribed+parallel). **E2E ARCHITECTURE DECISION (maintainer-approved): hermetic always-run CI gate (stub the backing CLIs) + a SEPARATE cred-provisioned wrapper-backed LIVE mode (gated, not always-run) for real-tenant assertions.** The CI job is advisory (NOT in `ci-green.needs`) until tmux is baked into the image.
+- **B1 (source-availability honesty): propose-change #261 Fable-clean, RATIFYING.** Root-caused live: "sources: N unavailable" is multi-layer — fabro missing on the wrapper's scrubbed PATH; the livespec adapter wired to the WRONG CLI (orchestrator impl-`next.py` vs spec-side `livespec next`); dispatcher relative-path journal; orchestrator/github empty-misclassified-as-unreachable; a STICKY monotonic projection branding any transient failure permanently; and the not-observed reason dropped at persistence. #261 refines Scenario 13 (+4 scenarios) + tightens the Adapter Contract honesty rule. Fable caught 2 internal-consistency contradictions (both fixed). 6-part impl_followup declared; FOLD IN a 7th: parameterize the github program (`LIVESPEC_CONSOLE_GH_PROGRAM`, consistent with the other 6 sources).
+- **B4 (pane-specific modal Help): propose-change #259 Fable-clean, RATIFYING.** Full spec: left-menu/right-pane, up/down-only scroll, Global + per-pane sections, `?`-auto-focus to the focused pane, 3-char-border near-full-viewport window, "esc to exit" always shown, Esc-only. First filed thin, enriched to full; Fable caught a stale "three cases" frontmatter (fixed to four).
+- **Ratification: revise PR #263 (v025) VERIFIED-correct + AUTO-MERGING on green.** `ratify-b4-b1` merged #259/#261, drove `/livespec:revise` accepting BOTH, and opened **#263** — which creates `SPECIFICATION/history/v025/`, applies the B4 §"TUI Contract" modal clause (verified line-by-line at `contracts.md:604-619`, incl. Global-actions + per-pane sections + "esc to exit"), the B1 §"Adapter Contract" honesty clause, Scenario 18, the 4 Scenario-13 blocks, the `tests/heading-coverage.json` co-edits, and the `crates/console-spec-check/src/tests.rs` co-edit, and consumes the proposed_changes queue to just README.md. Auto-merge ENABLED (rebase, on green). **⇒ NEXT SESSION, FIRST STEP: confirm #263 merged** — `git -C /data/projects/livespec-console-beads-fabro fetch origin master && git log --oneline -1 origin/master` shows the revise; `git ls-tree --name-only origin/master SPECIFICATION/history/ | tail` shows `v025`; `git ls-tree --name-only origin/master SPECIFICATION/proposed_changes/` is just README.md. **If #263 did NOT merge (CI red), open its checks (`gh -R thewoolleyman/livespec-console-beads-fabro pr checks 263`), fix the cause, re-enable auto-merge.**
+- **⇒ NEXT SESSION, THE WORK (once #263 is confirmed merged):** B1 + B4 **tmux-E2E-RED → impl-GREEN** using the now-merged #262 harness. B4 = write the failing E2E for Scenario 18 (hermetic; assert the modal window/menu/scroll/esc), then build the modal in `crates/console-tui/src/lib.rs` (replace `render_help_overlay`). B1 = write the failing E2E for the Scenario-13 refinements (hermetic stubs for idle/recovered/unreachable projection; a SEPARATE gated wrapper-backed live run for "real tenant → sources available"), then implement the 6/7-part source-resolution fix (fabro abs-path/env; livespec adapter → real `livespec next`; dispatcher abs-path journal + absent-is-idle; empty-vs-unreachable in orchestrator/github normalizers; latest-per-source projection / clearing event; persist the not-observed reason; + parameterize the github program `LIVESPEC_CONSOLE_GH_PROGRAM`). Each → two-repo live-verify. Then B2→B3→B5 (sequenced, same `console-tui/src/lib.rs`); B6/B7 docs (OTHER sessions hold `docs-console-tui-usage` / `console-release-pipeline` worktrees — coordinate, don't duplicate); B8 capstone (v0.2.0 binary download+run verified this session; the two-repo `/tmp` run + README de-gate remain).
+- **Worktree cleanup owed (next session, after confirming the merges):** reap the merged-PR worktrees `docs-tui-modal-help-propose` (#259 merged), `docs-b1-source-availability-honesty-propose` (#261 merged), `tmux-tui-e2e-harness` (#262 merged), and `revise-b4-b1` (once #263 merges). Use `just reap-stale-worktrees livespec-console-beads-fabro --dry-run` first. Do NOT touch `docs-console-tui-usage` / `console-release-pipeline` / `phase3-selfhosted-cutover` (other sessions'). All this session's sub-agents were stopped at wind-down.
+
+### RESUME — drive the program from the CONSOLE thread, not here
+Open **`livespec-console-beads-fabro:plan/cockpit-ux-docs-release/handoff.md`** and follow its RESUME ORDER: (1) deliverable #0 tmux harness; (2) B1 sources; (3) B2→B3→B5→B4 (sequenced — B4's spec is #259, enriched); (4) B6/B7 docs; (5) B8 capstone; backfill throughout; Stage-2 LAST. Each behavior: propose-change → independent Fable review → `/livespec:revise` → tmux-E2E-RED → impl-GREEN → two-repo live-verify.
+
+### Open flags
+- **Spec conflict:** console ratified `settings-doc-is-readme` (v024) vs B6 "all user docs → `docs/`, README only links" — resolve when B6 is drafted.
+- **Console `Cargo.lock` drift** on master `5753322` (workspace crates recorded `0.1.0` vs `0.2.0` in Cargo.toml) — housekeeping commit owed; any `cargo` build re-syncs it.
+- Cockpit TUI is live on the VERIFIED binary in tmux `console-autonomous-mode:2` (orch tenant), relaunched cont.22 from the primary checkout binary (rebuilt via `just build-release`).
+- Sub-agents this session (all read-only/idle, harmless): `mvp-reconcile`, `stage2-readiness` (stopped early per maintainer), `docs-modal-propose`, `reqs-rederive`, `enrich-259`.
+
+## SESSION UPDATE — 2026-07-17 (cont. 21): Stage-2 SELF-VALIDATION COMPLETE — found + FIXED a live-update regression (cockpit wasn't event-sourcing-live; then the first fix dropped keystrokes/broke move), all MERGED + LIVE-VERIFIED; entire new operator surface exercised live (selection, repeatable move, 3 cap overrides, approve, reject, Settings). ONLY the maintainer's `c` accept on `bd-ib-dqt` + the #246 release remain — both maintainer calls.
+
+### RESUME HERE — present to the maintainer for the final accept; then cut the release
+Self-validation is DONE (standing directive satisfied). Two maintainer-owned steps left:
+1. **Maintainer's final `c` accept on `bd-ib-dqt`** via the LIVE cockpit TUI — THE
+   Stage-2 acceptance. The cockpit may still be live in tmux `console-autonomous-mode`
+   window 2 (`orch`) on the verified binary; if not, relaunch fresh: rebuild
+   (`just build-release` in `/data/projects/livespec-console-beads-fabro`) then run
+   `with-livespec-env.sh -- <console>/target/release/livespec-console-beads-fabro serve`
+   FROM the orchestrator cwd (`/data/projects/livespec-orchestrator-beads-fabro`) so it
+   targets that tenant. `bd-ib-dqt` is in the acceptance lane. Present it; do NOT accept
+   it yourself (maintainer's step).
+2. **Merge release PR #246** (`livespec-console-beads-fabro`, release-please 0.2.0 — now
+   carries all the live-update fixes) to publish the standalone binary deliverable.
+
+Everything below cont.21 is prior-session history. The live-update work is 100% done +
+merged + verified — do NOT re-investigate it. Full detail + runbook:
+**`plan/autonomous-mode/research/stage2-live-tui-findings.md`**.
+
+### What the cockpit fix delivered (all MERGED to console master `261c5f6`, LIVE-VERIFIED)
+- Root cause: the cockpit rendered a projection frozen at startup (violated its own
+  Scenarios 2/3/11 live-update contract). Fix #255 (passive live-update) then shipped a
+  regression past 100%-green gates — the synchronous poll blocked the UI thread dropping
+  keystrokes (move didn't land) + a pre-existing move idempotency-key bug (omitted target).
+  Fix #258 (async poller thread + move idempotency distinguisher) resolved it.
+- LIVE-VERIFIED in the real cockpit: Bug A (live lanes on launch, no backfill); UI
+  responsive (prompt modals, 16 rapid keystrokes registered); async poller live-ingest
+  (external create reflected 36→37→36 live); MOVE lands + reflects live + REPEATABLY
+  (idempotency proven); approve `p` ✓; reject `r` ✓; all 3 cap overrides ✓; Settings ✓.
+- Follow-up filed: `livespec-console-beads-fabro-ble` (broaden idempotency-key audit to
+  set-admission/set-acceptance/set-override/resolve-blocked/reject). Non-blocking.
+- Meta-finding (for a systemic fix, non-blocking): the interactive loop is
+  `#[cfg]`-excluded from tests, so both regressions shipped past 100% coverage — see
+  findings doc "META-FINDING". The #258 fix added a loop-level move round-trip test.
+
+### VALIDATED LIVE this session (fresh binary, orch tenant, real ledger)
+- New surface present: `Settings` left-nav view; keys `s` move / `g`/`f`/`k` caps /
+  `p`/`c`/`r`/`m`/`n` valves / `space` select / `:` drain. All ten new drive
+  action-ids present in released orchestrator 0.43.0.
+- Individual selection ✓; ALL THREE per-item cap overrides SET+CLEAR ✓ (`f`
+  review-fix-cap→`review-fix-cap:5`; `g` merge-on-review-cap BOOL→`merge-on-review-cap:true`;
+  `k` acceptance-rework-cap→`acceptance-rework-cap:9`) — both int + bool modal paths;
+  broad move `s` (ready→backlog) ✓ — all landed live (verified via `bd show` /
+  `list_work_items.py`), item restored to `origin:freeform`/`ready`.
+- STILL TO VALIDATE (post-fix, need FILED throwaway items): `p` approve, `r` reject,
+  resolve-blocked; `c` accept reserved for maintainer's final step. Executable
+  runbook in the findings doc's "POST-FIX VALIDATION RUNBOOK" section.
+- FIX: sub-agent `console-live-update-fix` landed **DRAFT PR #255** (branch
+  `fix-cockpit-live-update`, worktree `~/.worktrees/livespec-console-beads-fabro/fix-cockpit-live-update`)
+  — `livespec-console-beads-fabro`. REVIEWED + APPROVED by driver (Bug A gate removed
+  in both `run_store_backed_tui_session`+`serve_report`; owned-`events` loop +
+  `refresh_events` seam + pure `should_poll_sources`/`effect_triggers_source_poll`
+  3s throttle w/ poll-after-mutating-effect; Scenarios 2/3/11 tests; `just check`
+  green). Bound to Scenarios 2/3/11 (conformance, NO spec change). Primary checkout
+  verified clean (agent's stray-edit was restored).
+  - ONE completeness fix REQUESTED (agent folding into same PR, task #4): add
+    `observe_and_reflect_autonomous_decisions` to `refresh_events` (it currently
+    re-ingests sources + needs-attention but NOT the auto-disposition reflection →
+    Events/journal stream stays stale mid-session). Cheap local-file read → run
+    every refresh.
+  - **#255 MERGED** (master 347906a; completeness fix folded in via
+    `refresh_ingest_sequence` shared by all 3 paths). Binary rebuilt + LIVE-EXERCISED:
+    **Bug A PASS** (first-launch lanes live, done 213, no manual backfill); **Bug B
+    passive PASS** (selection preserved across refresh). BUT live-driving found a
+    **REGRESSION** (why "done=exercised live" matters — tests exclude the loop):
+    - Interactive `s` MOVE via TUI does NOT land post-fix (modal opens/closes, item
+      unchanged, no move event in store; worked pre-fix). Caps `f`/`g`/`k` still land.
+    - UI laggy / keystrokes DROPPED: the SYNCHRONOUS source poll (every 3s + after
+      each mutating effect) blocks the event loop 1-3s, losing keystrokes. Likely ONE
+      root cause: blocking poll (and/or subprocess stealing PTY stdin) drops move's
+      confirm keystrokes. Full detail: findings doc "LIVE-EXERCISE" section.
+  - **FIX-FORWARD IMPLEMENTED + GREEN** (agent `console-live-update-fix` + its fork):
+    branch `fix-cockpit-tui-async-poll` off 347906a, commit **`17154dd`**, `just check`
+    EXIT=0 / 100% coverage, **NOT pushed yet**. Root cause was NOT stdin theft (agent
+    verified Rust `.output()` nulls child stdin) — it's the blocking synchronous poll
+    (UI thread doesn't `event::read` during the 1-3s shell-out → keystrokes queue late/
+    out-of-order) COMBINED with a pre-existing move idempotency bug (key omitted target
+    → re-moving an already-moved item deduped). Fix as-built:
+    - **Async poller thread** (plain `spawn`+join; poller owns its OWN SQLite connection
+      + adapters, only an mpsc `poll_rx` moves in → `Send`, no `Sync`/borrow issues).
+      UI thread's `refresh_events` = cheap re-list + every-frame local reflection (folds
+      #256) + NON-BLOCKING channel ping; never shells out. Two connections coordinated
+      via WAL + `busy_timeout=5000`. `Stdio::null()` kept (belt-and-suspenders).
+    - **Move idempotency** distinguisher = monotonic store command-count (NOT
+      `requested_at` — that's fixed per session). New tests incl.
+      `store_backed_repeated_moves_all_land_and_drive_the_move_action` (3 moves).
+    - **Deviation accepted:** other repeatable actions (resolve-blocked/set-admission/
+      set-acceptance/set-override/reject) still dedupe-after-first-within-session —
+      NON-blocking for Stage-2 (each done once); FOLLOW-UP filed to extend
+      `distinguish_repeatable_command`.
+  - **PR #258 LIVE-VERIFIED + marked READY (merging).** Built the worktree binary
+    (== commit `17154dd`) and re-exercised the real orch-tenant cockpit. ALL FIVE
+    checks PASS: (1) Bug A live lanes on launch; (2) UI RESPONSIVE — modals appear
+    promptly, 16 rapid Down presses all registered, no keystroke lag (the async poller
+    unblocked the UI thread); (3) async poller LIVE-INGEST — created `bd-ib-7zks`
+    externally, backlog went 36→37→36 live with no relaunch, live factory activity
+    reflected (`bd-ib-esxztq`→active, `bd-ib-98c.10`→acceptance); (4) MOVE lands +
+    TUI reflects live (`bd-ib-7zks` backlog→ready); (5) MOVE REPEATABILITY — second
+    move ready→backlog ALSO landed (idempotency fix proven; pre-fix would have
+    deduped). Throwaway `bd-ib-7zks` closed. #258 marked ready → CI runs → auto-merges
+    on green. Agent's line-by-line concurrency review = SOUND; #256 closed; follow-up
+    `livespec-console-beads-fabro-ble` filed (broader idempotency-key audit).
+  - **#258 MERGED** (console master `261c5f6`), primary refreshed, worktree reaped.
+  - **VALVE VALIDATIONS DONE (live, on the merged binary):** approve `p` ✓
+    (`bd-ib-tcar` pending-approval→ready), reject `r` ✓ (`bd-ib-tcar` acceptance→active
+    via rework mode — valve fired, state changed). Combined with move (repeatable) +
+    all 3 cap overrides + selection already validated live, the full valve MECHANISM
+    is proven end-to-end. resolve-blocked + set-admission `m` + set-acceptance `n` NOT
+    individually drilled (same effect→command→drive path, action-ids resolve) —
+    covered-by-mechanism; a fresh session/maintainer-accept pass can drive them live if
+    desired (resolve-blocked needs a needs-human-labeled block + its Attention trigger).
+    All Stage-2 throwaways created + closed; ledger clean.
+  - **REMAINING (only these left):** (1) **maintainer's final `c` accept on
+    `bd-ib-dqt`** via the live TUI — THE Stage-2 acceptance handoff (relaunch cockpit
+    from rebuilt primary binary: `just build-release` in the console checkout, run from
+    the orchestrator cwd); (2) **merge release PR #246** (release-please; carries all
+    the live-update fixes) to publish the standalone binary. THE COCKPIT IS NOW
+    LIVE-UPDATING + MOVE-USABLE + VALVE-DRIVABLE — self-validation is essentially
+    complete; present to the maintainer for the accept.
+  - **NEXT (fresh session):** review the fix-forward PR → merge → rebuild → re-exercise
+    (move MUST land via TUI; UI responsive) → remaining valve validations (approve/
+    reject/resolve-blocked per runbook) → maintainer final `c` accept on `bd-ib-dqt`
+    → merge #246 (release-please-managed; carries all fixes).
+  - Master carries the regression meanwhile (console = dogfooding tool, not prod);
+    revert of #255 is the fallback if the fix-forward stalls. FLAGGED to maintainer.
+
+### THE BUG — cockpit is a one-shot snapshot, not live (two code-level causes)
+- **Bug A** `crates/console-cli/src/lib.rs:395-401` — `run_store_backed_tui_session`
+  ingests source adapters (the `work_item.*` lane events) ONLY `if existing_events.is_empty()`
+  (first run); needs-attention is ingested unconditionally. So `serve` shows a stale
+  Lanes board (done 182 vs live 212; phantom closed items) while Attention is live.
+  The standalone `backfill` command has no such gate → a manual `backfill` refreshes it.
+- **Bug B** `crates/console-tui/src/lib.rs:140-174` — `run_terminal_loop` projects
+  every frame from the immutable `events` slice captured once at startup; its 250 ms
+  `event::poll` is keyboard-only. The effect sink appends the operator's action
+  outcomes to the store (`console-cli/src/lib.rs:292`) but the loop never re-reads
+  `store.list_console_events()`, so neither external ledger changes nor the operator's
+  own just-applied action appear until process restart. (Confirmed live: a move landed
+  in the ledger but the lane view kept showing the item in its old lane.)
+- **Fix:** loop must, on its poll cadence + after each applied effect, re-ingest
+  sources (kill Bug A's `is_empty` gate) → re-list store events → rebuild the model.
+  Needs the store + source ports + needs-attention threaded into `run_terminal_loop`.
+- **Why unnoticed across sessions:** the TUI never live-updates, so the last
+  `backfill`/first-run snapshot shows forever and reads as "live" — cont.20's own
+  driver reported the STALE numbers as "real items across all lanes."
+
+### ENV state (as-found)
+- `bd-ib-98c.10` restored to `ready` (I used the drive CLI to restore — the stale TUI
+  view couldn't compute the correct second move). No throwaway items created.
+- Orch-tenant console TUI running in tmux `console-autonomous-mode:2` (`orch` window),
+  fresh binary `livespec-console-beads-fabro/target/release/livespec-console-beads-fabro`
+  (from console master 14ec65d), launched `with-livespec-env.sh -- <binary> serve` from
+  the orchestrator cwd. Interim refresh workaround: quit → `backfill` → relaunch.
+- Live orch ledger: backlog 35 / pending-approval 0 / ready 1 (`bd-ib-98c.10` throwaway) /
+  acceptance 1 (`bd-ib-dqt` throwaway) / blocked 8 (real needs-human) / done 212.
+- Console release PR **#246** (0.2.0) still OPEN/pending — cut AFTER Stage-2.
+
 ## SESSION UPDATE — 2026-07-17 (cont. 20): THE ENTIRE MVP BUILD IS COMPLETE — orchestrator + console halves all merged + spec-ratified through rigorous independent Fable/code review; ONLY Stage-2 (hands-on live-TUI validation + maintainer acceptance) remains
 
 ### RESUME HERE — only Stage-2 is left; everything else is built, reviewed, merged
