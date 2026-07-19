@@ -9,6 +9,32 @@ A **foundational / upstream** repo must NEVER contain a check, tool, or read
 that reaches INTO a **downstream consumer** of it. Doing so creates a circular
 dependency: `upstream → downstream → upstream`.
 
+## Scope — CODE AND ARTIFACTS ONLY, never work-items
+
+**This directive governs code and hard dependencies: checks, tools, gates,
+file reads, imports, clones, and pinned artifacts that live in a repo and run
+in its CI.** It does NOT govern **work-items / ledger (beads) records**, and it
+never has. Maintainer-clarified 2026-07-19, after a session wrongly cited it to
+avoid linking a cross-tenant epic.
+
+The ledger is a **planning tool**. A dependency between two work-items is a
+statement that one piece of work genuinely blocks or contains another —
+a fact about the work, not a build-time coupling. **Work-item dependencies may
+point in EITHER direction across repos whenever that dependency actually
+exists**, including from an upstream repo's item to a downstream repo's item.
+Linking them creates no cycle: no CI job clones anything, no build resolves
+anything, nothing fails at runtime because an edge points "the wrong way."
+
+So: an epic in `livespec` core MAY carry children in `livespec-dev-tooling`
+(upstream) and `livespec-console-beads-fabro` (downstream) simultaneously, and
+those edges may be modelled in whichever direction reflects the real
+relationship. Do not contort a cross-repo epic, and do not fall back to
+citing ids in prose, to satisfy a rule that was never about planning records.
+
+The test below is a CI test for a reason — *"would the upstream repo's CI have
+to clone the downstream repo?"* A ledger edge answers "no" trivially, which is
+the tell that it is out of scope.
+
 The canonical upstream repo is **`livespec-dev-tooling`** (the shared
 enforcement suite every fleet repo consumes), and **`livespec` core** (the
 contract + templates). The orchestrator, the console, the Drivers, and every

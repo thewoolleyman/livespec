@@ -74,9 +74,20 @@ reason, not two statuses), because they carry no autonomy tier yet — the same
 posture as `livespec-dev-tooling-adqmnm`, whose description ends "Autonomy
 tier at groom." Each needs a grooming pass before it can be dispatched.
 
-Only `livespec-xw65el` carries a mechanical `parent-child` edge to the epic.
-The other three are in different beads tenants and cite the epic textually —
-see the open question below.
+All four are mechanically linked to the epic, in two different ways because
+beads edges do not span tenants:
+
+- `livespec-xw65el` (same tenant) — a native beads `parent-child` edge, so it
+  renders indented under the epic in `bd list`.
+- The other three (other tenants) — typed `sibling_work_item` entries in the
+  EPIC's `depends_on`, riding in beads metadata under `non_local_depends_on`
+  and resolved by livespec's cross-repo layer. Core's `.livespec.jsonc`
+  `cross_repo_targets` declares both tenants so the refs resolve.
+
+The directions differ (child→epic for the local edge, epic→children for the
+sibling refs) purely because of that tenant boundary; both are correct. Per
+`.ai/no-circular-dependency.md` §"Scope", direction carries no
+circular-dependency significance for ledger records.
 
 ## Pre-existing items this thread absorbs
 
@@ -128,33 +139,34 @@ tenants and a bare suffix cannot be turned into a command.
    `livespec-dev-tooling-u0x`, `livespec-o0x1`, `livespec-p9s0` as the sweep's
    findings rank them.
 
-## Open questions this thread owes the maintainer
+## Decisions taken (all three open questions RESOLVED 2026-07-19)
 
-1. **Cross-tenant epic links.** Three of the four children live in other beads
-   tenants, and beads `parent-child` edges do not span tenants. The typed
-   `sibling_work_item` dependency kind exists in `livespec_runtime`'s
-   cross-repo types and would express it, but it requires the target repo to
-   be a key in the citing repo's `.livespec.jsonc` `cross_repo_targets` —
-   and core currently declares only `livespec` and
-   `livespec-orchestrator-git-jsonl`. Adding `livespec-dev-tooling` there has
-   a **No-Circular-Dependency dimension** (`.ai/no-circular-dependency.md`):
-   the natural edge direction is child→epic, i.e. an upstream repo's item
-   referencing a downstream consumer's, which is the direction the directive
-   forbids. Inverting to epic→children keeps the reference pointing upstream
-   and may be the correct modeling. NOT resolved — deliberately left for the
-   maintainer.
-2. **Store-wrapper gap (candidate for `.ai/beads-gaps-workarounds.md`).**
+1. **Cross-tenant epic links — LINK THEM, in whichever direction is true.**
+   An earlier draft of this handoff withheld these links, citing a
+   No-Circular-Dependency concern. **That was a misapplication of the
+   directive** and the maintainer corrected it: `.ai/no-circular-dependency.md`
+   governs CODE and hard dependencies — checks, tools, reads, clones, pinned
+   artifacts — NOT work-items. The ledger is a planning tool; a work-item
+   dependency states that one piece of work genuinely blocks or contains
+   another, and it may point in EITHER direction across repos when that
+   relationship is real. No CI clones anything because of a ledger edge, so no
+   cycle exists. The directive now carries an explicit scope section saying so.
+   Do not re-raise this.
+2. **Store-wrapper defect — FILED against the orchestrator plugin.**
    `append_work_item` hardcodes `--type blocks` for every `depends_on` entry,
    but beads rejects a task blocking an epic ("tasks can only block other
-   tasks, not epics"). So the wrapper CANNOT file a child linked to an epic in
-   one call — the item is created, then the edge fails, leaving a partially
-   linked record. Worked around here by filing without `depends_on` and adding
-   the `parent-child` edge with a direct `bd dep add`. This is a genuine
-   upstream-liftable gap.
-3. **Re-scoping `livespec-o0x1`.** Its acceptance criteria are written
-   narrowly for the `canonical-slugs.yml` instance, but the defect is the
-   whole (a)-class. Re-scope it to the class, or keep it narrow and let the
-   sweep file siblings — a judgment call, unresolved.
+   tasks, not epics"), so the wrapper creates the item and THEN fails the edge,
+   leaving a partially-linked record. It is our wrapper's defect, not a beads
+   gap — beads' restriction is a legitimate upstream constraint the wrapper
+   fails to accommodate — so it is filed in the
+   `livespec-orchestrator-beads-fabro` tenant, which owns the wrapper, rather
+   than catalogued in `.ai/beads-gaps-workarounds.md`. Workaround until fixed:
+   file without `depends_on`, then add the edge with a direct
+   `bd dep add <child> <epic> --type parent-child`.
+3. **`livespec-o0x1` stays NARROW** — its acceptance criteria remain specific
+   to the `canonical-slugs.yml` instance until `livespec-xw65el`'s sweep
+   reveals how many (a)-class instances actually exist. Deliberately not
+   generalized ahead of the data; revisit once the sweep lands.
 
 ## What could invalidate the plan
 
