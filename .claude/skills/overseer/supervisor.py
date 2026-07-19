@@ -2595,12 +2595,14 @@ class Supervisor:
                 except KeyboardInterrupt:
                     self._log("interrupted; exiting")
                     return
-                # The daemon's OUTERMOST bug-catcher boundary — the one place the
-                # fleet's Result-railway discipline sanctions a blanket catch. A bug
-                # in one track's tick must not take the whole daemon down and strand
-                # every OTHER track it is supervising, so the traceback is logged in
-                # full and the loop continues to the next tick.
-                except Exception:  # noqa: BLE001 — outermost supervisor boundary
+                # The daemon's per-iteration resilience catch: a bug in one track's
+                # tick must not take the whole daemon down and strand every OTHER
+                # track it is supervising, so the traceback is logged in FULL and the
+                # loop continues to the next tick. It never exits — that is what
+                # makes it a loop-iteration catch rather than a supervisor boundary.
+                # The marker wording is one of the five standardized forms; `sole`
+                # here scopes to this supervision loop.
+                except Exception:  # noqa: BLE001 — sole loop-iteration bug-catcher: log traceback, continue
                     self._log("tick error (continuing):\n" + traceback.format_exc())
                 if once:
                     return
