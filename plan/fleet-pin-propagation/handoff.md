@@ -180,6 +180,47 @@ Linked but NOT owned: `livespec-dev-tooling-9j8.6` (CI-logic extraction epic —
 this thread depends on it, must not absorb it), `livespec-dev-tooling-q9a`
 (CI-matrix hygiene, not pin propagation).
 
+### ⚠ The `livespec-dev-tooling-9j8.6` dependency is OPEN, and it collides with four queue items
+
+Verified 2026-07-20. Two traps here, one about status and one about sequencing.
+
+**Do not read the parent epic's status as the dependency's status.** The parent
+`livespec-dev-tooling-9j8` is **CLOSED**, but `livespec-dev-tooling-9j8.6` is
+**`backlog`** — still open. The epic's closure is deliberate and correct, not a
+ledger defect: its close reason reads *"Planning lane archived; remaining
+implementation/gate work stays tracked as child ledger items."* So checking the
+epic and concluding "the dependency is satisfied" is wrong at the wrong level.
+Seven of that epic's nine children are still `backlog`.
+
+**The collision.** `livespec-dev-tooling-9j8.6` extracts untested logic out of
+exactly the files this thread's fixes must edit:
+
+- `reusable-pin-freshness.yml:124-168` — the awk ordinal-distance staleness compare
+- `reusable-release-dispatch.yml:101-134, 204-237` — manifest curl + comment-strip
+  + **`.fleet // .members` array build**, dispatch payload, `gh api`, http-status
+  soft-fail branching
+
+Four queue items land in that same code:
+
+| Queue item | Touches |
+|---|---|
+| `livespec-dev-tooling-q37xxt` | fan-out close-superseded logic |
+| `livespec-dev-tooling-y6kqgr` | fan-out dedupe against open PRs |
+| `livespec-dev-tooling-f5or5c` | the release-dispatch matrix (the "excludes this repo" line) |
+| `livespec-bg47fr` | **the `.fleet // .members` array build itself** |
+
+`livespec-bg47fr` is the sharpest case: adopters never receive a dispatch
+*because* the matrix is built from `.members`, and that array build is a named
+extraction target of `livespec-dev-tooling-9j8.6`. Implementing the adopter fix
+in shell first and extracting afterward is either double work or a silent drop of
+the change during extraction.
+
+**Recommendation for grooming (a sequencing call, still the maintainer's):**
+decide `livespec-dev-tooling-9j8.6`'s position relative to these four BEFORE
+cutting any of them. Extracting first means the fixes are written once, in tested
+Python. Fixing first means writing them twice. The one thing to avoid is cutting
+them without making the choice at all.
+
 ## ⚠ TWO SESSIONS ARE IN THIS EPIC — read before dispatching anything
 
 A second session groomed `livespec-xw65el` into three replacement slices
