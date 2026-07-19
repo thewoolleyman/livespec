@@ -34,18 +34,42 @@ enforcement would repeat the error this thread exists to correct.
 Nothing is in flight. No branch, no worktree, no pull request belongs to this
 thread yet.
 
-Recommended first move is **layer 1**, the session-end check — it is the only
-layer that would have prevented the incident, and it avoids the spec lifecycle
-entirely if scoped local-only.
+Recommended first move is **layer 1**, the session-end check. A 2026-07-19
+investigation reshaped what that means; read `design.md` §"A `Stop` hook already
+ships, already ran, and encodes the root cause" and §"The home question has a
+third answer, and it is coupled to the posture" before estimating anything.
 
-Two constraints will waste a session if discovered late. Both are detailed in
-`design.md` §"Constraints that will waste a session if discovered late":
+**Layer 1 is not a greenfield build.** The Claude Driver bundle already
+registers two `Stop` hooks, and one of them —
+`warn_plan_persistence.py`, whose stated purpose is "completion includes
+persistence" — fired at the end of the session that lost the handoff and emitted
+nothing, because `:155` early-exits the moment any `Write` appears in the turn.
+The root-cause conflation this thread names is encoded in shipped code at that
+line. The hook is correct as specified; its contract stops at *written*. Not a
+Driver bug.
 
-- **Layer 1's cost turns on a question that is NOT settled**: a hook shipped in
-  the Driver bundle requires a propose-change cycle
-  (`SPECIFICATION/contracts.md:242`), while a livespec-core-local hook in
-  `.claude/settings.json` does not. Settle local-versus-Driver BEFORE estimating.
-  The recommendation is local-only first.
+**One decision, not two.** Home and posture looked independent and are not:
+
+| Home | Posture available | Spec cycle | Repos covered |
+|---|---|---|---|
+| `livespec_dev_tooling.agent_hooks` | free — blocking already shipped there | none | 7 (wired in each committed `.claude/settings.json`) |
+| Driver bundle | WARN-only by contract | yes, incl. any posture change | all governed repos |
+| livespec-core-local | free | none | 1 |
+
+**The recommendation flipped to blocking, in `livespec_dev_tooling.agent_hooks`.**
+A WARN-only Stop hook lets the session end, so nothing commits the file — it
+cannot produce this thread's outcome. Only exit `2` hands control back while the
+authoring session can still act. The trap risk that argued for surface-only is
+already solved in-fleet: `subagent_stop_guard` blocks with exit `2`, caps at
+three blocks per session, and fails open on every error path. Both superseded
+recommendations are struck and annotated in `design.md`, not deleted.
+
+Still open, and a genuine maintainer call: **which home** (the table above), and
+whether the existing plan-persistence contract should be widened in the same
+pass or left alone.
+
+One further constraint will waste a session if discovered late:
+
 - **Layer 2 is a spec change** carrying an unsettled slug rename, and a red
   `doctor-static` obstructs it: propose-change runs doctor static at both its
   pre-step and its post-step, and `--skip-pre-check` suppresses only the
