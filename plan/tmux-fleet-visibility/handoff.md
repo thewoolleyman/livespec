@@ -1,8 +1,10 @@
 # Handoff — tmux-fleet-visibility
 
 **Thread**: `plan/tmux-fleet-visibility/` (repo `livespec`).
-**Ledger epic anchor**: NOT YET ANCHORED — Phase 0 anchors it.
-**Status**: OPEN, not started. Authored 2026-07-19.
+**Ledger epic anchor**: `livespec-l4g7wi` (livespec tenant; filed 2026-07-19,
+routed `backlog` — epic-shaped, driven from this plan track, not dispatched).
+**Status**: OPEN — Phase 0 complete 2026-07-19, gate PASSED (see "Phase 0
+execution record" at the end of this file). Next: Phase 1. Authored 2026-07-19.
 
 **Supersedes**: the **L1 environment-inversion layer** of
 [`plan/archive/tmux-fleet-kill-prevention/`](../archive/tmux-fleet-kill-prevention/handoff.md)
@@ -450,10 +452,11 @@ rewrite history):
 
 ## Definition of done
 
-- [ ] Ledger epic anchored; id recorded at the top of this file.
-- [ ] All three guards verified loading, classifying, and **firing** in install
+- [x] Ledger epic anchored; id recorded at the top of this file.
+      (`livespec-l4g7wi`, 2026-07-19)
+- [x] All three guards verified loading, classifying, and **firing** in install
       shape (payload-only), and the install-shaped test confirmed green in both
-      Driver repos.
+      Driver repos. (2026-07-19 — see "Phase 0 execution record")
 - [ ] No spawn path in `livespec` emits `unset TMUX` or `TMUX_TMPDIR`; a test
       asserts their absence.
 - [ ] `plan/plan-thread-integrity/design.md:120` dependency resolved, either way,
@@ -482,3 +485,52 @@ rewrite history):
    keep breaking any alias pointing at a single-underscore function, in any plugin,
    on any host. Removing this plugin fixes the instance, not the class. Worth
    reporting upstream; out of scope for this thread.
+
+---
+
+## Phase 0 execution record (2026-07-19)
+
+Executed per the phase text above; the gate **PASSED** on every leg. All
+probing was payload-only (standing rule 2): commands traveled exclusively as
+JSON strings on each guard's stdin or as file-carried inert probes — nothing
+hazard-shaped was executed at any point.
+
+1. **Epic anchored**: `livespec-l4g7wi` (livespec tenant), type `epic`,
+   routed `backlog` by the intake Definition-of-Ready checklist (epic-shaped —
+   the expected routing for a plan-thread anchor). Description cross-references
+   `livespec-yiycvd` as superseded-in-part.
+2. **Install-shape classification** — each guard's full stdin/stdout hook
+   boundary driven as a subprocess under bare `python3` with `PYTHONPATH`
+   cleared, against the host guard's committed 100-case corpus (63 block +
+   37 allow), from the INSTALLED artifacts:
+   - host `~/.claude/hooks/tmux-fleet-guard.py` — 63/63 + 37/37, 0 errors;
+   - Claude Driver v0.4.4 (installed revision `0896984e7c08`) — 63/63 +
+     37/37, 0 errors;
+   - Codex Driver v0.5.4 (`~/.codex/plugins/cache/.../0.5.4`) — 63/63 +
+     37/37, 0 errors;
+   - **0 cross-guard disagreements** over the whole corpus.
+3. **Firing proofs** (standing rule 6 — inert payloads, each denied for a
+   reason whose failure mode is harmless; the three deny texts are distinct,
+   so the surfaced reason identifies which guard fired):
+   - **Claude Driver**: a live in-session Bash call (an inert unquoted-mention
+     `echo` probe, denied by the classifiers' documented over-blocking bias)
+     was denied carrying the Driver's `_DENY_REASON` text.
+   - **Host**: the same file-carried probe run from a headless `claude -p`
+     session in a NON-governed cwd (Driver plugin not loaded there) was denied
+     carrying the HOST guard's distinct reason text — isolating the user-scope
+     hook as the firing guard.
+   - **Codex Driver**: `codex exec` in a throwaway scratch repo attempted the
+     archive recipe's probe (a `--no-verify` commit — inert there) and was
+     `PreToolUse Blocked` by `livespec_footgun_guard.py (livespec-driver-codex)`,
+     the same entry file that carries the tmux classifier; no commit landed.
+     This transitively proves the `[hooks.state]` trust is valid for the
+     current `hooks.json` — an untrusted hook is silently skipped and would
+     not have denied.
+4. **Install-shaped tests**: `tests/hooks/test_shipped_hooks_install_shape.py`
+   present and green at the origin/master tip of BOTH Driver repos
+   (`livespec-driver-claude`: 104 passed; `livespec-driver-codex`: 102
+   passed). Content verified to actually stage the packaged-subtree-only cache
+   layout under a bare interpreter with a sandbox assertion that `returns` is
+   unimportable.
+
+Phase 1 may proceed.
