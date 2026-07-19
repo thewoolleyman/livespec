@@ -86,7 +86,97 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
-## ▶ START HERE — updated 2026-07-19 (cont. 7 COMPLETE)
+## ▶ START HERE — updated 2026-07-19 (cont. 8)
+
+## ▶▶ READ THIS FIRST — where the track actually stands
+
+**The original epic is DELIVERED.** CI and the Fabro sandbox run the SAME image
+across all 8 fleet repos, and the pin that keeps them aligned is now discovered and
+fan-out-reconciled automatically. Nothing on the original plan is outstanding.
+
+**What remains is a family of THREE defects found while live-verifying that
+delivery.** Two are fixed, one is in flight. They are recorded here because the
+story is the useful part: a 16-release drift survived DAILY GREEN freshness runs
+because three independent failures compounded, and any one of them alone would have
+been enough to hide it.
+
+### The three compounding defects — the important context
+
+| Item | What it was | State |
+|---|---|---|
+| `livespec-dev-tooling-5r3` | The fan-out excludes the publishing repo (so a release does not echo back), which means the producer's OWN pins are structurally unreachable by dispatch. Nothing reconciled them, ever. | **Contract RATIFIED** (v027, PR #464). **Implementation NOT built.** |
+| `livespec-dev-tooling-p73` | The freshness scan collapsed every record for a source to ONE representative (`.[0].current_value`), so a source whose first record was fresh emitted nothing even when its other pins were stale. | **FIXED** — PR #462 merged, master green |
+| `livespec-dev-tooling-ews` | The scan's ordinal-distance capture was corrupted by SIGPIPE, so a stale pin was SILENTLY never flagged while the workflow reported success. | **Fix in flight** — PR #465, 60/60 `just check` green, auto-merge armed |
+
+**`ews` in one paragraph, because it is the subtle one.** The scan piped the release
+list into an `awk` that `exit`ed at the match, with a `|| echo "$STALENESS_THRESHOLD"`
+fallback. The early exit SIGPIPEd `gh`; under `set -o pipefail` that made the whole
+PIPELINE non-zero, so the fallback ALSO ran and the command substitution captured
+BOTH values (`"9\n1"`). The `(( ordinal_distance >= STALENESS_THRESHOLD ))` then
+syntax-errored, evaluated FALSE, and dropped the stale source. The failure mode is
+INVERTED FROM SAFE: the early exit only fires when the tag IS found — the normal
+stale case the scan exists to catch — while the paths that still worked are the ones
+returning earlier ("already current", "could not query"). Hence green runs,
+reassuring per-source notices, and no bump PR. Observed live in run
+**29680040360** and reproduced locally byte-exact. **A small-input repro does NOT
+show it** — the producer must still be writing when the consumer exits, which is why
+it survived original review.
+
+### ▶ NEXT ACTIONS, in order
+
+1. **Confirm PR #465 merged and its master run is green.** It was 33-pass /
+   26-pending / zero-fail with auto-merge armed at handoff time. If it went red,
+   that is the first thing to fix — it is a P1 and the freshness net stays broken
+   until it lands.
+2. **Implement `livespec-dev-tooling-5r3`** — the one substantive piece of work
+   left on this track. The CONTRACT is ratified and on master
+   (`SPECIFICATION/contracts.md` §"Self-hosting", `history/v027/`); the CODE does
+   not exist. Read the ratified §"Self-hosting" text first — it is the
+   specification for what to build. Summary of what it now requires:
+   - On publishing a release, this library MUST rewrite its OWN occurrences of
+     every SELF-SOURCED pin to the released tag and open an auto-merge
+     `chore(deps):` bump PR, using the same rewrite machinery as the dispatch path.
+   - **Two formats are self-sourced**, and BOTH are in scope: (i) the fabro-sandbox
+     image tag in `ci.yml` (currently `python-v0.43.2`, 16 releases behind), and
+     (ii) FOUR `uses:` refs into this library's own reusable workflows —
+     `release-dispatch.yml`, `bump-pin-from-dispatch.yml`, `pin-freshness.yml`,
+     **and `release-park.yml`** (currently `v0.46.5`, 8 behind). Verify the live set
+     with `pin_autodiscovery.discover(source_repo="livespec-dev-tooling")` rather
+     than trusting this list.
+   - **Ordering matters for the image pin ONLY**: it must not run before the
+     released image exists, or CI gets pinned to an unpushed tag. A `uses:` ref has
+     no such constraint (the tag exists at publish).
+   - It cannot recurse: the output PR is `chore:`, which cuts no release.
+   - **Recommended shape** (option (a) from the work-item): a job in
+     `.github/workflows/fabro-sandbox-image.yml` with `needs: build`, gated to
+     `github.event_name == 'release'` — `needs: build` is what makes the
+     image-exists ordering hold structurally rather than by hope. Reuse the
+     `.github/actions/bump-pin-rewrite` composite Action; do NOT hand-roll a second
+     rewrite path.
+   - **Do NOT hand-bump the stale pins as a shortcut.** A manual bump re-rots on
+     the next release, which is precisely the bug this family exists to end.
+3. **Non-blocking, maintainer-owned:** `livespec-dev-tooling-4j3` (P3 —
+   release-please bumps `pyproject.toml` but not `uv.lock`, so every `uv run`
+   dirties a clean checkout; `livespec-console-beads-fabro` has the IDENTICAL stale
+   `Cargo.lock` issue, so fix both together, recommended via a release-please
+   post-bump re-lock).
+
+### Method note worth carrying forward
+
+Both `p73` and `ews` lived in UNTESTED workflow bash, and both were found by RUNNING
+things rather than reading them — `p73` from a live sweep's job list, `ews` from a
+syntax error buried inside a run that reported success. Both fixes moved the logic
+OUT of bash into tested Python (`livespec_dev_tooling/cross_repo/pin_staleness.py`),
+following the repo's own `fabro_image_pin_rewrite` precedent ("extracted from the
+embedded heredoc, now behind a tested surface"). **The remaining untested shell in
+`reusable-pin-freshness.yml` is where to look for the next one.**
+
+Also: every proposed change on this track went through the mandatory independent
+Fable review, and it found real blockers EVERY time — including one draft that would
+have shipped a self-contradicting contract, and one that would have left four pins
+ungoverned. Do not treat that review as ceremony.
+
+---
 
 ## ✅ RESULT — cont. 7 is DONE. Both released follow-ups LANDED and live-exercised.
 
