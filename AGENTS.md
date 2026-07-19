@@ -927,6 +927,10 @@ contract diagram) and their rationale live in
   SUPER, deliberately confined to one dedicated `backup`@localhost user; tenant
   users intentionally lack it. Backups run hourly via the systemd
   `dolt-backup.timer` — never treat tenant-level backup denial as a bug or blocker.
+- **Default tmux socket is maintainer-owned.** Never run tmux cleanup against the
+  default socket namespace. Scratch tmux servers MUST use an explicit `-L <name>`
+  or `-S <path>`, and `tmux kill-server` MUST NOT be run unless that same command
+  is scoped with `-L` or `-S`.
 - **`tmp/` is maintainer-owned scratch.** Never `rm` it or assume it's
   disposable; put agent/tooling scratch under a scoped subdir (e.g.
   `tmp/bootstrap/`). Don't codify the `tmp/` convention into `SPECIFICATION/`.
