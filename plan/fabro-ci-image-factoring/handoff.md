@@ -153,11 +153,11 @@ tally, which is the quickest check that you are seeing the whole set.
 | Child | Real status |
 |---|---|
 | `livespec-3lev.1` P-host | **OPEN, legitimately.** Gating role DISCHARGED per the 2026-07-12 correction, but exit criteria (live resource-health trigger, runner-liveness alert, cache budget/prune) are unmet, and the trigger needs a maintainer decision on an alert destination. |
-| `livespec-3lev.3` Phase 0 | **OPEN.** Substantially delivered — the HARD dual Fable+Codex security gate was genuinely honored (4 rounds, PASSED round 4, recorded in `phase0-runner-containment-design.md`), 6 runners registered, shadow lane green 2026-07-14. Blocked on two ambiguities: **no execution record for the 6 isolation exit-tests** (the security-relevant half), and 6 runners vs the specified ~18. Shadow lane has not run since 07-14. |
+| `livespec-3lev.3` Phase 0 | **OPEN**, but the security half is now PROVEN. The HARD dual Fable+Codex gate was genuinely honored (4 rounds, PASSED round 4). **Isolation exit-tests RUN 2026-07-19 against the current image: 14 pass / 0 fail / 3 skip** — see below. Remaining: 6 runners vs the specified ~18 (which is intended?), and the shadow lane has not run since 07-14. |
 | `livespec-3lev.4` Phase 1 | ✅ **CLOSED 2026-07-19** — every deliverable verified against `origin/master`. Its `blocks` edge from `.1` was a stale proxy and was REMOVED (not `--force`d). Codex lockstep designed away (version-less adapter); Rust lockstep relocated → filed as `livespec-console-beads-fabro-mcj`. |
 | `livespec-3lev.5` Phase 2 | **OPEN.** Disposition table + in-image CI done; the local-runner cutover is not. Now a maintainer DECISION, not implementation: flip `CI_RUNNER_LABELS`, or narrow the exit criterion to same-image-parity-on-hosted and close. |
 | `livespec-3lev.6` Phase 3 | **OPEN.** Image half fully delivered — 8/8 members pinned, green, and now AUTO-reconciled (`xb7` + `5r3`). Local-runner half 0/8; resource signal not live. |
-| `livespec-3lev.7` Phase 4 | **GENUINELY OUTSTANDING.** No adopter work-items filed in `openbrain` / `resume`. |
+| `livespec-3lev.7` Phase 4 | **FILING DONE 2026-07-19** → `openbrain` `ob-4oku`. Scope correction: **`resume` has nothing to convert** (no `.fabro/workflows` at all; same for `homelab`), so only `openbrain` is a real Fabro consumer. Remaining is a maintainer POLICY decision — see below. |
 | `livespec-3lev.8` Phase 5 | **GENUINELY OUTSTANDING** — the epic's own closing measurement gate. |
 
 **DO NOT ARCHIVE THIS THREAD.** Phases 4 and 5 are real remaining scope.
@@ -230,6 +230,67 @@ self-sourced pins with the `python-` layer prefix preserved, that PR merged, and
 `livespec-fabro-sandbox:python-v0.50.1` read from the job log rather than inferred
 from a green tick. See "THE COMPLETED LOOP" below for the full chain.
 
+### Phase 0 isolation — PROVEN on the live host (2026-07-19)
+
+Ran `livespec-dev-tooling/ci-runner/isolation-exit-tests.sh` against the current
+image. **14 pass / 0 fail / 3 skip.** The claims this phase exists to *prove*
+rather than design now have evidence: `ci-runner` is in no privileged group and
+has no sudoers entry; cannot read `/var/lib/doltdb` or the 1Password
+`.env.local`; `sudo -n` denied; no `docker.sock` in the job container; podman
+rootless with container-root mapping to host uid 1001 (not root); apparmor
+sysctls `=1`; runtime not setuid; all host-loopback denied; no self-hosted job
+reachable from a forbidden trigger; cache writes confined to a throwaway upper
+layer; agent PID-ns isolated with no runner creds in the job filesystem.
+
+**The 3 skips are not incidental — TWO are blocked by the goal-2 decision.** T5
+(no Kind-2 secret in a live job env; `GITHUB_TOKEN` read-scoped) needs a job that
+has ACTUALLY MOVED to the local runner, and T6 needs a real external fork PR.
+With `CI_RUNNER_LABELS = ["ubuntu-latest"]` fleet-wide, no job has moved, so T5
+**cannot run by construction**. Isolation is verified as far as it can be while
+the lane is off; both unblock automatically if goal 2 is flipped. The third skip
+(T10's forged-mount sub-check) is a missing node/hook, independent of that.
+
+**Running it found a real bug, now fixed** (`livespec-dev-tooling` PR #476,
+merged): the suite hardcoded its image at `python-v0.43.2` while the repo ran
+`python-v0.50.1` — seven releases stale. Since the default only applies when
+`LIVESPEC_CI_RUNNER_IMAGE` is unset, an unparameterized run tested a **stale
+artifact and still printed a clean summary** — the one failure mode a containment
+suite must not have, because "14 pass" on the wrong image looks exactly like
+proof. It now DERIVES the tag from this repo's `ci.yml` pin, which the
+`self-reconcile-pins` job keeps current, so it cannot re-rot; it fails loud
+rather than falling back to a literal, and echoes the resolved image at startup.
+
+### Phase 4 — filed, with a scope correction
+
+Adopter state, measured via the GitHub API rather than assumed:
+
+| Repo | Ledger | `.fabro/workflows` | Sandbox pin | `livespec-sibling` topic |
+|---|---|---|---|---|
+| `openbrain` | yes | `implement-work-item` | `sha-ea684ad` — **PRE-LAYER-SPLIT** | **none** |
+| `resume` | yes | **none** | n/a | none |
+| `homelab` | yes | **none** | n/a | none |
+
+**`resume` has nothing to convert**, contrary to this child's title — no
+`.fabro/workflows` at all, so no pin and no conversion. Same for `homelab`. Only
+`openbrain` is a real Fabro consumer, so only it got a work-item (`ob-4oku`).
+Amend the child's title rather than leaving a work-item implied for a repo that
+needs none.
+
+`openbrain`'s pin **cannot self-heal**, for three independent reasons each
+sufficient alone: no `livespec-sibling` topic (it has NO topics, so the fan-out
+never discovers it), no `bump-pin-from-dispatch.yml` shim (nothing would receive
+a dispatch), and no `pin-freshness.yml` shim (the safety net does not run there).
+No release-driven path AND no scheduled fallback. Its `ci.yml` also carries zero
+sandbox references, so the epic's CI-equals-sandbox guarantee does not hold there
+though it now holds for all 8 fleet repos. The old tag IS still pullable, so this
+is latent rot, not an outage — and `openbrain`'s own `ob-nfwa` (factory dispatch
+broken since 2026-07-03) means a bump there **cannot be live-exercised** until
+that clears.
+
+This is structurally the same bug class as `5r3`: a pin no dispatch can reach.
+`5r3` was the producer, excluded from its own fan-out matrix by design; adopters
+are the mirror image, excluded by never having been enrolled.
+
 ### ▶ NEXT ACTIONS, in order
 
 **`livespec-3lev.4` is already done** (closed 2026-07-19). The rest, in order:
@@ -247,18 +308,23 @@ from a green tick. See "THE COMPLETED LOOP" below for the full chain.
      headline value is already banked either way.
    Everything downstream reads differently depending on this answer, so it is not
    a decision to defer while doing 2–4.
-2. **`livespec-3lev.3` — resolve two ambiguities.** (a) The **6 isolation
-   exit-tests have no execution record.** That is the security-relevant half of
-   Phase 0 — the proof that the runner user cannot read the Dolt tenant password,
-   the 1Password token, the GitHub App key, or the runner registration credential.
-   Either find the evidence and journal it, or run them. (b) 6 runners are
-   registered against a specified ~18: confirm which number is intended. Also
-   decide the shadow lane's cadence — it has not run since 2026-07-14, and a
-   shadow lane that stops running stops shadowing while still LOOKING like coverage.
-3. **`livespec-3lev.7` — Phase 4, adopter work-items.** File ready conversion
-   work-items in the `openbrain` and `resume` ledgers. Note per
-   `.ai/adding-an-adopter.md` that onboarding is END-USER work in the adopter repo;
-   what this child owns is FILING the work-items, not performing the conversion.
+2. **`livespec-3lev.3` — two questions left, both small.** The isolation evidence
+   is now SUPPLIED (14/0/3, above), so what remains is: (a) **6 runners registered
+   vs the specified ~18** — confirm which is intended, since the item text and the
+   host disagree and neither is self-evidently right; (b) **the shadow lane's
+   cadence** — it has not run since 2026-07-14, and a shadow lane that stops
+   running stops shadowing while still LOOKING like coverage. Note T5/T6 cannot be
+   cleared until item 1 is decided.
+3. **`livespec-3lev.7` — Phase 4: filing is DONE; a POLICY decision remains.**
+   `openbrain` `ob-4oku` is filed; `resume`/`homelab` need nothing (amend the
+   child's title). The open question is deliberately NOT self-resolved because it
+   is a fleet-policy call, not a technical one: **should adopters be enrolled in
+   the pin automation** (the `livespec-sibling` topic + the `bump-pin-from-dispatch`
+   and `pin-freshness` shims + `APP_ID`/`APP_PRIVATE_KEY`), or is manual pinning
+   the intended adopter policy? Enrolment is the durable fix; manual pinning is a
+   legitimate choice for repos outside the fleet's release train. **Either way,
+   RECORD the decision** — today's state is neither, so `openbrain` is enrolled in
+   nothing while its pin silently ages, which is the worst of both.
 4. **`livespec-3lev.8` — Phase 5, the closing measurement gate.** Before/after
    CPU-seconds and wall-clock for factory + CI over a real Honeycomb window. This
    is the evidence the rollout paid off, and nothing else on the epic substitutes
