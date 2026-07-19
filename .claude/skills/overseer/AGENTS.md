@@ -897,7 +897,13 @@ for the marker's edge-triggered lifecycle.
   signals` / `import tmuxio` resolve when pytest collects the beside-tests.)
   Deliberately kept lightweight (a manual pre-push run, no CI wiring) to preserve
   the "outside the product gates" design — the discipline lives here, in the
-  developer's hands, not in a gate.
+  developer's hands, not in a gate. **And after ANY overseer merge, re-run them
+  against the COMBINED master state — do not trust either PR's own green.** With no
+  CI, two overseer branches can merge git-clean and still leave the folder red: a
+  concurrent change to shared surface (e.g. the `TMUX_TMPDIR`/`exec` wrap added to
+  `_launch_command`) can invalidate the OTHER branch's assertions, which passed on
+  its own base. Proven live 2026-07-18 (the codex-reboot-recovery branch was green
+  on its base, red on combined master; fixed by PR #1373).
 - **Codex discovery is seam-injected end-to-end, so the suite is hermetic even
   with a live codex on the host (test-isolation, 2026-07-18).** `codex_sessions` was
   already injectable at the FUNCTION level, but the `Supervisor` only threaded
