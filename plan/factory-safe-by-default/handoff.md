@@ -4,113 +4,104 @@
 default** — assume any work-item runs in the factory, require a machine-readable
 admission-enforced opt-out for a small enumerable host-only residue, widen
 factory capability so that residue stays tiny, and give the residue a home as a
-distinct needs-attention host-only-action kind. The design was **reshaped
-2026-07-17** against the live code + ratified spec into a **two-orthogonal-axes**
-model (maintainer-endorsed); the slices are filed. See `research/design.md`
-§"Reshape (2026-07-17)".
+distinct needs-attention host-only-action kind. Reshaped **2026-07-17** into a
+**two-orthogonal-axes** model (`admission_policy` = permission vs. `factory_safety`
+= runnability). **As of 2026-07-18 the model is fully realized in code across the
+fleet** — Slices A, B, and C are all merged; only the human accept legs and Slice
+D (coordinated under `z2ctra`) remain. See `research/design.md` §"Reshape
+(2026-07-17)".
 
-The single resumable entry point for this thread: a fresh session can execute
-the next action from this file alone via the read-first chain — no chat history
-required.
+The single resumable entry point: a fresh session executes the next action from
+this file via the read-first chain — no chat history required.
 
 ## Read-first chain (open these, in order, before acting)
 
 1. **The ledger epic `livespec-nrdk`** (livespec core tenant) — read status AND
-   its comments **LIVE from the ledger**, never trust a status written in this
-   file. The 2026-07-17 slicing comment records the filed children + the Slice-A
-   route + the Slice-D decision:
+   its comments **LIVE from the ledger**; never trust a status copied into this
+   file. The 2026-07-18 comments record the full Slice-B/C build-out, the two
+   findings (self-refusal + legacy-fallback), and the remaining chain:
    ```bash
    source /data/projects/1password-env-wrapper/with-livespec-env.sh bd -C /data/projects/livespec show livespec-nrdk
    ```
-2. **`research/design.md`** §"Reshape (2026-07-17)" — the settled, code-grounded
-   design: why the fail-fast gate already ships but the classification does not,
-   the spec-vs-code contradiction, the two-axis resolution (`admission_policy` =
-   permission vs. `factory_safety` = runnability), the label-prefix encoding, the
-   cross-repo cost, and the settled A/B/C/D cut. (The earlier sections above it —
-   the 2026-07-07 two-classes analysis and four moves — remain valid background.)
+2. **`research/design.md`** §"Reshape (2026-07-17)" — the settled two-axis design.
 
-## Current state
+## Current state (derived from the ledger — read it live)
 
-Thread opened 2026-07-07; reshaped + sliced 2026-07-17. Status is **derived from
-the ledger** — read it live via the read-first chain, do not trust any value
-copied here. Filed under epic `livespec-nrdk`:
+**Slice A — spec contract. COMPLETE + RATIFIED (2026-07-17).** Two-axis model live
+on `livespec-orchestrator-beads-fabro` master (`SPECIFICATION/history/v040/`, PR
+#733). Nothing left.
 
-- **Slice A — spec contract. COMPLETE + RATIFIED (2026-07-17).** The two-axis
-  model is live spec on `livespec-orchestrator-beads-fabro` master:
-  `/livespec:propose-change` filed it (PR #722), independent Fable review passed
-  NO-BLOCKERS, and `/livespec:revise` ratified it into
-  `SPECIFICATION/history/v040/` (PR #733). The `factory_safety` field, the
-  admission_policy-vs-factory_safety two-axis correction, the `ready → active`
-  admission refusal, `## Scenario 48`, and the heading-coverage entry are all
-  landed. Nothing left on A.
-- **Slice B — GROOMED (2026-07-18).** `bd-ib-fv6wse` was regroomed out
-  (maintainer-approved cut) into three dependency-layered slices across three
-  tenants (bj9x cross-tenant model — **prose** deps, not machine deps, because no
-  `cross_repo_targets` manifest declares `livespec-runtime`):
-  - **B1 — `livespec-runtime-vkqer3`** (livespec-runtime tenant): **MERGED via
-    the factory (2026-07-18)** — dispatched green, merged on `livespec-runtime`
-    master (commit `0274008`); `FactorySafety` + `factory_safety` are LIVE on the
-    shared `WorkItem`. Parked in **`acceptance`** (ai-then-human) awaiting the
-    human accept leg (its live exercise is B2 reading the field — not
-    force-accepted).
-  - **B2 — `bd-ib-qcnbbp`** (bd-ib tenant, `backlog`): beads-fabro store encoding
-    + admission gate (realizes v040 Scenario 48; replaces `is_host_only_item`
-    regex; fixes the refusal message; updates the doctor invariant; migrates old
-    host-only-marked items). **Prose-blocked on B1** (it re-vendors runtime +
-    bumps the pin); promote `backlog → ready` when B1 lands.
-  - **B3 — `bd-gj-7adugd`** (bd-gj / livespec-orchestrator-git-jsonl tenant,
-    `backlog`): git-jsonl `store_codec` parity (pop-vs-persist is an implementer
-    sub-decision). Prose-blocked on B1; promote when B1 lands.
-- **Slice C — `bd-ib-i6wfum`** (bd-ib tenant, `backlog`): the host-only
-  needs-attention kind. **Re-pointed (prose) to depend on B1**; its stale machine
-  edge to the now-closed `bd-ib-fv6wse` is harmless while backlog. Groomed later,
-  after B lands.
-- **Slice D — capability-widening (move #3): stays under `z2ctra`**, coordinated
-  not absorbed. No new item here (recorded as the epic comment).
+**Slice B — mechanical field + gate. COMPLETE (2026-07-18).** All three sub-slices
+merged, in `acceptance` (ai-then-human; human accept legs pending — maintainer's):
+- **B1 `livespec-runtime-vkqer3`** — `factory_safety` field on the shared
+  `WorkItem`. Shipped in runtime **v0.10.0**.
+- **B2 `bd-ib-qcnbbp`** (beads-fabro) — store encode/decode + admission gate reads
+  `factory_safety`; **replaced the `is_host_only_item` regex with a field read**
+  (`return item.factory_safety is not None`); refusal message fixed; doctor
+  invariant updated. PR #755.
+- **B3 `bd-gj-7adugd`** (git-jsonl) — store persists `factory_safety` (implementer
+  chose *persist*). PR #308, release 0.5.5.
 
-Cross-tenant note: B/C live in the bd-ib tenant, not the core tenant that holds
-the epic — so `livespec-nrdk`'s %Complete tracks neither; they associate to the
-epic by prose (the livespec-bj9x precedent).
+**bd-gj-9sj — git-jsonl janitor fix. COMPLETE (2026-07-18).** P1 bug surfaced by
+B3's janitor: `just check` called an untracked `./dev-tooling/branch-protection.sh`
+in fresh checkouts. PR #312 ("install worktree pack before branch check"). In
+`acceptance`. Unblocks all git-jsonl factory dispatch.
 
-## Resume command
+**bd-ib-y2o1 — legacy-fallback retirement. COMPLETE (2026-07-18).** B2's
+implementer had kept the old prose regex as a *read-fallback* in the store decode
+(`_factory_safety_from_labels_or_legacy`), which mis-flagged any factory-safe item
+that merely *named* the marker token as not-factory-safe (bit B2's and C1's first
+dispatches). Migration-safety verified (only 1 incidental match, no genuine
+dependent). PR #763 removed it — the store now derives `factory_safety` **only**
+from the explicit `factory-safety:` label. In `acceptance`.
 
-```
-/livespec-orchestrator-beads-fabro:plan factory-safe-by-default
-```
+**Slice C — host-only needs-attention kind. GROOMED + (near) COMPLETE (2026-07-18).**
+`bd-ib-i6wfum` regroomed out into three tenants (prose deps, bj9x model):
+- **C1 `livespec-runtime-o96`** — added the value to the shared `AttentionKind`.
+  Merged (PR #253). NOTE: C1 first shipped the value as `factory-safety`
+  (deviating from design/epic "host-only" + colliding with the `factory_safety`
+  field); **maintainer-decided to correct to `host-only`**.
+- **C1b `livespec-runtime-76j`** — renamed the value `factory-safety` → `host-only`.
+  Merged (PR #258). Shipped in runtime **v0.11.0** (release PR #254 merged). So
+  `AttentionKind = human-valve|impl|spec|plan|hygiene|internal|host-only`.
+- **C2 `bd-ib-ayga`** (beads-fabro) — needs-attention surfaces not-factory-safe
+  items + `factory_safety` refusals as `host-only` AttentionItems w/ `shell`
+  handoff. Merged (PR #768); beads-fabro pin now v0.11.0. In `acceptance`.
+- **C3 `bd-gj-5u8`** (git-jsonl) — same, items only (git-jsonl runs no dispatcher).
+  First dispatch (PR #324) hit a merge conflict — the v0.11.0 runtime fan-out bump
+  (`3d975f9`) landed on git-jsonl master concurrently, so both bumped the vendored
+  files. #324 closed; **re-dispatched on top of the now-stable v0.11.0 master**.
+  **CONFIRM its status live** — if merged + `acceptance`, Slice C is complete.
+
+**Slice D — capability-widening (move #3). STAYS under `z2ctra`**, coordinated not
+absorbed. Covers per-toolchain target-local workflows, `bd-gj-9sj` (now done), and
+the Fabro GitHub-App-token 60-min-TTL candidate. No action from this thread.
 
 ## Next actions (in order)
 
-1. **Confirm the pin bumps to `v0.10.0` land (DO THIS FIRST — it gates B2/B3).**
-   `livespec-runtime` **v0.10.0 is CUT** (release PR #163 merged 2026-07-18;
-   contains B1's `factory_safety`). The `livespec-orchestrator-beads-fabro` +
-   `livespec-orchestrator-git-jsonl` pins (at `v0.9.2`) now lag it, so the
-   pin-freshness sweep + fan-out `bump-pin` should auto-open `chore/bump-*` PRs to
-   `v0.10.0`. Confirm those bump PRs open + merge (re-vendoring
-   `_vendor/livespec_runtime`); if the fan-out doesn't fire, bump the two pins
-   directly. Optionally: give B1 (`livespec-runtime-vkqer3`, in `acceptance`) its
-   human accept leg.
-2. **Once the pins are at `v0.10.0`: promote + factory-dispatch B2 and B3.**
-   Promote `bd-ib-qcnbbp` (B2) and `bd-gj-7adugd` (B3) `backlog → ready` and
-   factory-dispatch each **via the Dispatcher drain or `drive --action
-   impl:<id>`** — never in-session implement. B2 realizes the v040 admission
-   refusal + replaces the `is_host_only_item` regex + updates the paired doctor
-   invariant + migrates old host-only-marked items; B3 is git-jsonl codec parity.
-   They can run in parallel (both depend only on B1).
-3. **Slice C — after B2 lands: groom + dispatch `bd-ib-i6wfum`** (host-only
-   needs-attention kind), same factory-dispatch route. At C's groom, set its
-   proper phased (prose) dependency on B1/B2.
-4. **Slice D stays under `z2ctra`** — no action here beyond the recorded
-   coordination; the capability-widening work is driven from that item.
+1. **Confirm C3 (`bd-gj-5u8`) merged + in `acceptance`** (re-dispatch was in flight
+   at handoff write). If it failed, diagnose (git-jsonl master is stable v0.11.0,
+   so a re-dispatch should merge cleanly). Once green, **Slice C is complete and
+   the epic's implementation is done.**
+2. **Human accept legs (maintainer's).** B1/B2/B3, bd-gj-9sj, bd-ib-y2o1, C1(/C1b),
+   C2, C3 are all parked in `acceptance` (ai-then-human), NOT force-accepted. The
+   operator triggers `accept:<id>` with live-exercise evidence. B2's live exercise
+   = the admission gate refusing a REAL not-factory-safe item; C2/C3's = a
+   not-factory-safe item appearing as a `host-only` needs-attention item.
+3. **Slice D** stays under `z2ctra` — nothing here.
+4. **Optional:** reap the stale git-jsonl janitor worktrees (`janitor-bd-gj-5i1`,
+   `-cn4`, `-7adugd`) and the closed C3 branch `feat/bd-gj-5u8` — only when no
+   git-jsonl dispatch is active.
 
-**Golden rule:** FILE ripe work + GROOM it; never hand-code factory-safe
-implementation inline in the planning session. Spec-side contract changes go
-through the normal `/livespec:*` lifecycle (propose-change → independent Fable
-review → revise); ledger slices are built factory-side (Dispatcher / `drive`)
-under the janitor gate.
+## Golden rule + standing constraints
 
-## Standing constraints
-
-- Status is derived from the ledger, never stored here (no shadow queue).
+- FILE ripe work + GROOM it; build ripe work factory-side (Dispatcher / `drive
+  --action impl:<id>`) under the janitor gate — never hand-code inline.
+- Status derived from the ledger, never stored here.
 - Repo mutations: worktree → PR → rebase-merge; `mise exec -- git`; never
-  `--no-verify`; doc-only plan edits use a `docs(plan): ...` subject.
-- Ripe work is built factory-side under the janitor gate, never hand-coded.
+  `--no-verify`; doc-only plan edits use `docs(plan): ...`.
+- **Watch out:** a work-item whose title/description names the bare `host-only`
+  token USED to be refused at admission by the legacy fallback — that fallback is
+  now retired (bd-ib-y2o1), so naming it is safe again.
+- **Watch out:** dispatching a slice that bumps a runtime pin can race the release
+  fan-out's own bump PR (C3/#324). If master already bumped, re-dispatch on top.
