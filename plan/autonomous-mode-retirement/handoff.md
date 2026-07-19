@@ -128,6 +128,56 @@ duplicate is its own cruft. Check the owning tenant's ledger first.
 | Console coverage-convention lesson — the 100%-line-coverage gate is incompatible with MULTI-LINE `assert!` carrying interpolated messages; use single-line bare asserts | console repo guidance |
 | Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern; `mint_app_token.py` mints a REAL token (security) | orchestrator guidance |
 
+### 6. Ledger dispositions — from a completed fleet-wide audit (2026-07-19)
+
+A full sweep of all 8 reachable fleet tenants (83 programme-connected records,
+28 open) produced the dispositions below. **The good news first: the
+phantom-open pattern was real but is ALREADY RECONCILED** — the console W-set
+(`-yvikqp` + W1–W7), `-rt4`, `-pke3y3`, `-mb64bv`, `-d6o`, the `-0ak` freeform
+children, orchestrator `bd-ib-82a`, O0–O10, and every Stage-2 throwaway
+(`bd-ib-dqt`/`-tcar`/`-7zks`/`-86k`) are all closed. **Do not re-close them.**
+
+Adopter tenants (`openbrain`, `resume`, `homelab`) were unreachable — nothing
+is listed for them, which is not proof they are clean.
+
+| Item | Tenant | Disposition |
+|---|---|---|
+| `livespec-console-beads-fabro-3rdmqu` | console | **Close** — its grievance is moot. The unmet half of `-0tu` (relocate prose into `docs/`) shipped in B6 impl `7df1ea2`; the three sentences are at `docs/detailed-usage.md:116/:120/:160`. Human-tier, so the maintainer ratifies. |
+| `livespec-0jxs` | core | **Regroom, do NOT close.** Its operability trio is delivered, but residual duties 3/7/9/10 from its 2026-06-15 comment are genuinely open (no dispatcher master-ci-green pick-preflight exists). |
+| `bd-gj-rb3` | git-jsonl | **MAINTAINER DECISION.** It describes the paradigm beads-fabro RETIRED at v034 — but git-jsonl's OWN spec still contracts it (`constraints.md:94-131`, `contracts.md:28-32`), unimplemented. Either re-steer that spec to the v034 policy-settings model (the item dies as-written) or keep the divergence consciously. **Do not dispatch as-is.** |
+| `livespec-1t17` | core | **Close or downgrade to a pointer** — duplicates console `-mvu22t` (fuller description, right tenant, same Rust red-green-replay work, filed same day). Keep the console one. |
+| `livespec-console-beads-fabro-nxsfih` | console | Re-scope the anchor to its residue (the missing zero-Beads guard) or file that standalone and close — its plan thread is already archived while the anchor stays open. |
+| `livespec-console-beads-fabro-8aw` | console | LIVE — the four non-valve commands are still contracted (`contracts.md:412-415`) and unimplemented. Refresh its stale "v017" pointer at groom (spec is v032). |
+| `bd-ib-24j5uy` | orchestrator | Decide: keep open as `bd-ib-0s5`'s parent, or close (work shipped + released + live-exercised) with `-0s5` standing alone. |
+| Label/status contradictions | various | `livespec-console-beads-fabro-mvu22t` and `livespec-runtime-f5zhs5` each carry a `ready` LABEL on `backlog` STATUS. One of the two is wrong in each case. |
+
+**No dangling dependency edges were found anywhere in the programme set**, and
+no wrong-tenant filings.
+
+#### A correction to that audit, and a live question it left
+
+The audit reported `bd-ib-98c.10` as wrongly parked in the orchestrator's
+`acceptance` lane on the reasoning that its proof dispatch never ran. **That is
+wrong, and acting on it caused churn worth recording so nobody repeats it.**
+
+All four `98c.*` confirmation artifacts DO exist — at
+`plan/archive/codex-factory-telemetry/` in the orchestrator repo, each opening
+"Created by an autonomous factory run". They were missed by searching only the
+LIVE path (`plan/codex-factory-telemetry/`); that thread was ARCHIVED after the
+dispatches completed, which moved every artifact. `bd-ib-98c.15`'s own
+description corroborates this — it reports observing 6 `run_turn` spans from
+`.14`'s run. Those items are awaiting a LEGITIMATE acceptance of real work and
+belong exactly where they are. **Lesson: when checking whether a plan-thread
+artifact exists, search `plan/archive/` too — an archived thread moves every
+path it owns.**
+
+**The residual question is real, though:** the prerequisites those proofs
+confirm (`bd-ib-98c.5`, `.12`, `.7`) are all still recorded `backlog` while
+their proofs demonstrably ran and landed. Either those records are stale-open
+(the phantom-open pattern again) or the proofs ran ahead of a formal close.
+Worth reconciling in the orchestrator tenant; it is NOT a reason to move
+anything out of the acceptance lane.
+
 ## NEXT ACTION
 
 **Groom `livespec-33opqs`**, then work step 1 (citation repair) first — it is
