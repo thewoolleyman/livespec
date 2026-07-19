@@ -17,7 +17,6 @@ import importlib.util
 import io as _io
 import json
 import os
-import stat
 from pathlib import Path
 
 import codex_sessions
@@ -946,35 +945,33 @@ def _arm_ready_marker(repo, topic, *, mtime=1001.0):
     return _declare(repo, topic, signals.STATE_READY, mtime=mtime)
 
 
-def _agent_tmux_export_prefix():
-    return f"unset TMUX; export TMUX_TMPDIR=/tmp/tmux-agents-{os.getuid()}; exec "
+def _assert_no_tmux_scoping(command):
+    """The L1 env inversion is REMOVED (plan/tmux-fleet-visibility): a spawn
+    command must carry NO tmux socket scoping, so a bare `tmux ls` in the
+    spawned agent lists the real fleet. This pins the ABSENCE so the prefix
+    cannot silently regress."""
+    assert "TMUX_TMPDIR" not in command
+    assert "unset TMUX" not in command
 
 
-def _assert_agent_tmux_tmpdir(command):
-    expected = f"/tmp/tmux-agents-{os.getuid()}"
-    assert command.startswith(f"unset TMUX; export TMUX_TMPDIR={expected}; exec ")
-    mode = stat.S_IMODE(Path(expected).stat().st_mode)
-    assert mode == 0o700
-
-
-def test_claude_launch_command_exports_agent_scoped_tmux_tmpdir(tmp_path):
+def test_claude_launch_command_carries_no_tmux_scoping(tmp_path):
     repo, topic = _make_plan(tmp_path)
     session = registry.tmux_id(str(repo), topic)
 
     command = supervisor.Supervisor._launch_command(_mapped_track(repo, topic, session))
 
-    _assert_agent_tmux_tmpdir(command)
-    assert command.endswith(f"claude --dangerously-skip-permissions -n {topic}")
+    _assert_no_tmux_scoping(command)
+    assert command == f"claude --dangerously-skip-permissions -n {topic}"
 
 
-def test_codex_launch_command_exports_agent_scoped_tmux_tmpdir():
+def test_codex_launch_command_carries_no_tmux_scoping():
     command = supervisor.Supervisor._codex_launch_command(
         "019f6a1e-266d-7fc2-8eb2-15ec9d324fb8",
         "read /tmp/repo/plan/topic/handoff.md and follow it",
     )
 
-    _assert_agent_tmux_tmpdir(command)
-    assert "codex resume --dangerously-bypass-approvals-and-sandbox" in command
+    _assert_no_tmux_scoping(command)
+    assert command.startswith("codex resume --dangerously-bypass-approvals-and-sandbox ")
 
 
 def test_restart_fires_when_marker_valid_notbusy_idle(tmp_path):
@@ -992,7 +989,7 @@ def test_restart_fires_when_marker_valid_notbusy_idle(tmp_path):
         "respawn",
         session,
         str(repo),
-        f"{_agent_tmux_export_prefix()}claude --dangerously-skip-permissions -n {topic}",
+        f"claude --dangerously-skip-permissions -n {topic}",
     ) in fake.calls
     resume = supervisor.default_resume(str(repo), topic)
     assert resume in fake.paste_texts()
@@ -1076,7 +1073,7 @@ def test_no_bg_shell_allows_restart(tmp_path):
         "respawn",
         session,
         str(repo),
-        f"{_agent_tmux_export_prefix()}claude --dangerously-skip-permissions -n {topic}",
+        f"claude --dangerously-skip-permissions -n {topic}",
     ) in fake.calls
 
 
@@ -1968,7 +1965,7 @@ def test_recover_recreates_missing_mapped_session(tmp_path):
         "respawn",
         session,
         str(repo),
-        f"{_agent_tmux_export_prefix()}claude --dangerously-skip-permissions -n {topic}",
+        f"claude --dangerously-skip-permissions -n {topic}",
     ) in fake.calls
     assert supervisor.default_resume(str(repo), topic) in fake.paste_texts()
 
@@ -2072,8 +2069,8 @@ def test_recover_still_recreates_a_claude_track_as_claude(tmp_path):
     recovered = sup.recover_missing_sessions()
     assert recovered == [session]
     # Build the expected from `_launch_command` (parallel to the codex test's use of
-    # `_codex_launch_command`) so this stays correct through the `TMUX_TMPDIR`/`exec`
-    # wrap `_launch_command` applies — no hardcoded command string to drift.
+    # `_codex_launch_command`) so this stays correct through any future change to
+    # how `_launch_command` shapes the spawn — no hardcoded command string to drift.
     expected = supervisor.Supervisor._launch_command(_mapped_track(repo, topic, session))
     assert ("respawn", session, str(repo), expected) in fake.calls
 
@@ -3207,7 +3204,7 @@ def test_an_adopted_codex_track_declaring_ready_is_restarted_with_the_codex_comm
     respawns = [c for c in fake.calls if c[0] == "respawn"]
     assert len(respawns) == 1
     command = respawns[0][3]
-    _assert_agent_tmux_tmpdir(command)
+    _assert_no_tmux_scoping(command)
     assert "codex resume " in command  # the CODEX command, not claude
     assert session_id in command  # resumes the SAME session by id → adoptability survives
     # Autonomy parity with the Claude path's `--dangerously-skip-permissions`: without this

@@ -2080,26 +2080,6 @@ class Supervisor:
         self._log(f"restarted (codex) {track.repo}::{track.topic} (pane {target})")
 
     @staticmethod
-    def _agent_tmux_tmpdir() -> Path:
-        """Create and return the tmux socket namespace inherited by spawned agents.
-
-        ``/tmp`` is not incidental here (so S108 is suppressed rather than fixed):
-        this directory IS a tmux socket namespace, and tmux resolves ``TMUX_TMPDIR``
-        relative to the real ``/tmp``. It is uid-scoped in its name and created
-        0700, so it is not a shared-name collision target.
-        """
-        path = Path("/tmp") / f"tmux-agents-{os.getuid()}"  # noqa: S108 — tmux socket namespace
-        path.mkdir(mode=0o700, exist_ok=True)
-        path.chmod(0o700)
-        return path
-
-    @staticmethod
-    def _with_agent_tmux_tmpdir(*, command: str) -> str:
-        """Export the agent-scoped tmux socket dir before launching a track process."""
-        tmpdir = Supervisor._agent_tmux_tmpdir()
-        return f"unset TMUX; export TMUX_TMPDIR={shlex.quote(str(tmpdir))}; exec {command}"
-
-    @staticmethod
     def _launch_command(track: registry.Track) -> str:
         """The Claude (re)start command: ``claude --dangerously-skip-permissions -n <topic>``.
 
@@ -2111,17 +2091,21 @@ class Supervisor:
         line (read the handoff) is pasted AFTER launch, since a ``claude "<prompt>"``
         argv only pre-fills without submitting.
 
-        The command also unsets inherited ``TMUX`` and exports an agent-scoped
-        ``TMUX_TMPDIR`` before ``exec`` so any bare tmux command the spawned agent runs
-        resolves to ``/tmp/tmux-agents-<uid>/``
-        instead of the maintainer's default tmux server namespace.
+        The command deliberately carries NO tmux env scoping — no ``unset TMUX``,
+        no ``TMUX_TMPDIR`` export. The former L1 env inversion (an agent-private
+        socket namespace prefixed onto every spawn) was REMOVED by
+        ``plan/tmux-fleet-visibility/``: it blinded every spawned agent to the real
+        fleet (producing false session-liveness claims) while failing open whenever
+        its tmpfs-backed directory vanished, and the L2 ``PreToolUse`` command
+        guards are the layer that actually distinguishes a listing from a teardown.
+        A bare ``tmux ls`` in a spawned agent MUST tell the truth; do not re-add a
+        scoping prefix here.
 
         This is the Claude-ONLY command — it must NEVER be aimed at a codex pane (it would
         destroy the session). ``_do_restart`` dispatches a Codex track to
         :meth:`_codex_launch_command` instead.
         """
-        command = f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
-        return Supervisor._with_agent_tmux_tmpdir(command=command)
+        return f"claude --dangerously-skip-permissions -n {shlex.quote(track.topic)}"
 
     @staticmethod
     def _codex_launch_command(session_id: str, resume: str) -> str:
@@ -2143,12 +2127,15 @@ class Supervisor:
         as the PROMPT argument, which Codex auto-submits (verified live 2026-07-17) — so
         unlike the Claude path there is no separate paste. Fields are shell-quoted; the
         flag precedes the positional ``SESSION_ID``/``PROMPT`` per ``codex resume``'s usage.
+
+        Like :meth:`_launch_command`, this carries NO tmux env scoping — the L1
+        env inversion was removed by ``plan/tmux-fleet-visibility/`` (see that
+        method's docstring); do not re-add a scoping prefix here.
         """
-        command = (
+        return (
             "codex resume --dangerously-bypass-approvals-and-sandbox "
             f"{shlex.quote(session_id)} {shlex.quote(resume)}"
         )
-        return Supervisor._with_agent_tmux_tmpdir(command=command)
 
     def _await_pane(self, target: str, is_ready: Callable[[str | None], bool]) -> bool:
         """Poll ``#{pane_current_command}`` until ``is_ready(cmd)``, bounded.

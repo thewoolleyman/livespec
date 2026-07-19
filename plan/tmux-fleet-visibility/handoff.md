@@ -3,8 +3,9 @@
 **Thread**: `plan/tmux-fleet-visibility/` (repo `livespec`).
 **Ledger epic anchor**: `livespec-l4g7wi` (livespec tenant; filed 2026-07-19,
 routed `backlog` — epic-shaped, driven from this plan track, not dispatched).
-**Status**: OPEN — Phase 0 complete 2026-07-19, gate PASSED (see "Phase 0
-execution record" at the end of this file). Next: Phase 1. Authored 2026-07-19.
+**Status**: OPEN — Phases 0–1 complete 2026-07-19 (gate PASSED; inversion
+removed from both spawn paths; see the execution records at the end of this
+file). Next: Phase 2. Authored 2026-07-19.
 
 **Supersedes**: the **L1 environment-inversion layer** of
 [`plan/archive/tmux-fleet-kill-prevention/`](../archive/tmux-fleet-kill-prevention/handoff.md)
@@ -457,11 +458,14 @@ rewrite history):
 - [x] All three guards verified loading, classifying, and **firing** in install
       shape (payload-only), and the install-shaped test confirmed green in both
       Driver repos. (2026-07-19 — see "Phase 0 execution record")
-- [ ] No spawn path in `livespec` emits `unset TMUX` or `TMUX_TMPDIR`; a test
-      asserts their absence.
-- [ ] `plan/plan-thread-integrity/design.md:120` dependency resolved, either way,
-      and the resolution recorded.
-- [ ] Sandbox-mirror decision made and recorded with reasoning.
+- [x] No spawn path in `livespec` emits `unset TMUX` or `TMUX_TMPDIR`; a test
+      asserts their absence. (2026-07-19 — `_assert_no_tmux_scoping` at three
+      spawn-shape sites; see "Phase 1 execution record")
+- [x] `plan/plan-thread-integrity/design.md:120` dependency resolved, either way,
+      and the resolution recorded. (Resolved: NO dependency exists — see
+      "Phase 1 execution record")
+- [x] Sandbox-mirror decision made and recorded with reasoning. (LEFT in place;
+      the bind-mount residual is ANSWERED — see "Phase 1 execution record")
 - [ ] No live pane carries `TMUX_TMPDIR`.
 - [ ] `tmux` resolves to `/usr/bin/tmux` in a Claude Code Bash call on `vps`; the
       change is codified in `vps-info/services/` with an idempotent installer.
@@ -475,9 +479,13 @@ rewrite history):
 
 ## Residuals / open questions
 
-1. **Does the fabro provider bind-mount host `/tmp`?** Inherited unanswered from the
-   archived epic. It determines whether the sandbox mirror was load-bearing or
-   decorative, and therefore what removing it costs.
+1. **Does the fabro provider bind-mount host `/tmp`?** — **ANSWERED 2026-07-19:
+   NO.** `fabro-sandbox/src/docker.rs` `host_config()` sets `binds: None` (no
+   bind mounts of any kind), pinned by fabro's own test
+   `container_config_has_no_bind_mounts_or_socket`. The sandbox mirror was
+   decorative with respect to the host fleet (defense-in-depth on an airtight
+   docker boundary). See the Phase 1 execution record for the resulting
+   disposition (left in place).
 2. **The script-subprocess gap is left open**, knowingly (see "Answering the
    archive's counter-argument"). If a kill ever originates inside a script's
    subprocess, reopen — but close it with something that does not blind.
@@ -534,3 +542,55 @@ hazard-shaped was executed at any point.
    unimportable.
 
 Phase 1 may proceed.
+
+---
+
+## Phase 1 execution record (2026-07-19)
+
+Executed in repo `livespec` (branch `tmux-fleet-visibility-phase1`), one commit
+carrying the code, tests, AGENTS.md, and this record.
+
+1. **Inversion removed.** `_agent_tmux_tmpdir()` and `_with_agent_tmux_tmpdir()`
+   deleted from `supervisor.py`; BOTH launch paths (`_launch_command` and
+   `_codex_launch_command` — the two callers re-confirmed by grep) now return
+   the bare command. Each docstring records the removal, the reason (blindness +
+   the fail-open property; the L2 guards as the only layer that can distinguish
+   a listing from a teardown), and forbids re-adding a scoping prefix.
+2. **Absence pinned by tests.** The export-prefix helper and the
+   `_assert_agent_tmux_tmpdir` helper (with its 0700 directory assertion) are
+   deleted; a new `_assert_no_tmux_scoping` asserts NO `TMUX_TMPDIR` and NO
+   `unset TMUX` at all three spawn-shape sites (Claude launch, Codex launch,
+   Codex ready-restart respawn), so the prefix cannot silently regress.
+   Expected-command call sites updated to the bare commands; the now-unused
+   `import stat` dropped. Beside-tests: **344 passed**.
+3. **AGENTS.md updated in the same commit** (per its own coupling rule): the
+   manual-restore runbook's "RIGHT command" is now the bare
+   `claude --resume … --dangerously-skip-permissions -n <topic>`, the
+   "prefix is NOT optional" bullet is explicitly REVERSED with the reasoning,
+   and both history notes (the combined-master example at ~910 and the
+   `574192a8` lesson at ~1351) are annotated that the wrap has since been
+   removed by this thread.
+4. **Dependency check resolved: no dependency.**
+   `plan/plan-thread-integrity/design.md:120` (and every other live thread)
+   contains NO tmux/namespace reference — verified against the live file, a
+   whole-`plan/` sweep (only archived threads and this one mention
+   `TMUX_TMPDIR`/`tmux-agents`), and full git history (`git log -S 'TMUX'` over
+   that thread: zero hits at any revision). The handoff's pointer did not
+   correspond to any committed content; nothing to coordinate.
+5. **Sandbox mirror `bd-ib-zaq3`: LEFT IN PLACE, deliberately.** With the
+   bind-mount question answered NO (see Residuals), the mirror is
+   defense-in-depth on an already-airtight docker boundary: inside a fabro
+   sandbox there is no host fleet to reach (no protective value lost by its
+   staying) and none to see (no blindness cost — a container `tmux ls`
+   truthfully shows container-local state), and its fail-open lands harmlessly
+   inside the same container. Its `TMUX_TMPDIR=/workspace/.tmux` is
+   container-internal socket organization, not a host-fleet control. Removing
+   it would cost an orchestrator-plugin release + cross-repo fan-out for zero
+   behavior change. The categorical argument against L1 (visibility and
+   destructive reach are the same bit) concerns the HOST fleet boundary and
+   does not make this container-internal choice harmful. Reopen only if the
+   fabro provider ever starts bind-mounting host paths into sandboxes.
+
+Phase 2 may proceed once this PR lands and the overseer daemon is restarted
+(the running daemon keeps executing the OLD spawn code until relaunched — see
+`.claude/skills/overseer/AGENTS.md` §"`overseerd` keeps running the OLD code").

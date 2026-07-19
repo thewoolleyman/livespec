@@ -907,7 +907,8 @@ for the marker's edge-triggered lifecycle.
   decision from this one.
 - **The COMBINED-master-state failure mode, and what now catches it.** Two overseer
   branches can merge git-clean and still leave the folder red: a concurrent change
-  to shared surface (e.g. the `TMUX_TMPDIR`/`exec` wrap added to `_launch_command`)
+  to shared surface (e.g. the `TMUX_TMPDIR`/`exec` wrap once added to
+  `_launch_command` — since REMOVED by `plan/tmux-fleet-visibility/`)
   can invalidate the OTHER branch's assertions, which passed on its own base.
   Proven live 2026-07-18 (the codex-reboot-recovery branch was green on its base,
   red on combined master; fixed by PR #1373). CI's `push: branches: [master]` leg
@@ -1062,20 +1063,21 @@ section is the Claude conversation-restore one, and they are different outcomes.
 ### The RIGHT command
 
 ```
-unset TMUX; export TMUX_TMPDIR=/tmp/tmux-agents-$(id -u); exec \
-  claude --resume <session-id> --dangerously-skip-permissions -n <topic>
+claude --resume <session-id> --dangerously-skip-permissions -n <topic>
 ```
 
-- **The `unset TMUX` + `TMUX_TMPDIR` prefix is NOT optional** — it is the L1
-  env-inversion guard, and a manual restore MUST carry it because
-  `Supervisor._with_agent_tmux_tmpdir` puts it on every daemon-spawned track. It
-  points any bare `tmux` command the restored agent runs at
-  `/tmp/tmux-agents-<uid>/` instead of the maintainer's default server namespace.
-  Omitting it restores the whole fleet UNGUARDED against the exact failure this
-  runbook exists to recover from. (Found live 2026-07-19: this section had shown
-  the bare command, so following it literally would have rebuilt an unprotected
-  fleet immediately after a fleet kill. If you change the wrapper in
-  `supervisor.py`, change it here in the same commit.)
+- **Carry NO tmux env scoping — no `unset TMUX`, no `TMUX_TMPDIR` export.** The
+  former L1 env-inversion prefix (`unset TMUX; export TMUX_TMPDIR=…; exec …`)
+  was REMOVED by `plan/tmux-fleet-visibility/` (2026-07-19): it blinded every
+  scoped agent to the real fleet (`tmux ls` returned a clean, plausible, wrong
+  "no server running", producing repeated false session-liveness claims) while
+  silently failing open whenever its tmpfs-backed directory vanished. The L2
+  `PreToolUse` command guards are the sole mechanical fleet-kill control — they
+  are the only layer that can distinguish a listing from a teardown. A restored
+  session's bare `tmux ls` MUST tell the truth; do not re-add a scoping prefix
+  here or in `supervisor.py` (`test_claude_launch_command_carries_no_tmux_scoping`
+  and its codex twin pin the absence). An earlier version of this bullet said the
+  prefix was "NOT optional" — that guidance is REVERSED, deliberately.
 - `--resume <session-id>` re-attaches THAT exact conversation, no picker.
 - `--dangerously-skip-permissions` — required so the resumed session is autonomous
   (the whole fleet runs with it; without it the session stalls on its first
@@ -1351,7 +1353,9 @@ does not re-learn it. Append here — do NOT scatter these.
   (2026-07-19): commit `574192a8` wrapped every spawn with `unset TMUX; export
   TMUX_TMPDIR=…; exec …` but left `test_recover_still_recreates_a_claude_track_as_claude`
   asserting the bare command — it merged red and stayed red until this change repaired
-  it. ALWAYS run `uv run pytest .claude/skills/overseer/ -q` before pushing any overseer
+  it. (That spawn wrap has since been REMOVED entirely by
+  `plan/tmux-fleet-visibility/`; the lesson about the gate stands.) ALWAYS run
+  `uv run pytest .claude/skills/overseer/ -q` before pushing any overseer
   change; a green PR here proves nothing on its own.
 
 ## Pointers
