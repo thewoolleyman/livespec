@@ -1,6 +1,6 @@
 # rop-sweep-fleet-policy — FLAT RULE RULED (broad-only). giq7 CLOSED. e9j is P0. Only `codex login` still blocks
 
-## ⚖️ FOUR MAINTAINER RULINGS — 2026-07-20. Do not re-litigate any of them.
+## ⚖️ FIVE MAINTAINER RULINGS — 2026-07-20. Do not re-litigate any of them.
 
 1. **The flat-package rule is BROAD-ONLY.** When a repo declares no `io_trees`,
    `no_except_outside_io` flags `except Exception` / `except BaseException` / bare `except` only;
@@ -13,6 +13,52 @@
    narrowly: the guard is undiminished for anything carrying a diff.**
 4. **Mutation sequencing: MEASURE BEFORE DECLARING.** Do not declare core's `pure_trees` until
    core's real kill rate is known, measured inside `release-tag.yml`'s own harness.
+5. **(2026-07-20) Mutation staging-tree CONSTRUCTION goes in `livespec-dev-tooling` as a shared,
+   config-driven accommodation** — core as first consumer, convention VALIDATED against
+   `livespec-orchestrator-git-jsonl` before the config surface is frozen. Owned by
+   `livespec-mutreal.1`. See "MUTATION IS NOT CONFIGURABLE" below.
+
+## 🚫 MUTATION IS NOT CONFIGURABLE — it needs a BUILD STEP that does not exist
+
+Executing ruling 4 established this, and it retires a framing an earlier version of this handoff
+carried ("work out the correct `pure_trees` / `mutation_staging_dir` relationship"). **That was
+wrong. It is not a values problem.** There is NO pair of values that makes mutation testing work
+in core.
+
+Killing mutants requires running from a directory that is SIMULTANEOUSLY (a) the import root, so
+mutant keys match the trampoline, (b) a test root, so mutmut's auto-copy of `tests/` finds the
+paired tests, and (c) an ancestor of the fixture tree, so `parents[N]`-relative reads resolve
+(`also_copy` copies relative to cwd and cannot reach above it). **No directory in core's tree
+satisfies all three.** One must be BUILT.
+
+Both candidate values fail, and `archive/research/mutation-testing/livespec-leg-findings.md`
+§"Why a STAGING dir…" predicted both — my two measurements reproduced them exactly:
+
+| staging value | documented failure | what I measured |
+|---|---|---|
+| repo root | key mismatch + whole-`tests/` collection failure | 208 mutants, **0 killed** |
+| `.claude-plugin/scripts` | no `tests/` under `scripts/`, so zero tests copied | **`total: 0`** |
+
+**It HAS worked — once, manually: 201 mutants / 182 killed / 90.55%** (livespec PR #435, merge
+`67c550a6`, 2026-06-13), comfortably over the 80% floor. **Core's tests are good. Every 0% figure
+in this thread is a configuration artifact and must NEVER be cited as a test-quality result.**
+
+Why it never shipped: `livespec-dev-tooling-q3r` (CLOSED) built only the **cwd half** — running
+mutmut from the staging dir and relocating the baseline. The half that CONSTRUCTS the tree was
+left as repo-side "remaining work". `livespec-mutreal.1` is still open for it, and now sits on
+the P0's critical path. So the check's docstring — "declare `mutation_staging_dir` … otherwise
+every mutant is unkillable" — is TRUE BUT INCOMPLETE: necessary, not sufficient. Its tests only
+exercise cwd resolution against a fake mutmut binary and an EMPTY staging dir.
+
+**Census correction:** there are THREE nested-layout repos, not the two the docstring names —
+`livespec` (115 `.py` under `.claude-plugin/scripts/`, excl `_vendor`),
+`livespec-orchestrator-git-jsonl` (46), and **`livespec-orchestrator-beads-fabro` (156)**, which
+the docstring omits. Fix it as a ride-along.
+
+**Slicing that keeps `e9j` moving:** the mutation leg is ONE of e9j's seven checks. Declare core's
+structural role keys EXCEPT `pure_trees` now — that is the near-free change (0 offenses under the
+ruled broad-only rule) and gets five of seven checks genuinely enforcing in one small PR. Treat
+`pure_trees` as a separate slice gated on `livespec-mutreal.1`.
 
 **`qm5` is unblocked** — moved `blocked` → `backlog`. It KEEPS `needs-regroom`: the rule is
 settled but its scope still needs re-cutting (its premise was falsified; see its ledger note).
@@ -40,10 +86,12 @@ evidence.
 3. **If dispatch is still down:** factory-side work is blocked, but the gate items are NOT —
    the flat rule was ruled 2026-07-20 (broad-only), which unblocked all four. In rough order:
 
-   - **`livespec-dev-tooling-e9j` (P0)** — the biggest. But per ruling 4, MEASURE core's
-     mutation kill rate inside `release-tag.yml`'s harness (with `uv sync --all-groups`) BEFORE
-     declaring `pure_trees`, or you arm a hard-fail at release 2 whose cause is one release
-     back.
+   - **`livespec-dev-tooling-e9j` (P0)** — the biggest, and it SLICES. Declare core's structural
+     role keys **except `pure_trees`** now: that is near-free (0 offenses under broad-only) and
+     gets five of seven checks genuinely enforcing in one small PR. **Do NOT declare
+     `pure_trees`** — it is gated on `livespec-mutreal.1` landing the staging construction
+     (ruling 5). Ruling 4's "measure first" cannot even be executed until then; see "MUTATION IS
+     NOT CONFIGURABLE" above.
    - **The canonical-marker fix on `livespec-dev-tooling-bbl`** — rule-independent, was always
      landable, ~1 string. Fixes 2 of the ~7 remaining broad sites fleet-wide.
    - **`qm5` re-groom** — the rule is settled; its SCOPE still needs re-cutting (premise
@@ -338,9 +386,11 @@ mechanism is CAMOUFLAGING an illegitimate one. **When a run-lever is explicitly 
 check then no-ops on missing config, that must be an ERROR, not an INFO** — someone deliberately
 asked for it to run.
 
-**Still unmeasured:** what `check_mutation` would actually report on core's `parse/` + `validate/`
-(16 files, ~1364 lines, 14 paired tests) with BOTH gates open. That combination does real
-mutation testing of genuinely unknown runtime and wants a background run.
+**MEASURED 2026-07-20 — and the answer was "it cannot be measured by configuration at all":**
+with both gates open the check enumerates 208 mutants and kills 0, because core has no directory
+that can serve as import root + test root + fixture ancestor at once. See "MUTATION IS NOT
+CONFIGURABLE" near the top. Runtime turned out trivial (seconds), so my earlier "too slow to run"
+was wrong twice over.
 
 Defect #2 distorted a real design decision: restoring protocol conformance vs. tracking the
 divergence was argued partly on whether unwrapping would trip that check. It wouldn't have.
