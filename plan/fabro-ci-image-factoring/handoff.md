@@ -86,6 +86,86 @@ console #250 MERGED + proven on its master run; T10 cache-tiering DONE).** The p
 `livespec-3lev`** (`livespec` tenant). Phases 0–2 are complete + live-exercised.
 
 ---
+## ⛔ STOP — LOCAL SELF-HOSTED RUNNERS ARE DEFERRED (maintainer-declared 2026-07-19)
+
+**Do NOT flip `CI_RUNNER_LABELS` to the local lane. Do NOT propose it. Do NOT
+"retire the technical risk" and conclude the move is ready.** Local runners on
+this host **killed the CPU in a major incident that caused lost work**. The move
+is **DEFERRED until new hardware exists**. This supersedes every "flip vs narrow"
+framing elsewhere in this document.
+
+This block exists because the deferral was NOT recorded anywhere, so a later
+session (cont. 9) read the plan's optimistic load analysis, gathered more evidence
+that the lane *works*, and proposed flipping it — burning maintainer time and
+putting 42 more jobs on the very host whose CPU is the problem. **An unrecorded
+maintainer decision gets re-litigated. That is what this section prevents.**
+
+### The incident — measured, 2026-07-19, from `livespec-host-metrics` (Honeycomb `agent-activity`)
+
+| Metric | Value | Meaning on an 18-core host |
+|---|---|---|
+| **Peak 1m load average** | **270.35** | **~15× oversubscription** |
+| **Peak 15m load average** | **172.84** | **~9.6× sustained** — not a momentary spike |
+| Window | **2026-07-18, ~04:00–14:00Z**, peak ~07:00–09:00Z | ~10 hours degraded |
+
+**What was consuming it (visible attribution):** thirteen concurrent
+`fabro-run-*` containers. Sum of their *average* CPU ≈ **12.8 of 18 cores**, with
+individual peaks of **413–553%** (4–5.5 cores each). Top offenders averaged 253%,
+149%, 142%, 101%, 100%.
+
+**Memory was NOT the failure mode, and the plan was right about that.** Raw `free`
+dipped to 4.3 GiB, but 18–53 GiB stayed in reclaimable cache so *available* memory
+remained high, and swap never moved. **The failure was purely CPU/scheduling.**
+
+### ⚠ CRITICAL OBSERVABILITY GAP — the runner contribution is UNMEASURED, not zero
+
+**CI-runner job containers do not appear in this telemetry at all.** Across 7 days,
+`docker_stats` shows only `fabro-run-*` plus unrelated containers
+(`kilroy-cxdb-graph-ui`, `homelab-aws-bootstrap`, `livespec-orch-live-gm`, and
+ephemeral testcontainers). **Zero** CI-runner job containers, ever.
+
+The cause is structural: runner jobs execute under **rootless podman as `ci-runner`**,
+while the `docker_stats` receiver watches the **rootful docker socket**. They are
+invisible by construction.
+
+**So do not read "13 fabro containers" as "the runners were innocent."** The honest
+statement is: the measured load is Fabro's, the runner contribution is *unmeasurable
+with current instrumentation*, and the true total is **≥** what is recorded. Any
+future capacity decision needs this gap closed first — otherwise the same blind
+analysis repeats.
+
+### Why the plan did not catch this — the actual defect
+
+The plan gated on **RAM floor, swap, disk free, and job failures**. During the
+incident, *all four held*. It therefore concluded, in this very document, that the
+host "held exactly as the plan predicts" with "no PAUSE warranted."
+
+Those criteria measure **whether CI completes**, not **whether the host stays
+usable**. Load 270 on 18 cores is a machine on which interactive work, the Fabro
+factory, and the maintainer's own sessions crawl — and the plan had **no criterion
+for that at all**. It explicitly demoted CPU to a "soft hint" that "degrades
+gracefully — jobs queue, nothing crashes," which is true from the *jobs'*
+perspective and irrelevant from the *host's*.
+
+Compounding it: the 2026-07-12 correction that killed the multi-day baseline
+declared "the only signal that flexes is sustained CPU-idle≈0% *duration*" — correct
+as far as it went, and then **nothing was ever built to watch that signal**. The one
+dimension that actually moved was the one left uninstrumented. `livespec-3lev.1`
+still carries that unbuilt trigger.
+
+### What this means for the remaining work
+
+**Everything that does NOT require running local runners proceeds normally**, and
+the container/image work is the priority — it pays off identically on
+GitHub-hosted runners. See §"Runner-agnostic container optimizations".
+
+Superseded by this block: any "flip vs narrow" question, the claim that the
+technical risk is retired, and the reading of the load-80 passage further down as
+reassurance. That passage is left in place as the record of the misjudgment, not as
+guidance.
+
+---
+
 ## ▶ START HERE — updated 2026-07-19 (cont. 9, corrected)
 
 ## ▶▶ CORRECTION FIRST — the previous revision of this section was WRONG
@@ -335,35 +415,48 @@ This is structurally the same bug class as `5r3`: a pin no dispatch can reach.
 `5r3` was the producer, excluded from its own fan-out matrix by design; adopters
 are the mirror image, excluded by never having been enrolled.
 
+### Runner-agnostic container optimizations — THE PRIORITY WHILE RUNNERS ARE DEFERRED
+
+Maintainer direction 2026-07-19: *"do EVERYTHING ELSE POSSIBLE WITHOUT ACTUALLY
+RUNNING THEM, PRIORITIZING FINISHING THE CONTAINER BASED OPTIMIZATIONS THAT APPLY
+WHETHER RUNNERS ARE SELF HOSTED OR ON GITHUB."*
+
+The test for whether a piece of work belongs here: **would it still pay off if CI
+never leaves GitHub-hosted runners?** If yes, do it now. If it only pays off on the
+local lane, it waits for new hardware.
+
+**Qualifies (do now):**
+- Anything that makes the baked image carry more of the per-job setup, so jobs stop
+  re-doing work the image already did. Every second saved is saved on hosted
+  runners too.
+- Image layering, size, and build-time improvements.
+- Pin correctness and auto-reconciliation (already delivered — `xb7`, `5r3`).
+- Removing redundant per-job steps that exist only because the image was not
+  trusted to provide them.
+
+**Does NOT qualify (waits for new hardware):**
+- `CI_RUNNER_LABELS` flips of any kind.
+- Deleting `actions/cache` steps — that deliberately trades the hosted cache for a
+  LOCAL warm cache, so it is local-lane-only and would REGRESS hosted CI.
+- Runner pool sizing, supervisor tuning, slot counts.
+- Isolation tests T5/T6, which require a job that has actually moved.
+
 ### ▶ NEXT ACTIONS, in order
 
 **`livespec-3lev.4` is already done** (closed 2026-07-19). The rest, in order:
 
-1. **MAINTAINER DECISION, and it gates Phases 2+3 — do this first.** Is goal 2
-   (CI on local self-hosted runners) still wanted? The machinery is BUILT and the
-   switch is OFF (`CI_RUNNER_LABELS = ["ubuntu-latest"]`).
+1. **~~Flip vs narrow~~ — SETTLED, NOT A QUESTION. Local runners are DEFERRED
+   until new hardware** (maintainer, 2026-07-19; see the STOP block at the top).
+   Phases `.5` and `.6` are BLOCKED ON HARDWARE, not on a decision and not on
+   evidence. **Do not re-open this, and do not re-derive "the technical risk is
+   retired" from the shadow-lane evidence — that reasoning is exactly what led
+   here.** The evidence that the lane *functions* (14/0/3 containment, 3× 14/14
+   shadow runs, full `just check` green on the runner) is real and worth keeping;
+   it is simply not the question. The question was always what it costs the host,
+   and the answer was 1m load **270** on 18 cores for ~10 hours, with lost work.
 
-   **The technical risk has been retired — decide on values, not feasibility.**
-   Evidence gathered 2026-07-19, all measured rather than assumed: the containment
-   suite passes 14/0/3; the shadow lane passes **14/14 on THREE consecutive runs**
-   including livespec's **full `just check` green in the baked image on the local
-   runner**; the two runner races the harness exists to catch did not recur; the
-   48-agent fleet allocation is deliberate and the host has separately been shown
-   to absorb heavy oversubscription gracefully. What remains is a JUDGEMENT about
-   trust tiers and per-repo latency (~10 waves for a 60-job matrix at 6 slots), not
-   an open question about whether it works.
-
-   Two coherent answers,
-   and no implementation is blocked on anything else:
-   - **Flip it.** Set `CI_RUNNER_LABELS` to the local lane per repo, accepting the
-     trust-tier consequence — notably that `livespec-orchestrator-beads-fabro`
-     hosts the privileged on-demand gate-runner, which is exactly why its cutover
-     deliberately left it hosted. Then `.5` and `.6` complete as written.
-   - **Narrow the goal.** Declare same-image-parity-on-hosted the delivered
-     outcome, rewrite `.5`/`.6` exit criteria to match, and close them. The epic's
-     headline value is already banked either way.
-   Everything downstream reads differently depending on this answer, so it is not
-   a decision to defer while doing 2–4.
+   **Instead, do the runner-agnostic container work above** — it pays off on
+   GitHub-hosted runners and is unblocked today.
 2. **`livespec-3lev.3` — nearly closeable; only bookkeeping and one judgement.**
    Isolation evidence SUPPLIED (14/0/3); shadow lane re-run **14/14 on three consecutive runs**
    including full `just check` green on the runner; the 6-vs-18 question SETTLED
@@ -1314,6 +1407,15 @@ re-mint loop, which is a different mechanism and still requires steps 3→4 in o
 - **Host health under the first 6-repo load: NO breach.** 67 GiB RAM available (floor is 8 GiB),
   351 GB disk free (floor 20 GiB — note the ordered disk doubling has LANDED: 678 GB total),
   swap 0, load ~32 on 18 cores = the graceful oversubscription the 2026-07-12 load test predicted.
+- > **⛔ SUPERSEDED — READ THE STOP BLOCK AT THE TOP OF THIS FILE FIRST.** The
+  > analysis in this bullet is the MISJUDGMENT that led to the 2026-07-18 CPU
+  > incident, retained as the record of how it happened, NOT as guidance. It reads
+  > load ~80 on 18 cores as vindication because RAM/swap/disk/job-failures all held
+  > — criteria that measure whether CI COMPLETES, never whether the HOST STAYS
+  > USABLE. Nine days later the same reasoning permitted 1m load **270** and 15m
+  > load **173**, ~10 hours of a barely-usable host, and lost work. Local runners
+  > are now DEFERRED. Do not cite this bullet as headroom evidence.
+
 - **A REAL 3-REPO-OVERLAP MEASUREMENT — the 9-slot model's headroom claim is now OBSERVED, not
   projected.** Later in the session an unplanned 3-repo overlap arose on its own (the v0.14.0
   release fan-out firing `chore/bump-livespec-v0.14.0` CI on driver-claude + driver-codex, plus
