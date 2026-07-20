@@ -73,16 +73,35 @@ left is a role-key declaration that must wait on the rop-sweep thread's `cvz`.
 2026-07-19, it is anchored to epic `livespec-b1uo`, and it was then RESHAPED the
 same day by D7 (the overseer is Control Plane, not Spec Plane).
 
-# ⛔ START HERE — the ONE open question
+# ✅ START HERE — the home question is RULED; here is what is left
 
-**`livespec-b1uo.1` — where does the overseer live?** Everything else in Phase 2
-is either done, unchanged, or waiting on this. Read §"D8 — the home question"
-BEFORE anything else; it carries a full measured dependency analysis done
-2026-07-19 that you should NOT re-derive.
+**`livespec-b1uo.1` — where does the overseer live? RULED 2026-07-20:** its own
+dedicated repo, registered under **`fleet`** in
+`.livespec-fleet-manifest.jsonc`, under a **NEW pin-consuming repo class**, as a
+full fleet member following the same development discipline as every other
+member (worktree → PR → merge, `just check`, factory-driven changes). Read
+§"D9 RULED" for the reasoning and the obligations that follow; read §"D8 — the
+home question" for the measured dependency analysis behind it, which you should
+NOT re-derive.
 
-**The maintainer's current leaning: a separate dedicated repo** — "loosely
-coupled, cohesive, keeps bloat out of core." NOT yet a ruling. The remaining
-work is to settle the cost/membership question in §D8, then decide.
+**⚠️ §"THE 9th-FLEET-REPO PRICE WAS WRONG" is itself partly wrong** — two of its
+four clauses are mechanically right but framed as savings when they are
+exemptions the overseer should DECLINE (the beads tenant and pin-web
+participation are both things it WANTS). §"D9 RULED" carries the corrected
+table. Do not act on the earlier one alone.
+
+**The immediate next steps, in order:**
+
+1. **Name the new class and the new repo** — neither is ruled.
+   `control-plane-tool` was the term used in the dialogue but nothing was
+   ratified.
+2. **Add the class value** in `livespec-dev-tooling` (`REPO_CLASSES`,
+   `_contract_rows.py:65`) — a spec-backed change, so it goes through that
+   repo's propose-change → independent Fable review → revise cycle, NOT a
+   unilateral edit.
+3. **Then** create the repo, register it, and move the folder — the relocation
+   blocker is the positional path traversal at `supervisor.py:2629`; see
+   §"The ONE real coupling, and it is shallow".
 
 Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
 likely superseded by D7. An earlier version of this page told you to start at
@@ -1034,6 +1053,70 @@ the maintainer-only fleet-dev attention sweep; `adopters` costs nothing and
 buys nothing enforced. Given the overseer just earned 100% coverage, pyright
 strict, and ROP conformance, the thing worth asking is which option KEEPS
 those gates rather than which is cheapest.
+
+### ✅ D9 RULED (maintainer 2026-07-20): separate repo, FLEET member, NEW class
+
+**The ruling.** `livespec-b1uo.1` is settled: the overseer moves to its own
+dedicated repo, registered in `.livespec-fleet-manifest.jsonc` under **`fleet`**
+(not `adopters`, not unlisted), under a **NEW pin-consuming repo class**. It is
+a full fleet member and follows the same development discipline as every other
+member — worktree → PR → merge, `just check` as the gate, and factory-driven
+changes through the Dispatcher.
+
+**⚠️ This ruling CORRECTS the section immediately above, which is wrong in its
+framing. Read this before acting on that table.** Two of its four "FALSE"
+clauses are mechanically accurate but were presented as SAVINGS, and they are
+not savings — they are exemptions the overseer should DECLINE:
+
+| Clause | Mechanically | But for the overseer |
+|---|---|---|
+| "its own beads tenant" | correctly FALSE — the row `RowSkip`s when `.beads/config.yaml` is absent, checking CONSISTENCY not presence (`_rows_beads.py:62`) | **it needs one anyway.** A fleet member developed through the factory needs a tenant to hold its work-items: Dolt DB, SQL user + DB-scoped grant, tenant password in the 1Password Environment, committed `config.yaml` + gitignored `metadata.json`. "Nothing forces it" is not "it doesn't need one" |
+| "permanent participation in every future cross-repo pin bump" | correctly FALSE **for the `console` class** | **it WANTS that participation.** The overseer's ruff / pyright-strict / coverage / ROP gates all come FROM `livespec-dev-tooling`, so a dev-tooling release directly determines whether its repo stays green — exactly the case auto-bump exists for |
+
+**And the "NEW class" clause flips back to TRUE** — for a reason the
+2026-07-19 pricing never stated. It is not that no class exists; it is that the
+one Control-Plane class carries a pin-web exemption designed for a PURE-RUST
+repo.
+
+**Be precise about what the console exemption actually is** (this page
+previously over-stated it as "not pinned"). Per `livespec-dev-tooling`'s
+`SPECIFICATION/contracts.md` §"Bump-pin policy", a *non-pin-consuming member*
+"carries a `livespec-dev-tooling` pin for its own developer toolchain … but
+ships none of the three shims, is sent no bump-pin PR, and has its pin freshness
+monitored centrally — at *warning* severity — by the `dev-tooling-pin` row's
+staleness leg rather than auto-bumped." So the console IS pinned and IS
+monitored; it just receives no automatic bump PR, because it is Rust and uses
+dev-tooling for only three thin Python checks.
+
+**Why `console` cannot simply be reused.** `_PIN_WEB_CLASSES` is defined by
+SUBTRACTION — `_ALL_CLASSES - {"console"}` (`_contract_rows.py:76`). A
+`console`-class repo therefore cannot join the auto-bump web without dragging
+`livespec-console-beads-fabro` in with it, which would be wrong for the Rust
+console. None of the five pin-consuming classes fits either: the overseer ships
+an operator tool, not a `library`, and is neither a plugin nor the
+`enforcement-suite`.
+
+**The change is small, because the subtraction design does the right thing for
+free.** Adding a name to `REPO_CLASSES` (`_contract_rows.py:65`) puts the new
+class into BOTH `_PIN_WEB_CLASSES` and `_DEV_TOOLING_PIN_CLASSES`
+automatically. The cost is that one entry plus the spec text describing the
+class — not a rework of the partition.
+
+**What the new repo then owes:** the twelve `_ALL_CLASSES` obligation rows
+(`workflow-ci`, `no-tracked-gitlinks`, `claude-plugin-currency`, `secret-names`,
+`app-installation`, `branch-protection`, `merge-settings`,
+`delete-branch-on-merge`, `topic-livespec-sibling`,
+`agent-ai-references-resolve`, `baseline-harnesses`, `dev-tooling-pin`), the
+three pin-web shim workflows, and its own beads tenant. The `copier-answers`
+row still does NOT apply — that binds `impl-plugin` only
+(`_TEMPLATE_BORN_CLASSES`, `:77`), which is the one clause of the four that
+stands unamended.
+
+**Still open, NOT ruled:** the new class's NAME (`control-plane-tool` was the
+term used in the dialogue, but nothing was ratified), and the new repo's name.
+Adding a class value is a `livespec-dev-tooling` change with spec text, so it
+goes through that repo's propose-change → independent Fable review → revise
+cycle; it is not a unilateral edit.
 
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
