@@ -592,7 +592,21 @@ Measured: core declares **NONE** of the four role keys — `source_trees`,
 in `pyproject.toml`. So the remaining work is declaration, not refactor:
 
 1. **Blocked on theirs**: `cvz` declares core's role keys WITHOUT
-   `.claude/skills/` (agreed step 1).
+   `.claude/skills/` (agreed step 1). **Re-verified STILL BLOCKED 2026-07-20** —
+   all four keys remain empty tuples. Re-run the check before assuming otherwise:
+
+   ```bash
+   mise exec -- uv run python -c "
+   from livespec_dev_tooling.config import load_config
+   import pathlib
+   c = load_config(repo_root=pathlib.Path('.'))
+   print(c.source_trees, c.io_trees, c.supervisor_entry_files, c.commands_trees)"
+   ```
+
+   Do NOT pre-empt this by declaring the keys from THIS thread — the agreed split
+   gives step 1 to `rop-sweep-fleet-policy`, and declaring them here would land
+   enforcement before their adoption sweep, which is the exact
+   `.ai/ci-gate-discipline.md` failure the split exists to avoid.
 2. **Then ours**: when `.claude/skills/` is added to `source_trees` (agreed step
    3), `supervisor.py` must ALSO be covered by `supervisor_entry_files` (or the
    equivalent exemption of the day), or the one sanctioned loop-iteration catch
@@ -954,18 +968,63 @@ done and is below. **Do not re-derive it; extend it.**
 
 #### The ONE real coupling, and it is shallow
 
-`supervisor.py:2629` resolves the fleet manifest by POSITIONAL PATH TRAVERSAL —
-`Path(__file__).resolve().parents[3] / ".livespec-fleet-manifest.jsonc"`, i.e.
-"three directories up is the repo root". **That breaks the instant the folder
-moves anywhere**, so it is the concrete relocation blocker.
+`supervisor.py:2645` (`_default_manifest`; the line was `:2629` when first
+measured — the file has since moved) resolves the fleet manifest by POSITIONAL
+PATH TRAVERSAL — `Path(__file__).resolve().parents[3] /
+".livespec-fleet-manifest.jsonc"`, i.e. "three directories up is the repo root".
+**That breaks the instant the folder moves anywhere**, so it is the concrete
+relocation blocker. Re-verified 2026-07-20; every `supervisor.py` line number in
+this section was re-measured at the same time, because they had ALL drifted by
+~15 lines.
 
 But the fix is small, and this RESIZES `livespec-b1uo.3` — it is not the refactor
 that item was filed as. The manifest is used for exactly ONE thing: deriving the
 watch-set of repos. And `watch_repos: list[str] | None = None` is ALREADY an
-injectable field (`supervisor.py:554`) that short-circuits the manifest entirely
-(`supervisor.py:700`). Today only the beside-tests inject it — the CLI
-deliberately exposes no knob ("de-gold-plated 2026-07-13"). **So b1uo.3 is
-exposing an existing seam on the CLI, not building one.**
+injectable field (`supervisor.py:569`) that short-circuits the manifest entirely
+(`supervisor.py:715`). Today only the beside-tests inject it — the CLI
+deliberately exposes no knob ("de-gold-plated 2026-07-13").
+
+#### ⚠️ CORRECTION 2026-07-20 — "just expose the seam on the CLI" is NOT available
+
+The sentence that stood here — *"So b1uo.3 is exposing an existing seam on the
+CLI, not building one"* — is **wrong as a plan**, and re-measuring the code is
+what showed it. Exposing a watch-set flag would REVERSE a deliberate design
+decision recorded in two places:
+
+- `supervisor.py:2649-2652`, `_build_supervisor`'s docstring: *"Build the
+  daemon's `Supervisor` for the CLI — with NO tunable surface. The invocation
+  surface carries no watch-set / store / stamp knobs (they were de-gold-plated
+  2026-07-13)."*
+- `.claude/skills/overseer/AGENTS.md` §"Build / toolchain facts", which
+  enumerates the deliberately-absent flags by name — `--store` / `--stamp` /
+  `--repos` / `--repos-only` / `--manifest` — and states that the injectable
+  dataclass fields exist for the BESIDE-TESTS only.
+
+So `b1uo.3` is a genuine design decision, not a mechanical seam-exposure, and it
+is constrained from three sides at once: **D5** says a shipped overseer MUST NOT
+depend on `.livespec-fleet-manifest.jsonc` as a functional contract; the
+**de-gold-plating** says do not add CLI config knobs; and the **relocation**
+breaks `parents[3]` regardless, so doing nothing is not an option either.
+
+**Recommended: a watch-set config in `$HOME`, NOT a CLI flag.** The overseer's
+state ALREADY lives in `$HOME` and not in any repo (`~/.livespec-overseer.jsonl`,
+`~/.livespec-overseer-stamps.json`), so a watch-set that lives beside them is
+consistent with the existing shape, keeps the invocation surface knob-free
+(honoring the de-gold-plating), and removes the manifest dependency (satisfying
+D5) in one move. It also generalizes to the adopter case for free: a third party
+supplies their own watch-set without a livespec install and without a fleet
+manifest.
+
+Alternatives, with why each is weaker: a **CLI flag** directly reverses the
+de-gold-plating; an **env var** is the same knob with worse discoverability and
+no natural default; **deriving the watch-set from the JSONL store's assigned
+rows** cannot work alone, because discovery must scan repos that have NO assigned
+track yet in order to surface `unassigned` plans (invariant 4), so it would make
+an unassigned plan undiscoverable until someone had already assigned it.
+
+**This is a maintainer decision, not self-resolvable** — it trades against two
+previously-recorded decisions. Do NOT implement a `--watch-repos` flag on the
+strength of the superseded sentence above.
 
 #### Dependency DIRECTION — the part the maintainer asked to weigh
 
