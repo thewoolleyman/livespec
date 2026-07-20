@@ -755,15 +755,67 @@ here.
 - **D6 — RESOLVED: drive it now as an epic.** This overrode the recommendation
   to park Phase 2 until an adopter asked.
 
-### Phase 2 work breakdown — epic `livespec-b1uo`
+### ⚠️ D7 — PLANE RULED: the overseer is CONTROL PLANE (maintainer, 2026-07-19)
 
-| Item | Repo | What |
+**This reshaped Phase 2 within hours of filing it, and it is the most important
+thing on this page for anyone picking the epic up.**
+
+The first Phase 2 breakdown assumed a SPEC-PLANE home — ship from livespec core,
+bind from both Drivers, following the `/livespec:*` pattern. Checking that
+premise against the spec before writing code showed it was wrong.
+
+`spec.md:283` defines three planes and states: "conflating them is the recurring
+design error. Each plane owns a distinct concern, and every artifact and skill
+belongs to exactly one." The **Control Plane** is "the operator experience:
+observe every plane's state, surface what needs attention, and coordinate the
+human through multi-session work." That is the overseer's job description
+almost verbatim. The Spec Plane is "concerned with WHAT the system should do" —
+which the overseer is not.
+
+The overseer READS `plan/<topic>/`, which IS Spec-Plane-owned; that is what made
+the wrong answer tempting. But reading is not owning, and "observe every plane's
+state" is precisely the Control Plane's defined job.
+
+### Phase 2 work breakdown — epic `livespec-b1uo`, as reshaped
+
+| Item | State | What |
 |---|---|---|
-| `livespec-b1uo.1` | livespec (core) | Relocate the overseer to the shipped plugin surface. **Foundational** — 4 and 5 have nothing to bind to until it lands |
-| `livespec-b1uo.2` | livespec (core) | Declare + enforce the Linux/tmux precondition (D4) |
-| `livespec-b1uo.3` | livespec (core) | Decouple the shipped overseer from the fleet manifest (D5) |
-| `livespec-b1uo.4` | `livespec-driver-claude` | Thin Claude binding |
-| `livespec-b1uo.5` | `livespec-driver-codex` | Thin Codex binding; follows `.4` so the shape is settled once, not twice |
+| `livespec-b1uo.1` | **RE-SCOPED, foundational** | Choose the Control-Plane home, THEN implement the move. Design-first — the answer is genuinely open |
+| `livespec-b1uo.2` | unchanged | Declare + enforce the Linux/tmux precondition (D4) |
+| `livespec-b1uo.3` | unchanged | Decouple the shipped overseer from the fleet manifest (D5) |
+| `livespec-b1uo.4` | **BLOCKED, likely superseded** | Targeted `livespec-driver-claude` — a SPEC-plane Driver surface |
+| `livespec-b1uo.5` | **BLOCKED, likely superseded** | Targeted `livespec-driver-codex` — same reason |
+
+`.2` and `.3` survive untouched because they are properties of the TOOL, not of
+its home. `.4` and `.5` are blocked rather than closed because the overseer does
+have an interactive half today (the bottom pane), so some per-runtime binding
+may still be needed — the open question is from whose surface, which `.1`
+decides.
+
+### The open question `.1` must answer — "Control Plane" is not a repo
+
+The reference Control-Plane implementation, `livespec-console-beads-fabro`, is a
+**Rust** application carrying **zero** first-party Python (measured 2026-07-19:
+0 `.py`, 28 `.rs`). The overseer is Python plus tmux, ~1832 statements across 8
+modules. Candidate homes, none yet chosen:
+
+1. A Control-Plane-owned **standalone Python tool**. The spec writes the
+   Control-Plane reference as `livespec-console-*` — a wildcard — so more than
+   one console realization is already contemplated.
+2. A Python sidecar **inside** `livespec-console-beads-fabro`. Awkward, and it
+   makes that repo bilingual, which has real conformance consequences: it is
+   currently exempt from the Python check surface precisely BECAUSE it carries
+   no Python.
+3. **Reimplementation in Rust** inside the existing console. Highest cost, and
+   it discards a folder that just earned 100% coverage, pyright strict, and ROP
+   conformance — but it is the only option leaving ONE Control-Plane artifact
+   rather than two. Do not dismiss it without argument.
+
+**Still true regardless of home:** adding a ninth operation to core's
+contract-fixed set of eight (`spec.md:233`, and `contracts.md:218` requires a
+propose-change cycle even to RENAME one) would be a spec amendment. Under the
+Control-Plane ruling that is probably moot — the overseer no longer joins that
+set — but confirm rather than assume.
 
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
