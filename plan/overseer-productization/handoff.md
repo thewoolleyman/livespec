@@ -51,8 +51,38 @@ straight into a terminal `GithubAppAuthError`. Because that helper is the
 credential path for EVERY fleet repo's automated git operations, a partial
 GitHub API outage hard-blocks every push fleet-wide with no retry. A 503 is an
 environment/timing failure that a retry could fix, which is precisely the class
-the repo's own Result-railway guidance says to treat as retryable. Raised for
-the maintainer; not filed or fixed from this thread.
+the repo's own Result-railway guidance says to treat as retryable.
+
+**Swept 2026-07-20 — it is SIX sites across FIVE repos, in three distinct
+implementations**, so the fix is a cross-repo epic, not a one-file change:
+
+| Repo | Site | Kind |
+|---|---|---|
+| `livespec-runtime` | `livespec_runtime/github_auth/mint.py` | Python, source of truth |
+| `livespec` | `.claude-plugin/scripts/_vendor/livespec_runtime/github_auth/mint.py` | vendored, byte-identical |
+| `livespec-orchestrator-beads-fabro` | same vendored path | vendored, byte-identical |
+| `livespec-orchestrator-git-jsonl` | same vendored path | vendored, byte-identical |
+| `livespec-dev-tooling` | `ci-runner/supervisor/mint-jitconfig.sh` | independent shell mint |
+| `livespec-dev-tooling` | `ci-runner/gate-runner/app-installation-token.sh` | independent shell mint |
+
+Three facts that shape it. **The vendored copies do NOT self-sync** — each
+consumer tracks `livespec_runtime` in its own `.vendor.jsonc` with a pinned
+`upstream_ref` (`livespec` is on `v0.11.0`), gated by `check-vendor-manifest`,
+so propagation is a deliberate ref bump plus re-copy per consumer. **The two
+shell mints are a different failure mode** — they serve the self-hosted CI
+runner, so their symptom is lost CI capacity rather than a blocked push. **The
+prior-art `_app_token.py` is genuinely gone**, promoted into the runtime and
+removed, so there is no fourth divergent copy.
+
+**Do NOT wire in the existing `retry_with_backoff`**
+(`livespec_runtime/cross_repo/retry.py`) as a drop-in: it catches broadly (so a
+non-retryable 401 would burn three attempts) and returns `None` on exhaustion
+(destroying the actionable diagnostic that made this outage diagnosable). The
+fix is STATUS-AWARE retry — 5xx and 429 retried, 4xx failing fast.
+
+The sharpest framing for whoever picks this up: CI's own
+`actions/create-github-app-token@v1` DOES retry, and burned four attempts
+during this same outage. Every mint the fleet wrote itself has none.
 
 ## Progress
 
@@ -90,16 +120,39 @@ exemptions the overseer should DECLINE (the beads tenant and pin-web
 participation are both things it WANTS). §"D9 RULED" carries the corrected
 table. Do not act on the earlier one alone.
 
+**Both names are RULED (maintainer 2026-07-20):**
+
+- **Repo class: `control-plane-tool`.** Chosen over `operator-tool`,
+  `console-tool`, and `control-plane-daemon`. It anchors to the plane
+  vocabulary the spec and diagram conventions already require, reads as a PEER
+  of `console` rather than a component of it, and does not over-narrow the way
+  `control-plane-daemon` would (a future purely-interactive Control-Plane
+  member would not be a daemon).
+- **Repo name: `livespec-overseer`.** Chosen over `livespec-overseer-tmux`,
+  `livespec-control-plane-overseer`, and `livespec-session-overseer`. It keeps
+  the name every existing artifact already uses — `.claude/skills/overseer/`,
+  `overseerd`, `overseer-start`, `~/.livespec-overseer.jsonl`,
+  `~/.livespec-overseer-stamps.json` — so nothing needs renaming, and it
+  carries no shared suffix, so it can never be ambiguously abbreviated.
+
+  **The bare name is deliberate — do NOT "fix" it by adding a `-tmux` suffix.**
+  The fleet's suffixes (`livespec-driver-claude` / `-codex`,
+  `livespec-orchestrator-beads-fabro` / `-git-jsonl`) mark places where
+  multiple interchangeable realizations genuinely coexist. D4 ruled Linux+tmux
+  a DECLARED REQUIREMENT and explicitly rejected abstracting the host boundary
+  as speculative generality, so a suffix would advertise a variance the ruling
+  says will not exist.
+
 **The immediate next steps, in order:**
 
-1. **Name the new class and the new repo** — neither is ruled.
-   `control-plane-tool` was the term used in the dialogue but nothing was
-   ratified.
-2. **Add the class value** in `livespec-dev-tooling` (`REPO_CLASSES`,
+1. **Add the class value** in `livespec-dev-tooling` (`REPO_CLASSES`,
    `_contract_rows.py:65`) — a spec-backed change, so it goes through that
    repo's propose-change → independent Fable review → revise cycle, NOT a
-   unilateral edit.
-3. **Then** create the repo, register it, and move the folder — the relocation
+   unilateral edit. Both subtraction sets (`_PIN_WEB_CLASSES`,
+   `_DEV_TOOLING_PIN_CLASSES`) pick the new class up automatically.
+2. **Then** create `livespec-overseer`, register it in
+   `.livespec-fleet-manifest.jsonc` under `fleet` with
+   `"class": "control-plane-tool"`, and move the folder — the relocation
    blocker is the positional path traversal at `supervisor.py:2629`; see
    §"The ONE real coupling, and it is shallow".
 
@@ -1112,11 +1165,12 @@ row still does NOT apply — that binds `impl-plugin` only
 (`_TEMPLATE_BORN_CLASSES`, `:77`), which is the one clause of the four that
 stands unamended.
 
-**Still open, NOT ruled:** the new class's NAME (`control-plane-tool` was the
-term used in the dialogue, but nothing was ratified), and the new repo's name.
-Adding a class value is a `livespec-dev-tooling` change with spec text, so it
-goes through that repo's propose-change → independent Fable review → revise
-cycle; it is not a unilateral edit.
+**Both names are now RULED** (maintainer 2026-07-20) — class
+`control-plane-tool`, repo `livespec-overseer`. See §"START HERE" for the
+choices, the alternatives they beat, and why the repo name deliberately carries
+NO `-tmux` suffix. Adding the class value is still a `livespec-dev-tooling`
+change with spec text, so it goes through that repo's propose-change →
+independent Fable review → revise cycle; it is not a unilateral edit.
 
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
