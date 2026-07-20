@@ -47,83 +47,44 @@ enforcement would repeat the error this thread exists to correct.
 > text below would build the withdrawn mechanism. That is the failure both
 > reviewers named.
 
-**STATE 2026-07-20 — W4 landed; W3 committed and BLOCKED ON A GITHUB OUTAGE.**
+**STATE 2026-07-20 — BOTH WORKSTREAMS COMPLETE. This thread is DONE.**
 
-| | Item | State |
-|---|---|---|
-| W4 | Overseer wrap-up says COMMIT the handoff, not just update it | **MERGED** (PR #1492) and live-verified |
-| W3 | Widen the invariant to `plan/` | **Committed as v170, UNPUSHED** — see below |
-
-W3 is complete through ratification and blocked only on network:
-
-- Branch `spec/widen-uncommitted-edits-to-plan`, worktree
-  `~/.worktrees/livespec/spec-widen-uncommitted-edits-to-plan`.
-- Proposal filed, then AMENDED for a real blocker found by the mandatory
-  independent Fable review (the section's committed-violations delegation was
-  false for `plan/`); re-reviewed to **NO BLOCKERS**; revise driven; **v170 cut**;
-  `just check` **all 71 targets passed**.
-- `git push` fails with HTTP 503 from the GitHub App credential helper.
-  githubstatus.com reports a Minor Service Outage; `gh api` 503s as well. This
-  is external and not a defect in the change.
-
-**To resume: push, PR, merge, then refresh the primary and remove the worktree.**
-Nothing needs re-deciding and nothing needs re-reviewing — the review verdict is
-recorded in the commit messages on that branch.
-
-~~Recommended first move is **layer 1**, the session-end check.~~ A 2026-07-19
-investigation reshaped what that means; read `design.md` §"A `Stop` hook already
-ships, already ran, and encodes the root cause" and §"The home question has a
-third answer, and it is coupled to the posture" for the evidence — but take the
-DISPOSITION from `plan.md`, not from this file.
-
-**Layer 1 is not a greenfield build.** The Claude Driver bundle already
-registers two `Stop` hooks, and one of them —
-`warn_plan_persistence.py`, whose stated purpose is "completion includes
-persistence" — fired at the end of the session that lost the handoff and emitted
-nothing, because `:155` early-exits the moment any `Write` appears in the turn.
-The root-cause conflation this thread names is encoded in shipped code at that
-line. The hook is correct as specified; its contract stops at *written*. Not a
-Driver bug.
-
-**One decision, not two.** Home and posture looked independent and are not:
-
-| Home | Posture available | Spec cycle | Repos covered |
+| | Item | Spec | Implementation |
 |---|---|---|---|
-| `livespec_dev_tooling.agent_hooks` | free — blocking already shipped there | none | 6 of 8 (wired in each committed `.claude/settings.json`) |
-| Driver bundle | WARN-only by contract | yes, incl. any posture change | all governed repos |
-| livespec-core-local | free | none | 1 |
+| W4 | Overseer wrap-up says COMMIT the handoff, not just update it | n/a | **MERGED** (PR #1492), live-verified |
+| W3 | Widen the uncommitted-edits invariant to `plan/` | **v170** (PR #1495) | **MERGED** (PR #1499), live-verified |
 
-~~**The recommendation flipped to blocking, in `livespec_dev_tooling.agent_hooks`.**~~
-**RETRACTED 2026-07-19 — see [`plan.md`](./plan.md).** The blocking posture was
-recommended on reasoning that did not survive review: it stalls overseer tracks,
-and it hands a careless agent a destructive way to satisfy the block. The
-paragraph below is preserved for its reasoning trail, not as a live
-recommendation.
-A WARN-only Stop hook lets the session end, so nothing commits the file — it
-cannot produce this thread's outcome. Only exit `2` hands control back while the
-authoring session can still act. The trap risk that argued for surface-only is
-already solved in-fleet: `subagent_stop_guard` blocks with exit `2`, caps at
-three blocks per session, and fails open on every error path. Both superseded
-recommendations are struck and annotated in `design.md`, not deleted.
+Nothing is in flight. No branch, no worktree, no pull request belongs to this
+thread. Work-item `livespec-8h07` (the W3 implementation) is closed with
+live-exercise evidence.
 
-~~Still open, and a genuine maintainer call: **which home** (the table above), and
-whether the existing plan-persistence contract should be widened in the same
-pass or left alone.~~
+**The false pass is gone, and that was measured, not assumed.** Against a real
+dirty `plan/` file on a real master worktree the check now reports:
 
-**MOOT as of 2026-07-19 — see [`plan.md`](./plan.md).** No hook is built
-anywhere under the cut plan, so the home question is disposed rather than open.
-The table above is retained for its reasoning only. What remains is W3 (widen
-the uncommitted-edits invariant to `plan/`) and W4 (say "commit it" in the
-overseer wrap-up).
+```
+status: warn
+1 worktree(s) on `master` carry uncommitted spec-tree or `plan/` edits:
+  /tmp/livecheck-master: plan: plan/plan-thread-integrity/handoff.md.
+Corrective action: move the edits to a feature branch and commit them there.
+NEVER discard `plan/` edits: an uncommitted handoff is frequently the only
+copy of a planning thread.
+```
 
-One further constraint will waste a session if discovered late:
+Note what is absent: no discard suggestion, because only a `plan/` path was
+implicated. Before the change the identical state reported `pass`.
 
-- **Layer 2 is a spec change** carrying an unsettled slug rename, and a red
-  `doctor-static` obstructs it: propose-change runs doctor static at both its
-  pre-step and its post-step, and `--skip-pre-check` suppresses only the
-  pre-step. The precise shape matters — the proposed-change file still lands on
-  disk and the CLI then reports exit 3, so the operation cannot complete cleanly
-  but the artifact is not lost.
+**If you are resuming this thread, the likely reason is one of these — and none
+of them is "build more mechanism":**
+
+- The **multi-tree duplicate-warn** note: the check runs once per spec tree, so
+  on a multi-spec-tree project one dirty `plan/` file could yield one identical
+  `warn` per tree. Not hit here (single tree). Latent note, not a defect.
+- The **overseer daemon** holds the old wrap-up text until restarted; that is a
+  maintainer action in the overseer pane.
+- A **second real incident**. If one occurs, `plan.md` §"Considered and cut"
+  records the three larger mechanisms and exactly why each was cut — read the
+  reasoning before reviving any of them, because two of the three were refuted
+  on technical merits, not merely on cost.
 
 ## Conventions this thread holds itself to
 
