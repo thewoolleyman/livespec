@@ -1554,23 +1554,98 @@ template-born. The parenthetical is doing real work — it anticipates exactly t
 case — but it does not say what to do instead, and a reader can be left looking
 for a template that will never exist.
 
-**Copy `livespec-console-beads-fabro`, which is the existing non-template-born
-precedent.** Verified 2026-07-20: it carries NO `.copier-answers.yml`, so it was
-hand-authored, and it is the closest structural analogue — a Control-Plane member
-that consumes `livespec-dev-tooling` for its toolchain without being generated
-from a template.
+### ⚠️ COPY `livespec-runtime`, NOT THE CONSOLE — corrected 2026-07-20
 
-Its hand-carried baseline, which is the checklist for the new repo:
-`.livespec.jsonc`, `.github/`, `.claude/`, `.ai/`, `.gitignore`, `.mise.toml`,
-`.python-version`, `.beads/`, plus `pyproject.toml` and `justfile`.
+**The advice that stood here said "Copy `livespec-console-beads-fabro`". Do NOT.
+Following it literally produces a repo that fails fleet conformance on exactly
+the obligations the new class exists to carry.** The superseded reasoning is
+kept at the end of this section so the two can be compared.
 
-**One detail worth stealing outright.** The console is PURE RUST and still
-carries `pyproject.toml` + `.python-version`, for one reason its own file states:
-to reuse the shared `livespec-dev-tooling` commit-refuse hook installer and the
-baseline verifier. `livespec-overseer` IS Python, so it needs that anyway — but
-the console's file is the worked example of the MINIMAL shape (a pin and nothing
-else: no `[build-system]`, no `[project.dependencies]`), which is a better
-starting point than copying core's much larger `pyproject.toml`.
+The console's only real claim was "the existing non-template-born precedent" —
+but `_TEMPLATE_BORN_CLASSES` is `frozenset({"impl-plugin"})`, so EVERY class
+except `impl-plugin` is non-template-born. That property does not distinguish
+the console at all. Measured 2026-07-20 across the three axes that actually
+shape a scaffold:
+
+| Axis | `livespec-console-beads-fabro` | `livespec-runtime` | what `livespec-overseer` needs |
+|---|---|---|---|
+| non-template-born | ✅ no `.copier-answers.yml` | ✅ no `.copier-answers.yml` | non-template-born |
+| language | **Rust — 0 first-party `.py`** | **Python — 59 first-party `.py`** | **Python** |
+| pin-web participation | ❌ exempt; ships **1 of the 3** shims | ✅ ships **all 3** shims | **all 3 — it is pin-consuming** |
+
+`livespec-runtime` (class `library`) matches on all three. The console diverges
+on the two that matter.
+
+**The concrete trap.** `control-plane-tool` IS in `_PIN_WEB_CLASSES` (the
+subtraction set removes `console` only), so all three shim-workflow obligation
+rows apply to the new repo. The console's `.github/workflows/` carries
+`bump-pin-from-dispatch.yml` but NOT `pin-freshness.yml` and NOT
+`release-dispatch.yml`. So copying the console's `.github/` yields a repo
+missing two required workflows — and it fails on precisely the pin-and-bump
+participation that was the entire argument for minting the class instead of
+reusing `console`.
+
+**Second trap, same section: the "MINIMAL `pyproject.toml`" advice was
+backwards.** The old text recommended the console's file as "the worked example
+of the MINIMAL shape (a pin and nothing else: no `[build-system]`, no
+`[project.dependencies]`)". That shape is right for a Rust repo that needs
+Python only to run the shared commit-refuse hook installer. It is WRONG for
+`livespec-overseer`, whose entire Phase 1 achievement was earning ruff,
+pyright-strict, and 100% coverage — all of which are configured in
+`pyproject.toml`. A "pin and nothing else" file carries none of the seven
+config rows §"RELOCATION INVENTORY" says must be RECREATED, so every gate the
+folder just earned would silently stop applying. Those two sections were in
+direct conflict; this is the resolution.
+
+**The verified baseline checklist** (`git ls-tree` over `livespec-runtime`,
+2026-07-20), with the five entries the old console-derived list OMITTED marked:
+
+| Entry | Note |
+|---|---|
+| `.beads/` | tenant pointers — `config.yaml` committed, `metadata.json` gitignored |
+| `.claude/` | project-scoped plugin settings |
+| `.github/` | `ci.yml`, `release-please.yml`, `reusable-check-matrix.yml`, **and all three shims** |
+| `.gitignore` | |
+| `.livespec.jsonc` | must carry a NON-EMPTY `harnesses` object — see below |
+| `.mise.toml` | |
+| `.python-version` | |
+| `pyproject.toml` | the real one, carrying the seven relocated config rows |
+| `justfile` | |
+| `README.md` | **OMITTED from the old list** |
+| `AGENTS.md` | **OMITTED.** Not optional — the `agent-ai-references-resolve` row is an `_ALL_CLASSES` obligation |
+| `lefthook.yml` | **OMITTED.** Load-bearing: no git hooks without it, so no commit-refuse and no Red-Green-Replay |
+| `release-please-config.json` + `.release-please-manifest.json` | **OMITTED, and this is the sharpest one.** Without release automation the repo cannot cut releases at all — and a pin-consuming member that never releases defeats the whole purpose of the class |
+| `uv.lock` | **OMITTED** |
+
+**`.ai/` is OPTIONAL, contrary to the old list.** `livespec-runtime` carries
+none; the console does. The `agent-ai-references-resolve` row only asserts that
+`.ai/<topic>.md` paths REFERENCED from `AGENTS.md` resolve, so a repo with no
+such references passes vacuously. `AGENTS.md` itself is not optional.
+
+**Side finding, NOT owned by this thread — a spec-vs-reality drift in
+`livespec-dev-tooling`.** Its `SPECIFICATION/contracts.md` §"Bump-pin policy"
+says a non-pin-consuming member "ships none of the three shims". The console
+ships one (`bump-pin-from-dispatch.yml`). Nothing FAILS, because the row simply
+does not apply to `console` — an inapplicable row asserts neither presence nor
+absence — but the contract sentence overstates what is true. Worth a
+propose-change on the dev-tooling side; do not fix it from here.
+
+#### Superseded: the console-derived advice (kept for comparison)
+
+> **Copy `livespec-console-beads-fabro`, which is the existing non-template-born
+> precedent.** Verified 2026-07-20: it carries NO `.copier-answers.yml`, so it was
+> hand-authored, and it is the closest structural analogue — a Control-Plane member
+> that consumes `livespec-dev-tooling` for its toolchain without being generated
+> from a template. Its hand-carried baseline, which is the checklist for the new
+> repo: `.livespec.jsonc`, `.github/`, `.claude/`, `.ai/`, `.gitignore`,
+> `.mise.toml`, `.python-version`, `.beads/`, plus `pyproject.toml` and
+> `justfile`. […] the console's file is the worked example of the MINIMAL shape
+> (a pin and nothing else […]), which is a better starting point than copying
+> core's much larger `pyproject.toml`.
+
+The console retains exactly ONE useful role: it is proof that a fleet member can
+be born WITHOUT a copier template. For everything structural, use
+`livespec-runtime`.
 
 **The `baseline-harnesses` obligation is easy to miss** because it is not a file
 at all — it asserts a NON-EMPTY `harnesses` object inside `.livespec.jsonc`. A
