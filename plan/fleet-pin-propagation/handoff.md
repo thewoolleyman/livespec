@@ -609,12 +609,59 @@ landed and what blocked. The live next actions are now:**
   is admitted, no Fabro run is burned, and the item is NOT stranded `active`.
   Attempting a gated item is therefore cheap and safe — but pointless until the
   acceptance lands.
-- **B. Route the two new P1 infra defects** — `bd-ib-w3d0` (workflow/image
-  resolution) and `bd-ib-nga9` (sandbox `workflows` permission), both in the
-  `livespec-orchestrator-beads-fabro` tenant. They block `…-5kd56a` and
-  `gbjuua` respectively; neither slice needs re-grooming.
-- **C. Groom `livespec-dev-tooling-9j8.6`** — unchanged, still this thread's
-  critical path (see item 2 below).
+- **B. Route `bd-ib-nga9`** (sandbox `workflows` permission),
+  `livespec-orchestrator-beads-fabro` tenant. **This is now the thread's real
+  critical path — see item C.**
+
+  Its sibling `bd-ib-w3d0` (workflow/image resolution) is **FIXED and CLOSED**
+  (`c8bde4a`, released 0.45.11) — do not route it. `nga9` was deliberately
+  re-tested after that fix landed, in case both had been addressed in the same
+  sweep; they had not. `livespec-dev-tooling-gbjuua` was re-dispatched on a
+  later plugin build and failed identically at publish, on the same file, for
+  the same reason. **Two independent reproductions; the two defects were
+  genuinely unrelated.**
+
+  Re-dispatching a workflow-file-editing item before this is fixed is worse
+  than a no-op: the run implements and COMMITS correct work, then is rejected
+  at push and throws it away, then parks on an interactive
+  `[R]etry/[I]/[A]` prompt with nobody attached and strands the item `active`.
+  `gbjuua` has now been recovered from that shape three times via
+  `drive --action move:<id>:ready`.
+- **C. Groom `livespec-dev-tooling-9j8.6`** — still needed, but **grooming it
+  is no longer sufficient, and it is no longer the true critical path.**
+
+  **`bd-ib-nga9` now sits UNDER `9j8.6`.** Verified 2026-07-20: `9j8.6`'s DO
+  clause is "move the decision logic into tested importable modules called from
+  thin `run:` glue" for `reusable-pin-freshness.yml` and
+  `reusable-release-dispatch.yml` — which necessarily EDITS both workflow
+  files. The Fabro sandbox token cannot push edits under `.github/workflows/`
+  (`bd-ib-nga9`, re-confirmed live with two independent reproductions). So even
+  a perfectly groomed `9j8.6` cannot be factory-dispatched today: it would
+  implement, commit, and then fail at publish.
+
+  Two of the three slices `9j8.6` gates are in the same position —
+  `livespec-dev-tooling-qrunmn` (`bump-pin-from-dispatch.yml`,
+  `reusable-release-dispatch.yml`) and `livespec-dev-tooling-z7wxbd`
+  (`reusable-pin-freshness.yml`) — and the third,
+  `livespec-dev-tooling-zm5cbp`, is **DOUBLE-gated**: blocked on `9j8.6` AND on
+  `nga9` (it edits `ci.yml` + `bump-pin-from-dispatch.yml`).
+
+  **So the ordering is: fix `bd-ib-nga9` FIRST, then groom `9j8.6`, then the
+  three slices.** Grooming first is not wasted — the cut is still maintainer-
+  owned and still needed — but it will not produce a dispatchable item on its
+  own, and queueing any of these into the factory before `nga9` is fixed burns
+  a full implement cycle per attempt and throws the (correct) work away at the
+  push step.
+
+  **Blast radius, for prioritising `nga9`.** A keyword scan of every live
+  work-item across four tenants found **~24** whose scope names a workflow
+  file: `livespec` 5, `livespec-dev-tooling` 14,
+  `livespec-console-beads-fabro` 1, `livespec-orchestrator-beads-fabro` 4.
+  **That 24 is an UPPER BOUND from a heuristic** — an item that merely CITES a
+  workflow file as evidence scores the same as one that edits it, so confirm
+  per item before acting on the number. Three were confirmed by reading their
+  scopes as genuine edits: `9j8.6`, `gbjuua`, `zm5cbp`. Full measurement is
+  journaled on `bd-ib-nga9`.
 
 1. ~~**Dispatch the four READY slices**~~ — **DONE 2026-07-20.**
    `livespec-2hya5g` (registry split, livespec) → MERGED #1508;
