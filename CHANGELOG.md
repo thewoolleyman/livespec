@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.4](https://github.com/thewoolleyman/livespec/compare/v0.18.3...v0.18.4) (2026-07-20)
+
+
+### Bug Fixes
+
+* split cross repo conformance targets ([3496b45](https://github.com/thewoolleyman/livespec/commit/3496b45af382292e20cd7543122827d1906d0b88))
+
 ## [0.18.3](https://github.com/thewoolleyman/livespec/compare/v0.18.2...v0.18.3) (2026-07-20)
 
 
