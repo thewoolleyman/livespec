@@ -39,6 +39,25 @@
       "server_host": "127.0.0.1",
       "server_port": 3307,
       "fake": false
+    },
+    // Autonomous-mode levers (maintainer-directed 2026-07-20). Two of the three
+    // policy settings in SPECIFICATION/contracts.md §"The three policy settings"
+    // are moved off their safe defaults so ready work is ADMITTED and ACCEPTED
+    // without a human valve:
+    //   auto_approve_ready: true      — pending-approval → ready with no human.
+    //   acceptance_mode: "ai-only"    — post-merge acceptance without a human.
+    // The third lever, `merge_on_review_cap`, deliberately STAYS at its safe
+    // `false` default and is NOT listed here: a review that cannot converge
+    // within `review_fix_cap` rounds is precisely the case that must reach a
+    // human, per the design record cited in that section. A design-human-gated
+    // (spec-change-tier) item still cannot auto-approve regardless of these.
+    //
+    // EDIT THIS BLOCK BY HAND. Do NOT use `drive --action set-config:<k>:<v>`:
+    // that surface round-trips the file through json.dumps and silently strips
+    // every comment here while reporting green — tracked as bd-ib-lmi5.
+    "dispatcher": {
+      "auto_approve_ready": true,
+      "acceptance_mode": "ai-only"
     }
   },
   // Allowlist for cross-repo spec-heading references per
