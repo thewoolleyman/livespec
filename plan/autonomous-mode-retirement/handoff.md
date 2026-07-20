@@ -206,6 +206,17 @@ spanning three repos and two independent operators. Encountered here:
 7. From this thread's own audit correction: an artifact search that missed
    `plan/archive/` concluded a dispatch never ran. **An archived thread moves
    every path it owns.**
+8. A standalone `just check-coverage` re-reported a 16-hour-old `.coverage` data
+   file and read as a master regression that did not exist. **The recipe
+   short-circuits when the data file is present; only the full gate is honest.**
+9. A follow-by-name tail of the dispatch journal replayed 2811 lines of history
+   as if live, reporting a green unattended close that predated the fix being
+   tested. **Filter on the record timestamp; sanity-check PR numbers against the
+   current range.**
+10. `bd-ib-yqfw`'s own prescribed reproduction for clause 3 was root-masked, so
+    the test it asked for would have passed vacuously in CI's root container.
+    **A permission-based provocation is silently disarmed for root** — the same
+    masking the item was filed to fix.
 
 ## Corrections the overseer made to its own directives
 
@@ -218,31 +229,69 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
-## RUNNING STATE — session close 2026-07-20
+## RUNNING STATE — 2026-07-20 (cont. — clause 3 session)
 
-### ⚠ TOP PRIORITY ON RESTART: `bd-ib-yqfw` (P0) — one clause of three still open
+### `bd-ib-yqfw` (P0) — ALL THREE CLAUSES NOW IMPLEMENTED; clause 3 awaits merge
 
 **The maintainer escalated this in their own words: "Something is fucked up with
-the factory. Make sure this gets fixed."** It ranks ABOVE every §B finding and
-above all remaining Defect-B work. Start here.
-
-**Two of its three clauses are LANDED (PR #845, merged to master). The third is
-NOT STARTED.**
+the factory. Make sure this gets fixed."** It ranked above every §B finding and
+above all remaining Defect-B work.
 
 | Clause | State |
 |---|---|
-| 1. `just check` RED for non-root runners | ✅ FIXED, merged |
-| 2. `fcntl.flock` reclaim mutex has ZERO coverage | ✅ FIXED, merged |
-| 3. **unguarded mutex I/O** | ❌ **NOT STARTED — this is the resume point** |
+| 1. `just check` RED for non-root runners | ✅ FIXED, merged (PR #845) |
+| 2. `fcntl.flock` reclaim mutex has ZERO coverage | ✅ FIXED, merged (PR #845) |
+| 3. unguarded mutex I/O | ✅ **IMPLEMENTED — PR #847, OPEN, not yet merged** |
 
-**Clause 3, precisely.** `_stale_janitor_lock_reclaimed`
-(`.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_janitor_lock.py`,
-~line 68) still opens the mutex with a raw
-`_reclaim_mutex_path(path=path).open("a+b")`, OUTSIDE the `attempt(...)` Result
-track the rest of that module uses for filesystem access — compare
-`_read_janitor_lock`, which wraps its read. An expected I/O failure there
-(permissions, full disk, vanished parent dir) propagates as a raised exception
-out of the reclaim path instead of routing through the failure track.
+**Clause 3, as shipped.** `_stale_janitor_lock_reclaimed`
+(`.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_janitor_lock.py`)
+now routes BOTH the mutex `open` AND the `fcntl.flock` one line below it through
+`attempt(...)`, failing **closed** — a claimant that cannot take the reclaim
+mutex has not established exclusion, so it reports contention rather than
+reclaiming. The item named only the `open`; the `flock` carried the identical
+unguarded exposure and was fixed in the same pass rather than left as a
+known-adjacent defect.
+
+PR: `livespec-orchestrator-beads-fabro`
+[#847](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/847),
+branch `fix-janitor-mutex-io`, worktree
+`~/.worktrees/livespec-orchestrator-beads-fabro/fix-janitor-mutex-io`. CI 64
+pass / 1 skip (`export-telemetry`, expected on PRs). **Auto-merge deliberately
+OFF** per the item's hard constraint that this needs dual review.
+
+### ⚠ CORRECTION TO `bd-ib-yqfw`'s OWN PRESCRIBED REPRODUCTION — it is root-masked
+
+The item's FIX 3 prescribes reproducing with a non-writable (`0o555`) parent
+dir. **Building that test would have reproduced clause 1's exact bug class
+inside the fix for clause 3.** Root bypasses the permission check and opens the
+mutex happily, so such a test passes vacuously in CI's root container and
+discriminates only off-root. Measured both ways rather than assumed:
+
+| Provocation | uid 1000 | uid 0 |
+|---|---|---|
+| `0o555` parent dir | `PermissionError` | **OPEN SUCCEEDS (masked)** |
+| directory at the mutex path | `IsADirectoryError` | `IsADirectoryError` |
+
+The shipped tests make the mutex path a DIRECTORY, which fails identically for
+both. Generalizable rule, same family as the item's own pid-1 coverage-probe
+lesson: **when provoking an I/O failure in a test, choose a provocation that is
+privilege-independent — permission-based provocations are silently disarmed for
+root.** Recorded as a comment on `bd-ib-yqfw` so it does not live only here.
+
+### The acceptance evidence, and the probe that must NOT be used
+
+uid 1000 (`ubuntu`) throughout. BEFORE: pristine worktree at master `944d13d9`
+→ `All 67 targets passed`. AFTER: three independent full-gate runs on the branch
+(Green-amend pre-commit, pre-push, standalone) → `All 67 targets passed`, green
+token written, coverage 100% with no pragma, carve-out, or per-file exemption.
+
+**Never probe with the isolated `just check-coverage` recipe.** `justfile:621-628`
+short-circuits on an existing `.coverage` data file and re-reports it WITHOUT
+running the suite, so a standalone invocation emits a verdict decoupled from the
+tree — the overseer hit exactly this and nearly reported a master regression that
+does not exist, off a data file 16 hours old. Only the full gate is honest
+(`check-per-file-coverage` regenerates the data immediately before). Filed as
+`bd-ib-d6v1`.
 
 ### The mechanism — do NOT re-derive it
 
@@ -325,20 +374,68 @@ hand-closing it.** That has not happened in the orchestrator repo. Today produce
 retirement all needed a human to read the outcome and close the item by hand. A
 gate that passes is a precondition for that, not evidence of it.
 
-**FIRST ACTION after clause 3 (or alongside it): dispatch one real
-orchestrator-repo item post-#845 and watch whether it reaches `done` unattended.**
-If it strands again, #845 was necessary but not sufficient and the remaining cause
-is still unidentified.
-
 The console evidence above is ONE run and does not settle this. It shows the
 console repo did not strand *that time*; it does not show the orchestrator repo
 now succeeds. Those are different claims and only the second is the maintainer's
 bar.
 
 Also carry forward: `bd-ib-9yi` (cargo-not-found / no Rust toolchain in the
-orchestrator image) was raised as a possible ALTERNATIVE cause of console
-stranding. It did not manifest in the run above, but it was never ruled out as a
-latent issue.
+orchestrator image). The overseer's sharper read, which holds: that ticket
+describes the post-merge janitor running in the ORCHESTRATOR CONTAINER, which is
+Python-only. The console janitor that succeeded ran HOST-SIDE, in a worktree
+under the per-user worktree root, where cargo exists. So `bd-ib-9yi` was **not
+refuted by that run — it was simply not exercised**, and stays latent for the
+containerized path. Do not close it on the strength of `-bgc`.
+
+### 🔬 THE PROOF DISPATCH IS RUNNING — `bd-ib-lmi5`
+
+Launched 2026-07-20 21:30:50Z, alongside clause 3 rather than after it.
+
+| Field | Value |
+|---|---|
+| Item | `bd-ib-lmi5` (P1 bug) — `set-config` strips ALL comments + reorders keys in `.livespec.jsonc` |
+| Dispatch id | `9c54b6372eba41849b789225552b77fc` |
+| Repo | `livespec-orchestrator-beads-fabro` (the Python repo — the one that stranded) |
+| Log | `nohup` log in the session scratchpad; dispatcher pid 1493605 |
+
+**Why this item.** It self-declares "Autonomy: FACTORY (mechanically verifiable —
+a round-trip test is the whole acceptance)"; it is product `.py`, so it exercises
+the full Red-Green-Replay ritual through the factory; and it is the config writer
+behind the console Settings surface — **not** janitor or dispatch machinery, so it
+respects the hard constraint that the substrate never goes through the factory.
+
+**It cannot pick up a substrate item.** `drive --action impl:<id>` emits
+`dispatcher.py loop --budget 1 --parallel 1 --item <id>`. "loop" is the
+subcommand name, not an unbounded drain. Four independent layers, verified in
+code: (1) `_dispatcher_loop_selection.py:76-78` treats `--item` as a hard
+WHITELIST filter on the ranked ready set; (2) `[: args.budget]` with budget 1;
+(3) `run_loop_command` is a SINGLE PASS — no `while` loop, so there is no next
+iteration; (4) the ready queue is empty anyway. Journal confirms
+`loop-pick → picked: ["bd-ib-lmi5"], budget: 1`.
+
+**⚠ Sizing caveat — do not misread a bounce.** The factory warned at 21:30:52Z:
+`description is 4688 chars (> 1500): heavy items have exceeded one unattended ACP
+turn` and `carries 3 enumerated parts`. If lmi5 fails to converge and bounces to
+`needs-regroom`, that is a **sizing** outcome, NOT a verdict on the janitor fix —
+it leaves the bar unproven rather than disproven, and the next step is a smaller
+non-substrate item, not a re-investigation of the janitor.
+
+### ⚠ READING THE DISPATCH JOURNAL — filter on `at`, or you will read history as live
+
+`tmp/fabro-dispatch-journal.jsonl` gets re-opened/rewritten, so a follow-by-name
+tail re-reads it from the beginning and **replays the entire 2811-line history**.
+The overseer armed such a watcher and it immediately emitted ~28 events reporting
+janitor exit 0, acceptance pass, and outcome green for items `3hgprw`/`r3vsnd` —
+all historical. The file had grown by FOUR lines. Taking it at face value would
+have reported an unattended green close from days ago as proof the factory is
+fixed, on a record PREDATING the fix.
+
+**Two counter-moves, use both:** filter every journal read on the `at` field
+against an explicit cutoff, and sanity-check PR numbers against the current range
+(the giveaway was PRs 227/238 when this repo is issuing 845+). Confirmed
+independently here: 2811 lines total, exactly 4 at/after the 21:30:00Z cutoff.
+This is the same class as the stale-`.coverage` trap above — a green-looking
+signal read off the wrong source.
 
 ### 🔁 THE CLASS FIX IS UNRESOLVED — `bd-ib-sfa2` (P1)
 
@@ -383,12 +480,13 @@ second job.
 | `bd-ib-0s5` | orchestrator | Detached; design-human-gated cost-gate spec amendment. |
 | §B findings | various | Seven remain VERIFY-THEN-FILE (§ Preserved findings above). Verification MUST request CLOSED records — the default listing hides them. |
 
-**The ride-along prose** is still staged-but-uncommitted at
-`~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose` (three
-comment-only corrections in `dispatcher.py`, `_dispatcher_cost_pricing.py`,
-`commands/CLAUDE.md`). Blocked alone by the pairing gate; it must ride a PR that
-carries real tests. **DO NOT DISCARD THAT WORKTREE.** Clause 3's fix is a natural
-carrier.
+**The ride-along prose is now CARRIED — the debt is discharged.** The three
+comment-only corrections (`dispatcher.py`, `_dispatcher_cost_pricing.py`,
+`commands/CLAUDE.md`) ride PR #847 alongside clause 3's real tests, which is
+exactly the carrier the previous session anticipated. Once #847 merges, the
+worktree `~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose`
+holds nothing unique and is **safe to reap** — verify with `git diff --cached`
+against the merged content first.
 
 ## Deliberately NOT owned here
 
