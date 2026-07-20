@@ -1268,7 +1268,7 @@ class proposal rather than bundled into it.
 re-check `tests/test_workflow_planes_terminology.py` — it scopes to the planes
 section and those Mermaid labels, so it is the mechanical gate on the change.
 
-### `livespec-b1uo.2` — ready to implement; the shape is already worked out
+### ✅ `livespec-b1uo.2` — DONE and live-exercised (2026-07-20)
 
 D4 is RULED (Linux + tmux is a declared requirement, host boundary deliberately
 NOT abstracted), so this needs no further decision — only implementation. It was
@@ -1291,6 +1291,31 @@ scoped 2026-07-20 and stood down only for session budget, so do NOT re-derive:
   (`codex_pids_of_comm` defaults to an empty scan). Check the real `tmux` NAME,
   not an injected `tmux_bin`: the gate asks "is this host supported at all?",
   and the tests' fake tmux must not satisfy it.
+
+**Landed as livespec PR [#1523](https://github.com/thewoolleyman/livespec/pull/1523)**
+(`chore(overseer):`, merged 2026-07-20). `Supervisor.unsupported_host_reasons()`
++ a refusal at the top of `run()`, ordered BEFORE the gitignore gate. Full
+`just check` green across all 71 targets; 445 beside-tests (439 + 6 new).
+
+**Sabotage-verified**, per this folder's discipline: short-circuiting the
+predicate to always report a supported host turned 5 of the 6 new tests red (the
+sixth asserts the SUPPORTED path and correctly stayed green); restoring turned
+them green. The probe was restored from a scratch copy, NOT `git checkout` —
+which reverts to HEAD, not to your working state.
+
+**Live-exercise evidence** (the bar is the SHIPPED behavior driven in its real
+environment, not merged + CI-green). Both legs were driven against the merged
+code on master, in-process, using the REAL default `which=shutil.which` seam
+rather than an injected fake:
+
+| Leg | How it was driven | Result |
+|---|---|---|
+| supported | the real Linux + tmux host | `unsupported_host_reasons() -> []` — no false refusal, so the daemon is not broken on the real fleet |
+| refusal | `os.environ['PATH']` repointed at an empty temp dir — a genuinely tmux-less PATH | surfaced `refusing to start: unsupported host — tmux is not on PATH …`, and `ticks performed -> []` — it returned from `run()` before any tick |
+
+The refusal leg is the one that matters: it proves the gate fires on the real
+entry point and stops the loop, rather than merely returning a list a test
+asserts on.
 
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
