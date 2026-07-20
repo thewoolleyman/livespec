@@ -8,6 +8,52 @@ children. Status is READ from the ledger, never stored here.
 fully inside the product gates as a first-class LOCAL module (Phase 1), then design
 host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of Phase 2.
 
+## ⚠️ Push blocker 2026-07-20 — GitHub partial API outage (diagnosis CORRECTED)
+
+This branch could not be pushed. The `livespec-pr-bot` App credential helper
+(`/home/ubuntu/.local/bin/livespec-agent-github-credential-helper` → the
+`livespec-runtime` mint) fails with `HTTP 503 Service Unavailable`, so
+`git push` never gets a credential and dies with
+`could not read Username for 'https://github.com'`.
+
+**An earlier note on this page diagnosed it as "an App-installations outage"
+that was "transient", inferred from a plain `GET https://api.github.com/`
+returning 200. Both halves were wrong, and the inference is the reusable
+lesson: a 200 on the API ROOT does not rule out a partial outage of specific
+API services.** What is actually happening, measured 2026-07-20:
+
+- **It is a GitHub-side incident, confirmed on the status page**, not a repo,
+  auth, or credential misconfiguration. `githubstatus.com/api/v2/summary.json`
+  reports overall `Minor Service Outage` with **`API Requests` →
+  `partial_outage`**, open since 2026-07-19T23:34Z. The 503 body is GitHub's
+  own (`"No server is currently available to service your request"`) and
+  carries an `X-GitHub-Request-Id`, so it is not a local proxy synthesizing it.
+- **The credentials are sound — do not go looking for an auth bug.** Signing
+  the App JWT by hand from the same wrapper environment and calling
+  `GET /app/installations` returned **200** with exactly one installation
+  (`livespec-pr-bot`, id `131208965`, `suspended_at: null`, `contents: write`).
+- **BOTH App endpoints are affected, intermittently.** Over 8 consecutive mint
+  attempts, 8 failed — but at DIFFERENT stages: some on the `GET
+  /app/installations` discovery call, some after that call succeeded, on the
+  `POST /app/installations/{id}/access_tokens` mint. So the earlier note naming
+  `/app/installations` as *the* failing endpoint was reading one sample.
+- Unrelated GitHub paths stayed healthy throughout (`gh api rate_limit` over
+  the human OAuth token worked), which is what "partial" means here.
+
+**Do NOT route around this with a personal token.** The App identity is a
+chosen boundary. Retry the push; if it still fails, confirm against the status
+page and report to the maintainer rather than swapping credentials.
+
+**Side finding, NOT owned by this thread — the mint has no transient-5xx
+retry.** `livespec-runtime`'s `livespec_runtime/github_auth/mint.py`
+(`_request_json`, `:107`) turns any `urllib.error.URLError` — a 503 included —
+straight into a terminal `GithubAppAuthError`. Because that helper is the
+credential path for EVERY fleet repo's automated git operations, a partial
+GitHub API outage hard-blocks every push fleet-wide with no retry. A 503 is an
+environment/timing failure that a retry could fix, which is precisely the class
+the repo's own Result-railway guidance says to treat as retryable. Raised for
+the maintainer; not filed or fixed from this thread.
+
 ## Progress
 
 | Gate | State | Where |
