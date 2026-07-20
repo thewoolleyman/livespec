@@ -14,7 +14,7 @@
 
 | Thread | Owns |
 |---|---|
-| `plan/autonomous-mode-acceptance/handoff.md` (epic `livespec-j4odoz`) | The MVP acceptance — real fleet work-items driven end-to-end through the live console TUI, then the maintainer's accept. The only live work this thread still owned. |
+| `plan/archive/autonomous-mode-acceptance/handoff.md` (epic `livespec-j4odoz`) | The MVP acceptance — real fleet work-items driven end-to-end through the live console TUI, then the maintainer's accept. The only live work this thread still owned. **DONE 2026-07-20: acceptance performed, epic closed, thread archived.** |
 
 The console programme (`livespec-console-beads-fabro:plan/cockpit-ux-docs-release/`)
 was **never this thread's to own**. Tracking a duplicate copy of its state is
