@@ -181,13 +181,38 @@ step 1 below.
    this page and a ratified proposal disagree, the ratified proposal wins — and
    check the LIVE spec files, since `history/` will drown the grep that would
    have settled it.**
-2. **Then** create `livespec-overseer`, register it in
-   `.livespec-fleet-manifest.jsonc` under `fleet` with
-   `"class": "control-plane-tool"`, and move the folder — the relocation
-   blocker is the positional path traversal in `_default_manifest`
-   (`supervisor.py`, ~:2686 — cite the SYMBOL, not the line; see the drift note
-   in §"The ONE real coupling"); see
-   §"The ONE real coupling, and it is shallow".
+2. **← YOU ARE HERE. Create and wire `livespec-overseer`.** Both gating
+   preconditions are satisfied, so this is the live critical path.
+
+   **Split this in two — the halves have DIFFERENT blocking status, and the
+   older one-line phrasing hid that.** Creating and wiring the repo is
+   UNBLOCKED. Moving the folder into it is NOT: it is gated on `b1uo.3`, a
+   maintainer decision. You can and should do the first half now.
+
+   **2a — create + wire (unblocked).** The four sections below were each
+   verified or corrected on 2026-07-20; read them rather than improvising, and
+   note that three of them CORRECT advice this page previously gave:
+
+   | Read | For |
+   |---|---|
+   | §"COPY `livespec-runtime`, NOT THE CONSOLE" | the baseline model + the verified file checklist. **Corrects** the old "copy the console" advice, which yields a repo missing two of three required shim workflows |
+   | §"REGISTER-FIRST TRAP" | the ordering. Register-first is first *within* the birth procedure, not first overall |
+   | §"HOW TO ACTUALLY RUN `wire-fleet-member`" | the exact operator command. There is NO justfile target, so it cannot be guessed; it must run under the environment wrapper, and `ci.yml` must be right BEFORE it runs |
+   | §"`baseline-harnesses`" (same section) | the non-file obligation that a file-by-file copy misses |
+
+   Two things this half needs that no document can grant: the repo itself is an
+   OUTWARD-FACING creation, and it needs its own beads tenant (Dolt DB, SQL
+   user + DB-scoped grant, a tenant password in the 1Password Environment).
+   Both are maintainer-authorization gates, not research questions.
+
+   **2b — move the folder (BLOCKED on `b1uo.3`).** The one genuine code blocker
+   is the positional path traversal in `_default_manifest` (`supervisor.py` —
+   cite the SYMBOL, not the line; re-measured at `:2688` on 2026-07-20 against
+   the `~:2686` written elsewhere on this page, which is why the symbol is the
+   citation and the number is not). See §"The ONE real coupling, and it is
+   shallow" for why it is shallow, and §"RELOCATION INVENTORY" for the 24
+   tracked entries that move and the seven core-side rows that must be DELETED
+   or core's `check-types` goes red.
 
 Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
 likely superseded by D7. An earlier version of this page told you to start at
