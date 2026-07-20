@@ -805,6 +805,20 @@ contract diagram) and their rationale live in
   it. Maintainer-declared 2026-07-04, after the `approve:` operator
   surface shipped green through the full factory gate and its FIRST real
   cross-repo use found a wrong-tenant correctness bug.
+  - **Non-behavior-bearing items discharge this differently — by ad hoc
+    adversarial review.** The paragraph above scopes to a *behavior-bearing
+    change*; a research/document deliverable (a sweep, an inventory, a
+    classification table) ships no behavior, so there is no shipped
+    behavior to drive end-to-end and the literal form does not apply. For
+    those, the discharging evidence is an INDEPENDENT ADVERSARIAL REVIEW
+    that re-derives the deliverable's factual claims against live state
+    rather than trusting the artifact, CI-green, or its author — spot-check
+    the cited SHAs, digests, and file contents in the real clones, and
+    refuse the acceptance if a clause is genuinely unmet. That review MAY
+    be performed by a separately-spawned agent, and it satisfies the
+    `ai-then-human` acceptance policy's second leg. What never relaxes is
+    "no release with zero verification" — not the particular form the
+    verification takes. Maintainer-declared 2026-07-20.
 - **The task runner is the single source of truth.** The justfile owns every
   check/build/test/lint/format/coverage invocation; lefthook and CI delegate via
   `just <target>` and never call underlying tools directly.
