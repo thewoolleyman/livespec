@@ -57,6 +57,7 @@ import contextlib
 import fcntl
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -603,6 +604,17 @@ class Supervisor:
     codex_home: str | os.PathLike[str] | None = None
     codex_pids_of_comm: Callable[[str], list[int]] = codex_sessions.proc_pids_of_comm
     codex_fd_targets_of: Callable[[int], list[str]] = codex_sessions.proc_fd_targets
+    # Host-precondition seams (default: the real `/proc` + a real PATH lookup; the
+    # beside-tests' `_sup` factory defaults them to a SUPPORTED-looking host so the
+    # suite never depends on the RUNNER having tmux). Linux + tmux is a DECLARED
+    # REQUIREMENT, deliberately NOT an abstraction boundary: the session readers read
+    # `/proc/<pid>/stat`, which macOS does not have AT ALL, and every acting mechanic
+    # drives a real tmux. `which` is asked about the literal `tmux` NAME rather than a
+    # caller's injected `tmux_bin`, because this gate asks "is this host supported at
+    # all?" — not "is that particular binary resolvable", which a fake tmux would
+    # wrongly satisfy.
+    proc_root: str | os.PathLike[str] = "/proc"
+    which: Callable[[str], str | None] = shutil.which
     codex_cwd_of: Callable[[int], str | None] = codex_sessions.proc_cwd
     # Startup gate: `<repo>/tmp/overseer/` MUST be gitignored (the overseer only
     # writes temp files, never tracked ones). Injectable so tests fake the check.
@@ -2584,6 +2596,28 @@ class Supervisor:
             if registry.repo_root_present(repo) and not self.gitignore_check(repo)
         ]
 
+    def unsupported_host_reasons(self) -> list[str]:
+        """Declared host preconditions that are ABSENT here (empty list == supported).
+
+        Linux + tmux is a DECLARED REQUIREMENT rather than an abstraction boundary,
+        so the honest failure is an immediate refusal naming what is missing — not a
+        `FileNotFoundError` surfacing several ticks deep, from whichever reader
+        happened to touch the host first. Two things are checked because two things
+        are genuinely required: `/proc` (the Claude and Codex session readers both
+        parse `/proc/<pid>/…`, and macOS has no `/proc` at all — absent, not merely
+        different), and a real `tmux` on PATH (every acting mechanic shells out to
+        it).
+        """
+        reasons: list[str] = []
+        if not Path(self.proc_root).is_dir():
+            reasons.append(
+                f"{os.fspath(self.proc_root)} is not a directory — the session readers "
+                "parse /proc/<pid>/ and macOS has no /proc at all (Linux is required)"
+            )
+        if self.which("tmux") is None:
+            reasons.append("tmux is not on PATH — every acting mechanic drives a real tmux")
+        return reasons
+
     def run(
         self, *, interval: float = LOOP_INTERVAL_SECONDS, once: bool = False, recover: bool = False
     ) -> None:
@@ -2595,6 +2629,15 @@ class Supervisor:
         tracks rather than dying (B7). ``KeyboardInterrupt``/``SystemExit`` still
         propagate (they are BaseException, not caught here).
         """
+        unsupported = self.unsupported_host_reasons()
+        if unsupported:
+            self._surface(
+                "refusing to start: unsupported host — "
+                + "; ".join(unsupported)
+                + " (the overseer declares Linux + tmux as a REQUIREMENT and "
+                "deliberately does not abstract the host boundary)"
+            )
+            return
         offenders = self.unignored_tmp_repos()
         if offenders:
             self._surface(
