@@ -148,6 +148,12 @@ table. Do not act on the earlier one alone.
   as speculative generality, so a suffix would advertise a variance the ruling
   says will not exist.
 
+**✅ STEP 0 IS DONE — the class is RATIFIED in core as of 2026-07-20.** The
+proposal was accepted as **`SPECIFICATION/history/v171/`** (commit `421388ff`,
+full `just check` green across all 71 targets). Core's contract now carries
+`control-plane-tool`. Do NOT re-file or re-ratify it; the next actor starts at
+step 1 below.
+
 **The immediate next steps, in order:**
 
 1. **Add the class value** in `livespec-dev-tooling` (`REPO_CLASSES`,
@@ -155,6 +161,9 @@ table. Do not act on the earlier one alone.
    repo's propose-change → independent Fable review → revise cycle, NOT a
    unilateral edit. Both subtraction sets (`_PIN_WEB_CLASSES`,
    `_DEV_TOOLING_PIN_CLASSES`) pick the new class up automatically.
+   **This is now the critical path, and it is UNBLOCKED.** Note the step that
+   is easy to drop: the change must be merged AND **RELEASED**, not merely
+   merged — fleet pins track releases, not master (see §"REGISTER-FIRST TRAP").
 2. **Then** create `livespec-overseer`, register it in
    `.livespec-fleet-manifest.jsonc` under `fleet` with
    `"class": "control-plane-tool"`, and move the folder — the relocation
@@ -175,19 +184,32 @@ with no worktrees outstanding. **Read this before re-deriving anything.**
 
 ## What is ACTIONABLE right now (no decision required)
 
-Honest answer: **very little in this thread.** The move is now specified
-end-to-end and the remaining steps are gated. Do NOT invent work — if this list
-is empty for you, say so and check §"Gate E" and the ledger instead.
+**UPDATED 2026-07-20 — this list is no longer empty.** The ratification that
+gated everything has landed (v171, commit `421388ff`), so the critical path is
+now open for the first time in this thread:
 
-- Nothing on the critical path. `b1uo.1`'s next step is the maintainer's
-  ratification, and everything after it is ordered behind that (see §"REGISTER-FIRST
-  TRAP").
+- **`livespec-dev-tooling`: add `control-plane-tool` to `REPO_CLASSES`**
+  (`_contract_rows.py:65`), through that repo's propose-change → independent
+  Fable review → revise cycle. Then **cut a release** — the birth procedure may
+  not begin against a merged-but-unreleased dev-tooling. This is the whole
+  critical path right now and it needs no further maintainer decision.
+
+Still gated, unchanged: `b1uo.3` (a maintainer design call) and Gate E (another
+thread's `cvz`). Do NOT invent work beyond the item above.
+
+The pre-ratification text is kept for context: *"Honest answer: very little in
+this thread. The move is now specified end-to-end and the remaining steps are
+gated. Do NOT invent work — if this list is empty for you, say so and check
+§"Gate E" and the ledger instead. Nothing on the critical path; `b1uo.1`'s next
+step is the maintainer's ratification, and everything after it is ordered behind
+that (see §"REGISTER-FIRST TRAP")."*
 
 ## What is BLOCKED, and on WHOM
 
 | Item | Blocked on | Note |
 |---|---|---|
-| `control-plane-tool` proposal | **maintainer** — `/livespec:revise` | FILED + twice independently reviewed, NO BLOCKERS. Accept payload needs THREE `resulting_files[]`; see §"Proposal FILED and REVIEWED" for the exact `../`-prefixed spellings |
+| ~~`control-plane-tool` proposal~~ | ~~maintainer~~ — **DISCHARGED 2026-07-20** | **RATIFIED as v171** (commit `421388ff`). Needed FOUR `resulting_files[]`, not the three promised — see §"Proposal RATIFIED as v171" for the fourth and why both reviews missed it |
+| `livespec-dev-tooling` `REPO_CLASSES` | **nobody — this is the OPEN critical path** | Unblocked by the ratification. Merge AND **release**; merged-but-unreleased does not satisfy the manifest-parse precondition |
 | `b1uo.3` (watch-set source) | **maintainer** — a design call | Recommendation recorded: a `$HOME` config beside the store/stamp sidecars. Do NOT add a `--watch-repos` CLI flag; that reverses a deliberate de-gold-plating |
 | `b1uo.2` close | **maintainer** — acceptance leg | Work is DONE and live-exercised; all three ACCEPTANCE clauses now met |
 | Gate E | **`rop-sweep-fleet-policy` thread** — its `cvz` | Re-verified 2026-07-20: all four role keys still empty tuples |
@@ -1343,7 +1365,58 @@ NO `-tmux` suffix. Adding the class value is still a `livespec-dev-tooling`
 change with spec text, so it goes through that repo's propose-change →
 independent Fable review → revise cycle; it is not a unilateral edit.
 
-### Proposal FILED and REVIEWED — awaiting ratification (2026-07-20)
+### ✅ Proposal RATIFIED as v171 (2026-07-20) — and the lesson it taught
+
+**Ratified.** Driven by `/livespec:revise` on maintainer authorization,
+committed as `421388ff`; the proposal is now the frozen record
+`SPECIFICATION/history/v171/proposed_changes/fleet-control-plane-tool-repo-class.md`.
+The section below is kept as the pre-ratification record.
+
+**⚠️ THE PAYLOAD NEEDED FOUR `resulting_files[]`, NOT THE THREE THIS PAGE
+PROMISED — and neither Fable review caught the fourth.** This is the most
+transferable finding of the ratification, because it locates a real blind spot
+in the review discipline rather than a one-off slip.
+
+The ratified defining sentence cites `livespec-dev-tooling`'s `contracts.md`
+§"Bump-pin policy" — deliberately, since the proposal's whole design is that
+core MUST NOT restate the pin policy and must point at dev-tooling's section
+instead. But that is a CROSS-REPO section citation, and core's
+`doctor-no-cross-spec-reference` fails any `§"…"` citation that does not resolve
+to a heading in the same `SPECIFICATION/` tree unless it is allowlisted. So the
+accept needed a fourth co-edit:
+
+- `.livespec.jsonc` → `external_references["livespec-dev-tooling"]` gains
+  `SPECIFICATION/contracts.md §"Bump-pin policy"`, joining four entries already
+  there for the same repo and the same file.
+
+**Why both reviews missed it, and what to do about it.** A Fable review reads
+the proposal against the spec and the design record; it does not RUN the static
+check registry. This failure mode is invisible to prose review by construction
+and visible to `doctor-static` immediately. **So a NO-BLOCKERS review verdict is
+not evidence the payload will apply cleanly** — the two gates catch disjoint
+classes. Before any future accept whose text introduces a `§"…"` citation
+pointing at another repo, pre-check the allowlist rather than discovering it at
+the post-step.
+
+**The citation was verified real before allowlisting**, which matters: the
+allowlist is an assertion that a reference resolves, so allowlisting a dangling
+one would launder exactly the fabricated-citation class §"Reading warning"
+names as staleness class 3. Confirmed `### Bump-pin policy` exists at
+`contracts.md:335` on `livespec-dev-tooling` `origin/master`.
+
+**Operational note — the post-step doctor fails AFTER mutating, not closed.**
+The proposal's own text says a wrong `resulting_files[]` path "fails CLOSED …
+leaving the spec tree byte-identical". That is true of the require-existing-target
+PRECONDITION, and NOT true of the post-step doctor: by the time it runs, the
+`vNNN/` is cut, the proposal has moved to `history/`, and the resulting files are
+written. The first run left exactly that state. It was REVERTED and re-run from
+clean after the allowlist landed, rather than patched forward, so the recorded
+v171 is one that passed its own post-step doctor — not one repaired afterward.
+Prefer that if it happens again; the revert is cheap (`rm -rf` the new `vNNN/`
+plus `git checkout --` the touched files) and the payload rebuild is
+deterministic.
+
+### Proposal FILED and REVIEWED — the pre-ratification record (2026-07-20)
 
 The spec half is filed as
 `SPECIFICATION/proposed_changes/fleet-control-plane-tool-repo-class.md`
@@ -1501,10 +1574,11 @@ resolution.** "Register FIRST" is first *within the birth procedure*, not first
 overall. The birth procedure may not BEGIN until the class exists in a RELEASED
 `livespec-dev-tooling`. So the full sequence is:
 
-1. Ratify core's `control-plane-tool` proposal (the contract gains the class).
+1. ~~Ratify core's `control-plane-tool` proposal (the contract gains the class).~~
+   **✅ DONE 2026-07-20 — v171, commit `421388ff`.**
 2. Land AND **release** the `REPO_CLASSES` addition in `livespec-dev-tooling` —
    fleet pins track releases, not master, so a merged-but-unreleased change is
-   NOT enough.
+   NOT enough. **← YOU ARE HERE.**
 3. **Only now** begin the birth procedure, and inside it register-first as
    `:1065` requires: scaffold → register → `wire-fleet-member` → green.
 
