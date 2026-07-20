@@ -153,7 +153,9 @@ table. Do not act on the earlier one alone.
 2. **Then** create `livespec-overseer`, register it in
    `.livespec-fleet-manifest.jsonc` under `fleet` with
    `"class": "control-plane-tool"`, and move the folder — the relocation
-   blocker is the positional path traversal at `supervisor.py:2629`; see
+   blocker is the positional path traversal in `_default_manifest`
+   (`supervisor.py`, ~:2686 — cite the SYMBOL, not the line; see the drift note
+   in §"The ONE real coupling"); see
    §"The ONE real coupling, and it is shallow".
 
 Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
@@ -208,7 +210,8 @@ in CI, which is worse than no test.
 > false at both the commit AND the push step (post-mortem lesson 3 below).
 > **Keep this file committed; update it in-session as findings land, not at
 > session end.** The root-cause fix for that whole class of failure is its own
-> thread now: `plan/plan-thread-integrity/` (epic `livespec-nr5h`).
+> thread now: `plan/archive/plan-thread-integrity/` (ARCHIVED 2026-07-20;
+> epic `livespec-nr5h`).
 
 ## Blocker post-mortem (2026-07-19) — resolved, kept for the lesson
 
@@ -223,8 +226,8 @@ master CI stayed GREEN. Cause: commit `7107be6c` added that repo to
 `.livespec.jsonc`'s `cross_repo_targets` so a cross-tenant work-item reference
 would resolve — a PLANNING purpose. But `cross_repo_targets` is DUAL-PURPOSE: it
 is also the input to `doctor-wiring-completeness-cross-repo`, which requires
-every listed sibling to wire all 53 canonical PYTHON check slugs.
-`livespec-console-beads-fabro` carries ZERO first-party `.py` and 28 `.rs` files,
+every listed sibling to wire all 54 canonical PYTHON check slugs.
+`livespec-console-beads-fabro` carries ZERO first-party `.py` and 30 `.rs` files,
 so it could not satisfy them at any version.
 
 Resolved by revert, landed as `333e5263` (a REBASED re-apply, so the original
@@ -249,7 +252,7 @@ SHAs — do not search for the original).
    and `check-pre-push` routes a zero-`.py` push to that same subset
    (`justfile:548`). The belief that the blocker "prevents committing anything"
    was false at BOTH steps, and acting on it is what left this handoff
-   unversioned for 153 lines. See `plan/plan-thread-integrity/`, the thread
+   unversioned for 153 lines. See `plan/archive/plan-thread-integrity/` (ARCHIVED 2026-07-20), the thread
    spun out to fix that class of failure.
 4. **Never infer another session's liveness from `tmux ls`.** It reads only the
    socket namespace named by `TMUX_TMPDIR`; the fleet's sessions live on the
@@ -299,7 +302,7 @@ survive this thread closing:
 - **`livespec-ail8`** (bug, P3) — findings 1 and 2 below, filed TOGETHER because they
   are the same "topic is not globally unique" root shape in the same function, gated
   behind the same unset flag; fixing either alone leaves the trap armed. Re-verified at
-  master before filing: `run()` carries `recover: bool = False` (`supervisor.py:2572`)
+  master before filing: `run()` carries `recover: bool = False` (`supervisor.py`, `def run`, ~:2622)
   and `grep -n 'recover' .claude/skills/overseer/overseerd` returns nothing, so the
   recovery path is genuinely unreachable in production.
 - **`livespec-3rj4`** (task, P3) — finding 3 below. Filed as a task, not a bug, because
@@ -505,10 +508,10 @@ ordering, because getting the ordering wrong turns core master red.
 - The overseer is 8 product modules under `.claude/skills/overseer/`, **FLAT** —
   there is NO `io/` subdirectory and no pure-versus-impure layer split.
   Command: `ls .claude/skills/overseer/`.
-- **5 `raise`** statements (all in `supervisor.py`) and **37 `except`** handlers
+- **2 `raise`** statements and **36 `except`** handlers
   (registry 11, supervisor 8, claude_sessions 6, codex_sessions 6, tmuxio 3,
   jsonio 2, signals 1). Command:
-  `grep -c 'raise \|except ' .claude/skills/overseer/*.py`.
+  an AST walk over the 8 product modules counting `ast.Raise` / `ast.ExceptHandler` nodes. **Do NOT use the `grep -c 'raise \|except '` this page used to recommend** — it produced BOTH of the wrong numbers it reported: it counted 4 prose/docstring uses of the English word "raise" as statements, and its trailing-space pattern silently MISSED `registry.py`'s bare `raise` re-raise. The real statements are `registry.py:310` and `supervisor.py:2929` (a `raise SystemExit(main())`).
 - **Three of the five ROP checks currently scan ZERO files in core.**
   `check-no-raise-outside-io`, `check-no-except-outside-io`, and
   `check-public-api-result-typed` each log `"role key absent — check no-ops"` and
@@ -534,7 +537,7 @@ rollout it asserts has completed."
 ### ✅ AGREED SPLIT AND ORDERING — settled with `rop-sweep-fleet-policy` 2026-07-19
 
 Encoded in BOTH plans per the maintainer's instruction; their side is committed
-as `03733f5c` (livespec PR
+as `2333a773` (livespec PR
 [#1451](https://github.com/thewoolleyman/livespec/pull/1451)).
 
 1. **Theirs (`livespec-dev-tooling-cvz`)**: declare core's `source_trees` /
@@ -569,7 +572,7 @@ concern that does not apply to a flat package."
 |---|---|---|
 | At most one broad catch per supervision loop (`:673`) | exactly **1** broad; 35 narrow | ✅ |
 | Marker from the closed set of five (`:781`) | `— sole loop-iteration bug-catcher: log traceback, continue` | ✅ byte-exact match to form 4 |
-| Direct child of the supervision-loop body (`:673`) | `Try` is a direct child of `while True` at `supervisor.py:2601` | ✅ |
+| Direct child of the supervision-loop body (`:673`) | `Try` is a direct child of `while True` (`supervisor.py`, ~:2659-2660) | ✅ |
 | MUST log the FULL traceback (`:673`) | `traceback.format_exc()` | ✅ |
 | Silent `pass` forbidden (`:673`) | logs, does not pass | ✅ |
 | MUST NOT exit (`:673`) | continues; no raise/exit in the handler | ✅ |
@@ -641,8 +644,16 @@ the boundary", but `no_except_outside_io` bans ALL `try/except` outside `io/`,
 narrow included. That is coherent for a LAYERED package, where the narrow seam
 catches live in `io/`. For a FLAT package there is no `io/`, so the strict
 reading bans the very form v169 sanctions. The counter-argument is that
-`contracts.md:213` says "no `try/except` is wholesale exempt" — the question is
-whether "wholesale" means TREE-level or per-catch.
+~~`contracts.md:213` says "no `try/except` is wholesale exempt"~~ — **that
+citation is FABRICATED and MUST NOT be relied on.** Verified 2026-07-20: the
+phrase "wholesale exempt" appears NOWHERE in `SPECIFICATION/`
+(`git grep -n 'wholesale exempt' -- 'SPECIFICATION/*.md'` returns nothing), and
+`contracts.md:213` is mid-paragraph about plugin-install verification. The phrase
+exists exactly once in the whole repo — as `plan/rop-sweep-fleet-policy/handoff.md`'s
+OWN prose, i.e. another plan document's paraphrase, which got copied here and
+promoted into a spec quote. The underlying question (does "wholesale" mean
+TREE-level or per-catch?) was real, but it is MOOT: the rop-sweep thread settled
+the rule broad-only, which is what §"RULED broad-only" above records.
 
 **So do not begin Gate E's refactor until that is ruled on**, or risk doing 35
 sites of work the ruling makes unnecessary. If it lands broad-only, Gate E is
@@ -968,20 +979,31 @@ done and is below. **Do not re-derive it; extend it.**
 
 #### The ONE real coupling, and it is shallow
 
-`supervisor.py:2645` (`_default_manifest`; the line was `:2629` when first
-measured — the file has since moved) resolves the fleet manifest by POSITIONAL
-PATH TRAVERSAL — `Path(__file__).resolve().parents[3] /
+`_default_manifest` (`supervisor.py`, ~:2686) resolves the fleet manifest by
+POSITIONAL PATH TRAVERSAL — `Path(__file__).resolve().parents[3] /
 ".livespec-fleet-manifest.jsonc"`, i.e. "three directories up is the repo root".
 **That breaks the instant the folder moves anywhere**, so it is the concrete
-relocation blocker. Re-verified 2026-07-20; every `supervisor.py` line number in
+relocation blocker.
+
+**📌 CITE `supervisor.py` BY SYMBOL, NOT BY LINE.** An independent drift sweep
+found this ONE fact cited at THREE different line numbers on this page, every one
+of them wrong — including the value written the same morning it was "re-verified",
+which PR #1523 invalidated hours later by inserting a method earlier in the file.
+`supervisor.py` is ~2900 lines and changes most days, so any line number written
+here is stale on arrival. Every `supervisor.py` citation on this page has been
+rewritten to name the SYMBOL with an approximate line (`~:2686`); keep that form.
+The lesson generalizes: line citations into a fast-moving file are a maintenance
+liability, and the sweep found ALL of this page's citation drift concentrated in
+exactly this one file — every citation into the three sibling repos verified
+clean. Re-verified 2026-07-20; every `supervisor.py` line number in
 this section was re-measured at the same time, because they had ALL drifted by
 ~15 lines.
 
 But the fix is small, and this RESIZES `livespec-b1uo.3` — it is not the refactor
 that item was filed as. The manifest is used for exactly ONE thing: deriving the
 watch-set of repos. And `watch_repos: list[str] | None = None` is ALREADY an
-injectable field (`supervisor.py:569`) that short-circuits the manifest entirely
-(`supervisor.py:715`). Today only the beside-tests inject it — the CLI
+injectable field (`supervisor.py`, ~:570) that short-circuits the manifest entirely
+(`supervisor.py`, ~:727). Today only the beside-tests inject it — the CLI
 deliberately exposes no knob ("de-gold-plated 2026-07-13").
 
 #### ⚠️ CORRECTION 2026-07-20 — "just expose the seam on the CLI" is NOT available
@@ -991,7 +1013,7 @@ CLI, not building one"* — is **wrong as a plan**, and re-measuring the code is
 what showed it. Exposing a watch-set flag would REVERSE a deliberate design
 decision recorded in two places:
 
-- `supervisor.py:2649-2652`, `_build_supervisor`'s docstring: *"Build the
+- `_build_supervisor`'s docstring (`supervisor.py`, ~:2691-2695): *"Build the
   daemon's `Supervisor` for the CLI — with NO tunable surface. The invocation
   surface carries no watch-set / store / stamp knobs (they were de-gold-plated
   2026-07-13)."*
@@ -1081,7 +1103,7 @@ the overseer is invisible to everyone but the maintainer.
 
 The reference Control-Plane implementation, `livespec-console-beads-fabro`, is a
 **Rust** application carrying **zero** first-party Python (measured 2026-07-19:
-0 `.py`, 28 `.rs`). The overseer is Python plus tmux, ~1832 statements across 8
+0 `.py`, 30 `.rs`). The overseer is Python plus tmux, ~1832 statements across 8
 modules. Candidate homes, none yet chosen:
 
 1. A Control-Plane-owned **standalone Python tool**. The spec writes the
@@ -1097,7 +1119,7 @@ modules. Candidate homes, none yet chosen:
    rather than two. Do not dismiss it without argument.
 
 **Still true regardless of home:** adding a ninth operation to core's
-contract-fixed set of eight (`spec.md:233`, and `contracts.md:218` requires a
+contract-fixed set of eight (`spec.md:233`, and `contracts.md:220` requires a
 propose-change cycle even to RENAME one) would be a spec amendment. Under the
 Control-Plane ruling that is probably moot — the overseer no longer joins that
 set — but confirm rather than assume.
@@ -1218,8 +1240,18 @@ class — not a rework of the partition.
 (`workflow-ci`, `no-tracked-gitlinks`, `claude-plugin-currency`, `secret-names`,
 `app-installation`, `branch-protection`, `merge-settings`,
 `delete-branch-on-merge`, `topic-livespec-sibling`,
-`agent-ai-references-resolve`, `baseline-harnesses`, `dev-tooling-pin`), the
-three pin-web shim workflows, and its own beads tenant. The `copier-answers`
+`agent-ai-references-resolve`, `baseline-harnesses`,
+`beads-tenant-connection-consistency`), PLUS the separately-scoped
+`dev-tooling-pin` row, the three pin-web shim workflows, and its own beads
+tenant.
+
+**⚠️ An earlier version of this list was wrong twice** (caught by an independent
+drift sweep 2026-07-20): it included `dev-tooling-pin` among the `_ALL_CLASSES`
+rows — it is actually scoped to `_DEV_TOOLING_PIN_CLASSES`, which excludes
+`enforcement-suite` — and it OMITTED `beads-tenant-connection-consistency`, a
+genuine `_ALL_CLASSES` row that has existed since 2026-06-21 and so predates the
+analysis rather than drifting into it. Re-derive this list from
+`_contract_rows.py`'s `applies_to` fields rather than copying it. The `copier-answers`
 row still does NOT apply — that binds `impl-plugin` only
 (`_TEMPLATE_BORN_CLASSES`, `:77`), which is the one clause of the four that
 stands unamended.
@@ -1339,7 +1371,7 @@ The epic spans three repos, so the instinct is per-tenant items linked by
 cross-tenant `sibling_work_item` refs. **Do not.** Those refs resolve through
 `.livespec.jsonc`'s `cross_repo_targets`, which is DUAL-PURPOSE: it is also the
 input to `doctor-wiring-completeness-cross-repo`, which demands every listed
-sibling wire all 53 canonical PYTHON check slugs. Registering a repo for a
+sibling wire all 54 canonical PYTHON check slugs. Registering a repo for a
 PLANNING purpose silently enrols it in a CODE-CONFORMANCE check it may not
 satisfy.
 
