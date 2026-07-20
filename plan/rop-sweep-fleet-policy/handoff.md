@@ -190,7 +190,19 @@ MEASURED BY EXECUTION 2026-07-20 (full detail journaled on the e9j ledger item):
 - **Slice 1a — DONE, PR #1497 open.** Declaring `dataclasses_tree` ALONE arms
   `newtype_domain_primitives` in core, and it passes rc=0 clean. That retires one of the FOUR
   checks e9j found had never enforced anything in ANY fleet repo, with zero remediation.
-- **Slice 1b — BLOCKED, and this CORRECTS the plan below.** Declaring `source_trees` + `io_trees`
+- **Slice 1b — RULING 7 (2026-07-20) unblocks it: teach the check to HONOR THE FIVE SANCTIONED
+  v169 MARKERS.** A SECOND correction: broad-only does NOT unblock 1b. Ruling 1 scopes broad-only
+  to repos declaring NO `io_trees` — but that is exactly the branch where `no_except_outside_io`
+  RETURNS 0 WITHOUT INSPECTING ANYTHING (which is why `qm5` exists; its Red commit is literally
+  "run no_except_outside_io when io_trees is unset"). Slice 1b DECLARES `io_trees`, putting core on
+  the LAYERED branch, which broad-only never touches. Confirmed in source: `_find_offending_try_lines`
+  does NO handler-type inspection — it flags EVERY `ast.Try`, broad and narrow alike — and the check
+  honors NO `# noqa` markers (only `io/` wholesale, plus `main()` tries in `supervisor_entry_files` /
+  `commands_trees`). MEASURED: both layered repos (`livespec-orchestrator-git-jsonl`,
+  `livespec-orchestrator-beads-fabro`) already run the check GREEN at 0 offenses, so strict is
+  achievable and free there — which is why universal broad-only was REJECTED in favour of markers.
+  Full ruling + rejected alternatives are on the `e9j` ledger item.
+- **(superseded detail)** Declaring `source_trees` + `io_trees`
   turns core's `just check` RED on three narrow catches
   (`no_spec_section_citation_in_code.py:162,180`, `wiring_completeness_cross_repo.py:159`).
   **The broad-only rule is RATIFIED IN THE SPEC but NOT YET IMPLEMENTED IN THE CHECK** —
@@ -462,6 +474,8 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | ~~`bd-ib-sw0i`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Both held counts cleared; accepted |
 | ~~`livespec-dev-tooling-z45`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #485). Gate was BYPASSED at merge; post-merge dual review found a REGRESSION -> `6j6`. See STATE |
 | ~~`livespec-dev-tooling-6j6`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #487), dual-reviewed NO-BLOCKERS x2. Restored the `rc>=2` hard fail. **The gate-arming blocker is CLEARED.** |
+| `bd-ib-rxxx` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor gate is CHECKOUT-DEPENDENT: `supervisor_discipline` passes on master (rc=0, 8 warns, 0 errors) but hard-fails in a fresh janitor checkout via git-derived coverage (`newly_covered: true`), STRANDING items with no defect in the change. **Blocks re-dispatching `w4h4`.** Distinct from `wmqsn7` — not flakiness; re-running will not help |
+| `bd-ib-w4h4` | livespec-orchestrator-beads-fabro | P1 | **STRANDED `active`, NO PR** — dispatch died at the janitor gate above, though its impl commit `ba9fdaf` EXISTS in the kept checkout `~/.worktrees/livespec-orchestrator-beads-fabro/janitor-bd-ib-w4h4`. **Reconcile will NOT help (no merged PR)** — fix `rxxx` first, then re-dispatch |
 | `livespec-dev-tooling-y27` | livespec-dev-tooling | P2 | **NEW 2026-07-20.** Residual after 6j6: `rc=1` with a PARTIAL tally still poisons the ratchet. PRE-EXISTING (predates z45). rc 1 is genuinely ambiguous — the naive `mutants_total`-shrink fix has its own false-fail risk when code is legitimately deleted |
 | `livespec-e9j` slice 1a | livespec | — | **PR #1497 OPEN** — declares `dataclasses_tree`, arming `newtype_domain_primitives` (one of the four never-enforcing checks). Verified armed + green; 71 targets pass |
 | ~~`livespec-ftbvgc`~~ | livespec | — | **DONE 2026-07-20.** Switched to `ai-only` and accepted after a Fable+Codex acceptance review |
