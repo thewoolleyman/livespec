@@ -1,6 +1,55 @@
-# autonomous-mode-acceptance — handoff
+# autonomous-mode-acceptance — handoff (ARCHIVED — acceptance COMPLETE)
 
-**Ledger anchor:** epic `livespec-j4odoz` (livespec CORE tenant).
+**ARCHIVED 2026-07-20. The acceptance was performed and the epic is closed.
+Nothing here is pending.** The body below is the pre-run charter, kept verbatim
+because it defines the bar that was met; read this header first, because the
+charter's "NEXT ACTION" is settled and would otherwise misdirect you.
+
+**What happened.** Two REAL fleet work-items were driven end-to-end SOLELY
+through the live console TUI and accepted with the `c` valve:
+
+| Item (`livespec-console-beads-fabro` tenant) | PR | Final |
+|---|---|---|
+| `-5kd56a` — re-key the completeness staleness stamp to a digest of the orchestrator's declared key set | #337 merged | CLOSED |
+| `-7rcps4` — work-item modal PgUp/PgDn pages by a hardcoded 10 rows | #338 merged | CLOSED |
+
+Every operator action was performed in the TUI — approve (`p`), dispatch
+(`:`→`drain`), move (`s`), accept (`c`). The CLI was used only to READ state and
+to file defects. The full live-exercise evidence is journaled on epic
+`livespec-j4odoz` in three increments; that ledger record, not this file, is the
+authoritative account.
+
+**The run had to repair the factory to finish**, which is the part worth
+remembering. Three findings were blocking preconditions, not incidental defects:
+`-8i9` (the dispatcher never read a consumer repo's own Fabro workflow, so every
+dispatch into a Rust repo ran in a Python-only sandbox — the dark factory was
+structurally dark for the ENTIRE RUST TENANT CLASS), `-m36` (the TUI drain was
+once-per-store forever, and this store's one drain was already spent on a failed
+run), and the live verification of PR #258's repeat-move fix, which no automated
+gate can perform because the interactive loop is `#[cfg]`-excluded from tests.
+Both defects were fixed, released, installed, and verified live during the run.
+
+A weaker acceptance — a throwaway item, or a CLI fallback when the TUI balked —
+would have reported success with all three still hidden. That is the argument for
+the bar's strictness, and it is the reason to resist softening it if this
+programme is ever re-run.
+
+**11 defects filed**, all in the `livespec-console-beads-fabro` tenant. Two fixed
+(`-8i9`, `-m36`). The most operationally significant one still open is **`-htp`**:
+the drain shells the dispatcher INLINE on the UI thread, so the cockpit freezes
+for the SUM of every dispatched item's runtime (42+ minutes measured; ~3 hours at
+`wip_cap 5`). It BLOCKED THE ACCEPT ITSELF during this run, and it is inescapable
+— the dispatcher is a CHILD PROCESS of the console, so restarting the cockpit to
+regain input would abort in-flight factory work.
+
+**The accept was delegated.** The charter below says the final `c` accept is the
+maintainer's and must not be self-performed. Mid-run the maintainer delegated it
+("you accept and do everything on my behalf"), and the epic's close reason records
+that the designed human gate was satisfied by that delegation rather than skipped.
+
+---
+
+**Ledger anchor:** epic `livespec-j4odoz` (livespec CORE tenant) — CLOSED.
 **Opened:** 2026-07-19, splitting the retired `plan/autonomous-mode/` thread.
 
 Status is READ from the ledger, never stored here. This file carries no
@@ -17,7 +66,7 @@ running from that repo's clone (`/data/projects/<repo>`).
 ## Read-first chain
 
 1. This file.
-2. `plan/autonomous-mode-acceptance/research/live-tui-findings.md` — the
+2. `plan/archive/autonomous-mode-acceptance/research/live-tui-findings.md` — the
    live-TUI findings and the POST-FIX VALIDATION RUNBOOK from the last
    acceptance attempt. It moved here from the superseded thread; this thread
    owns it.
