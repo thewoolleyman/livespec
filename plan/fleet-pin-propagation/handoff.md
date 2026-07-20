@@ -11,6 +11,109 @@ Everything below this section is history and reasoning. This section is the
 current truth. **Nothing is in flight; no PR of either session's is unmerged;
 every primary checkout is clean on its default branch.**
 
+### ⚠ THE THREAD'S CENTRAL BLOCKAGE IS RESOLVED — measured 2026-07-21
+
+**This supersedes the "exactly one repo is genuinely blocked" framing below.**
+That claim was true when written and is now stale in the way that matters.
+
+**Fleet-wide open bump PRs: 2.** (Thread history: 43 → 13 → 1 → 2.) Seven of
+eight members carry zero or one fresh PR. The 30 closed superseded PRs have NOT
+re-accumulated, which is continuing production evidence for
+`livespec-dev-tooling-5o6ssu`'s close-superseded automation.
+
+| repo | open bump PRs |
+|---|---|
+| `livespec-orchestrator-beads-fabro` | 1 — #849 → dev-tooling v0.51.1 (fresh) |
+| `livespec-console-beads-fabro` | 1 — #328 → livespec v0.18.4 |
+| all six others | 0 |
+
+**THE CONSOLE'S GATE IS FIXED. `check-completeness` now PASSES on the console's
+master** — the config-manifest re-key (`f5fa99f`) genuinely worked. The gate the
+thread described as one "the fan-out structurally cannot satisfy" is no longer
+failing.
+
+**PR #328 is still red on that check, but ONLY because its branch is STALE.**
+Measured: #328's head `2123b4db` was created 03:50Z; the re-key landed 06:01Z,
+and `git merge-base --is-ancestor f5fa99f 2123b4db` is FALSE. The branch
+predates its own fix. This is the thread's own documented trap — *"do not read
+the red check names on a superseded PR as a symptom list; its branch is simply
+stale"* — recurring on the one PR nobody expected it on.
+
+**So `livespec-console-beads-fabro-ogpok4`'s remaining work is probably a
+BRANCH REFRESH, not a gate fix.** Refresh #328 (or let the fan-out open a fresh
+bump PR) and re-read. Do not re-derive the completeness gate. **But it cannot
+merge yet** — see the console master red immediately below.
+
+### ⚠ NEW: the console's master CI is RED — filed P1
+
+`livespec-console-beads-fabro`'s `check-e2e-tmux` fails on
+`tmux_tui_e2e_lifecycle_walkthrough_two_repos`. It is a REQUIRED check, so it
+blocks every PR in that repo, #328 included.
+
+**Bisected: first red is `3c0496d4` "fix: preserve journal escalation
+attention"** (20:55Z). The run before it, `a7429d99` — itself a pin bump to
+dev-tooling v0.51.0 — was GREEN, and `6b4f393c` (pin bump v0.51.1) inherits the
+failure. **Not a pin-bump breakage**, despite a pin bump sitting at the red
+run's head; do not chase the dev-tooling bump. Two consecutive failures on
+different commits, so not a flake.
+
+The test waits 20s for `attention: 0` and captures `attention: 1` holding a
+pending `approve work-item …` row — i.e. exactly the persistence the breaking
+commit's subject says it introduced. Most likely the walkthrough's expectation
+encodes the OLD "attention clears" semantics and is now stale, rather than the
+fix being wrong. Filed as **`livespec-console-beads-fabro-1s1`** (P1) with the
+behavior question stated first, because it must be resolved as
+"which semantics are correct" before either side is edited.
+
+### ✅ The proposal's ratification precondition is MET
+
+The independent Fable review was re-run against the FINAL merged text (the
+first pass returned BLOCKERS FOUND, and the fix had never itself been
+reviewed). Second pass: **VERDICT: NO BLOCKERS**, verified against CURRENT
+`origin/master` — all replacement targets byte-exact and unique, the prior
+blocker's fix real and complete, the directed generalization faithful, drift
+sweep exhaustive with nothing new contradicting it, and both appended scenarios
+evidence-backed. So `/livespec:revise` in
+`livespec-orchestrator-beads-fabro` is unblocked and is the thread's cheapest
+remaining win.
+
+### ✅ `livespec-u7x5zn`'s stuck state — ROOT CAUSE CONFIRMED
+
+The loose-ends table below records this cause as **unconfirmed**, with an
+instruction not to act on the recorded hypothesis. It is now confirmed by direct
+measurement, and it is NOT that hypothesis. Full detail is journaled on the item.
+
+**It declares its own PARENT EPIC as a dependency:**
+
+    parent:      livespec-n4ptl2
+    depends_on:  livespec-e7lanq  (closed)
+                 livespec-n4ptl2  (the same epic — status: backlog)
+
+The epic stays `backlog` until its children finish, so the child waits on the
+epic while the epic waits on the child. **Closing `e7lanq` was necessary but not
+sufficient**, which is precisely why "self-routes, no action needed" was
+falsified.
+
+**It is the shape of that entire groom** — all three slices cut from
+`livespec-xw65el` carry `parent=n4ptl2` AND `depends_on=[n4ptl2]`. The two
+closed ones were driven through by hand, so the edge never bit them. Slices from
+OTHER grooms in the tenant (`2hya5g`, `dbbgoc`, `i6pyy6`, `qhxcsp`) do NOT carry
+it, so this is specific to that one groom's slice-filing — a plausible third
+symptom for `bd-ib-dvmh`.
+
+**Second, independent cause:** it carries no autonomy tier ("Autonomy tier at
+groom."), so it is not dispatchable even once the edge clears.
+
+**NOT repaired** — removing a `depends_on` edge changes dispatch eligibility
+(unlike a description edit), and whether that edge was intentional is a grooming
+call the maintainer owns. Recommended fix if unintentional: drop
+`livespec-n4ptl2` from its `depends_on`, leaving the native parent edge.
+
+**Method note:** `auto_approve_ready: true` IS set in core's `.livespec.jsonc`,
+and `livespec-qhxcsp` sits at `pending-approval` with ZERO dependencies — so
+`pending-approval` is not dependency-driven per se, and that sibling's stall is
+a separate, unexplained anomaly (logged on the item, not chased).
+
 ### What the SECOND session did — the owed constraint is FILED
 
 **Action 2 of the previous next-actions list is DONE.** The
@@ -234,9 +337,9 @@ publishes.
 
 | Item | State |
 |---|---|
-| `livespec-u7x5zn` | Stuck `pending-approval` though its blocker `e7lanq` is `closed`. The handoff's "self-routes, no action needed" is **FALSIFIED**. Cause **unconfirmed** — hypothesis recorded WITH its contradiction; do not act on the hypothesis |
+| `livespec-u7x5zn` | ~~Cause **unconfirmed**~~ — **ROOT-CAUSED 2026-07-21**, and it was not the recorded hypothesis: the item declares its own parent epic (`livespec-n4ptl2`, `backlog`) as a dependency. See §"ROOT CAUSE CONFIRMED" above; detail journaled on the item |
 | `livespec-console-beads-fabro-5kd56a` | Closed with `resolution: None` + empty reason. **The work DID land** (`f5fa99f`) — do NOT reopen; may warrant a backfilled reason |
-| `livespec-console-beads-fabro-ogpok4` | STATE section **stale** (claims 13 open bump PRs / #320; reality is 1 / #328 → v0.18.4). Correction journaled on the item |
+| `livespec-console-beads-fabro-ogpok4` | STATE section **stale** (claims 13 open bump PRs / #320; reality is 1 / #328 → v0.18.4, re-confirmed 2026-07-21). Correction journaled on the item; its body already self-flags "counts drift — re-read live", so it was deliberately NOT rewritten. **Its gate is FIXED** — remaining work is likely a branch refresh; see §"CENTRAL BLOCKAGE IS RESOLVED" |
 | `livespec-dev-tooling-2kt` | The **propagation blind spot**: release-park leg (b) unimplemented — the only detector for a release train that NEVER DEPARTS, i.e. a silent fleet-wide propagation stall |
 | `reusable-release-park-parity.md` | Pending ~16 days in dev-tooling; **verified still ratifiable** — all three `FIND (verbatim)` targets resolve exactly once |
 
