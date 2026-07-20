@@ -229,9 +229,10 @@ That one command (a self-invokable `uv` script) does everything deterministicall
   wrapping up), and the round resets on a restart so the bands can fire again in
   the next round.
 
-**The watch-set + the list.** The daemon watches every fleet-manifest repo
-(fleet members + adopters) that has a local checkout with a `plan/` dir — read
-from core's `.livespec-fleet-manifest.jsonc`, with no per-run override. For each
+**The watch-set + the list.** The daemon watches every repo named in
+`~/.livespec-overseer-repos.json` that has a local checkout with a `plan/` dir,
+with no per-run override. The declaration is `{"repos": ["<checkout>", ...]}`,
+parsed leniently so `//` comments are allowed beside an entry. For each
 watched repo it discovers `plan/*/` (excluding `plan/archive/**`) and shows
 **one row per unarchived plan topic** — including plans with **no session**
 (status `unassigned`, flagged ready to start). The row's tmux, Ctx%, and
@@ -342,9 +343,11 @@ are fixed by construction:
 - **Mapping store** — always `~/.livespec-overseer.jsonl` (the file the daemon
   watches; every track subcommand reads/writes it).
 - **Injection-stamp sidecar** — always `~/.livespec-overseer-stamps.json`.
-- **Watch-set** — always the whole fleet from core's
-  `.livespec-fleet-manifest.jsonc`. To bring another repo under watch, add it to
-  the fleet manifest (as a member or adopter); there is no per-run repo override.
+- **Watch-set** — always `~/.livespec-overseer-repos.json`. To bring another
+  repo under watch, add its checkout path to that file's `repos` array; there is
+  no per-run repo override. Declaring a repo that has no session assigned yet is
+  the normal case, not an error — that is how an `unassigned` plan becomes
+  visible in the first place.
 
 ---
 
