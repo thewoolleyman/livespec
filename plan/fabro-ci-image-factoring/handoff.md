@@ -288,6 +288,54 @@ removes the float, drops a deprecated dependency, **adds zero bytes**. The item'
 original prescription — *baking* the old package — would have enshrined a
 deprecated ~119 MB payload permanently. `ql1` is retitled and corrected.
 
+### 🔎 ROOT CAUSE under all the adopter items — `manifest.adopters` has NO READER
+
+Filed as **`livespec-dev-tooling-453`** (P2). Found while sizing `bg47fr`; it is the
+layer underneath `bg47fr`, `ob-4oku`, AND the `fleet-pin-propagation` track's
+inverted evidence. All three are the same defect wearing different clothes.
+
+**The spec asserts it twice**, in two different sections of
+`non-functional-requirements.md`:
+
+> "This `adopters` array is the central, declarative list the fleet sweep and the
+> orchestrator **iterate**"
+>
+> "the fleet-conformance sweep **iterates** fleet members plus opt-in adopters, and
+> does NOT hold to currency any repo whose `posture` is not `released`"
+
+**The code parses it and drops it.** `fleet/contract.py` implements
+`_parse_adopters`, an `Adopter` record type, and `manifest.adopters: tuple[Adopter,
+...]` — faithfully. Then nothing reads it. Ripgrep across `livespec_dev_tooling/`
+excluding `contract.py` returns exactly two hits, **both false positives**:
+`claude_project_slug()` using `"adopters"` as a *filesystem path segment*, and the
+English word in a shell comment.
+
+**Three consequences, each previously mis-attributed:**
+
+1. **No conformance enforcement for adopters.** The manifest declares `homelab` as
+   `profile: ["baseline", "orchestrator-plugin", "app"]` while it has zero
+   workflows and zero Actions secrets (both API-measured). A repo with nothing to
+   run cannot satisfy `baseline`. That should be a loud finding; it is silent
+   because the sweep never looks.
+2. **`posture` is inert.** The `released`/`pinned`/`none` mechanism — which the
+   2026-07-20 decision just made load-bearing for adopter pin tracking — has no
+   reader at all.
+3. **It made `fleet-pin-propagation`'s evidence look plausible.** That track called
+   openbrain and resume "drifting silently"; both are `posture: pinned`, i.e.
+   deliberately stale. Had anything read posture, the inversion would have been
+   obvious when it was written.
+
+**Why it survived review, which is the transferable part.** The array *is* typed
+and *is* parsed, so anyone auditing `contract.py` sees a faithful implementation
+and reasonably concludes the mechanism is live. The absence is one level further
+out, in the consumers. **A parsed-but-unread field reads as implemented from every
+vantage except the one nobody checks.** The item's suggested step 3 is a test that
+fails if `manifest.adopters` has no consumer, so this exact class cannot recur
+silently.
+
+So the honest answer to "is the manifest documentation or enforcement?" — for
+adopters, it is **documentation wearing enforcement's clothes**.
+
 ### ⚠️ `bg47fr` — the decision is right, but the selector ALONE can break the release train
 
 Measured before implementing, which is why it is not implemented:
