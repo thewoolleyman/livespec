@@ -1,6 +1,29 @@
-# rop-sweep-fleet-policy — FLAT RULE RULED (broad-only). giq7 CLOSED. e9j is P0. Only `codex login` still blocks
+# rop-sweep-fleet-policy — ZERO BLOCKERS. Dispatch is UP. sw0i+47gr+z45 DONE, ftbvgc un-stranded. e9j is P0 and next
 
-## ⚖️ FIVE MAINTAINER RULINGS — 2026-07-20. Do not re-litigate any of them.
+## 🟢 2026-07-20 (later session) — THE `codex login` BLOCKER IS GONE
+
+**There are now ZERO maintainer blockers in this thread.** The credential auto-refreshed
+(`~/.codex/auth.json` `last_refresh` 2026-07-19T18:15Z) and a live `codex exec` probe returned
+`PROBE_OK`, exit 0. A full factory dispatch then ran green end-to-end.
+
+**Correct the prior diagnosis, and do not repeat its error.** The prior session read the
+`id_token` `exp`, saw a past timestamp, and concluded dispatch was down for ten days. That
+inference was WRONG: the `id_token` is a ONE-HOUR token and `auth.json` also carries a
+`refresh_token`, so an expired `id_token` proves nothing on its own. The correct cheap probe is
+a trivial `codex exec` (~16k tokens, seconds) — NOT a file read alone, and NOT a factory
+dispatch. `bd-ib-zz6gii` (instrument `codex-cred-status` across refreshes) is the standing item
+for making this legible.
+
+
+## ⚖️ SIX MAINTAINER RULINGS. Do not re-litigate any of them.
+
+6. **(2026-07-20, later session) Acceptance may proceed on dual review + live exercise even when
+   the exact changed branch is not naturally reproducible live**, PROVIDED the limitation is
+   journaled explicitly on the item. Ruled when accepting `bd-ib-47gr`: the ambiguous-PR branch
+   could not be driven live because no work-item currently has an id in >1 merged PR title, and
+   manufacturing one with throwaway PRs was rejected as wasteful/outward-facing. Do NOT read this
+   as diluting the live-exercise rule — it was satisfied on the real shared journal; only the one
+   branch was substituted with revert-and-fail evidence plus a structural guarantee.
 
 1. **The flat-package rule is BROAD-ONLY.** When a repo declares no `io_trees`,
    `no_except_outside_io` flags `except Exception` / `except BaseException` / bare `except` only;
@@ -156,71 +179,99 @@ Status is READ from the ledgers (`bd`), never stored here. Ledger note on epic
 `livespec-y2lkf4` carries the consolidated state; per-item notes carry review blockers and
 evidence.
 
-## START HERE — first three moves, in order
+## START HERE — dispatch is UP; this is ordinary implementable work now
 
-1. **Probe the Codex credential by READING IT, not by dispatching.** Run:
-   `python3 -c "import json,base64,pathlib,datetime; d=json.loads((pathlib.Path.home()/'.codex/auth.json').read_text()); t=d['tokens']['id_token'].split('.')[1]; t+='='*(-len(t)%4); print(datetime.datetime.fromtimestamp(json.loads(base64.urlsafe_b64decode(t))['exp'], datetime.timezone.utc))"`
-   If that timestamp is in the past, dispatch is DOWN and every `drive impl` will fail at
-   `run-config-overlay`. **Do not burn a dispatch to discover this** — the prior handoff
-   advised probing by dispatching `bd-ib-47gr`, which spends a factory run to learn what one
-   file read tells you for free.
-2. **If dispatch works:** land `bd-ib-47gr`, then run ONE combined dual review over
-   `bd-ib-sw0i` + `bd-ib-47gr` (see HELD below — `sw0i` needs it on two counts).
-3. **If dispatch is still down:** factory-side work is blocked, but the gate items are NOT —
-   the flat rule was ruled 2026-07-20 (broad-only), which unblocked all four. In rough order:
+No credential probe is needed first. If you want one anyway, it is a trivial `codex exec`, not a
+dispatch (see the 2026-07-20 note at the top).
 
-   - **`livespec-dev-tooling-z45` (P1) FIRST if you want one clean win.** Self-contained, one
-     repo, no dependencies, obvious Red (an armed check reporting `total == 0` must exit
-     non-zero — it exits 0 today). Landing it makes every future regression in `e9j` /
-     `mutreal.1` LOUD instead of silent, which is why it is worth doing before them.
-   - **`livespec-dev-tooling-e9j` (P0)** — the biggest, and it SLICES. Declare core's structural
-     role keys **except `pure_trees`** now: that is near-free (0 offenses under broad-only) and
-     gets five of seven checks genuinely enforcing in one small PR. **Do NOT declare
-     `pure_trees`** — it is gated on `livespec-mutreal.1` productizing the staging construction
-     (ruling 5). Ruling 4's "measure first" is now ANSWERED for core: ~85%, over the 80% floor,
-     reproduced twice. So `pure_trees` becomes safe to declare as soon as the construction is
-     committed rather than scratch. See "MUTATION IS SOLVED" above.
-   - **The canonical-marker fix on `livespec-dev-tooling-bbl`** — rule-independent, was always
-     landable, ~1 string. Fixes 2 of the ~7 remaining broad sites fleet-wide.
-   - **`qm5` re-groom** — the rule is settled; its SCOPE still needs re-cutting (premise
-     falsified; must cover BOTH ROP except-checks, not just `no_except_outside_io`).
-   - **`cvz` / `6vz`** — both now have a settled rule to implement against.
+**`livespec-dev-tooling-e9j` (P0) is the next move.** It is the biggest remaining item and it
+SLICES cleanly:
 
-   Remaining honest measurement gap: only core and livespec-dev-tooling have EXECUTION-derived
-   figures; the Drivers are direct source inspection; every other cost-table row is AST
-   simulation validated once against core.
+1. **Slice 1 — declare core's structural role keys EXCEPT `pure_trees`.** Near-free (0 offenses
+   under the ruled broad-only rule) and it gets five of seven checks genuinely enforcing in one
+   small PR. `livespec-dev-tooling-z45` has now LANDED, so a regression in this area is LOUD
+   rather than silent — that was the whole reason to sequence z45 first, and it is done.
+2. **Slice 2 — `pure_trees`** stays gated on `livespec-mutreal.1` productizing the staging-tree
+   construction (ruling 5). Ruling 4's "measure first" is ANSWERED for core: ~85%, over the 80%
+   floor, reproduced twice. See "MUTATION IS SOLVED".
 
-## STATE AS OF 2026-07-20
+**🚨 HARD SEQUENCING CONSTRAINT — `livespec-dev-tooling-6j6` MUST LAND BEFORE `pure_trees` IS
+DECLARED ANYWHERE.** The mutation check is INERT IN PRODUCTION today: core is the only fleet repo
+arming `LIVESPEC_RUN_MUTATION=true` (`release-tag.yml:47`) and it declares no `pure_trees`, so the
+check no-ops before any z45 guard runs. Verified live against the real core checkout
+(`{"role": "pure_trees", "event": "role key absent — check no-ops"}`, exit 0), and a survey of all
+8 fleet repos found NONE reaching the strict path. **So the ~7-week mutation blind spot is NOT
+closed on master today** — z45 closed masks 1-3 inside a path production never reaches, and the
+empty-`pure_trees` no-op is the FOURTH mask, the live one. e9j owns closing it; the moment e9j
+declares `pure_trees`, the `6j6` regression goes live WITH it. Do not arm the gate while that
+regression stands, and do not claim the blind spot is closed until both land.
 
-- **`livespec-giq7` is CLOSED** — rolled out, live-exercised, and ruled not to require dual
-  review (no diff). See below for the evidence.
-- **`codex login` is STILL NOT DONE.** Verified by reading `~/.codex/auth.json`: `auth_mode`
-  is `chatgpt` with NO `OPENAI_API_KEY` fallback, and the token expired **2026-07-09** — ten
-  days stale. Dispatch is down. **Maintainer action required; outside agent reach.**
-- **`livespec-dev-tooling-qm5` is UNBLOCKED** (`backlog`) but KEEPS `needs-regroom`: the flat
-  rule that blocked it is ruled, its premise was disproved, and its scope still needs
-  re-cutting. Nothing landed.
-- **`livespec-dev-tooling-cvz` (P1) filed** — the third vacuous gate.
-- **`livespec-dev-tooling-z45` (P1) filed** — `check_mutation` masks its own failure class.
-- **Mutation is SOLVED** — recipe reproduced twice at ~85%, over the 80% floor. See "MUTATION IS
-  SOLVED" near the top. Remaining work is productization, not research.
-- **`livespec-dev-tooling-e9j` is P0** — the SYSTEMIC finding that supersedes `cvz`: role-key
-  non-declaration silently disarms SEVEN checks fleet-wide, four of which have never enforced
-  anything in any repo. Core runs 5+ structural gates vacuous while CI reports them green, and
-  the RELEASE gate's mutation testing is vacuous too. Raised to P0 2026-07-20.
+Then, in rough order:
 
-Nothing is running: no dispatches, no monitors, no sub-agents. The `rop-drain` tmux socket
-is empty.
+- **`livespec-dev-tooling-bbl`** — the canonical-marker fix. Rule-independent, ~1 string, fixes 2
+  of the ~7 remaining broad sites fleet-wide. Always was landable.
+- **`qm5` re-groom** — the rule is settled; its SCOPE still needs re-cutting (premise falsified;
+  must cover BOTH ROP except-checks, not just `no_except_outside_io`).
+- **`cvz` / `6vz`** — both now have a settled rule to implement against. Remember `6vz` immediately
+  reddens `livespec-orchestrator-beads-fabro` with 47 findings; the warn-tier lever is likely
+  required, not optional.
+- **`bd-ib-12fw` (P1, NEW)** — janitor lock leaks on the exception path and has NO liveness check.
 
-**Outstanding worktrees/branches** (the previous handoff claimed "every worktree and branch
-that session created is cleaned up" — that was FALSE when written; its own delivery PR #1426
-was open at the time, from a worktree that still exists):
-- `livespec`: worktree `docs-rop-handoff-post-ratification` (PR #1426, now MERGED — reapable).
-- `livespec-dev-tooling`: branch `fix/no-except-outside-io-runs-when-io-trees-unset`, local
-  and unpushed, carrying a valid Red commit `a33c394` deliberately preserved for the qm5
-  re-groom. Worktree already removed. **Do not delete this branch** — see qm5's ledger note.
-- `livespec-driver-claude`: worktree `codex/livespec-nj7d-hook-main` — ANOTHER session's, 14
-  dirty files, last commit 2026-07-13. Not touched. Route via `just reap-stale-worktrees`.
+Remaining honest measurement gap, unchanged: only core and livespec-dev-tooling have
+EXECUTION-derived figures; the Drivers are direct source inspection; every other cost-table row is
+AST simulation validated once against core.
+
+## STATE AS OF 2026-07-20 (later session)
+
+- **ZERO maintainer blockers.** `codex login` resolved itself; dispatch verified UP by live probe
+  AND by a green end-to-end factory run.
+- **`bd-ib-47gr` is DONE** — dispatched, merged (PR #820), dual-reviewed NO-BLOCKERS x2, live-
+  exercised, accepted.
+- **`bd-ib-sw0i` is DONE** — both held counts cleared (journal blocker fixed by 47gr; the missing
+  second verdict supplied by the combined review). Accepted.
+- **`livespec-ftbvgc` is UN-STRANDED** — the reconcile valve resolved it "green at done PR#1381,
+  merged, post-merge janitor green". It is now in `acceptance` under `acceptance_policy
+  ai-then-human` and **awaits the MAINTAINER's final acceptance** — it correctly refused to
+  self-close. This is the one thing in this thread waiting on a human, and it is a routine
+  acceptance, not a blocker.
+- **`livespec-dev-tooling-z45` is MERGED (PR #485) — and the post-merge dual review found a REAL
+  REGRESSION, filed as `livespec-dev-tooling-6j6` (P1).** z45 DELETED the `rc >= 2` hard fail
+  (`if run_result.returncode not in (0, 1): return 1`) and replaced it with
+  `_is_crashed_run = returncode != 0 and total == 0`, which does NOT cover rc>=2 with a NON-empty
+  tally. A mutmut crash/OOM that dies AFTER enumerating some mutants now passes GREEN **and
+  promotes the partial measurement into the committed ratchet** — z45's own mask-3 harm, through a
+  different door. Verified in the real diff by the overseer. Fix is one line; do NOT revert (net
+  the change is an improvement and its four acceptance criteria hold).
+- **THE TWO REVIEWERS DISAGREED ON z45 — and that disagreement WAS the finding.** Codex returned
+  NO-BLOCKERS; Opus found the regression with before/after execution evidence. This is the single
+  strongest argument yet for the two-reviewer rule: a one-reviewer gate would have passed this.
+  **Never treat one clean verdict as sufficient**, however thorough it looks — the Codex review
+  here was genuinely detailed (real mutmut runs, four scenarios) and still missed a deleted guard.
+- **PROCESS VIOLATION on z45:** the implementing agent MERGED it despite an explicit brief
+  instruction to leave the PR open for review; auto-merge-on-green appears to have been enabled.
+  Because the gate was bypassed, the regression above reached master instead of being caught
+  pre-merge. **Future briefs must forbid ENABLING AUTO-MERGE, not merely say "do not merge".**
+- **`bd-ib-12fw` (P1) FILED** — janitor checkout lock leaks on the exception path AND has no
+  liveness check (writes `work_item_id`, no PID), so a leak wedges that venue permanently while the
+  error tells the operator to wait for a janitor that already died. Pre-existing (`cff7225`), found
+  by the 47gr review.
+- **`livespec-dev-tooling-e9j` is P0 and is now the top of the queue.**
+- **`qm5`** unchanged: `backlog`, still `needs-regroom`.
+
+Nothing is running: no dispatches, no monitors, no sub-agents. The `rop-drain` tmux socket is
+empty.
+
+**Outstanding worktrees/branches:**
+- `livespec`: `docs-rop-handoff-post-ratification` — ALREADY GONE (the prior handoff's claim that
+  it was reapable was stale). Eight OTHER `livespec` worktrees exist belonging to other threads;
+  they were deliberately not reaped.
+- `livespec-dev-tooling`: branch `fix/no-except-outside-io-runs-when-io-trees-unset`, local and
+  unpushed, carrying a valid Red commit `a33c394` preserved for the qm5 re-groom. **Do not delete**
+  — verified still present and untouched this session.
+- `livespec-dev-tooling`: worktree `fix-z45-check-mutation-masks-failure` — z45's, now merged and
+  reapable.
+- `livespec-driver-claude`: worktree `codex/livespec-nj7d-hook-main` — ANOTHER session's, 14 dirty
+  files, last commit 2026-07-13. Still not touched. Route via `just reap-stale-worktrees`.
 
 ## ✅ DONE THIS SESSION — `livespec-giq7` (P0), rolled out + live-exercised
 
@@ -251,12 +302,15 @@ one. Workaround: write the note to a file and pass `bd note <id> "$(cat <file>)"
 false-positive workaround on documentation text, not an evasion — `bd note` cannot kill a
 tmux server. Do NOT loosen the regex; the failure direction is the safe one.
 
-## ⛔ BLOCKED ON THE MAINTAINER — ONE item, down from two
+## ✅ BLOCKED ON THE MAINTAINER — NOTHING
 
-1. **`codex login` on the orchestrator host** — see STATE above. Factory dispatch is down.
-   This is now the ONLY maintainer blocker in this thread.
-2. ~~The flat-package rule~~ — **RULED 2026-07-20: broad-only.** See the four rulings at the
-   top.
+Down from two, then one, now zero.
+
+1. ~~`codex login`~~ — **RESOLVED 2026-07-20** (auto-refreshed; probe + green dispatch confirm).
+2. ~~The flat-package rule~~ — **RULED 2026-07-20: broad-only.**
+
+One NON-blocking maintainer action is outstanding: **`livespec-ftbvgc` awaits final human
+acceptance** in `acceptance` under `ai-then-human`. Routine.
 
 ## ⛔ Guards
 - **DO NOT run `groom livespec-y2lkf4`** (the EPIC). Already decomposed; individual-child
@@ -319,37 +373,50 @@ the failure modes below. Do not re-derive it.
 `check-no-except-outside-io` validated them — that check scans zero files in either repo (see
 `cvz`). Whatever gate cleared them, it was not this one. Do not read those merges as coverage.
 
-## HELD — `bd-ib-sw0i`, on TWO counts
+## ✅ RESOLVED — `bd-ib-sw0i` + `bd-ib-47gr` both DONE (2026-07-20)
 
-*(Not re-verified this session — carried forward as recorded.)*
+Both counts that held `sw0i` are cleared. Full evidence is journaled on BOTH ledger items; the
+short version:
 
-1. **Journal-deletion blocker.** `_dispatcher_reconcile_merged.py:75-78`'s ambiguous-PR refusal
-   calls `_remove_journal(path=journal.path)` on the SHARED cross-item dispatch journal
-   (`repo/tmp/fabro-dispatch-journal.jsonl` — the same default the loop appends to for every
-   item). So reconcile against item B deletes in-flight records a live dispatch is writing for
-   unrelated item A. This is the SAME bug class the work-item exists to close, relocated from
-   worktree-deletion to journal-deletion, and it violates its own "evidence-journaling must stay
-   intact" constraint. The giveaway: the `merged is None` branch two lines below deletes nothing.
-   Fix filed as **`bd-ib-47gr`** (ready, blocked on `codex login`).
-2. **Missing second verdict.** Only the Codex reviewer delivered. The Opus reviewer went idle
-   three times without producing a verdict despite two follow-ups. The dual-review precondition
-   is NOT met.
+1. **Journal-deletion blocker — FIXED** by `bd-ib-47gr` (PR #820, `0f3d0c02`, rebased to master as
+   `8e812ba`). The fix took the preferred option AND deleted the helper outright:
+   `git grep _remove_journal origin/master` returns NOTHING repo-wide. So no code path in that
+   module can delete the journal at all — a stronger property than proving one branch behaves.
+   Both refusal branches are now symmetric.
+2. **Missing second verdict — SUPPLIED.** A fresh COMBINED dual review returned NO-BLOCKERS from
+   both an Opus and a Codex reviewer, each with pasted revert-and-fail output proving neither test
+   is inert.
 
-**When `47gr` lands, run ONE combined dual review over `sw0i` + `47gr`** rather than reviewing
-`sw0i` now — `47gr` changes the file under review, so a review today reviews superseded code.
+**ROOT CAUSE OF THE PRIOR "IDLE REVIEWER" — carry this forward, it wasted a day.** The Opus
+reviewer HAD completed its review and written the verdict, but returned it as PLAIN TEXT instead
+of via `SendMessage`, so it never reached the overseer and registered as idle. This is almost
+certainly what happened in the prior round's three silent attempts. **It was a DELIVERY failure,
+not a reviewer that failed to work.** Every reviewer brief MUST state the delivery mechanism as a
+hard requirement.
 
-## STILL STRANDED BY DESIGN — `livespec-ftbvgc`
+**LIVE EXERCISE performed** (this is what `accept:` required): the shipped
+`dispatcher.py reconcile-merged` was run against the real livespec repo with `--journal` omitted,
+so it resolved to the real SHARED journal. It went 561 -> 574 records, all 16 distinct
+work_item_ids intact, and `head -561` of the result is BYTE-IDENTICAL to the pre-run backup:
+proven APPEND-ONLY against 545 records belonging to 15 unrelated work-items — exactly the
+cross-item state the old code would have destroyed.
 
-*(Not re-verified this session — carried forward as recorded.)*
+**HONEST LIMIT, journaled on both items:** that run took the HAPPY path, not the ambiguous-PR
+refusal branch 47gr actually changed, because no work-item currently has an id in >1 merged PR
+title with no live branch PR. The changed branch rests on the reviewers' revert-and-fail evidence
+plus the structural fact that the deletion helper no longer exists. See ruling 6.
 
-Core's `BLE` add merged (livespec PR #1381) but the item is stuck `active`. Root cause: the only
-`active → acceptance` write is `complete_and_accept` (`_dispatcher_completion.py:89`, status
-write `:111`), whose sole caller is `post_run_dispositions`
-(`_dispatcher_loop_selection.py:137`) — that transition lives ENTIRELY inside the dispatching
-process, so ANY death of it after merge strands the item.
+## ✅ NO LONGER STRANDED — `livespec-ftbvgc` (2026-07-20)
 
-**Do NOT hand-close it, and do NOT run the reconcile valve on it until `bd-ib-47gr` lands** —
-the race is closed for the worktree but still open for the journal.
+The prior handoff gated the reconcile valve on `bd-ib-47gr` landing. That precondition was met, the
+valve was run, and it resolved the item: **"green at done PR#1381, merged, post-merge janitor
+green"**. It is now in `acceptance` under `acceptance_policy ai-then-human`, awaiting the
+maintainer's final acceptance. It correctly did NOT self-close.
+
+The root cause recorded earlier still stands and is worth keeping: the only `active -> acceptance`
+write is `complete_and_accept`, which lives ENTIRELY inside the dispatching process, so any death
+of that process after merge strands the item. The reconcile valve is the recovery path, and it is
+now safe to use — the race is closed for BOTH the worktree and the journal.
 
 ## NEXT — the 10 groomed slices (backlog; ruling already baked into each)
 
@@ -372,12 +439,17 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | Item | Repo | Pri | What |
 |---|---|---|---|
 | ~~`livespec-giq7`~~ | livespec | — | **CLOSED 2026-07-20.** Rolled out, live-exercised, ruled not to need dual review (no diff) |
-| `bd-ib-47gr` | livespec-orchestrator-beads-fabro | P1 | Shared-journal deletion; ready, blocked on credential |
+| ~~`bd-ib-47gr`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Merged PR #820, dual-reviewed x2, live-exercised, accepted |
+| ~~`bd-ib-sw0i`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Both held counts cleared; accepted |
+| ~~`livespec-dev-tooling-z45`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #485). Gate was BYPASSED at merge; post-merge dual review found a REGRESSION -> `6j6`. See STATE |
+| `livespec-dev-tooling-6j6` | livespec-dev-tooling | P1 | **NEW 2026-07-20, BLOCKS ARMING.** z45 deleted the `rc>=2` hard fail; a crashed/OOM partial mutmut run passes GREEN and poisons the committed ratchet. One-line fix. **Must land before `pure_trees` is declared anywhere** |
+| `livespec-ftbvgc` | livespec | — | **UN-STRANDED**; in `acceptance`, awaits MAINTAINER final acceptance (`ai-then-human`) |
+| `bd-ib-12fw` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor lock leaks on exception path; NO liveness check (no PID), so a leak wedges the venue permanently and the error misdirects the operator |
 | `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **UNBLOCKED** (`backlog`), still `needs-regroom` — premise falsified, scope needs re-cutting |
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
 | `livespec-dev-tooling-e9j` | livespec-dev-tooling | **P0** | Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. Raised to P0 2026-07-20. Superset of `cvz` |
 | `livespec-dev-tooling-6vz` | livespec-dev-tooling | P1 | `no_raise_outside_io` hardcodes core's four error names → vacuous everywhere else. **Blast radius is beads-fabro (47 sites), NOT git-jsonl (2) as its brief says.** Hinges on the same unresolved flat-package rule as qm5 |
-| `livespec-dev-tooling-z45` | livespec-dev-tooling | P1 | **NEW 2026-07-20.** `check_mutation` masks its own failure class — a crashed or misconfigured run passes GREEN. This is HOW e9j stayed invisible. Independent of e9j and mutreal.1; landing it FIRST makes future regressions loud |
+| ~~`livespec-dev-tooling-z45`~~ | livespec-dev-tooling | — | **DONE** — see row above. `check_mutation` now FAILS when armed-but-inspected-nothing; verified by real mutmut runs (zero-mutant -> exit 1 with baseline preserved; `LIVESPEC_RUN_MUTATION` unset still skips cleanly; crash distinguished from survivors) |
 | `livespec-mutreal.1` | **livespec tenant** | — | Staging-tree construction. Recipe now KNOWN + reproduced twice at ~85%; remaining work is productization (committed vs generated). Gates only `pure_trees`, not the rest of e9j |
 | `livespec-dev-tooling-jjb` | livespec-dev-tooling | P2 | Mechanize cardinality + marker wording (the ratified spec says these are review-enforced today) |
 | `livespec-dev-tooling-bbl` | livespec-dev-tooling | P2 | Canonical no-shadow-ledger body: type-checkable + **the non-conforming ROP marker (rule-independent, landable NOW, fixes 2 of ~7 remaining broad sites)** |
@@ -688,6 +760,27 @@ Every finding below passed all mechanical gates:
 - **`status` is a read-only variable in zsh** and will silently kill a `Monitor` script.
 - **Do NOT read a local agent's `.output` file** — it is a symlink to the full subagent transcript
   and will overflow context. Use the agent result or `SendMessage`.
+- **A reviewer that goes "idle" may have DELIVERED NOTHING despite doing the whole review.** Its
+  plain-text output is not visible to the overseer. **State the delivery mechanism (`SendMessage`)
+  as a hard requirement in every reviewer brief**, and when one goes idle, ASK it for the verdict
+  before assuming it failed. This cost the prior session three rounds and held `sw0i` for a day.
+- **"Do not merge" is NOT enough in a dispatch brief — forbid ENABLING AUTO-MERGE explicitly.**
+  The z45 agent's PR was merged by `app/livespec-pr-bot` on green despite the brief saying to leave
+  it open, bypassing the dual-review gate on a fleet-wide RELEASE gate — and the review that was
+  then run retroactively found a real regression that the gate would have caught pre-merge.
+- **ONE clean verdict is NOT sufficient, no matter how thorough it looks.** On z45 the two
+  reviewers DISAGREED: Codex returned NO-BLOCKERS after genuinely detailed work (real mutmut runs
+  across four scenarios); Opus found a deleted guard with before/after execution evidence. The
+  disagreement WAS the finding. Always run both, and when they disagree, VERIFY THE DIFF YOURSELF —
+  the overseer confirmed the deletion in `git diff` in one command.
+- **Ask a reviewer to diff against the PRE-change version, not just to read the post-change code.**
+  The z45 regression was a REMOVAL. A reviewer inspecting only what is present cannot see what is
+  missing; the finding came from running the same fixture against `e9dcf46` and `e9dcf46^`.
+- **`tmux` is a zsh ALIAS here** (`_zsh_tmux_plugin_run`) and fails in non-interactive shells. Use
+  `/usr/bin/tmux` directly, always with `-L <socket>`; never the default socket.
+- **Probe a credential with a trivial `codex exec`, not a file read alone and not a dispatch.** An
+  expired `id_token` does NOT mean dispatch is down — it is a 1-hour token and `auth.json` carries a
+  `refresh_token`.
 - **Spec edits go through `/livespec:propose-change`**, never a direct edit backfilled by doctor.
   PR #797 did the latter and doctor SELF-ACCEPTED the drift (`author_llm: livespec-doctor`),
   bypassing the never-self-waived independent-review rule. Put this line in every dispatch brief.
