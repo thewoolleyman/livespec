@@ -241,7 +241,9 @@ SHAs — do not search for the original).
    not derived from `.livespec.jsonc` and has drifted from it in both
    directions, so a newly-registered sibling is never cloned in CI and the check
    cannot evaluate it there. This is filed on the fleet-pin-propagation side as
-   `livespec-fxxfq6`, with the drift table and the derive-from-source fix.
+   `livespec-i6pyy6` ("derive the CI sibling-clone list from `.livespec.jsonc`"),
+   which carries the drift table and the derive-from-source fix. **NOT
+   `livespec-fxxfq6`** — that item was regroomed out and CLOSED on 2026-07-19.
 2. **A red `doctor-static` freezes the SPEC LIFECYCLE, not just pushes.**
    propose-change runs doctor static at BOTH its pre-step and post-step, and
    `--skip-pre-check` suppresses only the pre-step. The proposed-change file
@@ -1377,11 +1379,17 @@ satisfy.
 
 That exact mistake red-lined `check-doctor-static` on master for most of
 2026-07-19 and blocked every local push in this repo while CI stayed green — see
-§"Blocker post-mortem". The defect is still open as `livespec-fxxfq6`. Verified
+§"Blocker post-mortem". **The defect is still open, but NO LONGER as
+`livespec-fxxfq6`** — verified against the ledger 2026-07-20, that item is CLOSED
+(regroomed out 2026-07-19) and was replaced by TWO successors: `livespec-2hya5g`
+(split the dual-purpose registry + re-land the two reverted entries) and
+`livespec-i6pyy6` (derive the CI sibling-clone list; depends on `2hya5g`). Track
+those two. Verified
 2026-07-19: `cross_repo_targets` registers only `livespec` and
 `livespec-orchestrator-git-jsonl`; **neither Driver is listed, and neither should
-be added for this epic.** Revisit only once `livespec-fxxfq6` separates the
-planning registry from the conformance registry.
+be added for this epic.** Revisit only once `livespec-2hya5g` separates the
+planning registry from the conformance registry — that is the successor now
+carrying the work.
 
 ## Spun out — handoff-durability root-cause fix (maintainer-chosen 2026-07-19)
 
@@ -1440,3 +1448,14 @@ Sequencing constraints found while scoping it:
   document's own claims sent a later session down wrong paths before being caught.
   Doc-only commits are NOT gated by `check-doctor-static` — there is no blocker excuse
   for leaving it dirty.
+- **Work-item IDs written here ROT, and in the opposite direction from everything
+  else.** This page says "Status is READ from the ledger, never stored here" —
+  correct, but it still STORES work-item *identifiers*, and an item can be
+  regroomed out from under a citation. That happened: `livespec-fxxfq6` was cited
+  in three places as "still open" while the ledger had CLOSED it on 2026-07-19 and
+  split it into `livespec-2hya5g` + `livespec-i6pyy6`. **The ledger was more
+  current than this page.** A file-and-line drift sweep cannot catch this class —
+  every citation was internally consistent and pointed at a real id. Re-check any
+  work-item id you are about to rely on with `bd show <id>` before acting on it,
+  and prefer citing the id PLUS its one-line title, so a regroomed successor is
+  recognizable when the id stops resolving to what you expected.
