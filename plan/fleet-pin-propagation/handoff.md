@@ -11,6 +11,129 @@ Everything below this section is history and reasoning. This section is the
 current truth. **Nothing is in flight; no PR of either session's is unmerged;
 every primary checkout is clean on its default branch.**
 
+### ✅ RATIFIED — the constraint is LIVE SPEC as of v045
+
+**The owed constraint is no longer a pending proposal.** A Fable agent drove
+`/livespec:revise` in `livespec-orchestrator-beads-fabro`; it merged as
+[PR #852](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/852)
+(`e9a7507`), cutting **v045**. `just check` 67/67.
+
+**Verified independently on `origin/master`, not taken on the agent's report:**
+
+- `constraints.md:216` now carries `## Factory sandbox credential constraints`,
+  with both the capability rule and the coarse-grants rule.
+- The three opposite-posture statements are GONE from the live spec —
+  `grep -c 'among the App-installation requirements'` is **0** in both
+  `contracts.md` and `scenarios.md` (history snapshots correctly retain them).
+- `history/v045/` holds the proposal plus its paired `-revision.md`.
+- The negative `.github/actions/` scenario landed.
+- The `tests/heading-coverage.json` co-edit landed (84 → 85 entries).
+- **`reconcile-merged-dispatch-lock.md` is STILL PENDING and untouched** — the
+  hard safety constraint held. That second, unreviewed proposal shares the queue,
+  and the brief pinned the mechanism that protects it: the CLI moves proposals BY
+  TOPIC (`proposed_changes/{topic}.md` per decision entry), so a single-entry
+  `decisions[]` provably leaves it in place.
+
+**Do NOT run `capture-impl-gaps` over v045 expecting a new item — it would
+duplicate `bd-ib-nga9`.** The ratifying run deliberately skipped the revise
+prose's post-step gap-capture (it files work-items behind a per-gap consent
+dialogue with no operator attached). v045 DOES legitimately register as a
+spec→impl gap, because it specifies the pre-dispatch refusal predicate that does
+not exist yet — but that gap IS `nga9`. Map any finding onto it; do not file a
+second record. Journaled on `nga9`, which now also records that its spec
+authority is ratified rather than pending.
+
+### ⚠ NEW DRIVER DEFECT — it false-matches in THIS repo specifically
+
+Surfaced BY the ratification run. All eight `livespec-driver-claude` SKILL.md
+bindings resolve `<core-root>` with a bash test that contradicts the rule stated
+two paragraphs above it:
+
+    rule (line 32):  if `<project-root>/.claude-plugin/prose/revise.md` exists
+    bash (line 42):  [ -d "./.claude-plugin/prose" ]
+
+File versus DIRECTORY. The validity guard below it tests the directory too, so a
+false match survives both. Any governed project shipping its own prose tree
+WITHOUT core's prose therefore resolves `<core-root>` to itself.
+
+**`livespec-orchestrator-beads-fabro` is exactly that repo** — six prose files
+for its own skills, no `revise.md`. Measured across the fleet, core is the only
+legitimate match and the orchestrator is the only false one; exposure GROWS as
+more impl plugins ship authored skills. The run recovered only because the
+operator followed the stated rule rather than the shipped snippet.
+
+Filed as **`livespec-driver-claude-tun`** (P2). It is a DIFFERENT defect from the
+existing `livespec-driver-claude-6lc` (that one is the step-3
+`installed_plugins.json` `entries[0]` fallback), and **the two interact**: this
+step-2 defect currently MASKS `6lc` by short-circuiting before the fallback runs,
+so fixing step 2 will make `6lc` surface MORE often. Sequence them together.
+Cross-referenced on both records.
+
+### ⚠ A SECOND, OLDER FILED-BUT-NEVER-RATIFIED PROPOSAL — and it already misled a work-item
+
+A fleet-wide sweep for pending proposals found the same failure mode this
+thread's own handoff warns about, twice, both filed **2026-07-04**:
+
+| repo | proposal | state |
+|---|---|---|
+| `livespec-dev-tooling` | `reusable-release-park-parity` | blocker fixed 2026-07-21; needs re-review |
+| `livespec` (core) | `owned-heading-coverage-todos` | pending; backfill must precede arming |
+| `livespec-orchestrator-beads-fabro` | `reconcile-merged-dispatch-lock` | pending, unreviewed |
+
+**`reusable-release-park-parity` is the ONLY contract coverage for a SHIPPED
+workflow.** `.github/workflows/reusable-release-park.yml` exists on master, but
+the string `reusable-release-park` appears NOWHERE in that repo's
+`contracts.md`. That workflow is the fleet's only detector for a release train
+that never departs — the silent propagation stall
+`livespec-dev-tooling-2kt` exists to close.
+
+**It already caused real damage.** `2kt`'s description cites the resulting
+contract subsection as landed authority, naming "PR #267, merged 2026-07-04".
+PR #267 is titled "chore(spec): **FILE** … propose-change" and merged exactly one
+file — the proposal itself. Merging a proposal lands the PROPOSAL; only a revise
+pass applies it. Anyone implementing `2kt` would hunt for a section never
+written. Journaled there with proof: all FIND targets still resolve, which is
+direct evidence of non-application.
+
+**Its first-ever independent review found a real blocker, now fixed.** The
+proposal writes into `contracts.md` that the fourth workflow "participates in no
+pin rewrite", but the sentence DEFINING that category lives in `spec.md`, which
+it never targeted — so ratifying as written would have landed a contradiction.
+Fourth verbatim target added; all four now resolve exactly once. Merged as
+[dev-tooling PR #510](https://github.com/thewoolleyman/livespec-dev-tooling/pull/510)
+(`94dba99e`). **Deliberately NOT ratified** — the review returned BLOCKERS FOUND,
+so the amended text needs a re-review before any accept.
+
+### ⚠ `owned-heading-coverage-todos` CANNOT ship before a 233-entry backfill
+
+Core's pending proposal arms the PER-COMMIT tier to reject any heading-coverage
+TODO missing a `work_item` field. Measured per-repo 2026-07-21 (its tracking item
+`livespec-915y` scopes this sweep and says "verify siblings per-repo, never
+assume"):
+
+| repo | TODO entries | with `work_item` |
+|---|---|---|
+| `livespec` (the AUTHOR) | **0** | 0 |
+| `livespec-orchestrator-beads-fabro` | 62 | 0 |
+| `livespec-driver-codex` / `livespec-driver-claude` | 36 / 36 | 0 |
+| `livespec-dev-tooling` | 35 | 0 |
+| `livespec-runtime` | 29 | 0 |
+| `livespec-orchestrator-git-jsonl` | 25 | 0 |
+| `livespec-console-beads-fabro` | 10 | 0 |
+| **TOTAL** | **233** | **0** |
+
+The authoring repo is the ONLY one with zero exposure, so its CI stays green
+while all seven siblings begin failing per-commit on unrelated work — the exact
+required-key-schema cross-repo trap. Scope item (3)'s backfill is a HARD
+PRECONDITION for arming item (1), not a trailing tidy-up. Also recorded there: the
+proposal's auto-filing mechanism covers only NEW entries, so these 233 are a
+LEGACY BULK backfill — a materially different job than the go-forward mechanism
+implies. Journaled on `915y`; no duplicate filed, the hazard's home already
+existed and only lacked numbers.
+
+(Note: v045's own heading-coverage entry landed as `test: "TODO"`, taking the
+orchestrator from 62 to 63. Ratifying adds to this debt.)
+
 ### ⚠ THE THREAD'S CENTRAL BLOCKAGE IS RESOLVED — measured 2026-07-21
 
 **This supersedes the "exactly one repo is genuinely blocked" framing below.**
@@ -305,15 +428,15 @@ publishes.
      step 3 is already satisfied by `2hya5g`, and `dqfmjr` is confirmed NOT
      workflow-exposed (it edits a COMPOSITE ACTION under `.github/actions/`,
      proven safe because `5o6ssu` merged a change to that same file).
-2. ~~**OWED — file the constraint.**~~ **DONE 2026-07-20 (second session).**
-   Filed and merged as
-   [PR #844](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/844)
-   in `livespec-orchestrator-beads-fabro`. **Residual step: it is a PROPOSAL
-   awaiting `/livespec:revise` IN THAT REPO** — until ratified, the spec still
-   carries the three contradicting statements the proposal repairs. Per the
-   standing discipline the independent Fable review is already DONE (one
-   blocker found and fixed), so the ratification is unblocked. See
-   §"What the SECOND session did" above.
+2. ~~**OWED — file the constraint.**~~ **FULLY DONE 2026-07-20/21 — filed AND
+   ratified.** Filed as
+   [PR #844](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/844),
+   then ratified as **v045** via `/livespec:revise` and merged as
+   [PR #852](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/852)
+   (`e9a7507`). The constraint is LIVE SPEC; the three contradicting statements
+   are gone from the live tree. No residual step. See §"RATIFIED" above for the
+   independent verification and for the do-not-duplicate warning about
+   `capture-impl-gaps`.
 3. **Implement the re-scoped `bd-ib-nga9`** (orchestrator tenant). Its title,
    scope, **and now its DESCRIPTION** are corrected: the permission boundary is
    NOT the defect; the FAILURE HANDLING is. It should deliver (a) pre-dispatch
