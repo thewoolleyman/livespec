@@ -28,7 +28,7 @@ Replace this sentence:
 
 with:
 
-> Every worktree (primary or secondary, per `git worktree list --porcelain`) whose HEAD points at the default branch MUST NOT carry uncommitted modifications under `<spec-root>/` **or under `plan/`**. The check enumerates every worktree, identifies the subset whose HEAD is the default branch (typically `master`), and for each invokes `git status --porcelain` scoped to those two path prefixes. Any non-empty output fires `warn` with corrective action narration that:
+> Every worktree (primary or secondary, per `git worktree list --porcelain`) whose HEAD points at the default branch MUST NOT carry uncommitted modifications under `<spec-root>/` or under `plan/`. The check enumerates every worktree, identifies the subset whose HEAD is the default branch (typically `master`), and for each invokes `git status --porcelain` scoped to those two path prefixes, each resolved relative to that worktree's own root. Any non-empty output fires `warn` with corrective action narration that:
 
 Replace numbered items 2 and 3:
 
@@ -40,7 +40,15 @@ with:
 > 2. Names the modified files, under `<spec-root>/` and under `plan/` respectively.
 > 3. Directs the user to commit-into-a-feature-branch per the workflow discipline. For `<spec-root>/` paths the narration MAY additionally offer discarding unintentional edits (`git checkout -- <files>`). For `plan/` paths it MUST NOT: a plan-thread handoff is the durable record of a planning thread and an uncommitted one is frequently the ONLY copy, so a discard suggestion against it risks destroying the very artifact the finding exists to protect. The `plan/` narration leads with the commit path and does not present discard as a symmetric option.
 
-Add this paragraph after the existing closing `warn`-rationale paragraph:
+Replace this paragraph, which begins "Committed-and-then-discovered violations":
+
+> Committed-and-then-discovered violations (the user committed on master and now the commit needs to be moved) are out of scope for this invariant; the existing `out-of-band-edits` check surfaces those via the snapshot-mismatch invariant.
+
+with:
+
+> Committed-and-then-discovered violations (the user committed on master and now the commit needs to be moved) are out of scope for this invariant. For `<spec-root>/` paths the existing `out-of-band-edits` check surfaces those via the snapshot-mismatch invariant. For `plan/` paths there is deliberately NO after-the-fact doctor surface, and none is needed: `out-of-band-edits` compares committed spec state against `history/vNNN/` snapshots, which capture only files under the spec root, so it is structurally incapable of seeing `plan/` — and a COMMITTED plan file is already durable in git, so the orphaned-uncommitted-file risk this invariant targets does not arise for it.
+
+Insert this new paragraph immediately after the paragraph beginning "The check fires `warn` (not `fail`)":
 
 > **Detection surface (stated so it is not overclaimed).** The check enumerates only the worktrees of the checkout in which it runs, so it reports a dirty file on **any full `just check` or doctor invocation in the affected checkout**. It does NOT detect uncommitted state on another machine or in a CI job's fresh clone, and it does not run in the doc-only pre-commit/pre-push subset. This is detection, not enforcement: the finding is `warn` (wrapper exit 0) and blocks nothing.
 
