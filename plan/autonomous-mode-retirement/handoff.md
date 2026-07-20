@@ -27,38 +27,76 @@ the maintainer's kick at the active path was deliberate.
 That same `git rm` also destroyed the §"Ledger dispositions" findings added hours
 earlier. That is why those dispositions no longer live only here.
 
-## ⚠ THE BLOCKER — the retirement is NOT complete; the epic MUST NOT close
+## ✅ THE BLOCKER IS CLEARED — the retirement is now complete fleet-wide
 
-**A sibling repo's ratified spec still contracts the retired paradigm.**
+**RESOLVED 2026-07-20.** The maintainer cleared this for completion ("drive the
+git JSONL to completion"). It landed as `livespec-orchestrator-git-jsonl`
+**PR #358**, ratified as that repo's spec **v018**. Its ledger item
+`bd-gj-rb3` is CLOSED as dies-as-written.
 
-`livespec-orchestrator-git-jsonl` still specifies Full autonomous mode — verified
-directly against that repo's `origin/master`, not taken on restatement:
+### What the blocker was
 
-- `SPECIFICATION/contracts.md:28-32` — "**Full autonomous mode (`--autonomous`).**
-  Each of the four heavyweight skills below MUST accept a dangerous, default-off
-  `--autonomous` opt-in flag ... When set, the skill MUST resolve its per-item
-  consent gate(s) with an LLM decision instead of prompting the user"
-- `SPECIFICATION/constraints.md:94-107` — `## Autonomous mode constraints`,
-  requiring the flag and "an explicit dangerous-mode acknowledgement" (the arming
-  ceremony)
-- `SPECIFICATION/spec.md:106` / `:112` — a live `## Autonomous mode` section;
-  "**Full autonomous mode** — an opt-in, **dangerous**, **default-off** mode"
+`livespec-orchestrator-git-jsonl`'s RATIFIED spec still contracted the paradigm
+retired at beads-fabro v034 — `contracts.md:28-32` mandating a dangerous
+`--autonomous` flag whose skills "MUST resolve [their] per-item consent gate(s)
+with an LLM decision instead of prompting the user"; `constraints.md:94-107`
+requiring the arming acknowledgement; `spec.md:106` a live `## Autonomous mode`
+section. All ratified, all UNIMPLEMENTED.
 
-Ratified but UNIMPLEMENTED (the only `autonomous` hit under `*.py` is the shared
-vendored `livespec_runtime`, not git-jsonl's own code).
+### The disposition — BOTH original options were rejected
 
-Note precisely what survives: the **LLM-resolves-the-consent-gate** behavior —
-the exact behavior the v034 retirement dropped as its RISKIEST part (the old
-Scenario 35, the LLM guessing human decisions on `needs-human`).
+`bd-gj-rb3` offered "re-steer to the v034 policy-settings model, or consciously
+keep the divergence". **Both rested on a false premise.** The two "Full
+autonomous modes" are DIFFERENT SURFACES SHARING A NAME:
 
-**Consequence:** closing `bd-ib-24j5uy` would assert a fleet-wide retirement that
-demonstrably has not happened.
+| | beads-fabro (retired at v034) | git-jsonl |
+|---|---|---|
+| Surface | a **Dispatcher drain mode** (`--mode autonomous`) | a `--autonomous` flag on **four heavyweight skills** |
+| Governs | admission, post-merge acceptance, review fix-caps, WIP ceiling — inside a Fabro factory | **per-item consent gates** |
+| Replaced by | six `dispatcher.*` policy settings | — |
 
-**MAINTAINER DECISION — NOT delegated.** Re-steer git-jsonl's spec to the v034
-policy-settings model (in which case `bd-gj-rb3` dies as-written), or consciously
-keep the divergence. That is a spec-ratification call and keeps its designed
-human gate. Tracked as `bd-gj-rb3` (git-jsonl tenant), flagged **do not dispatch
-as-is**.
+git-jsonl ships **no dispatcher, no factory, no PR flow, no review gate, no WIP
+limit** (its eight skills are `capture-impl-gaps`, `capture-spec-drift`,
+`capture-work-item`, `detect-impl-gaps`, `implement`, `list-work-items`,
+`needs-attention`, `next`). So "re-steer to the v034 model" was a **CATEGORY
+ERROR** — `auto_approve_ready` / `merge_on_review_cap` / `review_fix_cap` /
+`wip_cap` have nothing there to attach to.
+
+It was **RETIRED OUTRIGHT** instead: a ratified, unimplemented, explicitly
+DANGEROUS feature reads as sanctioned design intent and invites a future
+implementer to build precisely the paradigm the family just spent a release
+retiring. Zero migration cost — verified zero non-vendor `*.py` matches, zero
+skill-body matches, and all three removed headings carried `"test": "TODO"`.
+
+**What transfers from v034 is its PRINCIPLE, not its settings**: granular,
+independently-defaulted, per-item-overridable consent policy with a hard
+needs-human floor. If autonomy is ever wanted in git-jsonl it should be designed
+fresh against that principle and against that plugin's ACTUAL consent gates.
+
+### Judgment calls made during the retirement
+
+- **`decided_by` REMOVED** — its enum `human | autonomous` degenerates to a
+  single value once the run mode is gone; zero producers for either value.
+- **`auto_resolvable` REMOVED, neighbours PRESERVED and generalized** — the hint
+  was defined purely as "whether a full-autonomous run could progress the item";
+  the extra-fields permission and the ranking-purity rule survive, the latter now
+  binding ANY advisory field rather than only that one.
+- **`Unresolvable decision` / `Escalation` RE-ANCHORED, not deleted** —
+  escalating instead of guessing is a general safety principle. The never-guess
+  floor moved to §"Forbidden patterns" so it outlives the section that housed it.
+- **Scenario 6 renumbered to 5** rather than leaving a hole in a six-item list;
+  exactly three references, all amended.
+
+### What the mandatory sweep caught
+
+Removing `decided_by` left the schema preamble asserting **"twenty keys"** over
+an enumeration of **nineteen**, plus a dangling mention. NOT in the original edit
+map — the sweep found it. Repaired, count verified by enumeration
+(14 + `rank` + 4 = 19). This is the argument for sweeping BEFORE declaring done.
+
+Final verification against git-jsonl `origin/master`: **zero hits** for
+`utonomous`, `decided_by`, `auto_resolvable`, and the stale `twenty` across all
+four live spec files. `just check`: all 62 targets pass.
 
 ## What this thread now owns — the close-out sweep
 
@@ -182,14 +220,26 @@ operator's corrections and not the supervisor's is not an honest record.
 
 ## NEXT ACTION
 
-**Surface `bd-gj-rb3` to the maintainer as the one genuine blocker.** It is a
-spec-ratification call and is not ours to make.
+The cross-repo blocker is CLEARED and D1 is CLOSED (fix merged as PR #839 /
+release 0.45.14, verified by execution on `origin/master`; its post-merge janitor
+red was diagnosed as the same checkout-dependent gate class as `bd-ib-rxxx`, not
+a defect in the change).
 
-Then, in any order: diagnose D1's post-merge janitor failure and drive
-`bd-ib-24j5uy.4` to `done`; land the ride-along prose; work D2, Defect A,
-Defect B; and file the §B findings after verifying against each tenant.
+**`bd-ib-24j5uy` closes as soon as D2 (`bd-ib-24j5uy.5`) lands.** The ledger
+REFUSED to close the epic with an open child — correctly — and `--force` was not
+used. D2 was dispatched to the factory instead, which is the honest resolution:
+fix the child rather than bypass the gate that names it.
 
-**Do not close `bd-ib-24j5uy`** until the cross-repo gap is dispositioned.
+D2 is kept as a CHILD rather than detached, because unlike `bd-ib-0s5` it was
+CAUSED BY this epic's own O8 leg (`review_fix_cap` became configurable; the
+telemetry parser's hardcoded `_REVIEW_CAP_VISITS = 3` did not follow), and that
+lineage should survive.
+
+Remaining, in any order: land the ride-along prose (still staged-but-uncommitted,
+blocked alone by the pairing gate `bd-ib-yf2m`); work Defect A
+(`livespec-console-beads-fabro-bgc`, P1 — the dead Scenario-15 journal read leg)
+and Defect B; and file the §B findings after verifying against each tenant,
+remembering that a default ledger listing HIDES CLOSED RECORDS.
 
 ## Deliberately NOT owned here
 
