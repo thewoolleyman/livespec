@@ -2379,7 +2379,7 @@ def test_wrapup_message_says_only_the_session_authorizes_the_restart():
 
 
 def test_wrapup_message_tells_the_session_to_commit_the_handoff_via_a_worktree():
-    """Writing the handoff to disk is NOT saving it (plan/plan-thread-integrity/, W4).
+    """Writing the handoff to disk is NOT saving it (plan/archive/plan-thread-integrity/, W4).
 
     The wrap-up used to say only "UPDATE {handoff}", and the word "commit" appeared
     nowhere in this file — the "persisted is durable" conflation, sitting in the one

@@ -1,7 +1,19 @@
-# plan-thread-durability — handoff
+# plan-thread-durability — handoff (ARCHIVED — thread complete, epic closed)
 
-**Ledger anchor:** epic `livespec-nr5h` (livespec CORE tenant).
-**Opened:** 2026-07-19.
+**Thread**: `plan/archive/plan-thread-integrity/` (repo `livespec`).
+**Ledger anchor:** epic `livespec-nr5h` (livespec CORE tenant) — CLOSED 2026-07-20.
+**Opened:** 2026-07-19. **Closed:** 2026-07-20.
+**Status**: both workstreams shipped in spec AND implementation, each
+live-verified rather than merely merged. Child work-item `livespec-8h07`
+closed with live-exercise evidence.
+
+**The one thing to carry forward if you land here from a future incident:** no
+plan file was ever lost. The single incident was a rescued near-miss whose cause
+was a false belief about a gate, not a missing guard. Scope was cut from four
+workstreams to two on exactly that evidence, and [`plan.md`](./plan.md)
+§"Considered and cut" records why each larger mechanism was rejected — two of
+the three were refuted on technical merits, not on cost. Read that before
+reviving any of them.
 
 Status is READ from the ledger, never stored here. This file carries no
 checkbox queue.
