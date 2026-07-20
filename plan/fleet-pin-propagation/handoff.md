@@ -336,6 +336,56 @@ both were verified present on `origin/master` and on the primary checkout's disk
 before this session declared itself ready. No PR from this session is awaiting a
 merge, so **do not open by chasing one** — go straight to the next actions below.
 
+### ⚠ DISPATCH IS BLOCKED ON A GITHUB OUTAGE — attempted and halted 2026-07-20
+
+All four slices below were confirmed `ready` with `admission:auto` and autonomy
+tier `factory`, and capacity was confirmed available. Dispatch was attempted and
+**halted after the first item on an external GitHub outage, not on anything in
+this thread's state.**
+
+`drive --action impl:livespec-2hya5g` was admitted (so this was NOT the false-green
+capacity case) and then FAILED at stage `run-config-overlay`:
+
+```
+C-mode dispatch refused: GitHub App token mint failed:
+GitHub App API call to https://api.github.com/app/installations
+failed: HTTP Error 503: Service Unavailable
+```
+
+`githubstatus.com` confirmed the cause as a live incident, not a fleet defect:
+**API Requests = `partial_outage`** (which is what fails the App-token mint) and
+**Actions = `partial_outage`** (two unresolved incidents, opened 2026-07-19
+23:34Z and 2026-07-20 00:25Z).
+
+**The remaining three were deliberately NOT dispatched.** Both halves of the
+factory path are impaired: the mint needs API Requests, and the janitor hard
+gate needs Actions. Dispatching into that would have stranded three more items
+mid-flight — worse than waiting, because a Fabro-launched item strands with a
+sandbox and an open PR rather than merely a status.
+
+**The failed dispatch stranded `livespec-2hya5g` in `active` with nothing
+running.** There is no automatic reaper for this shape — `reconcile-merged`
+only covers an already-MERGED active item, and `ledger-normalize` only remaps
+`open`→`backlog` / `in_progress`→`active`. It was recovered through the
+sanctioned human valve:
+
+```
+drive --action move:livespec-2hya5g:ready --repo /data/projects/livespec
+```
+
+Verified back at `ready` afterward. **If a dispatch fails at
+`run-config-overlay`, expect this and use `move:<id>:ready`** — do not
+hand-edit the ledger, and do not leave it `active` (an `active` item is not a
+dispatch candidate, so the retry would silently no-op). One residue worth
+knowing: the move valve does NOT clear the `assignee`, so the item sits at
+`ready` with a stale `assignee: fabro`. That did not block anything, but do not
+read it as evidence of an in-flight dispatch.
+
+**To resume:** re-check `https://www.githubstatus.com/api/v2/status.json` and
+re-run the four dispatches below from the top. Nothing else in this thread's
+state changed — the only ledger writes this pass made were the stranding and
+its reversal, which cancel out.
+
 The thread's NEW next actions:
 
 1. **Dispatch the four READY slices** (no open dependencies):
@@ -345,14 +395,38 @@ The thread's NEW next actions:
    `livespec-console-beads-fabro-5kd56a` (re-key the completeness stamp).
 
    **⚠ `drive` LIES ABOUT SUCCESS WHEN IT DISPATCHES NOTHING — read this
-   before you dispatch, not after.** `drive --action impl:<id>` runs the
-   dispatcher with `--budget 1 --parallel 1`, so if another item is already
-   `active` there is NO CAPACITY: the loop runs zero iterations, exits 0, and
-   `_dispatch_status` maps an empty journal + exit 0 onto `status: "green"`
-   with the summary "Dispatcher reported green for <id>". The item never
-   moves. This was hit live this session and cost a full round-trip. Filed as
-   `bd-ib-c4jfp6` (`livespec-orchestrator-beads-fabro` tenant); details at
-   §"A defect found while dispatching" below.
+   before you dispatch, not after.** When the dispatcher admits zero items,
+   the loop exits 0 with an empty journal and `_dispatch_status` maps that
+   onto `status: "green"` with the summary "Dispatcher reported green for
+   <id>". The item never moves. Filed as `bd-ib-c4jfp6`
+   (`livespec-orchestrator-beads-fabro` tenant); details at §"A defect found
+   while dispatching" below.
+
+   **CORRECTED 2026-07-20 — the trigger above was stated wrong.** An earlier
+   revision said "`--budget 1 --parallel 1`, so if another item is already
+   `active` there is NO CAPACITY". That is FALSE and it will cause a
+   mis-diagnosis. `--parallel` only sizes the `ThreadPoolExecutor`; it is not
+   a capacity gate. The real gate is in
+   `commands/_dispatcher_admission.py::admit_and_select`:
+
+   ```
+   active_count = sum(1 for item in items if item.status == "active")
+   free_slots   = max(0, resolve_wip_cap(cwd=repo) - active_count)
+   ```
+
+   `resolve_wip_cap` reads `livespec-orchestrator-beads-fabro.dispatcher.wip_cap`
+   from the repo's `.livespec.jsonc`, defaulting to `DEFAULT_WIP_CAP = 5`.
+   NONE of the three tenants in this thread sets that key, so the cap is **5**
+   everywhere. One `active` item therefore leaves FOUR free slots, not zero.
+   Verified live 2026-07-20: core carried 3 `active` items and
+   `livespec-2hya5g` was still admitted normally.
+
+   So the false green appears only when `active_count >= 5` in that tenant —
+   a much rarer condition than the original text implies. Do not conclude
+   "capacity" from the mere existence of one active item; count them against
+   the cap. The operative advice is unchanged and still cheap: **dispatch one
+   at a time and re-read the item's status after each.** A `green` verdict
+   whose `stdout_json` is `[]` means NOTHING HAPPENED.
 
    So: **dispatch these ONE AT A TIME, and after each one re-read the item's
    status** to confirm it actually went `active`. A `green` verdict whose
