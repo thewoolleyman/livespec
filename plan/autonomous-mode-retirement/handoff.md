@@ -218,91 +218,177 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
-## RUNNING STATE — as of 2026-07-20
+## RUNNING STATE — session close 2026-07-20
 
-**THE EPIC IS CLOSED.** `bd-ib-24j5uy` closed with ALL 15 CHILDREN CLOSED and
-**no `--force`**. The retirement is complete and verified fleet-wide.
+### ⚠ TOP PRIORITY ON RESTART: `bd-ib-yqfw` (P0) — one clause of three still open
 
-### How the epic actually closed
+**The maintainer escalated this in their own words: "Something is fucked up with
+the factory. Make sure this gets fixed."** It ranks ABOVE every §B finding and
+above all remaining Defect-B work. Start here.
 
-The ledger REFUSED to close it with an open child (`cannot close epic ...: 1 open
-child issue(s); close children first or use --force`). `--force` is exactly the
-bypass this fleet forbids, so **the child was fixed instead**. That is the honest
-resolution: repair what the gate names, do not override the gate.
+**Two of its three clauses are LANDED (PR #845, merged to master). The third is
+NOT STARTED.**
 
-| Child | Outcome |
+| Clause | State |
 |---|---|
-| D1 `bd-ib-24j5uy.4` | CLOSED — PR #839, merge `952d874c`, master CI green. `cwd` now REQUIRED on all five `effective_*` resolvers; the old reproduction can no longer execute (`TypeError`), so the silent-fallback footgun is closed at the type level. |
-| D2 `bd-ib-24j5uy.5` | CLOSED — PR #842, merge `349fe79f`, master CI green. `_REVIEW_CAP_VISITS = 3` gone; the parser now receives `emission.plan.review_fix_visit_cap`, the same value the workflow is injected with. |
+| 1. `just check` RED for non-root runners | ✅ FIXED, merged |
+| 2. `fcntl.flock` reclaim mutex has ZERO coverage | ✅ FIXED, merged |
+| 3. **unguarded mutex I/O** | ❌ **NOT STARTED — this is the resume point** |
 
-D2's fix was REVIEWED, not trusted: its `None` default looked like it would make
-`visit_count >= cap_visit_count` vacuously true, but the fix also added a
-`fix_rounds > 0` guard, and production always supplies the plan's cap.
+**Clause 3, precisely.** `_stale_janitor_lock_reclaimed`
+(`.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_janitor_lock.py`,
+~line 68) still opens the mutex with a raw
+`_reclaim_mutex_path(path=path).open("a+b")`, OUTSIDE the `attempt(...)` Result
+track the rest of that module uses for filesystem access — compare
+`_read_janitor_lock`, which wraps its read. An expected I/O failure there
+(permissions, full disk, vanished parent dir) propagates as a raised exception
+out of the reclaim path instead of routing through the failure track.
 
-### ⚠ THE MOST OPERATIONALLY IMPORTANT FINDING — `bd-ib-yqfw` (P0, OPEN)
+### The mechanism — do NOT re-derive it
 
-**D1 and D2 both landed correct fixes with green master CI, and BOTH were
-stranded in `active` by the identical janitor failure** — `check-coverage` exit 2
-in a non-root fresh checkout. Same target, same exit code, same master-CI-green
-divergence, different changes touching different modules.
+`os.kill(1, 0)` raises `PermissionError` for an unprivileged uid. The only
+live-pid test probed **pid 1**, so off-root the probe fell through the
+not-a-`ProcessLookupError` path and the direct `return True` at
+`_dispatcher_janitor_lock.py:133` **never executed**. CI's root container covered
+it; no other runner could. Reproduced independently by both the operator and the
+overseer.
 
-Root cause is already filed: `bd-ib-yqfw` — *"`just check` is RED on master for
-non-root runners (CI runs as root and masks it)"*. The janitor runs NON-ROOT in a
-fresh checkout; CI runs as ROOT and masks it.
+Probing our OWN pid is the privilege-independent way to reach that branch, but a
+short-circuit on `lock.pid == os.getpid()` stopped the probe being consulted at
+all. That clause was **production-dead** — the probe is always True whenever the
+comparison is — so it could never change an outcome, only suppress coverage.
 
-**Consequence: the dark factory cannot close items unattended.** The janitor is
-its hard gate; while that gate fails for reasons unrelated to the change under
-test, every dispatched item lands its PR and then needs a human to diagnose and
-close it by hand. Both items above required exactly that. Impact evidence is
-recorded on `bd-ib-yqfw`.
+### ⛔ TWO HARD CONSTRAINTS
 
-**Second-order risk, also recorded there:** now that janitor red is KNOWN to be
-usually environmental, there is a standing temptation to wave any janitor red
-through as "the non-root thing" — the failure mode where a genuine catch gets
-dismissed. Both closures verified the fix independently against `origin/master`
-first, but that discipline will not survive volume.
+**DO NOT DISPATCH THIS TO THE FACTORY.** The factory's post-merge janitor gate is
+the thing that is broken, so dispatching the fix strands the fix — the same trap
+in a tighter loop. Hand-build in-session. This is explicitly sanctioned by the
+repo's own carve-out for "repo/dev-tooling PLUMBING unsafe to self-run through
+the factory (the factory substrate itself, the commit-refuse hooks, the dispatch
+machinery)"; `_dispatcher_janitor_lock.py` IS the factory substrate. This is the
+one case where hand-building is correct rather than a shortcut.
 
-### In flight
+**THE ACCEPTANCE BAR IS NOT CI GREEN.** It is `just check` **green run as a
+non-root user (uid 1000)**, captured before and after in the PR body. CI is the
+source that MASKED this and must never be used to close it. Clause 3's fix is
+product `.py`, so it needs full Red-Green-Replay with a genuine assertion failure
+at Red.
 
-**Defect A (`livespec-console-beads-fabro-bgc`, P1) — DISPATCHED.** The
-Scenario-15 orchestrator-journal read leg is dead live on three wire mismatches.
+### What landed, with evidence
 
-It was previously mis-filed as needing a MAINTAINER DECISION on a wire-contract
-rename. **That framing was wrong and is retracted.** The console's OWN ratified
-spec already specifies the orchestrator's current vocabulary verbatim —
-`scenarios.md:529-533` names all five live disposition values (`auto-approve`,
-`ai-auto-accept`, `ai-fail-auto-rework`, `ship-on-cap`, `cap-exceeded-escalation`)
-and requires attributing each "to the setting that governed it", which is the
-`governing_settings` array. Both sides' specs already agree; only the console's
-IMPLEMENTATION lags. **This is CONFORMANCE work, not a contract change, and there
-is nothing to ratify.**
+PR #845 (`livespec-orchestrator-beads-fabro`), merged. Verified on `origin/master`:
+the short-circuit is gone (`if lock is None or _pid_is_alive(pid=lock.pid):`) and
+`tests/livespec_orchestrator_beads_fabro/commands/test_dispatcher_janitor_lock_nonroot.py`
+is present.
 
-The generalizable check, worth keeping: **"is this actually a DECISION, or an
-UNIMPLEMENTED CONTRACT?"** Read both sides' ratified specs before concluding a
-cross-repo change needs agreement. Mis-filed as a decision, this P1 would have sat
-in backlog behind a negotiation that does not exist.
+- **Acceptance, uid 1000, not CI.** BEFORE: `check-coverage` failed —
+  "Required test coverage of 100.0% not reached. Total coverage: 99.99%", with
+  `_dispatcher_janitor_lock.py` missing exactly line 133. AFTER: full `just check`
+  → **"All 67 targets passed"**, green token written.
+- **Clause 2 was proven discriminating, not assumed.** With the mutex temporarily
+  deleted the new test fails with
+  `assert ('/tmp/.../janitor.lock.reclaim', 2) in []`; previously the ENTIRE SUITE
+  passed with it gone. **Clause 2 is the one that gets dropped once the gate goes
+  green — it is not optional.**
+- Red was a genuine assertion failure (`assert probed == [os.getpid()]` →
+  `-[] +[4117257]`), not an import error. Both `TDD-Red-*` and `TDD-Green-*`
+  trailer sets are on the single commit.
 
-Two binding conditions on that fix: (1) `scenario_10_autonomous_run.rs` is the
-green test that MASKED this defect and its repair is part of the fix — and the
-fixture must be PINNED OR DIGEST-STAMPED against the PRODUCER's real output, not
-hand-written again (instance 2's counter-move, applied to the very defect
-instance 2 was derived from); (2) keep the severity framing — fail-OPEN for
-observability, escalations still reach the operator via the orchestrator's own
-`needs-attention` surface. It is not a decision-correctness bug.
+**Worktree `~/.worktrees/livespec-orchestrator-beads-fabro/fix-janitor-lock-nonroot`
+(branch `fix-janitor-lock-nonroot`) is fully merged and carries nothing unpushed.
+It is SAFE TO REAP.** This is stated explicitly so the restart does not treat it
+as live state.
 
-### Remaining
+### 🔬 THE NATURAL EXPERIMENT ALREADY RAN — and it answers the scope question
 
-- **Defect B** `livespec-console-beads-fabro-co3` (P3) — stale prose cluster,
-  deliberately EXCLUDING `scenario_10_autonomous_run.rs` (that belongs to
-  Defect A's fix, so a prose cleanup cannot leave the masking fixture alive).
-- **The ride-along prose** — still staged-but-uncommitted at
-  `~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose`,
-  blocked alone by the pairing gate (`bd-ib-yf2m`). Do not discard.
-- **The §B findings** — `bd-ib-hdd6` filed (the review-gate integrity question,
-  as INVESTIGATE not defect: the parser proved honest, the verdict gates nothing
-  in Python, and the real risk sits untested in the Fabro graph). The rest remain
-  VERIFY-THEN-FILE — and that verification MUST request CLOSED records, which the
-  default ledger listing hides.
+The open question was whether fixing `bd-ib-yqfw` fixes the factory EVERYWHERE or
+only in one repo. **Evidence now says the failure was orchestrator-specific.**
+
+| Dispatch | Repo | Outcome |
+|---|---|---|
+| D1 `bd-ib-24j5uy.4` | orchestrator (Python) | stranded at `janitor-post-merge`, `check-coverage` exit 2 |
+| D2 `bd-ib-24j5uy.5` | orchestrator (Python) | stranded identically |
+| Defect A `-bgc` | **console (Rust)** | **`status: green`, `stage: done`, PR #341, item CLOSED** |
+
+Three orchestrator dispatches stranded; the one console dispatch completed
+cleanly through the same janitor. **Do not assume Defect A is still running — it
+finished and is closed.**
+
+### 🚩 A GREEN GATE IS NOT A WORKING FACTORY — this is the actual finish line
+
+**Do not mistake #845 merging for the factory being fixed.** It has been proven
+GREEN ON A GATE, as uid 1000. It has NOT been proven to close work.
+
+**The proof is a real item dispatched and reaching `done` with NO human
+hand-closing it.** That has not happened in the orchestrator repo. Today produced
+**three correct merged fixes and three manual closes** — D1, D2, and the git-jsonl
+retirement all needed a human to read the outcome and close the item by hand. A
+gate that passes is a precondition for that, not evidence of it.
+
+**FIRST ACTION after clause 3 (or alongside it): dispatch one real
+orchestrator-repo item post-#845 and watch whether it reaches `done` unattended.**
+If it strands again, #845 was necessary but not sufficient and the remaining cause
+is still unidentified.
+
+The console evidence above is ONE run and does not settle this. It shows the
+console repo did not strand *that time*; it does not show the orchestrator repo
+now succeeds. Those are different claims and only the second is the maintainer's
+bar.
+
+Also carry forward: `bd-ib-9yi` (cargo-not-found / no Rust toolchain in the
+orchestrator image) was raised as a possible ALTERNATIVE cause of console
+stranding. It did not manifest in the run above, but it was never ruled out as a
+latent issue.
+
+### 🔁 THE CLASS FIX IS UNRESOLVED — `bd-ib-sfa2` (P1)
+
+PR #845 fixed the LINE. It did not fix the CLASS. CI still runs the check matrix
+as ROOT (`container: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.51.0`,
+`MISE_DATA_DIR: /root/...`, confirmed at `ci.yml:121-124` and `:218-221`), so CI
+**structurally cannot exhibit a non-root divergence and this WILL recur on some
+other line.**
+
+**The overseer's proposal, carried as UNRESOLVED not decided:** run that matrix
+where it CAN fail — both ways, treating root/non-root divergence as a failure in
+itself, converting environment-dependence from invisible to detectable.
+
+**The operator's assessment, filed on `bd-ib-sfa2`:** agree with run-both,
+disagree that divergence-detection machinery is needed. The existing **100%
+coverage gate already converts divergence into a failure** — a line reachable
+only as root is unreachable in the non-root run, which then misses 100% and
+fails, and symmetrically. Two independently-gated runs make divergence
+unsurvivable with no comparison step and no new tooling. **This holds ONLY while
+fail-under is 100%**; lower it and explicit divergence detection becomes
+necessary. Real cost is the IMAGE (hardcoded root `MISE_DATA_DIR`), not the
+second job.
+
+### Other work closed this session
+
+- **Epic `bd-ib-24j5uy` CLOSED** — 15/15 children, **no `--force`**. The ledger
+  refused to close over an open child; the child was FIXED instead.
+- **`bd-gj-rb3` CLOSED** — git-jsonl autonomous mode retired at spec v018
+  (PR #358). Zero hits for `utonomous`/`decided_by`/`auto_resolvable` on that
+  repo's master.
+- **Defect A `-bgc` CLOSED** — journal read leg conformant; path, stage and schema
+  now match the producer.
+
+### Still open, lower priority than yqfw clause 3
+
+| Item | Tenant | What |
+|---|---|---|
+| `livespec-console-beads-fabro-knh` (P2) | console | The Scenario-15 fixture is SELF-digested, never re-derived from the producer — so producer drift still passes silently. Half of the anti-masking guarantee is missing; copy the `just refresh-config-manifest` pattern and beat its "as of last capture" limitation. |
+| `livespec-console-beads-fabro-co3` (P3) | console | Defect B stale prose. `console-application/src/lib.rs:4588` still reads "Full autonomous mode". |
+| `bd-ib-hdd6` (P2) | orchestrator | INVESTIGATE whether a reviewer verdict lost to silence reads as a PASS. The parser proved HONEST and the verdict gates nothing in Python; the untested risk is in the Fabro graph. |
+| `bd-ib-yf2m` (P2) | orchestrator | Pairing gate blocks docstring-only diffs; needs an AST-based exemption, NOT a diff heuristic. |
+| `bd-ib-0s5` | orchestrator | Detached; design-human-gated cost-gate spec amendment. |
+| §B findings | various | Seven remain VERIFY-THEN-FILE (§ Preserved findings above). Verification MUST request CLOSED records — the default listing hides them. |
+
+**The ride-along prose** is still staged-but-uncommitted at
+`~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose` (three
+comment-only corrections in `dispatcher.py`, `_dispatcher_cost_pricing.py`,
+`commands/CLAUDE.md`). Blocked alone by the pairing gate; it must ride a PR that
+carries real tests. **DO NOT DISCARD THAT WORKTREE.** Clause 3's fix is a natural
+carrier.
 
 ## Deliberately NOT owned here
 
