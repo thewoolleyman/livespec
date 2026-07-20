@@ -166,7 +166,152 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 13 (written 2026-07-20 at session end)
+## ▶▶ START HERE — cont. 14 (written 2026-07-20 at session end)
+
+**Read the STOP block above first** — local self-hosted runners are DEFERRED until
+new hardware. Nothing below changes that; all of this is runner-agnostic work.
+Everything under cont. 13 and lower is prior trail. This section supersedes it.
+
+### The one-line state
+
+**cont. 13 told you to do `livespec-dev-tooling-453` first. Do NOT implement it as
+written — its central prescription is forbidden by the spec, and a defect
+underneath it would have made the work vacuous.** Both are now filed and
+corrected. One fix is in flight; the rest of the track is unchanged.
+
+### ⚠️ `453`'s premise is inverted — the FOURTH such case in two sessions
+
+cont. 13 recorded three work-item framings that were wrong on contact with live
+state. `453` is a fourth, and it is the one cont. 13 told you to do first.
+
+It asks: *"does the conformance sweep hold adopters to their declared `profile`?
+The spec says the former"* — citing this from
+`livespec/SPECIFICATION/non-functional-requirements.md:1053`:
+
+> "This `adopters` array is the central, declarative list the fleet sweep and the
+> orchestrator **iterate**"
+
+**The quote stops one clause early.** The same sentence group continues:
+
+> "Registering an adopter here does NOT make it a fleet member: **adopters carry
+> no per-class obligations** (the *Obligations per repo class* rule binds the
+> `fleet` array only)"
+
+and §"Merged-branch cleanup" (line 1057) says it independently: *"Adopters are
+deliberately NOT bound: the `adopters` array is not consulted."*
+
+The code agrees structurally: obligation rows select on `repo_class`
+(`core`/`enforcement-suite`/`impl-plugin`/`driver-plugin`/`library`/`console`)
+while adopters declare `profile` (`baseline`/`fleet-infra`/`orchestrator-plugin`/
+`app`). Disjoint vocabularies; `RowFn` takes a `FleetMember` with no `profile`
+field. There is no profile→row mapping because none was intended.
+
+**Corrected scope, now recorded on the item:** iterate adopters for the
+posture-gated concerns only — principally plugin-currency, and only where
+`posture == "released"`. Item `453`'s consequence #1 (homelab's `baseline` profile
+vs its zero workflows) is mis-attributed for the same reason: that belongs to the
+adopter's own local Verifiers, not the central sweep.
+
+### ▶ DO THIS FIRST — `livespec-dev-tooling-7vj` (P1, NEW, blocks `453`)
+
+**`livespec-dev-tooling/livespec_dev_tooling/fleet/_context.py` hardcodes
+`_CANONICAL_REF = "master"` for both GitHub reads.** Any governed repo whose
+default branch is `main` reads as "tree unreadable", so every obligation row
+returns `RowSkip` — logged at info, scoring as neither error nor warning. The repo
+is **silently unevaluated while the sweep reports success.**
+
+Measured live by running the real `assert_claude_plugin_currency` row against
+GitHub, not by reading code:
+
+| Ref | homelab | openbrain |
+|---|---|---|
+| `master` (today) | `RowSkip` | `RowSkip` |
+| real default (`main`) | **`RowFinding(severity='error')`** | **`RowFinding(severity='error')`** |
+
+Default branches across the whole manifest: **every `fleet` member is `master`**
+(so members are evaluated correctly and nothing is broken in production today);
+**both adopters are `main`.**
+
+So wiring adopters in before this lands yields an adopter leg that **can never
+fail while reading as coverage.** That is `livespec/.ai/verifying-against-the-right-source.md`
+exactly. A fix PR was dispatched this session — check
+`https://github.com/thewoolleyman/livespec-dev-tooling/pulls` for
+`fix/7vj-per-repo-canonical-ref` and confirm it merged before starting `453`.
+
+The fix must **preserve** the existing invariant, not discard it: the constant's
+comment correctly explains that `file_text` and `tree` pin ONE ref so the
+genuine-absence guard cannot compare divergent branches. The resolution is to make
+that single source of truth **per-repo** (memoized on `FleetContext`), not to
+unpin it.
+
+### Maintainer decision taken 2026-07-20 — adopter findings FAIL LOUD
+
+Not warnings, per `livespec/.ai/ci-gate-discipline.md`. Consequence to plan for:
+once `7vj` lands and adopters are iterated, **homelab produces an error finding**,
+and `ci-green` in `livespec-dev-tooling` depends on `check-fleet-conformance`.
+homelab's remedy is small and needs no secrets — its `.claude/settings.json`
+SessionStart either adopts the canonical `mise exec -- just ensure-plugins` form,
+or declares `livespecPluginCurrencySuccessor` with `mechanism` + `documentedIn`,
+which is the row's own sanctioned slot for an alternative updater.
+
+### ⚠️ The homelab onboarding thread is working from a wrong "green" reading
+
+`homelab`'s `plan/00-livespec-onboarding/handoff.md` states *"currency is green …
+A fleet check asserting currency for `posture: released` passes for homelab
+today"* and concludes *"do not hold livespec PR 453 on this thread."*
+
+Its evidence is the runtime CLI exiting 0. That measures the **runtime currency
+chokepoint**, which the spec explicitly distinguishes from the **sweep row** — the
+row reads `.claude/settings.json` and `justfile` FORM from the GitHub tree and
+never runs the CLI. Against the sweep row homelab **does not pass**: it skips
+today, and fails once `7vj` corrects the ref. Relay this to tmux session
+`00-livespec-onboarding`; the maintainer confirmed homelab is fixing it.
+
+### ✅ Agent-layer payload exercised live — partial credit on the `a46` gap
+
+Ran `ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-agent-v0.51.0` (the exact
+tag `livespec-orchestrator-beads-fabro` pins). Baked and confirmed: `bubblewrap
+0.9.0`, `@agentclientprotocol/claude-agent-acp@0.44.0`,
+`@zed-industries/codex-acp@0.16.0`, and the deprecated
+`@zed-industries/claude-code-acp` **absent** — confirming `ql1`'s fix added zero
+bytes. Both adapters answer a real ACP `initialize` handshake with
+`--network none`, proving the payload works from the baked layer with no runtime
+download possible.
+
+**What this does NOT prove, stated so it is not over-read:** it is not a Fabro
+dispatch. Sandbox creation, credential projection, the git/PR nodes, and the
+workflow graph are still unexercised on an `-agent-` tag. **The live-dispatch gap
+on `a46` remains OPEN.** What it retires is the narrower risk that the `-agent-`
+tags were never executed at all and might carry a broken or absent payload.
+
+**Why no dispatch was driven:** `livespec-orchestrator-beads-fabro`'s `bd ready`
+is empty — every open item is in_progress/blocked/deferred/hooked, i.e. another
+session owns that queue — and Fabro sandboxes run `--network host` and are
+strictly sequential, so a second session dispatching into it risks a collision.
+
+### ▶ THEN, unchanged from cont. 13
+
+1. **`livespec-dev-tooling-453`** — after `7vj` merges, in the corrected narrow scope.
+2. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
+   Expect LESS than its byte share (init fell 36% while the image fell 42%). Needs a
+   full `just check` across the FLEET — it risks native wheel builds.
+3. **`livespec-bg47fr`** — still BLOCKED ON THE MAINTAINER, and note it shares
+   `453`'s root cause.
+4. **`livespec-3lev.1`** — Honeycomb trigger; close the `docker_stats` observability
+   gap first (rootless podman vs the rootful socket).
+
+### Method note worth carrying
+
+Two probes this session were **vacuous and were discarded rather than reported**:
+`npx … | tail -3` then `echo $?` reports *tail's* exit status; and
+`npx <pkg> --version` returns 124 for baked and non-baked packages alike, because
+an ACP adapter ignores the unknown flag and blocks on stdin — the timeout is the
+adapter *working*. Only a real `initialize` request discriminates. Both had the
+shape of confirmation and carried no information.
+
+---
+
+## ▶▶ START HERE — cont. 13 (written 2026-07-20 at session end — superseded by cont. 14 above)
 
 **Read the STOP block above first** — local self-hosted runners are DEFERRED until
 new hardware. Nothing below changes that; all of this is runner-agnostic work.
