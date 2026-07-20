@@ -227,6 +227,89 @@ image.** CI exercises only the slim tags and never touches the agent tags, so a
 green CI run is not evidence here. **The live factory dispatch on each consumer is
 the one genuine gap remaining before `a46` can close.**
 
+### ✅ ADDENDUM (same session, later) — TWO of the four decisions are now IMPLEMENTED
+
+The list below said "none implemented". Two now are, and one of them changed shape
+entirely on contact with reality.
+
+| Decision | State |
+|---|---|
+| `aa7` — split the CI-gate branches | ✅ **MERGED** — `livespec-dev-tooling` [#499](https://github.com/thewoolleyman/livespec-dev-tooling/pull/499) |
+| `ql1` — the review adapter | ✅ **MERGED** — `livespec-orchestrator-beads-fabro` [#834](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/834), **but the diagnosis was wrong; see below** |
+| `bg47fr` — posture-driven adopters | ❌ not implemented — **riskier than its decision note implies; see below** |
+| `3lev.1` — Honeycomb trigger | ❌ not implemented |
+
+**`aa7` — verified behaviorally, not by reading:**
+
+```
+credentialed + API error  -> EXIT 1   (the hole is closed)
+uncredentialed            -> EXIT 0   (local dev preserved)
+normal, master green      -> EXIT 0   (real check, no skip warning)
+```
+
+Two things about it worth carrying forward. First, **the CI-detection signal in the
+brief was wrong** — gating strictness on `GH_TOKEN`/`CI` would have produced a gate
+that fires *nowhere*, because `check-master-ci-green` is deliberately excluded from
+the CI matrix and enforces at pre-push. It uses credential *capability* instead.
+Second, it probes with **`gh auth token`, not `gh auth status`** — `auth status`
+validates against the API, so during an outage it fails and would route a
+credentialed caller straight back onto the fail-soft path, silently reopening the
+hole being fixed.
+
+**The threat that motivated `aa7` is genuinely closed**, and that needed checking:
+the Fabro sandbox projects `GITHUB_TOKEN`, *deliberately not* `GH_TOKEN`. Tested —
+`gh` honors the longer name, so a dispatched agent gets the strict path.
+
+### ⚠️ `ql1`'s premise was WRONG — and inverted
+
+Filed as *"a third, distinct adapter is unpinned at `@latest`, so it can drift."*
+Verified against npm, the opposite is true:
+
+```
+npm view @zed-industries/claude-code-acp deprecated
+-> "This package has been renamed to @agentclientprotocol/claude-agent-acp."
+
+@zed-industries/claude-code-acp        0.1.0 .. 0.16.2   last 2026-03-26
+@agentclientprotocol/claude-agent-acp  0.24.0 .. 0.59.0  last 2026-07-13
+```
+
+**It is the dead former name of the adapter the image already bakes.** `@latest` on
+a deprecated package does not float — it is frozen at the tombstone. So the review
+node was **fossilized ~4 months** while the implementer node ran the *same adapter*
+at 0.44.0. Two nodes, one adapter, ~28 minors apart, with no path to receive an
+upstream fix — and it read as "always current" throughout.
+
+**This also explains the recorded haiku caveat.** The comment about some versions
+ignoring `ANTHROPIC_MODEL` was observed on that frozen 0.16.x line, and plausibly
+fixed upstream long since.
+
+The fix became one line pointing at the already-baked package: removes the fetch,
+removes the float, drops a deprecated dependency, **adds zero bytes**. The item's
+original prescription — *baking* the old package — would have enshrined a
+deprecated ~119 MB payload permanently. `ql1` is retitled and corrected.
+
+### ⚠️ `bg47fr` — the decision is right, but the selector ALONE can break the release train
+
+Measured before implementing, which is why it is not implemented:
+
+- **The decision is confirmed by the data.** `homelab` is `posture: released` and
+  genuinely stale — `compat.pinned = "v0.17.1"` against core's current `v0.18.3`.
+  That is real, *un-declared* drift, unlike openbrain/resume whose staleness is
+  declared. The inverted-evidence correction holds.
+- **But `homelab` has NO `.github/workflows/` at all.** No shim would receive the
+  dispatch, so the selector change alone is **inert** for the one repo it exists to
+  serve.
+- **And the failure mode is worse than inert.** If the fleet App is not installed on
+  `homelab`, the fan-out's dispatch call 404s and can **fail the release fan-out
+  itself** — turning every livespec release red on account of an adopter. Not
+  hypothetical: that is exactly `ob-nfwa`, already on record for openbrain.
+
+**Required order, recorded on the item:** verify App installation → make the adopter
+leg **fail-soft** (an adopter must never fail the publisher's release; adopters
+carry no per-class obligations) → then the selector. Installing the shim in
+`homelab` is separate adopter-onboarding work needing maintainer secret
+authorization.
+
 ### ▶ THE FOUR DECISIONS — recorded, none implemented
 
 Each is on its ledger item with full reasoning. Summary and what to build:
