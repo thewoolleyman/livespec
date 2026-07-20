@@ -218,28 +218,91 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
-## NEXT ACTION
+## RUNNING STATE — as of 2026-07-20
 
-The cross-repo blocker is CLEARED and D1 is CLOSED (fix merged as PR #839 /
-release 0.45.14, verified by execution on `origin/master`; its post-merge janitor
-red was diagnosed as the same checkout-dependent gate class as `bd-ib-rxxx`, not
-a defect in the change).
+**THE EPIC IS CLOSED.** `bd-ib-24j5uy` closed with ALL 15 CHILDREN CLOSED and
+**no `--force`**. The retirement is complete and verified fleet-wide.
 
-**`bd-ib-24j5uy` closes as soon as D2 (`bd-ib-24j5uy.5`) lands.** The ledger
-REFUSED to close the epic with an open child — correctly — and `--force` was not
-used. D2 was dispatched to the factory instead, which is the honest resolution:
-fix the child rather than bypass the gate that names it.
+### How the epic actually closed
 
-D2 is kept as a CHILD rather than detached, because unlike `bd-ib-0s5` it was
-CAUSED BY this epic's own O8 leg (`review_fix_cap` became configurable; the
-telemetry parser's hardcoded `_REVIEW_CAP_VISITS = 3` did not follow), and that
-lineage should survive.
+The ledger REFUSED to close it with an open child (`cannot close epic ...: 1 open
+child issue(s); close children first or use --force`). `--force` is exactly the
+bypass this fleet forbids, so **the child was fixed instead**. That is the honest
+resolution: repair what the gate names, do not override the gate.
 
-Remaining, in any order: land the ride-along prose (still staged-but-uncommitted,
-blocked alone by the pairing gate `bd-ib-yf2m`); work Defect A
-(`livespec-console-beads-fabro-bgc`, P1 — the dead Scenario-15 journal read leg)
-and Defect B; and file the §B findings after verifying against each tenant,
-remembering that a default ledger listing HIDES CLOSED RECORDS.
+| Child | Outcome |
+|---|---|
+| D1 `bd-ib-24j5uy.4` | CLOSED — PR #839, merge `952d874c`, master CI green. `cwd` now REQUIRED on all five `effective_*` resolvers; the old reproduction can no longer execute (`TypeError`), so the silent-fallback footgun is closed at the type level. |
+| D2 `bd-ib-24j5uy.5` | CLOSED — PR #842, merge `349fe79f`, master CI green. `_REVIEW_CAP_VISITS = 3` gone; the parser now receives `emission.plan.review_fix_visit_cap`, the same value the workflow is injected with. |
+
+D2's fix was REVIEWED, not trusted: its `None` default looked like it would make
+`visit_count >= cap_visit_count` vacuously true, but the fix also added a
+`fix_rounds > 0` guard, and production always supplies the plan's cap.
+
+### ⚠ THE MOST OPERATIONALLY IMPORTANT FINDING — `bd-ib-yqfw` (P0, OPEN)
+
+**D1 and D2 both landed correct fixes with green master CI, and BOTH were
+stranded in `active` by the identical janitor failure** — `check-coverage` exit 2
+in a non-root fresh checkout. Same target, same exit code, same master-CI-green
+divergence, different changes touching different modules.
+
+Root cause is already filed: `bd-ib-yqfw` — *"`just check` is RED on master for
+non-root runners (CI runs as root and masks it)"*. The janitor runs NON-ROOT in a
+fresh checkout; CI runs as ROOT and masks it.
+
+**Consequence: the dark factory cannot close items unattended.** The janitor is
+its hard gate; while that gate fails for reasons unrelated to the change under
+test, every dispatched item lands its PR and then needs a human to diagnose and
+close it by hand. Both items above required exactly that. Impact evidence is
+recorded on `bd-ib-yqfw`.
+
+**Second-order risk, also recorded there:** now that janitor red is KNOWN to be
+usually environmental, there is a standing temptation to wave any janitor red
+through as "the non-root thing" — the failure mode where a genuine catch gets
+dismissed. Both closures verified the fix independently against `origin/master`
+first, but that discipline will not survive volume.
+
+### In flight
+
+**Defect A (`livespec-console-beads-fabro-bgc`, P1) — DISPATCHED.** The
+Scenario-15 orchestrator-journal read leg is dead live on three wire mismatches.
+
+It was previously mis-filed as needing a MAINTAINER DECISION on a wire-contract
+rename. **That framing was wrong and is retracted.** The console's OWN ratified
+spec already specifies the orchestrator's current vocabulary verbatim —
+`scenarios.md:529-533` names all five live disposition values (`auto-approve`,
+`ai-auto-accept`, `ai-fail-auto-rework`, `ship-on-cap`, `cap-exceeded-escalation`)
+and requires attributing each "to the setting that governed it", which is the
+`governing_settings` array. Both sides' specs already agree; only the console's
+IMPLEMENTATION lags. **This is CONFORMANCE work, not a contract change, and there
+is nothing to ratify.**
+
+The generalizable check, worth keeping: **"is this actually a DECISION, or an
+UNIMPLEMENTED CONTRACT?"** Read both sides' ratified specs before concluding a
+cross-repo change needs agreement. Mis-filed as a decision, this P1 would have sat
+in backlog behind a negotiation that does not exist.
+
+Two binding conditions on that fix: (1) `scenario_10_autonomous_run.rs` is the
+green test that MASKED this defect and its repair is part of the fix — and the
+fixture must be PINNED OR DIGEST-STAMPED against the PRODUCER's real output, not
+hand-written again (instance 2's counter-move, applied to the very defect
+instance 2 was derived from); (2) keep the severity framing — fail-OPEN for
+observability, escalations still reach the operator via the orchestrator's own
+`needs-attention` surface. It is not a decision-correctness bug.
+
+### Remaining
+
+- **Defect B** `livespec-console-beads-fabro-co3` (P3) — stale prose cluster,
+  deliberately EXCLUDING `scenario_10_autonomous_run.rs` (that belongs to
+  Defect A's fix, so a prose cleanup cannot leave the masking fixture alive).
+- **The ride-along prose** — still staged-but-uncommitted at
+  `~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose`,
+  blocked alone by the pairing gate (`bd-ib-yf2m`). Do not discard.
+- **The §B findings** — `bd-ib-hdd6` filed (the review-gate integrity question,
+  as INVESTIGATE not defect: the parser proved honest, the verdict gates nothing
+  in Python, and the real risk sits untested in the Fabro graph). The rest remain
+  VERIFY-THEN-FILE — and that verification MUST request CLOSED records, which the
+  default ledger listing hides.
 
 ## Deliberately NOT owned here
 
