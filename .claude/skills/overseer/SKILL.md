@@ -57,6 +57,38 @@ list, start the daemon, and relay what it surfaces.
 
 ---
 
+## Requirements — Linux and tmux (a DECLARED requirement, not a soft preference)
+
+The overseer runs on **Linux with tmux**, and that is a deliberate product
+decision rather than an unfinished portability story:
+
+- **Linux**, because the session readers parse `/proc/<pid>/…` to join a live
+  Claude or Codex process to its tmux pane. **macOS has no `/proc` at all** —
+  absent, not merely shaped differently — so there is nothing to read.
+- **tmux**, because every acting mechanic (capture, paste, respawn, split)
+  shells out to a real tmux.
+
+The host boundary is deliberately **NOT abstracted**: no `psutil`, no per-OS
+shims, no terminal-multiplexer abstraction. That option was weighed and rejected
+as speculative generality. If you need macOS, that reopens the decision on its
+own evidence — it is not smuggled in as a seam.
+
+**How it behaves on an unsupported host.** `overseerd` REFUSES to start and
+names exactly which precondition failed, rather than failing several ticks deep
+inside whichever reader touched the host first:
+
+```
+overseer[SURFACE]: refusing to start: unsupported host — tmux is not on PATH —
+every acting mechanic drives a real tmux (the overseer declares Linux + tmux as
+a REQUIREMENT and deliberately does not abstract the host boundary)
+```
+
+The check runs BEFORE every other startup gate, so an unsupported host is
+reported ahead of (say) an ungitignored `tmp/overseer/` — you are never sent to
+fix the wrong thing first.
+
+---
+
 ## The two-pane model
 
 Two panes in the overseer's own tmux window:

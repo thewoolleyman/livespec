@@ -1317,6 +1317,22 @@ The refusal leg is the one that matters: it proves the gate fires on the real
 entry point and stops the loop, rather than merely returning a list a test
 asserts on.
 
+**⚠️ Self-caught over-claim, corrected same day.** This section first declared
+b1uo.2 DONE on the strength of PR #1523 alone. That was WRONG: the item's
+ledger ACCEPTANCE has THREE clauses, and #1523 satisfied only two — (1) refuses
+and names the failed precondition, and (3) introduces no portability
+abstraction. Clause (2), *"the requirement is stated in the shipped
+documentation, not only in code"*, was UNMET; `SKILL.md` mentioned neither Linux
+nor tmux anywhere. Closed by a follow-up adding a §"Requirements" section to
+`SKILL.md`.
+
+**The transferable lesson: read the work-item's own ACCEPTANCE clauses before
+declaring completion, not just the plan text.** The handoff described b1uo.2 as
+"declare + enforce the Linux/tmux precondition", which reads as satisfied by the
+code gate alone; only the ledger item spelled out the documentation clause. A
+green `just check` and live-exercise evidence cannot detect a missing doc
+sentence, so nothing mechanical would ever have caught this.
+
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
 The epic spans three repos, so the instinct is per-tenant items linked by
