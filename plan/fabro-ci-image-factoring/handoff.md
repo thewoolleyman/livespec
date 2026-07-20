@@ -166,7 +166,160 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 11 (written 2026-07-19/20 at session end)
+## ▶▶ START HERE — cont. 12 (written 2026-07-20 at session end)
+
+**Read the STOP block above first** — local self-hosted runners are still DEFERRED
+until new hardware. Nothing here changes that; all of this is runner-agnostic
+container work. Everything below this section, including cont. 11, is prior trail.
+
+### The one-line state
+
+**`livespec-dev-tooling-a46` is DELIVERED and live-exercised.** CI's image pull is
+down 42%, the prefix migration survived a real release fan-out untouched, and the
+silent-corruption bug found underneath it is fixed. **Four maintainer decisions
+were taken this session — all four are recorded and none has been implemented yet.
+Implementing them is your work.**
+
+### What landed
+
+| Piece | Evidence |
+|---|---|
+| Agent-layer split (`a46`) | `livespec-dev-tooling` [#481](https://github.com/thewoolleyman/livespec-dev-tooling/pull/481) (spec v028) + [#482](https://github.com/thewoolleyman/livespec-dev-tooling/pull/482) (impl) |
+| Consumer pins migrated to `-agent-` | orchestrator [#819](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/819), console [#324](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/324) |
+| Rewrite refusal guard (`3k7`) | [#486](https://github.com/thewoolleyman/livespec-dev-tooling/pull/486), master `f1274d5` |
+
+**Measured, not estimated** — `Initialize containers` on the same job
+(`check-private-calls`), two real master runs:
+
+| Run | Image | Init |
+|---|---|---|
+| 29691737436 | `python-v0.50.3` (751 MB) | **39s** |
+| 29707579662 | `python-v0.50.4` (435 MB) | **25s** |
+
+−14s per job (−36%). Image sizes: `python-` 751 → **435 MB** (−42%),
+`python-rust-` 975 → **658 MB** (−32%). The `-agent-` tags come out
+byte-for-byte the same size as the pre-split images, which is the check that the
+restructure MOVED payload rather than dropping any.
+
+**Init fell 36% while the image fell 42%** because `Initialize containers` also
+covers container create, network setup, and mounts. So the residual ~25s is not
+all pull, and `livespec-dev-tooling-oik` (the buildpack-deps re-base, the other
+185.5 MB) should be expected to return **less** than its byte share. Measure it;
+don't extrapolate.
+
+### ✅ The prefix migration is live-exercised — by a real release
+
+Release **v0.50.5** fired unprompted (cut by this session's own `fix:` for the
+guard, not manufactured). Its fan-out is the first real test, and every leg held:
+
+```
+orchestrator   Fabro sandbox  python-agent-v0.50.5        CI  python-v0.50.5
+console        Fabro sandbox  python-rust-agent-v0.50.5   CI  python-rust-v0.50.5
+```
+
+All four images exist at the expected sizes. So "the fan-out preserves the prefix,
+so these pins stay correct forever with no hand-bumping" is no longer a property
+of a test harness — a real release drove it end to end.
+
+**What this does NOT prove, so it isn't over-claimed:** this validates the PIN
+mechanism, not the RUNTIME. **No Fabro dispatch has yet run inside an `-agent-`
+image.** CI exercises only the slim tags and never touches the agent tags, so a
+green CI run is not evidence here. **The live factory dispatch on each consumer is
+the one genuine gap remaining before `a46` can close.**
+
+### ▶ THE FOUR DECISIONS — recorded, none implemented
+
+Each is on its ledger item with full reasoning. Summary and what to build:
+
+1. **`livespec-dev-tooling-aa7` — split the CI-gate branches.** `check-master-ci-green`
+   exits 0 whenever it can't reach GitHub, so it stopped gating during today's
+   outage (reproduced live: master red, check exit 0). Keep fail-soft for `gh`
+   absent/unauthenticated (local dev); **fail loud when `GH_TOKEN` is set and the
+   API errors.** Also fix the hint, which says "check gh auth status" for a 503.
+   **No env-var escape hatch, no demotion to warning** — per `.ai/ci-gate-discipline.md`.
+   Fleet-universal check, so this is a cross-repo epic.
+2. **`livespec-bg47fr` — adopter tracking is POSTURE-DRIVEN.** Extend the fan-out
+   selector to `.adopters[] | select(.posture == "released")`. homelab gets bumps;
+   openbrain and resume (both `pinned`) don't. **That item's evidence is inverted
+   and must be rewritten first** — see below.
+3. **`livespec-dev-tooling-ql1` — bake + pin the third ACP adapter, NO factory gate.**
+   Add `@zed-industries/claude-code-acp` to `agent/Dockerfile` behind an ARG, wire
+   plain autodiscovery bump, and drop `@latest` from the orchestrator's
+   `review_adapter`. No factory gate because that gate exists for codex-acp's
+   credential-projection risk on the IMPLEMENTER node; this drives the REVIEW node.
+4. **`livespec-3lev.1` — Honeycomb trigger on `livespec-host-metrics`.** Watch
+   **sustained CPU-idle≈0% duration** — the one signal the 2026-07-12 correction
+   named and nobody built. **Close the observability gap FIRST:** CI-runner job
+   containers are invisible to `docker_stats` (rootless podman vs the rootful
+   socket), so a trigger on today's telemetry alerts on a systematically incomplete
+   picture.
+
+### ⚠️ `fleet-pin-propagation` does NOT already fix adopters — its evidence is backwards
+
+Checked directly, because it was a reasonable assumption. Epic `livespec-n4ptl2`
+filed `livespec-bg47fr` and knows adopters are unwired — but:
+
+- **It never engages `posture`.** Two grep hits across the whole track; one is an
+  unrelated sense, the other a bare table row. No replacement for the fleet-only
+  `.fleet // .members` selector is proposed.
+- **Its open question is binary** — "SAME fan-out as members" or "only a staleness
+  signal" — and **neither branch is posture-correct.**
+- **Its motivating evidence is inverted.** It cites `resume` ("11 minors stale,
+  drifting silently") and `openbrain` as defects. **Both are `posture: pinned`**,
+  which the spec calls "a declared adopter choice honored by the sweep, never
+  'helpfully' updated." Meanwhile `homelab` — the ONLY `released` adopter, the one
+  that should be tracked — is the single adopter recorded with **no defect
+  annotation at all.**
+- Its research artifacts say adopters are "out of scope per the work-item brief"
+  while `bg47fr` was live in the same epic. Reconcile that contradiction.
+
+**So completed as written it would bump the two repos that opted out and still
+miss the one that opted in.** Rewrite `bg47fr` before implementing.
+
+### Blocked, and deliberately left blocked
+
+One follow-up is staged and uncommitted: the guard's error message names
+`python-v<X.Y.Z>`, the wrong layer for openbrain — the only pin it will ever fire
+on. Worktree
+`~/.worktrees/livespec-dev-tooling/fix/3k7-fabro-pin-error-layer-guidance`, Red
+staged and genuine (impl byte-identical to master). **The verbatim Green edit, the
+ruff/pyright trap, and the resume steps are all recorded on `livespec-dev-tooling-3k7`**,
+so it survives loss of the worktree.
+
+**DO NOT commit it while the GitHub API is unreachable.** `check-master-ci-green`
+is fail-soft, so it would pass VACUOUSLY while master is genuinely red — that is
+`aa7`, and taking the pass defeats the gate as thoroughly as adding a lever.
+
+Also unresolved: `export-telemetry` and `release-please` failed on `f1274d5` inside
+the declared GitHub Actions outage (incident opened 2026-07-19T23:34Z). Neither is
+a gate. **Almost certainly collateral but UNPROVEN** — re-run both once GitHub is
+fully operational. If `export-telemetry` reproduces against a healthy API, that is
+a genuine telemetry break and deserves its own item; the script is deliberately
+written to fail loudly.
+
+### The process lesson this session paid for
+
+**A mitigation that reasons about the commit you control is not control over the
+release train.** The plan was to land the layer split as `refactor(ci):` — which
+cuts no release, therefore no fan-out, therefore no consumer bumped onto the
+adapter-less image. The first two clauses are true; the third does not follow.
+Release-please had a pending PR accumulating *other people's* `fix:` commits and
+merged on its own **four minutes later**. The fan-out fired, and the console's bump
+merged before it could be corrected.
+
+This was foreseeable from **this document's own record** — the `5r3` section
+already states that exercise "depended on somebody else's release firing", which
+"came 24 minutes later", at "five releases in 2.5 hours". Read, and not
+transferred.
+
+**For the next prefix migration**, any one of these actually closes it: migrate
+consumers FIRST onto `-sha-` tags; park the release train; or ship the guard check
+before the producer change. Checking "has a release fired?" afterwards is a race,
+not a mitigation.
+
+---
+
+## ▶▶ START HERE — cont. 11 (written 2026-07-19/20 at session end — superseded by cont. 12 above)
 
 **Read the STOP block above first** — local self-hosted runners are still DEFERRED
 until new hardware, and nothing in this section changes that. Then read this.
