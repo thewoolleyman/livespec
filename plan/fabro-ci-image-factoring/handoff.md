@@ -289,9 +289,73 @@ is empty — every open item is in_progress/blocked/deferred/hooked, i.e. anothe
 session owns that queue — and Fabro sandboxes run `--network host` and are
 strictly sequential, so a second session dispatching into it risks a collision.
 
+### ✅ `7vj` MERGED and independently live-verified — `453` is UNBLOCKED
+
+Merged as `d01ff43` on `livespec-dev-tooling` master
+([PR #507](https://github.com/thewoolleyman/livespec-dev-tooling/pull/507)),
+confirmed an ancestor of `origin/master`. Verified by re-running the probe that
+found the defect, against live GitHub, with no monkeypatching:
+
+| | before | after |
+|---|---|---|
+| `homelab` (`main`) | `RowSkip` — unevaluated | **`RowFinding(severity='error')`** |
+| `livespec-dev-tooling` (`master`) | `RowPass` | `RowPass` — unchanged |
+
+Adopters are now genuinely evaluated; no fleet member regressed. Item closed with
+that evidence.
+
+### 🔴 `livespec-dev-tooling-ahg` (P1, NEW) — a fleet gate that has never enforced
+
+Found by running the real `check-fleet-conformance` gate instead of trusting CI's
+green tick. It exits 4 with **8 error findings**. **Not caused by `7vj`** —
+A/B-proved by running the same gate from a detached worktree at the pre-fix commit
+`9416b0a` and getting the identical 8.
+
+**TWO defects, and they were mutually masking.**
+
+**(1) The 8 findings are FALSE POSITIVES.** `non-functional-requirements.md:1023`
+says a required top-level gate job "**IS a valid required check and is NOT
+flagged**, even though it is not a matrix leg". But
+`fleet/_rows_github.py::_protection_problems` computes `contexts - matrix` using
+ONLY the ci.yml `matrix.target` set, so it flags exactly what the spec exempts.
+Measured across all 8 flagged repos: every one has `required=[ci-green]` with a
+real top-level `ci-green:` job — i.e. **configured exactly as the spec mandates.**
+
+**DO NOT act on those findings, and DO NOT follow the row's own hint ("run
+wire-fleet-member to reconcile") — it would rewrite a CORRECT branch-protection
+configuration across all 8 fleet repos.**
+
+Root cause is duplicated logic that drifted: `parse_ci_matrix`'s docstring admits
+it is the "same line-walk shape as the per-repo `branch_protection_alignment`
+check's parser (that one is module-private, so the fleet surface carries its
+own)". The copy lost the top-level-job acceptance rule.
+
+**(2) The row skips in EVERY automated context**, needing admin scope the CI token
+lacks — so the gate reports success while evaluating nothing:
+
+```
+CI:     "branch protection unreadable (needs admin scope)"  RowSkip, level: info  ×8  → SUCCESS
+Local:  "required check ci-green has no ci.yml matrix job"  RowFinding, error     ×8  → exit 4
+```
+
+The spec already solved this for the per-repo sibling — `branch_protection_alignment`
+is "deliberately NOT run in the per-PR CI matrix, where it would always-skip" — but
+the fleet sweep wires this row into a CI-run job anyway.
+
+**Why the masking matters:** fixing only (2) would convert 8 false positives into a
+hard fleet-wide CI failure. Fix (1) first.
+
+Also spotted, same class as `7vj` and still latent: `assert_branch_protection`
+hardcodes `branches/master/protection`, so it will misfire on `main`-default repos
+the moment `453` iterates adopters.
+
+**This is the third instance of one class in a single session** — a check pointed
+at a source that could not show the failure, passing in a way that looks exactly
+like confirmation.
+
 ### ▶ THEN, unchanged from cont. 13
 
-1. **`livespec-dev-tooling-453`** — after `7vj` merges, in the corrected narrow scope.
+1. **`livespec-dev-tooling-453`** — now UNBLOCKED, in the corrected narrow scope.
 2. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
    Expect LESS than its byte share (init fell 36% while the image fell 42%). Needs a
    full `just check` across the FLEET — it risks native wheel builds.
