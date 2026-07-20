@@ -464,8 +464,8 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | ~~`livespec-dev-tooling-6j6`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #487), dual-reviewed NO-BLOCKERS x2. Restored the `rc>=2` hard fail. **The gate-arming blocker is CLEARED.** |
 | `livespec-dev-tooling-y27` | livespec-dev-tooling | P2 | **NEW 2026-07-20.** Residual after 6j6: `rc=1` with a PARTIAL tally still poisons the ratchet. PRE-EXISTING (predates z45). rc 1 is genuinely ambiguous — the naive `mutants_total`-shrink fix has its own false-fail risk when code is legitimately deleted |
 | `livespec-e9j` slice 1a | livespec | — | **PR #1497 OPEN** — declares `dataclasses_tree`, arming `newtype_domain_primitives` (one of the four never-enforcing checks). Verified armed + green; 71 targets pass |
-| `livespec-ftbvgc` | livespec | — | **UN-STRANDED**; in `acceptance`, awaits MAINTAINER final acceptance (`ai-then-human`) |
-| ~~`bd-ib-12fw`~~ | livespec-orchestrator-beads-fabro | — | **MERGED 2026-07-20** (PR #822). Dual review SPLIT (Codex BLOCKERS / Opus NO-BLOCKERS) on severity of a TOCTOU race both found; **maintainer ruled merge + follow-up**. Reconciled to un-strand |
+| ~~`livespec-ftbvgc`~~ | livespec | — | **DONE 2026-07-20.** Switched to `ai-only` and accepted after a Fable+Codex acceptance review |
+| ~~`bd-ib-12fw`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20** — merged (PR #822), then accepted `ai-only` after a Fable+Codex acceptance review. Dual review SPLIT (Codex BLOCKERS / Opus NO-BLOCKERS) on severity of a TOCTOU race both found; **maintainer ruled merge + follow-up**. Reconciled to un-strand |
 | `bd-ib-w4h4` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor stale-lock reclamation is TOCTOU: unlink-by-pathname can delete a LIVE lock, so two janitors both own the venue. Demonstrated by BOTH reviewers. Fix: atomic takeover (temp+`os.link`/`rename`, or read-back-confirm-own-pid). Ride-along: a pre-existing assertion can no longer detect the defective contention message |
 | `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **UNBLOCKED** (`backlog`), still `needs-regroom` — premise falsified, scope needs re-cutting |
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
@@ -782,6 +782,23 @@ Every finding below passed all mechanical gates:
 - **`status` is a read-only variable in zsh** and will silently kill a `Monitor` script.
 - **Do NOT read a local agent's `.output` file** — it is a symlink to the full subagent transcript
   and will overflow context. Use the agent result or `SendMessage`.
+- **NEVER NAME THE EXPECTED ARTIFACT IN A REVIEW BRIEF — it converts an independent check into a
+  confirmation.** The `ftbvgc` acceptance brief asked Fable to "verify PR #1381 exists and is
+  MERGED", pre-supplying the answer. Fable duly verified #1381 and NEVER checked the item's OWN
+  claim of #1321 — which was the actual defect. Codex caught it only because it read the item
+  description first, unprimed. Ask **"which PR delivered this, per the item, and is that
+  correct?"** — never "verify PR #N".
+- **Distinguish a FALSE claim from a STALE one before recording a verdict.** On `ftbvgc` the
+  overseer confirmed a journaled `extend-exclude` claim as "CONFIRMED FALSE" against live state
+  and was WRONG: Fable read the commits IN TIME ORDER and showed the claim was TRUE at the
+  delivering commit (`0bd9ce1f`, 03:48Z) and was invalidated hours later by an unrelated Gate C
+  commit (`98fcc1d3`, 06:51Z) that removed the exclusion and added the `noqa`. "The author
+  asserted something untrue" and "the world changed under an accurate statement" are different
+  defects with different remedies. **Check the delivering commit's state, not just HEAD.**
+- **Fable+Codex is a GOOD acceptance pairing — each caught what the other structurally could
+  not.** Codex caught the false PR number (unprimed reading); Fable caught the staleness
+  (temporal commit analysis). Combined with the `z45` factual split and the `12fw` severity
+  split, that is a THIRD distinct shape of productive reviewer disagreement in this thread.
 - **A reviewer that goes "idle" may have DELIVERED NOTHING despite doing the whole review.** Its
   plain-text output is not visible to the overseer. **State the delivery mechanism (`SendMessage`)
   as a hard requirement in every reviewer brief**, and when one goes idle, ASK it for the verdict
