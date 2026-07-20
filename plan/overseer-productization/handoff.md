@@ -156,14 +156,31 @@ step 1 below.
 
 **The immediate next steps, in order:**
 
-1. **Add the class value** in `livespec-dev-tooling` (`REPO_CLASSES`,
-   `_contract_rows.py:65`) — a spec-backed change, so it goes through that
-   repo's propose-change → independent Fable review → revise cycle, NOT a
-   unilateral edit. Both subtraction sets (`_PIN_WEB_CLASSES`,
-   `_DEV_TOOLING_PIN_CLASSES`) pick the new class up automatically.
-   **This is now the critical path, and it is UNBLOCKED.** Note the step that
-   is easy to drop: the change must be merged AND **RELEASED**, not merely
-   merged — fleet pins track releases, not master (see §"REGISTER-FIRST TRAP").
+1. ~~**Add the class value** in `livespec-dev-tooling`~~ — **✅ DONE 2026-07-20.**
+   Merged as `livespec-dev-tooling` PR
+   [#502](https://github.com/thewoolleyman/livespec-dev-tooling/pull/502) and
+   **RELEASED as `v0.51.0`** (verified: the tag carries `control-plane-tool`).
+   The fleet auto-bump web fired on its own immediately after.
+
+   **⚠️ THIS STEP'S INSTRUCTION WAS WRONG, and following it literally would have
+   cost a full wasted ratification cycle.** It said the change was "a spec-backed
+   change, so it goes through that repo's propose-change → independent Fable
+   review → revise cycle, NOT a unilateral edit." **It is not spec-backed in
+   `livespec-dev-tooling`.** Verified against that repo's LIVE spec files (not
+   `history/`, which swamps a naive grep): its `SPECIFICATION/` does not
+   enumerate the repo classes ANYWHERE, and `console` appears in exactly one
+   live location — `contracts.md:340`, the non-pin-consuming-member carve-out,
+   which stays true unamended because `control-plane-tool` is pin-CONSUMING and
+   the carve-out names `console` specifically.
+
+   The ratified core proposal said this plainly all along — it calls the
+   dev-tooling half "**the paired implementation change**" and states that
+   dev-tooling's own SPECIFICATION "does not enumerate the classes at all". So
+   the spec backing is core's v171, already ratified; the dev-tooling half is a
+   plain TDD implementation change under Red-Green-Replay. **The lesson: when
+   this page and a ratified proposal disagree, the ratified proposal wins — and
+   check the LIVE spec files, since `history/` will drown the grep that would
+   have settled it.**
 2. **Then** create `livespec-overseer`, register it in
    `.livespec-fleet-manifest.jsonc` under `fleet` with
    `"class": "control-plane-tool"`, and move the folder — the relocation
@@ -188,11 +205,20 @@ with no worktrees outstanding. **Read this before re-deriving anything.**
 gated everything has landed (v171, commit `421388ff`), so the critical path is
 now open for the first time in this thread:
 
-- **`livespec-dev-tooling`: add `control-plane-tool` to `REPO_CLASSES`**
-  (`_contract_rows.py:65`), through that repo's propose-change → independent
-  Fable review → revise cycle. Then **cut a release** — the birth procedure may
-  not begin against a merged-but-unreleased dev-tooling. This is the whole
-  critical path right now and it needs no further maintainer decision.
+- ~~`livespec-dev-tooling`: add `control-plane-tool` to `REPO_CLASSES`~~ —
+  **✅ DONE 2026-07-20**, PR #502, released `v0.51.0`.
+- **CREATE THE `livespec-overseer` REPO** — both gating preconditions are now
+  satisfied, so this is the live critical path and it needs no further
+  maintainer decision. Read, in this order: §"WHERE THE NEW REPO'S BASELINE
+  COMES FROM" (copy `livespec-console-beads-fabro`; there is no copier
+  template), §"REGISTER-FIRST TRAP" (register-first is first *within* the birth
+  procedure), and §"RELOCATION INVENTORY" (the 26 entries that move and the
+  seven core-side rows that must be DELETED or core's `check-types` goes red).
+
+  **The one genuine code blocker is still `_default_manifest`'s positional
+  `parents[3]` traversal**, which is `b1uo.3`'s subject and the one piece gated
+  on a maintainer decision — so the repo can be created and wired BEFORE that
+  is settled, but the folder cannot fully move until it is.
 
 Still gated, unchanged: `b1uo.3` (a maintainer design call) and Gate E (another
 thread's `cvz`). Do NOT invent work beyond the item above.
@@ -209,7 +235,8 @@ that (see §"REGISTER-FIRST TRAP")."*
 | Item | Blocked on | Note |
 |---|---|---|
 | ~~`control-plane-tool` proposal~~ | ~~maintainer~~ — **DISCHARGED 2026-07-20** | **RATIFIED as v171** (commit `421388ff`). Needed FOUR `resulting_files[]`, not the three promised — see §"Proposal RATIFIED as v171" for the fourth and why both reviews missed it |
-| `livespec-dev-tooling` `REPO_CLASSES` | **nobody — this is the OPEN critical path** | Unblocked by the ratification. Merge AND **release**; merged-but-unreleased does not satisfy the manifest-parse precondition |
+| ~~`livespec-dev-tooling` `REPO_CLASSES`~~ | **DISCHARGED 2026-07-20** | PR #502, released `v0.51.0`. Its "spec-backed, needs a propose-change cycle" instruction was WRONG — see §"START HERE" step 1 |
+| Create `livespec-overseer` | **nobody — this is the OPEN critical path** | Both preconditions met. Blocked only at the folder-move step, on `b1uo.3` |
 | `b1uo.3` (watch-set source) | **maintainer** — a design call | Recommendation recorded: a `$HOME` config beside the store/stamp sidecars. Do NOT add a `--watch-repos` CLI flag; that reverses a deliberate de-gold-plating |
 | `b1uo.2` close | **maintainer** — acceptance leg | Work is DONE and live-exercised; all three ACCEPTANCE clauses now met |
 | Gate E | **`rop-sweep-fleet-policy` thread** — its `cvz` | Re-verified 2026-07-20: all four role keys still empty tuples |
@@ -1576,11 +1603,12 @@ overall. The birth procedure may not BEGIN until the class exists in a RELEASED
 
 1. ~~Ratify core's `control-plane-tool` proposal (the contract gains the class).~~
    **✅ DONE 2026-07-20 — v171, commit `421388ff`.**
-2. Land AND **release** the `REPO_CLASSES` addition in `livespec-dev-tooling` —
-   fleet pins track releases, not master, so a merged-but-unreleased change is
-   NOT enough. **← YOU ARE HERE.**
-3. **Only now** begin the birth procedure, and inside it register-first as
-   `:1065` requires: scaffold → register → `wire-fleet-member` → green.
+2. ~~Land AND **release** the `REPO_CLASSES` addition in `livespec-dev-tooling`~~
+   **✅ DONE 2026-07-20 — PR #502, released as `v0.51.0`.** The precondition the
+   trap describes is now SATISFIED.
+3. **← YOU ARE HERE.** Both preconditions are met, so the birth procedure may
+   now BEGIN; inside it, register-first as `:1065` requires: scaffold →
+   register → `wire-fleet-member` → fleet conformance green.
 
 **Do not "resolve" this by reordering the birth procedure** (registering late to
 dodge the parse failure). Register-first exists so a half-wired repo shows up as
