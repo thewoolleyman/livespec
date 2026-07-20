@@ -265,8 +265,20 @@ Then:
  1. Bring your OWN work to a clean, resumable stopping point, and UPDATE {handoff} to
     match. Your session owns its handoff and everything under plan/; the overseer never
     reads or writes those.
- 2. Stop every background sub-agent and subprocess you started.
- 3. Declare done, and stop:
+ 2. COMMIT {handoff}. Writing it to disk is NOT saving it — an uncommitted handoff has
+    no history, no attribution, and is one `git checkout` from gone. You cannot commit
+    at the primary checkout (the commit-refuse hook rejects it), and a fresh worktree
+    will NOT contain your edits, so copy them across:
+        W="$HOME/.worktrees/{slug}/wrapup-{topic}"
+        mise exec -- git -C {repo} worktree add -b wrapup-{topic} "$W" master
+        cp {handoff} "$W/plan/{topic}/handoff.md"
+        cd "$W" && mise exec -- git add plan/ && mise exec -- git commit
+        mise exec -- git push && gh pr create --fill && gh pr merge --auto --rebase --delete-branch
+    Doc-only commits take the fast seven-target gate at both commit and push, so this is
+    quick. Never pass --no-verify. If a hook rejects you, fix the cause or declare
+    `blocked: <reason>` — do not bypass it and do not discard the file.
+ 3. Stop every background sub-agent and subprocess you started.
+ 4. Declare done, and stop:
         echo ready > {state_file}
 
 `ready` is the ONLY thing that restarts you. If you write nothing at all, you are NOT
@@ -302,6 +314,9 @@ def wrapup_message(*, remaining: int, repo: str, topic: str) -> str:
         marker_dir=str(signals.marker_dir(repo, topic)),
         state_file=str(signals.state_path(repo, topic)),
         handoff=default_handoff(repo, topic),
+        repo=repo,
+        topic=topic,
+        slug=registry.repo_slug(repo),
     )
 
 
