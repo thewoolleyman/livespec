@@ -971,6 +971,70 @@ propose-change cycle even to RENAME one) would be a spec amendment. Under the
 Control-Plane ruling that is probably moot — the overseer no longer joins that
 set — but confirm rather than assume.
 
+### ✅ THE 9th-FLEET-REPO PRICE WAS WRONG — re-measured 2026-07-20
+
+§"What a 9th fleet repo actually costs (priced 2026-07-19)" above says a ninth
+member "would need a new class and inherits: the `baseline` conformance
+profile, the copier scaffold, the `livespec-dev-tooling` pin and enforcement
+suite, **its own beads tenant**, its own CI and branch protection, and
+**permanent participation in every future cross-repo pin bump**." **Four of
+those clauses are false**, and they are exactly the clauses that made the
+separate-repo option look expensive. Every correction below is
+evidence-cited; the earlier text is kept above so the two can be compared.
+
+| Clause in the 2026-07-19 price | Verdict | Evidence |
+|---|---|---|
+| "would need a NEW class" | **FALSE** | `REPO_CLASSES` already has six values including **`console`** (`livespec-dev-tooling/livespec_dev_tooling/fleet/_contract_rows.py:65`). D7 ruled the overseer Control Plane, so it fits `console` — no new class |
+| "the copier scaffold" | **FALSE** | `_TEMPLATE_BORN_CLASSES = frozenset({"impl-plugin"})` (`_contract_rows.py:77`) — only impl-plugins owe a `copier-answers` row |
+| "its own beads tenant" | **FALSE** | the beads row returns `RowSkip` when `.beads/config.yaml` is absent (`_rows_beads.py`) — it checks CONSISTENCY if a tenant exists, it does not REQUIRE one |
+| "permanent participation in every future cross-repo pin bump" | **FALSE for `console`** | `_PIN_WEB_CLASSES = _ALL_CLASSES - {"console"}` (`_contract_rows.py:76`). `livespec-dev-tooling/SPECIFICATION/contracts.md:340` names the console the first *non-pin-consuming member*: it carries the dev-tooling pin for its own toolchain but never receives a bump-pin PR |
+
+**What a `console`-class ninth member DOES owe** — the `_ALL_CLASSES` rows:
+`workflow-ci`, `no-tracked-gitlinks`, `claude-plugin-currency`, `secret-names`,
+`app-installation`, `branch-protection`, `merge-settings`,
+`delete-branch-on-merge`, `topic-livespec-sibling`, `agent-ai-references-resolve`,
+`baseline-harnesses`, plus `dev-tooling-pin`. Real, but far short of the
+2026-07-19 framing.
+
+**Also corrected: there is no class→profile lookup table.**
+`non-functional-requirements.md:1053` asserts a member's profile "is DERIVED
+from its `class`", but no code maps a class to a `PROFILE_LAYERS` value.
+`PROFILE_LAYERS` (`fleet/contract.py:41`) is read ONLY to validate an
+**adopter's** explicitly-declared `profile` array. The sole code realization of
+"derivation" is the per-row `applies_to` class partition in
+`_contract_rows.py:108-256`. So reasoning about a new member should enumerate
+OBLIGATION ROWS, not profile names.
+
+#### The `adopters` array is a third option the earlier framing missed
+
+`fleet` and `adopters` are NOT two grades of the same membership — they are
+read by different code. Measured: **`Manifest.adopters` is parsed and then
+never read again anywhere in `livespec-dev-tooling`'s non-test code.**
+
+| Reader | Reads `fleet` | Reads `adopters` |
+|---|---|---|
+| `fleet_conformance` (obligation rows) — `fleet/fleet_conformance.py:71-147` | yes | **no** |
+| release / bump-pin fan-out — `livespec-dev-tooling/.github/workflows/reusable-release-dispatch.yml:127` (`jq` on `.fleet // .members`) | yes | **no** |
+| Dispatcher sandbox sibling clones — `livespec-orchestrator-beads-fabro`'s `_dispatcher_sibling_clones.py:63-101` | yes | **no** (empty clone plan) |
+| the overseer's own `registry.py:642-659` | yes | yes (flat, undifferentiated) |
+
+Live corroboration that adopters really are unbound: `homelab` has **no
+`.github/` directory at all** and `delete_branch_on_merge: false`, and none of
+`openbrain`/`resume`/`homelab` carries the three pin-web shim workflows —
+none of which trips anything, because `fleet_conformance` never walks them.
+`non-functional-requirements.md:1057` states the exemption deliberately:
+"Adopters are deliberately NOT bound: the `adopters` array is not consulted."
+
+**So the membership question in §"The question that falls out" now has three
+answers to choose between, not two** — `fleet` member (`console` class),
+`adopters` entry, or unlisted. The trade is real and runs the other way from
+the earlier framing: `fleet` costs the twelve `_ALL_CLASSES` rows but BUYS
+mechanically-asserted CI/branch-protection/secret conformance and inclusion in
+the maintainer-only fleet-dev attention sweep; `adopters` costs nothing and
+buys nothing enforced. Given the overseer just earned 100% coverage, pyright
+strict, and ROP conformance, the thing worth asking is which option KEEPS
+those gates rather than which is cheapest.
+
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
 The epic spans three repos, so the instinct is per-tenant items linked by
