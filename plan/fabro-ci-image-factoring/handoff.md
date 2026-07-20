@@ -437,17 +437,89 @@ more `RUN` line plus a version ARG. **Verify the review node is actually exercis
 before treating it as urgent**; it was found by reading configuration, not by
 observing a run.
 
-### Side findings, logged not chased
+### Side findings — two resolved themselves, one became the real bug
 
-- `livespec-runtime` is pinned at `python-v0.43.2` and `livespec-orchestrator-git-jsonl`
-  at `python-v0.50.0`, while the fleet is at `v0.50.3`.
+- ~~`livespec-runtime` pinned at `python-v0.43.2`, `livespec-orchestrator-git-jsonl`
+  at `python-v0.50.0`~~ — **SELF-RESOLVED.** The v0.50.4 fan-out swept both to
+  `python-v0.50.4`. All 8 fleet repos are now uniform. This is the propagation
+  working exactly as intended; it needed no action and never did.
 - `livespec-dev-tooling/ci-runner/warm-ci-cache.sh` hardcodes `python-rust-v0.48.2`
   and sits **outside** the autodiscovery walk (which scans only `.github/workflows`
-  and `.fabro/workflows`), so it drifts silently.
-- `openbrain` pins the unprefixed pre-split `sha-ea684ad`;
-  `rewrite_layered_docker_tag` documents that an unprefixed tag rewrites to a
-  **bare** `vX.Y.Z`, which the layered build no longer publishes. Latent break, not
-  yet confirmed — and it compounds with `ob-4oku` (cont. 10, item 4 below).
+  and `.fabro/workflows`), so it drifts silently. **Still open.**
+- **`openbrain` — the framing in earlier revisions of this handoff, and in
+  `ob-4oku` itself, was WRONG. Corrected below.**
+
+### ⛔ openbrain is NOT a defect — the exclusion is contractual
+
+Earlier revisions of this document, and `ob-4oku`'s own description, said
+openbrain's pin is "structurally unreachable by the fan-out" and "can never
+self-heal", comparing it to `5r3`. **Both the mechanism and the conclusion were
+wrong.** Verified against `livespec-dev-tooling` master and livespec's spec:
+
+**The stated mechanism is stale.** `ob-4oku` says the fan-out "discovers consumers
+by the `livespec-sibling` topic". It does not, and has not for some time. It fetches
+`.livespec-fleet-manifest.jsonc` from livespec master at run time and selects
+`[(.fleet // .members)[].repo | select(. != "$SOURCE_REPO")]`. The workflow's own
+header records that the topic was "demoted to the conformance check's discovery".
+The conclusion (no dispatch reaches openbrain) happened to survive; the reason
+given for it did not.
+
+**The exclusion is the contract, not a gap.**
+`non-functional-requirements.md` §"Fleet membership contract" → "Adopters":
+
+> Registering an adopter here does NOT make it a fleet member: adopters ... are
+> **absent from the release fan-out's member set** — their upstream tracking is
+> governed by `posture`, not by fleet membership.
+
+openbrain's manifest entry is **`posture: "pinned"`**, and §"Conformance Pattern"
+(Exemption slot) says a `posture: pinned` adopter's staleness is "a declared
+adopter choice honored by the sweep, never 'helpfully' updated."
+
+So the manifest *does* cover adopters — the fleet sweep and the orchestrator
+iterate them. The **release fan-out** is the one consumer that deliberately does
+not. **The comparison to `5r3` does not hold:** 5r3 was a real structural defect
+(the producer excluded from its own fan-out with no governing declaration, nothing
+able to reconcile it, unintended). Here the exclusion is declared, contracted, and
+per-adopter configurable. Same surface shape, opposite status.
+
+`ob-4oku` has been corrected in openbrain's ledger, re-typed from bug to task, and
+retitled to the policy question it actually is.
+
+### ⚠️ THE REAL ROOT CAUSE — a silent-corruption bug in the rewrite
+
+Chasing openbrain surfaced the genuine defect, and it is **not openbrain-specific**.
+`rewrite_layered_docker_tag` silently degrades on a tag it cannot faithfully
+rewrite. Executed, not reasoned about:
+
+```
+sha-ea684ad  ->  v0.51.0     # bare — the layered build publishes no such tag
+v0.38.1      ->  v0.51.0     # same
+```
+
+The logic is `prefix = tag[:match.start()] if match else ""`, so any tag with no
+`vX.Y.Z` anchor yields an empty prefix and a bare result. Pre-split that was
+correct. Post-split every published tag is layer-prefixed, so **a bare result names
+a tag that will never exist** — and it surfaces as a clean-looking diff and a
+**green auto-merge bump PR pointing at nothing**.
+
+It is latent today precisely *because* the only unprefixed pin sits outside the
+fan-out. **It fires the moment an unprefixed pin enters the fan-out — i.e. the
+moment someone flips an adopter's `posture` to `released`,** which is exactly when
+they would least expect a silent break. That makes it a trap laid for the
+`livespec-3lev.7` adopter-policy decision itself.
+
+**Fix in flight:** a fail-loud guard in `livespec-dev-tooling` —
+`rewrite_layered_docker_tag` returns `str | None`, `rewrite_pin_in_text`
+propagates the `None`, and `main()` emits a distinct `::error::` naming the
+offending tag and saying it must be hand-migrated to a prefixed tag first. Verified
+this is implementation detail, not contract surface: `contracts.md` §"Pin
+autodiscovery rules" specifies the fabro pin FORMAT but specifies a rewrite path
+only for `github_workflow_uses_ref`. **No spec cycle needed.**
+
+**If openbrain's posture is ever flipped to `released`, order matters:** land the
+guard, then hand-migrate `sha-ea684ad` to `python-agent-v<latest>` (the AGENT
+layer — openbrain drives agents; the bare `python-` tag is now the slim CI image
+with no adapters), and only then flip the posture and add the shims.
 
 ### Still open from cont. 10, unchanged
 
@@ -515,7 +587,11 @@ read from any master run's job steps via the GitHub API. That is the metric.
 3. **Bookkeeping on `livespec-3lev.3`:** amend its stale "~18 runner slots (~core
    count)" deliverable text. SETTLED: 6 per repo × 8 repos = 48 agents is
    deliberate; the ~18 figure predates the fan-out. Do not re-open it.
-4. **Adopter policy — MAINTAINER DECISION, still unanswered.** `openbrain`
+4. **Adopter policy — MAINTAINER DECISION, still unanswered.** ⛔ **The
+   parenthetical below is SUPERSEDED — see cont. 11 §"openbrain is NOT a defect".
+   The topic is not the discovery mechanism, and the exclusion is contractual
+   (`posture: pinned`), not a bug class. The DECISION itself is still open.**
+   `openbrain`
    `ob-4oku` is filed: it pins a pre-layer-split tag and cannot self-heal (no
    `livespec-sibling` topic, no bump-pin shim, no pin-freshness shim — same bug
    class as `5r3`). `resume`/`homelab` have no Fabro workflows, so nothing to pin;
@@ -779,6 +855,13 @@ Adopter state, measured via the GitHub API rather than assumed:
 `openbrain` is a real Fabro consumer, so only it got a work-item (`ob-4oku`).
 Amend the child's title rather than leaving a work-item implied for a repo that
 needs none.
+
+⛔ **SUPERSEDED — see cont. 11 §"openbrain is NOT a defect — the exclusion is
+contractual". Reason 1 below is factually wrong (the fan-out discovers by the
+FLEET MANIFEST, not by the topic, which was demoted), and the "cannot self-heal /
+same bug class as `5r3`" framing is retracted: adopters are contractually absent
+from the fan-out and governed by `posture`, and openbrain's is `pinned`. Reasons 2
+and 3 remain true as facts. Left in place as the record of what was believed.**
 
 `openbrain`'s pin **cannot self-heal**, for three independent reasons each
 sufficient alone: no `livespec-sibling` topic (it has NO topics, so the fan-out
