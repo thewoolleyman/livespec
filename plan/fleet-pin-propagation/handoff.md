@@ -336,7 +336,82 @@ both were verified present on `origin/master` and on the primary checkout's disk
 before this session declared itself ready. No PR from this session is awaiting a
 merge, so **do not open by chasing one** — go straight to the next actions below.
 
-### ⚠ DISPATCH IS BLOCKED ON A GITHUB OUTAGE — attempted and halted 2026-07-20
+### DISPATCH ROUND COMPLETE 2026-07-20 — 2 of 4 merged, 2 blocked on NEW infra defects
+
+**Read this subsection instead of the outage narrative that follows it.** All
+four slices were dispatched. Two landed end-to-end; two were stopped by
+infrastructure defects that did not previously exist in this thread's record,
+both now filed.
+
+| Slice | Outcome |
+|---|---|
+| `livespec-2hya5g` | **MERGED** — livespec PR #1508 (`3496b45a`), now at `acceptance` |
+| `livespec-dev-tooling-5o6ssu` | **MERGED** — livespec-dev-tooling PR #495 (`17a5b633`), now at `acceptance` |
+| `livespec-dev-tooling-gbjuua` | BLOCKED — `bd-ib-nga9`; recovered to `ready` |
+| `livespec-console-beads-fabro-5kd56a` | BLOCKED — `bd-ib-w3d0`; recovered to `ready` |
+
+Both merged items sit at `acceptance` under `ai-then-human` and were
+deliberately NOT self-accepted — that policy exists to require the maintainer.
+
+**Two NEW infrastructure defects, both filed in the
+`livespec-orchestrator-beads-fabro` tenant (P1), both blocking a groomed slice
+of THIS thread:**
+
+- **`bd-ib-w3d0`** — the dispatcher resolves the Fabro `workflow.toml`, and
+  therefore the SANDBOX IMAGE, from `plugin_root()` and NEVER from `--repo`
+  (`commands/_dispatcher_paths.py::workflow_toml()`). The plugin pins the
+  Python-only `python-agent-*`, so the console's own correct
+  `python-rust-agent-v0.50.5` pin is DEAD CONFIG and every Rust-touching
+  console item dies at `Implement` on absent `cargo`/`rustc`. Reproduced three
+  times by two different actors. Note the asymmetry: `journal_path()` in the
+  same module IS repo-relative.
+  **This is NOT the image-factoring thread's missing work** — that thread built
+  `python-rust-agent` correctly and the console pins it correctly. Only the
+  SELECTION path is wrong. It is a regression from the `-agent-` layer split:
+  `…-f2k` is also Rust-touching and dispatched fine on 2026-07-19 using
+  `python-v0.48.1`, so the pre-split `python-` images still carried Rust.
+- **`bd-ib-nga9`** — the Fabro sandbox's App token lacks `workflows`
+  permission, so any item editing `.github/workflows/` completes its
+  implementation and then fails at publish. `gbjuua` is comment-only edits to
+  three workflow files and still cannot land. Worse, the run raised an
+  interactive `[R]etry/[I]/[A]` prompt with nobody attached, which is how the
+  item stranded.
+
+**⚠ DO NOT "fix" this file's workflow-permission finding — it is CORRECT.**
+§"COMPLETED 2026-07-19" says the fleet App HAS `workflows` permission. That was
+independently RE-CONFIRMED 2026-07-20: `livespec-pr-bot[bot]` authors
+`.github/workflows/` commits routinely in both repos (dev-tooling `ac5217e`,
+`104f038`, `36c60fb`; livespec `0d67e14d`, `fc84ef11`), as recently as the
+v0.50.7 bump. `bd-ib-nga9` is a DIFFERENT credential: the FAN-OUT path can
+write workflow files; the FABRO SANDBOX token cannot. An earlier revision of
+this section wrongly read the two as contradictory. They are not — do not
+weaken the fan-out finding, and do not assume the sandbox inherits it.
+
+**Both blocked items were recovered** from the stranded-`active` shape via
+`drive --action move:<id>:ready` and verified. Their scopes, cuts, and
+acceptance criteria are UNCHANGED and remain valid; each unblocks the moment
+its filed defect is fixed.
+
+**A grooming lesson worth carrying:** both blockers are hidden
+factory-eligibility constraints. An item can pass grooming, carry autonomy tier
+`factory`, be admitted, burn a full 10-minute run, and only then fail on the
+substrate. "Does this item edit `.github/workflows/`?" and "is this a non-Python
+repo?" are both knowable BEFORE dispatch.
+
+---
+
+### Superseded outage narrative — kept for reasoning, do NOT act on it
+
+**The GitHub outage described below did NOT ultimately block this thread.** It
+was real and it did fail the first dispatch attempt, but it cleared, and all
+four slices were dispatched afterward (results above). Two probes used to track
+the recovery were INVALID and are recorded here so the mistake is not repeated:
+`git ls-remote` succeeds ANONYMOUSLY on this public repo and never exercises
+the App-token mint, and a `git push --dry-run` from the PRIMARY CHECKOUT is
+refused by the repo's own commit-refuse hook rather than by GitHub. The valid
+probe is `git push --dry-run` **from a worktree**; the real health signal is
+recent CI runs plus that probe, not the status page, which still showed
+`partial_outage` while the fleet was merging normally.
 
 All four slices below were confirmed `ready` with `admission:auto` and autonomy
 tier `factory`, and capacity was confirmed available. Dispatch was attempted and
@@ -388,11 +463,26 @@ its reversal, which cancel out.
 
 The thread's NEW next actions:
 
-1. **Dispatch the four READY slices** (no open dependencies):
-   `livespec-2hya5g` (registry split, livespec),
-   `livespec-dev-tooling-5o6ssu` (close-superseded automation),
-   `livespec-dev-tooling-gbjuua` (fan-out prose fix),
-   `livespec-console-beads-fabro-5kd56a` (re-key the completeness stamp).
+**Action 1 is DONE — see §"DISPATCH ROUND COMPLETE 2026-07-20" above for what
+landed and what blocked. The live next actions are now:**
+
+- **A. Accept (or reject) the two merged slices.** `livespec-2hya5g` and
+  `livespec-dev-tooling-5o6ssu` both sit at `acceptance` under
+  `ai-then-human`. Maintainer-owned; an operator accepting on the maintainer's
+  behalf defeats the policy.
+- **B. Route the two new P1 infra defects** — `bd-ib-w3d0` (workflow/image
+  resolution) and `bd-ib-nga9` (sandbox `workflows` permission), both in the
+  `livespec-orchestrator-beads-fabro` tenant. They block `…-5kd56a` and
+  `gbjuua` respectively; neither slice needs re-grooming.
+- **C. Groom `livespec-dev-tooling-9j8.6`** — unchanged, still this thread's
+  critical path (see item 2 below).
+
+1. ~~**Dispatch the four READY slices**~~ — **DONE 2026-07-20.**
+   `livespec-2hya5g` (registry split, livespec) → MERGED #1508;
+   `livespec-dev-tooling-5o6ssu` (close-superseded automation) → MERGED #495;
+   `livespec-dev-tooling-gbjuua` (fan-out prose fix) → blocked, `bd-ib-nga9`;
+   `livespec-console-beads-fabro-5kd56a` (re-key the completeness stamp) →
+   blocked, `bd-ib-w3d0`.
 
    **⚠ `drive` LIES ABOUT SUCCESS WHEN IT DISPATCHES NOTHING — read this
    before you dispatch, not after.** When the dispatcher admits zero items,
