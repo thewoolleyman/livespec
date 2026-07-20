@@ -542,6 +542,12 @@ existing file):
   around, or debugging the `bd` (beads) work-items backend, and before filing
   a beads issue upstream: the living catalogue of beads gaps and the
   workarounds the fleet carries, one upstream-liftable entry per gap.
+- **`.ai/dispatcher-drain-operations.md`** — read BEFORE driving the Beads/Dolt
+  + Fabro Dispatcher directly against a repo's ready work-item queue: the
+  mandatory explicit `--fabro-bin`, the strictly-sequential
+  `--budget 1 --parallel 1` rule and why `--network host` forbids parallelism,
+  the ban on hand-editing beads `admission:*` labels instead of using the
+  `set-admission` valve, and the re-enumerate-every-iteration rule.
 - **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
   check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
