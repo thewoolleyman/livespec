@@ -101,6 +101,42 @@ that item now tracks the AUTOMATION only. The same pass also confirmed
 #206/#208 both targeted dev-tooling `v0.44.0`, and #207/#209 both targeted core
 `v0.10.1`.
 
+## ⚠ The epic's cross-tenant refs were ALL DEAD — repaired 2026-07-20
+
+Every one of `livespec-n4ptl2`'s five `non_local_depends_on` entries pointed at
+a regroomed-out, CLOSED item. Not one referenced its live replacement, so
+reading the epic to find its sibling-tenant work surfaced only closed records.
+The table immediately below (§"Filed this session") lists the ORIGINAL ids and
+is kept for history; the epic itself now carries the live set:
+
+| was (closed) | now (live) |
+|---|---|
+| `livespec-dev-tooling-q37xxt` | `livespec-dev-tooling-5o6ssu` |
+| `livespec-dev-tooling-y6kqgr` | `livespec-dev-tooling-dqfmjr` |
+| `livespec-dev-tooling-f5or5c` | `livespec-dev-tooling-zm5cbp` |
+| `livespec-dev-tooling-tuyje7` | `livespec-dev-tooling-gbjuua` |
+| `livespec-console-beads-fabro-tafkuw` | `livespec-console-beads-fabro-ogpok4` |
+
+**Nothing was invented** — each replacement was read from the closed item's own
+regroomed-out close reason, the authoritative record of the maintainer-owned
+cut, so the repair repoints at decisions already made rather than making new
+ones. `tafkuw` regroomed into TWO slices; only `ogpok4` is carried, because
+`5kd56a` is itself closed (its work landed — see the top-of-file correction).
+
+Verified after the write: `rank` preserved, epic status untouched (`backlog`),
+every entry a well-typed `{kind, repo, work_item_id}` dict (bare strings are
+rejected by doctor-static), all five targets confirmed live, and
+`just check-doctor-static` re-run clean.
+
+**Root cause, filed as a THIRD symptom on `bd-ib-dvmh`.** That record's two
+existing symptoms are the CHILD side — groom's `file_approved_slices` records
+only LOCAL slices, so cross-tenant replacements are dropped. This is the PARENT
+side: when a child is regroomed out, nothing repoints the refs pointing AT it.
+Complementary halves of one gap. It is only VISIBLE cross-tenant because local
+parent-child edges are native beads edges beads maintains, while
+`non_local_depends_on` is livespec metadata nothing maintains — so assume the
+same rot in any epic whose children have been regroomed.
+
 ## Filed this session (children of `livespec-n4ptl2`)
 
 Cited read-only; check live status in the ledger before acting.
@@ -336,6 +372,55 @@ both were verified present on `origin/master` and on the primary checkout's disk
 before this session declared itself ready. No PR from this session is awaiting a
 merge, so **do not open by chasing one** — go straight to the next actions below.
 
+### ⚠ LATER THE SAME DAY — one of the two "blockers" is FIXED and the other item's work LANDED
+
+**Read this before the dispatch-round subsection below; it supersedes two of
+its claims.** Both were true when written and both changed within hours.
+
+**1. `bd-ib-w3d0` is FIXED and CLOSED.** The orchestrator landed
+`c8bde4a fix: discover the dispatch target's own committed Fabro workflow`
+(released 0.45.11). `workflow_toml()` now resolves by precedence: explicit
+`--workflow` → **the dispatch target's own committed
+`<repo>/.fabro/workflows/implement-work-item/workflow.toml`** → the plugin's
+bundled workflow. That is exactly the fix the record proposed, and its
+docstring names this scenario. Verified LIVE on the same work-item, not by
+reading the diff — the image actually pulled flipped:
+
+    03:25  python-agent-v0.50.4       FAILED (cargo/rustc absent)
+    04:21  python-agent-v0.50.5       FAILED (cargo/rustc absent)
+    06:06  python-rust-agent-v0.50.7  exit 0
+    06:50  python-rust-agent-v0.50.8  exit 0
+
+The console's `python-rust-agent` pin stopped being dead config. One residue
+kept: nothing yet pins "a non-Python consumer resolves ITS OWN image", so a
+future re-layering could silently reintroduce it — that is a test-coverage
+item, not an open bug.
+
+**2. `livespec-console-beads-fabro-5kd56a`'s work LANDED — do NOT treat its
+closure as a lost item.** Its implementation merged as console `f5fa99f`
+("fix: key config-manifest staleness to declared keys", 06:01:54Z): 210 lines
+of `crates/console-completeness-check/src/lib.rs` plus `main.rs`, the justfile,
+and the manifest fixture. The re-key is DONE.
+
+**CORRECTION to an earlier read (mine).** An earlier note in this session
+flagged `5kd56a`'s closure as possibly UNINTENDED, because it carries
+`resolution: None` and an EMPTY `close_reason` and spawned no replacement
+slices. That inference was WRONG: the work was implemented and merged. What is
+actually wrong is only the RECORD-KEEPING — a completed item closed with no
+resolution and no reason, which is exactly what made it read as an accident.
+Do not reopen it; if anything, backfill the reason.
+
+**3. The `ogpok4` dependency is genuinely satisfied, but its STATE section is
+now STALE.** `livespec-console-beads-fabro-ogpok4` (slice 2 of 2, "land the
+console's core-pin bump") depends on the re-key slice, and that dependency is
+GENUINELY satisfied by `f5fa99f` — not merely by a status flip. BUT its body says
+"13 open bump PRs; only #320 (targeting core v0.18.2) is genuinely live; the
+other twelve ... superseded". Measured live 2026-07-20: the console carries
+**ONE** open bump PR, **#328 → v0.18.4**. The twelve-deep train it was cut to
+collapse was already collapsed by `5o6ssu`'s automation, and the surviving PR
+is a different number targeting a different version. **Re-read the live PR list
+before executing `ogpok4`; do not act on #320.**
+
 ### DISPATCH ROUND COMPLETE 2026-07-20 — 2 of 4 merged, 2 blocked on NEW infra defects
 
 **Read this subsection instead of the outage narrative that follows it.** All
@@ -470,6 +555,29 @@ landed and what blocked. The live next actions are now:**
   `livespec-dev-tooling-5o6ssu` both sit at `acceptance` under
   `ai-then-human`. Maintainer-owned; an operator accepting on the maintainer's
   behalf defeats the policy.
+
+  **The AI leg is DONE for both — full clause-by-clause evidence is journaled
+  on each item (2026-07-20), so the human leg should be quick.** Headlines:
+
+  - `livespec-2hya5g`: `just check-doctor-static` **exit 0 LOCALLY against real
+    sibling checkouts** (the item warned CI is not evidence) — 20 pass, 1
+    legitimate skip, and the decisive
+    `doctor-wiring-completeness-cross-repo: PASS` with the console registered,
+    i.e. the 53 drift pairs are gone. `just check` 71/71.
+  - `livespec-dev-tooling-5o6ssu`: the **live-exercise clause is genuinely
+    satisfied**, not waived. Two real releases (0.50.7, 0.50.8) fired after the
+    merge, and a fleet sweep of all eight members found **ONE** open bump PR
+    total, zero superseded. The console went **13 → 1**, and the survivor
+    (#328 → v0.18.4) is above its master pin (v0.16.0), so it is genuinely
+    live. That is supersession category 2 working in production. Delivered
+    shape also matches the DO clause: a 287-line tested module invoked from 26
+    lines of thin glue. `just check` 60/60.
+
+  **A METHOD TRAP that nearly produced a wrong verdict:** inspecting only the
+  MERGE SHA of `5o6ssu` (`17a5b633`) shows a 1-line `action.yml` change and
+  makes it look as though the required module was never written. That is an
+  artifact of reading ONE commit of a multi-commit PR. **Verify a PR's full
+  file set, not the merge commit.**
 
   **This acceptance is the thread's only remaining unblock, and it releases two
   MORE slices.** Verified live 2026-07-20: with the four dispatched, there is
