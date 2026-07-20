@@ -1231,6 +1231,67 @@ NO `-tmux` suffix. Adding the class value is still a `livespec-dev-tooling`
 change with spec text, so it goes through that repo's propose-change →
 independent Fable review → revise cycle; it is not a unilateral edit.
 
+### Proposal FILED and REVIEWED — awaiting ratification (2026-07-20)
+
+The spec half is filed as
+`SPECIFICATION/proposed_changes/fleet-control-plane-tool-repo-class.md`
+(livespec core). It has been through TWO independent Fable reviews: the first
+returned BLOCKERS FOUND (1) — two unamended enumerations of the closed class set
+— which was FIXED, not waived; the re-review of the amended text returned
+**NO BLOCKERS** with four non-blocking concerns, all since folded in.
+**Ratification (`/livespec:revise`) is the maintainer's gate and has NOT been
+driven.**
+
+**When you drive the accept, the payload MUST carry three `resulting_files[]`
+entries**, and the two co-edits MUST be spelled spec-target-relative — a
+project-root spelling joins to `SPECIFICATION/<path>` and fails the
+require-existing-target check with exit 3:
+
+- `non-functional-requirements.md` (the main target)
+- `../.livespec-fleet-manifest.jsonc`
+- `../.claude/skills/needs-attention-fleet/SKILL.md`
+
+### ⏭️ Deferred follow-up — the Control-Plane gloss in `spec.md`
+
+Recorded HERE deliberately: the proposal file becomes a frozen `history/` record
+at ratification, so it must not carry the only copy of this.
+
+`spec.md` still describes the Control Plane as "the operator console; reference:
+`livespec-console-*`" and as "a **single operator interface**", and its Mermaid
+subgraph labels read `CONTROL PLANE: operator console`. All of that reads as
+console-only once `livespec-overseer` becomes a second, non-console
+Control-Plane member. It is NOT a contradiction today (the new class is
+unpopulated at ratification), which is why it was deliberately left out of the
+class proposal rather than bundled into it.
+
+**Fire this once `livespec-overseer` is registered**, as its own proposal, and
+re-check `tests/test_workflow_planes_terminology.py` — it scopes to the planes
+section and those Mermaid labels, so it is the mechanical gate on the change.
+
+### `livespec-b1uo.2` — ready to implement; the shape is already worked out
+
+D4 is RULED (Linux + tmux is a declared requirement, host boundary deliberately
+NOT abstracted), so this needs no further decision — only implementation. It was
+scoped 2026-07-20 and stood down only for session budget, so do NOT re-derive:
+
+- **Mirror the EXISTING startup-refusal pattern**, do not invent one.
+  `Supervisor.unignored_tmp_repos` + its check at the top of
+  `Supervisor.run` is the precedent: a predicate returning offenders, a
+  `self._surface(...)` naming the actionable fix, then `return` — refusing to
+  start rather than failing deep in a tick.
+- **Check two things:** `/proc` is a directory (macOS does not have it AT ALL —
+  `claude_sessions` reads `/proc/<pid>/stat`), and `tmux` resolves on PATH.
+- **Both MUST be injectable seams** (`proc_root`, and a `which` callable
+  defaulting to `shutil.which`), matching how every other host coupling in the
+  dataclass is injected.
+- **⚠️ The trap that makes this non-trivial:** the beside-tests' `_sup` factory
+  MUST default those seams to a SUPPORTED-looking host. Without that, adding the
+  gate to `run()` breaks every existing `run()` test on any runner lacking
+  `tmux` — the same hermeticity rule the Codex seams already follow
+  (`codex_pids_of_comm` defaults to an empty scan). Check the real `tmux` NAME,
+  not an injected `tmux_bin`: the gate asks "is this host supported at all?",
+  and the tests' fake tmux must not satisfy it.
+
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
 The epic spans three repos, so the instinct is per-tenant items linked by
