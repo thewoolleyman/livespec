@@ -17,17 +17,31 @@ Per `SPECIFICATION/contracts.md`:
   Every worktree (primary or secondary, per
   `git worktree list --porcelain`) whose HEAD points at the
   default branch MUST NOT carry uncommitted modifications under
-  `<spec-root>/`. The check enumerates every worktree, identifies
-  the subset whose HEAD is the default branch (typically
-  `master`), and for each invokes `git status --porcelain`
-  scoped to `<spec-root>/`. Any non-empty output fires `warn`
-  (NOT `fail`, consistent with the v079 prose at
-  `non-functional-requirements.md:746` — "a `warn` finding") with
-  corrective-action narration that names the offending worktree
-  path, names the modified files, and directs the user to either
-  commit-into-a-feature-branch (`git checkout -b <branch>` then
-  commit) per the workflow discipline, OR to discard the edits
-  (`git checkout -- <files>`) if they were unintentional.
+  `<spec-root>/` or under `plan/`. The check enumerates every
+  worktree, identifies the subset whose HEAD is the default
+  branch (typically `master`), and for each invokes
+  `git status --porcelain` scoped to those two path prefixes,
+  each resolved relative to that worktree's own root. Any
+  non-empty output fires `warn` (NOT `fail`, consistent with the
+  v079 prose — "a `warn` finding") with corrective-action
+  narration that names the offending worktree path, names the
+  modified files under each class respectively, and directs the
+  user to commit-into-a-feature-branch per the workflow
+  discipline.
+
+  The narration is ASYMMETRIC by path class, and this is
+  contract, not style: for `<spec-root>/` paths it MAY
+  additionally offer discarding unintentional edits
+  (`git checkout -- <files>`); for `plan/` paths it MUST NOT —
+  "a plan-thread handoff is the durable record of a planning
+  thread and an uncommitted one is frequently the ONLY copy, so
+  a discard suggestion against it risks destroying the very
+  artifact the finding exists to protect."
+
+  The `plan/` scope was added by spec v170, after a session's
+  first `check-doctor-static` run reported `pass` while the very
+  worktree it scanned held a plan handoff carrying 153
+  unversioned lines.
 
   The check covers the secondary-worktree-on-master bypass that
   the sibling `primary-checkout-commit-refuse-hook-installed`
@@ -40,8 +54,16 @@ Per `SPECIFICATION/contracts.md`:
 
   Committed-and-then-discovered violations (the user committed
   on master and now the commit needs to be moved) are out of
-  scope here; the existing `out-of-band-edits` check surfaces
-  those via the snapshot-mismatch invariant.
+  scope here. For `<spec-root>/` paths the existing
+  `out-of-band-edits` check surfaces those via the
+  snapshot-mismatch invariant. For `plan/` paths there is
+  deliberately NO after-the-fact doctor surface, and none is
+  needed: `out-of-band-edits` compares committed spec state
+  against `history/vNNN/` snapshots, which capture only files
+  under the spec root, so it is structurally incapable of seeing
+  `plan/` — and a COMMITTED plan file is already durable in git,
+  so the orphaned-uncommitted-file risk this invariant targets
+  does not arise for it.
 
 Skip conditions (Finding.status='skipped'):
   - `project_root` is not a git working tree (`is_git_repo`
@@ -53,6 +75,7 @@ Skip conditions (Finding.status='skipped'):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from returns.io import IOResult, IOSuccess
@@ -67,6 +90,31 @@ __all__: list[str] = ["SLUG", "run"]
 
 
 SLUG: CheckId = CheckId("doctor-master-direct-uncommitted-spec-edits")
+
+# The `plan/` path prefix is project-root-relative by contract, exactly as
+# `<spec-root>/` is, and is resolved against each worktree's OWN root rather
+# than the invoking checkout's. It is a fixed convention rather than config:
+# `plan/` is already first-class to the check suite (`check-plan-thread-anchor-
+# declared`, `check-plan-thread-epic-parity`).
+_PLAN_REL = Path("plan")
+
+
+@dataclass(frozen=True, kw_only=True)
+class Violation:
+    """One default-branch worktree's uncommitted edits, split by path class.
+
+    The two classes are carried SEPARATELY rather than merged into
+    one path list because they are governed by different
+    corrective-action rules — discard MAY be offered for
+    `<spec-root>/` and MUST NOT be offered for `plan/` — so a
+    merged list could not render the narration correctly.
+    At least one of the two tuples is non-empty for any
+    `Violation` that gets constructed.
+    """
+
+    worktree_path: Path
+    spec_lines: tuple[str, ...]
+    plan_lines: tuple[str, ...]
 
 
 def _pass(*, ctx: DoctorContext, message: str) -> Finding:
@@ -119,91 +167,149 @@ def _extract_status_path(*, status_line: str) -> str:
     return status_line[3:]
 
 
-def _format_worktree_violation(*, worktree_path: Path, status_lines: tuple[str, ...]) -> str:
+def _format_class_paths(*, label: str, status_lines: tuple[str, ...]) -> str:
+    """Render one path class's modified files as `<label>: a, b, c`."""
+    paths = sorted(_extract_status_path(status_line=line) for line in status_lines)
+    return f"{label}: {', '.join(paths)}"
+
+
+def _format_worktree_violation(*, violation: Violation) -> str:
     """Render one worktree's violation summary for the warn message.
 
-    Lists the worktree path followed by each modified file path.
+    Lists the worktree path followed by each modified file path,
+    grouped under its path class (`spec:` / `plan:`) so the reader
+    can tell which corrective action applies to which file — the
+    two classes are governed by DIFFERENT narration rules (see
+    `_corrective_action`), so an unlabelled flat list would leave
+    the discard offer ambiguous about which files it covers.
+    A class contributes nothing when it has no modified files.
     """
-    paths = sorted(_extract_status_path(status_line=line) for line in status_lines)
-    paths_joined = ", ".join(paths)
-    return f"{worktree_path}: {paths_joined}"
+    parts = [
+        _format_class_paths(label=label, status_lines=lines)
+        for label, lines in (("spec", violation.spec_lines), ("plan", violation.plan_lines))
+        if lines
+    ]
+    return f"{violation.worktree_path}: {'; '.join(parts)}"
+
+
+def _corrective_action(*, violations: tuple[Violation, ...]) -> str:
+    """Build the corrective-action narration, asymmetric by path class.
+
+    Per `SPECIFICATION/contracts.md`
+    §`master-direct-uncommitted-spec-edits` item 3: the commit
+    path is always offered; the discard option MAY be offered for
+    `<spec-root>/` paths but MUST NOT be offered for `plan/`
+    paths, because a plan-thread handoff is the durable record of
+    a planning thread and an uncommitted one is frequently the
+    ONLY copy — a discard suggestion against it risks destroying
+    the very artifact the finding exists to protect.
+
+    So the discard clause is emitted only when a `<spec-root>/`
+    path is actually implicated, and is explicitly SCOPED to that
+    class rather than left bare; and whenever a `plan/` path is
+    implicated the narration carries the explicit prohibition, so
+    a reader holding both classes at once cannot read the discard
+    offer as covering the handoff.
+    """
+    has_spec = any(v.spec_lines for v in violations)
+    has_plan = any(v.plan_lines for v in violations)
+    action = "Corrective action: move the edits to a feature branch and commit them there."
+    if has_spec:
+        action += (
+            " Unintentional `<spec-root>/` edits MAY instead be discarded "
+            "(`git checkout -- <files>`)."
+        )
+    if has_plan:
+        action += (
+            " NEVER discard `plan/` edits: an uncommitted handoff is frequently "
+            "the only copy of a planning thread."
+        )
+    return action
 
 
 def _evaluate(
     *,
     ctx: DoctorContext,
     default_branch: str,
-    violations: tuple[tuple[Path, tuple[str, ...]], ...],
+    violations: tuple[Violation, ...],
     worktrees_on_default_count: int,
 ) -> Finding:
     """Build the pass-or-warn Finding from the per-worktree status results.
 
-    `violations` is a tuple of `(worktree_path, status_lines)`
-    pairs for every worktree on the default branch whose
-    `git status --porcelain <spec-root>/` produced at least one
-    line. An empty `violations` tuple yields a pass.
+    `violations` holds one entry per worktree on the default
+    branch whose `git status --porcelain` produced at least one
+    line under `<spec-root>/` or under `plan/`. An empty
+    `violations` tuple yields a pass.
     """
     if not violations:
         return _pass(
             ctx=ctx,
             message=(
                 f"master-direct-uncommitted-spec-edits: no worktrees on "
-                f"`{default_branch}` carry uncommitted spec-tree edits "
+                f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits "
                 f"({worktrees_on_default_count} worktree(s) on `{default_branch}` "
                 f"scanned)"
             ),
         )
     summaries = "; ".join(
-        _format_worktree_violation(worktree_path=path, status_lines=lines)
-        for path, lines in violations
+        _format_worktree_violation(violation=violation) for violation in violations
     )
     return _warn(
         ctx=ctx,
         message=(
             f"master-direct-uncommitted-spec-edits: "
             f"{len(violations)} worktree(s) on `{default_branch}` carry "
-            f"uncommitted spec-tree edits: {summaries}. Corrective action: "
-            f"either move the edits to a feature branch "
-            f"(`git checkout -b <branch>` then commit), or discard them "
-            f"(`git checkout -- <files>`)."
+            f"uncommitted spec-tree or `plan/` edits: {summaries}. "
+            f"{_corrective_action(violations=violations)}"
         ),
     )
 
 
 def _collect_violation(
     *,
-    project_root: Path,
     worktree_path: Path,
     spec_rel: Path,
-) -> IOResult[tuple[Path, tuple[str, ...]] | None, LivespecError]:
-    """Run `git status --porcelain` for `worktree_path/spec_rel` and lift the result.
+) -> IOResult[Violation | None, LivespecError]:
+    """Run `git status --porcelain` for both path classes and lift the result.
 
-    Returns IOSuccess(None) when the per-worktree status produces
-    zero porcelain lines (no violation for this worktree).
-    Returns IOSuccess((worktree_path, status_lines)) when the
-    status produces at least one line (violation; non-empty
-    tuple). Per-worktree spec-root resolution uses
-    `worktree_path / spec_rel` so the check works uniformly for
-    primary and secondary worktrees; `project_root` is unused in
-    the per-worktree invocation (the `-C` flag pins git to the
-    worktree).
+    Returns IOSuccess(None) when BOTH classes produce zero
+    porcelain lines (no violation for this worktree), else
+    IOSuccess(Violation) carrying each class's lines separately.
+
+    Both pathspecs resolve against `worktree_path` — not against
+    the invoking checkout — so the check works uniformly for
+    primary and secondary worktrees; the `-C` flag pins git to the
+    worktree. A worktree with no `plan/` directory is not a
+    special case: `git status --porcelain -- plan/` exits 0 with
+    empty output when the pathspec matches nothing.
     """
-    _ = project_root
     return io_git.list_status_porcelain(
         project_root=worktree_path,
         pathspec=spec_rel,
-    ).map(
-        lambda lines: (worktree_path, lines) if lines else None,
+    ).bind(
+        lambda spec_lines: io_git.list_status_porcelain(
+            project_root=worktree_path,
+            pathspec=_PLAN_REL,
+        ).map(
+            lambda plan_lines: (
+                Violation(
+                    worktree_path=worktree_path,
+                    spec_lines=spec_lines,
+                    plan_lines=plan_lines,
+                )
+                if (spec_lines or plan_lines)
+                else None
+            ),
+        ),
     )
 
 
 def _collect_all_violations(
     *,
-    project_root: Path,
     worktrees_on_default: tuple[io_git.Worktree, ...],
     spec_rel: Path,
-    accumulated: tuple[tuple[Path, tuple[str, ...]], ...] = (),
-) -> IOResult[tuple[tuple[Path, tuple[str, ...]], ...], LivespecError]:
+    accumulated: tuple[Violation, ...] = (),
+) -> IOResult[tuple[Violation, ...], LivespecError]:
     """Sequentially collect per-worktree status results into one tuple.
 
     Walks `worktrees_on_default` head-first, recursing on the
@@ -216,12 +322,10 @@ def _collect_all_violations(
         return IOResult.from_value(accumulated)
     head, *tail = worktrees_on_default
     return _collect_violation(
-        project_root=project_root,
         worktree_path=head.path,
         spec_rel=spec_rel,
     ).bind(
         lambda result: _collect_all_violations(
-            project_root=project_root,
             worktrees_on_default=tuple(tail),
             spec_rel=spec_rel,
             accumulated=(*accumulated, result) if result is not None else accumulated,
@@ -249,7 +353,6 @@ def _on_repo(
             project_root=project_root,
         ).bind(
             lambda worktrees: _collect_all_violations(
-                project_root=project_root,
                 worktrees_on_default=tuple(wt for wt in worktrees if wt.branch == default_branch),
                 spec_rel=spec_rel,
             ).map(
