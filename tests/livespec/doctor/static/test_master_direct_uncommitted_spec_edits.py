@@ -136,7 +136,7 @@ def test_master_direct_uncommitted_spec_edits_passes_when_primary_on_master_clea
         status="pass",
         message=(
             f"master-direct-uncommitted-spec-edits: no worktrees on "
-            f"`{default_branch}` carry uncommitted spec-tree edits "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits "
             f"(1 worktree(s) on `{default_branch}` scanned)"
         ),
         path=None,
@@ -168,10 +168,10 @@ def test_master_direct_uncommitted_spec_edits_warns_when_primary_on_master_modif
         status="warn",
         message=(
             f"master-direct-uncommitted-spec-edits: 1 worktree(s) on "
-            f"`{default_branch}` carry uncommitted spec-tree edits: "
-            f"{project_root}: SPECIFICATION/spec.md. Corrective action: "
-            f"either move the edits to a feature branch "
-            f"(`git checkout -b <branch>` then commit), or discard them "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits: "
+            f"{project_root}: spec: SPECIFICATION/spec.md. Corrective action: "
+            f"move the edits to a feature branch and commit them there. "
+            f"Unintentional `<spec-root>/` edits MAY instead be discarded "
             f"(`git checkout -- <files>`)."
         ),
         path=None,
@@ -208,7 +208,7 @@ def test_master_direct_uncommitted_spec_edits_passes_when_primary_on_feature_bra
         status="pass",
         message=(
             f"master-direct-uncommitted-spec-edits: no worktrees on "
-            f"`{default_branch}` carry uncommitted spec-tree edits "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits "
             f"(0 worktree(s) on `{default_branch}` scanned)"
         ),
         path=None,
@@ -260,10 +260,10 @@ def test_master_direct_uncommitted_spec_edits_warns_when_secondary_on_master_mod
         status="warn",
         message=(
             f"master-direct-uncommitted-spec-edits: 1 worktree(s) on "
-            f"`{default_branch}` carry uncommitted spec-tree edits: "
-            f"{wt_path}: SPECIFICATION/spec.md. Corrective action: "
-            f"either move the edits to a feature branch "
-            f"(`git checkout -b <branch>` then commit), or discard them "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits: "
+            f"{wt_path}: spec: SPECIFICATION/spec.md. Corrective action: "
+            f"move the edits to a feature branch and commit them there. "
+            f"Unintentional `<spec-root>/` edits MAY instead be discarded "
             f"(`git checkout -- <files>`)."
         ),
         path=None,
@@ -315,11 +315,11 @@ def test_master_direct_uncommitted_spec_edits_warns_per_violating_worktree_on_ma
         status="warn",
         message=(
             f"master-direct-uncommitted-spec-edits: 2 worktree(s) on "
-            f"`{default_branch}` carry uncommitted spec-tree edits: "
-            f"{project_root}: SPECIFICATION/spec.md; "
-            f"{wt_dirty_path}: SPECIFICATION/spec.md. Corrective action: "
-            f"either move the edits to a feature branch "
-            f"(`git checkout -b <branch>` then commit), or discard them "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits: "
+            f"{project_root}: spec: SPECIFICATION/spec.md; "
+            f"{wt_dirty_path}: spec: SPECIFICATION/spec.md. Corrective action: "
+            f"move the edits to a feature branch and commit them there. "
+            f"Unintentional `<spec-root>/` edits MAY instead be discarded "
             f"(`git checkout -- <files>`)."
         ),
         path=None,
@@ -355,3 +355,109 @@ def test_master_direct_uncommitted_spec_edits_skipped_when_not_a_git_repo(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_master_direct_uncommitted_spec_edits_warns_on_a_dirty_plan_file(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`warn` when a default-branch worktree carries an uncommitted `plan/` file.
+
+    Spec v170 widened the invariant from `<spec-root>/` to
+    `<spec-root>/` OR `plan/`. Before the widening this exact
+    state reported `pass`: on 2026-07-19 the first
+    `check-doctor-static` run of a session reported "no worktrees
+    on master carry uncommitted spec-tree edits (1 worktree(s) on
+    master scanned)" while that very worktree held a plan handoff
+    carrying 153 unversioned lines.
+
+    Note the corrective action carries NO discard suggestion here
+    — see the sibling test for why that is contract, not style.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    _git_init_with_user(cwd=project_root, name="Test User", email="test@example.com")
+    monkeypatch.chdir(project_root)
+    spec_root = _seed_spec_root(project_root=project_root)
+    default_branch = _current_branch(cwd=project_root)
+    _git_set_origin_head(cwd=project_root, default_branch=default_branch)
+    plan_dir = project_root / "plan" / "some-topic"
+    plan_dir.mkdir(parents=True)
+    _git_commit_file(
+        cwd=project_root,
+        path=plan_dir / "handoff.md",
+        content=b"# Handoff\n",
+    )
+    _ = (plan_dir / "handoff.md").write_bytes(b"# Handoff\nunversioned findings\n")
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = master_direct_uncommitted_spec_edits.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-master-direct-uncommitted-spec-edits",
+        status="warn",
+        message=(
+            f"master-direct-uncommitted-spec-edits: 1 worktree(s) on "
+            f"`{default_branch}` carry uncommitted spec-tree or `plan/` edits: "
+            f"{project_root}: plan: plan/some-topic/handoff.md. "
+            f"Corrective action: move the edits to a feature branch and commit "
+            f"them there. NEVER discard `plan/` edits: an uncommitted handoff "
+            f"is frequently the only copy of a planning thread."
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_master_direct_uncommitted_spec_edits_never_offers_discard_for_plan_paths(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The `plan/` narration MUST NOT present discard as a symmetric option.
+
+    `SPECIFICATION/contracts.md`
+    §`master-direct-uncommitted-spec-edits` item 3: for
+    `<spec-root>/` paths the narration MAY additionally offer
+    discarding unintentional edits; "For `plan/` paths it MUST
+    NOT: a plan-thread handoff is the durable record of a
+    planning thread and an uncommitted one is frequently the ONLY
+    copy, so a discard suggestion against it risks destroying the
+    very artifact the finding exists to protect."
+
+    This is the acceptance criterion most likely to be lost in a
+    refactor, because the natural implementation has ONE narration
+    string. Both classes dirty at once is the case that would
+    silently reintroduce a discard suggestion covering `plan/`.
+    """
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    _git_init_with_user(cwd=project_root, name="Test User", email="test@example.com")
+    monkeypatch.chdir(project_root)
+    spec_root = _seed_spec_root(project_root=project_root)
+    default_branch = _current_branch(cwd=project_root)
+    _git_set_origin_head(cwd=project_root, default_branch=default_branch)
+    plan_dir = project_root / "plan" / "some-topic"
+    plan_dir.mkdir(parents=True)
+    _git_commit_file(
+        cwd=project_root,
+        path=plan_dir / "handoff.md",
+        content=b"# Handoff\n",
+    )
+    _ = (spec_root / "spec.md").write_bytes(b"# Spec\nedited\n")
+    _ = (plan_dir / "handoff.md").write_bytes(b"# Handoff\nedited\n")
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = master_direct_uncommitted_spec_edits.run(ctx=ctx)
+    finding = result.unwrap()._inner_value  # noqa: SLF001 — IOSuccess unwrap in test
+    message = finding.message
+
+    # Both classes are named, each under its own label.
+    assert "spec: SPECIFICATION/spec.md" in message
+    assert "plan: plan/some-topic/handoff.md" in message
+    # The discard offer is present, and SCOPED to <spec-root>/ — never bare.
+    assert "Unintentional `<spec-root>/` edits MAY instead be discarded" in message
+    # The plan/ prohibition rides along whenever a plan/ path is implicated.
+    assert "NEVER discard `plan/` edits" in message
