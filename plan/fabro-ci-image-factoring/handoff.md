@@ -166,7 +166,105 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 12 (written 2026-07-20 at session end)
+## ▶▶ START HERE — cont. 13 (written 2026-07-20 at session end)
+
+**Read the STOP block above first** — local self-hosted runners are DEFERRED until
+new hardware. Nothing below changes that; all of this is runner-agnostic work.
+Everything under cont. 12 and lower is prior trail. This section supersedes it.
+
+### The one-line state
+
+**The image epic's technical work is DONE.** `a46` delivered and measured, its
+follow-on bug fixed, two of four maintainer decisions implemented. **What remains
+is (a) one live-exercise gap, (b) two decisions blocked on maintainer
+authorization, and (c) a newly-found root cause worth fixing before anyone touches
+adopters again.**
+
+### ✅ Delivered and verified this session
+
+| Item | Result |
+|---|---|
+| `a46` — agent-layer split | `python-` **751 → 435 MB (−42%)**, `python-rust-` 975 → 658 MB. Container init **39s → 25s**. Live-exercised by the real v0.50.5 fan-out |
+| `3k7` — rewrite refusal guard | `livespec-dev-tooling` [#486](https://github.com/thewoolleyman/livespec-dev-tooling/pull/486) + [#492](https://github.com/thewoolleyman/livespec-dev-tooling/pull/492) (role-based error message) |
+| `aa7` — fail-soft CI gate | [#499](https://github.com/thewoolleyman/livespec-dev-tooling/pull/499). Verified behaviorally: credentialed+API-error → **exit 1**, uncredentialed → 0 |
+| `ql1` — review adapter | [orchestrator #834](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/834). Premise was inverted; fix became one line, zero bytes |
+
+### ▶ DO THIS FIRST — `livespec-dev-tooling-453`, the root cause under every adopter item
+
+**`manifest.adopters` is parsed into typed records that NOTHING reads.** The spec
+asserts twice that the fleet sweep iterates adopters; no code does. Full evidence
+in the §"ROOT CAUSE" section below.
+
+Do this before `bg47fr` or `ob-4oku`, because it is the layer underneath both — and
+because its third suggested step (a test that fails when `manifest.adopters` has no
+consumer) is what stops the class recurring. **A parsed-but-unread field reads as
+implemented from every vantage except the one nobody checks.**
+
+### ▶ THEN, in order
+
+1. **The live-exercise gap — the only thing blocking `a46` from closing.** **No
+   Fabro dispatch has run inside an `-agent-` image.** CI exercises only the slim
+   tags and never touches the agent tags, so every green tick so far is silent on
+   whether the adapters work in there. The SAME run also answers `ql1`'s open
+   question — whether the review node comes up on Opus 4.8 under `claude-agent-acp`
+   0.44.0 rather than the frozen 0.16.2 it used to run. **One dispatch closes both.**
+   Do not let the (very solid) pin evidence stand in for it: "the pins are right"
+   and "the runtime works" are different claims.
+2. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
+   Unblocked now that `a46` is delivered. **Expect it to return LESS than its byte
+   share**: init fell 36% while the image fell 42%, because `Initialize containers`
+   also covers create/network/mount. Needs a full `just check` across the FLEET, not
+   one repo — it risks native wheel builds.
+3. **`livespec-bg47fr`** — BLOCKED ON YOU (maintainer). The posture-driven decision
+   is right, but neither adopter is onboarded: `homelab` has **zero workflows and
+   zero Actions secrets** (API-measured), so it needs the shim + `APP_ID` /
+   `APP_PRIVATE_KEY` + App installation. And shipping the selector without a
+   **fail-soft adopter leg** can 404 and **fail the release fan-out itself** — the
+   `ob-nfwa` failure, already on record for openbrain.
+4. **`livespec-3lev.1`** — Honeycomb trigger on `livespec-host-metrics`, watching
+   **sustained CPU-idle≈0% duration**. **Close the observability gap FIRST:**
+   CI-runner job containers are invisible to `docker_stats` (rootless podman vs the
+   rootful socket), so a trigger on today's telemetry alerts on a systematically
+   incomplete picture.
+
+### ⚠️ Three of MY OWN work-item framings were wrong this session
+
+Recorded because the pattern matters more than the individual errors, and because
+each was caught only by checking live state before implementing:
+
+- **`ob-4oku`** — I called openbrain's pin a structural defect. It is `posture:
+  pinned`; the exclusion is contractual. The mechanism I cited (topic discovery)
+  had been demoted in favor of the manifest.
+- **`ql1`** — I described `@latest` **drift**. The truth was the opposite:
+  `@zed-industries/claude-code-acp` is the DEAD FORMER NAME of the adapter already
+  baked, and `@latest` on a deprecated package is **frozen**. The review node was
+  fossilized ~4 months, not drifting. Implementing my own item as written would
+  have baked a deprecated ~119 MB payload permanently.
+- **`aa7`'s brief** — I told the agent to gate on `GH_TOKEN`/`CI`. That would have
+  produced a gate firing **nowhere**, since this check is deliberately excluded
+  from CI and enforces at pre-push.
+
+**Two of the three were caught by dispatched agents refusing the brief rather than
+executing it.** Brief sub-agents to stop and report when a premise looks wrong; it
+is worth more than the throughput it costs.
+
+### Session's process lesson
+
+**A mitigation that reasons about the commit you control is not control over the
+release train.** The layer split was landed as `refactor(ci):` — cuts no release,
+therefore no fan-out, therefore no consumer bumped onto the adapter-less image.
+First two clauses true; third does not follow. Release-please had a pending PR of
+*other people's* `fix:` commits and merged **four minutes later**. The console's
+sandbox pin was adapter-less for ~20 minutes.
+
+Foreseeable from this document's own `5r3` record ("five releases in 2.5 hours").
+Read, and not transferred. For the next prefix migration: migrate consumers FIRST
+onto `-sha-` tags, or park the release train, or ship the guard check first.
+Checking "has a release fired?" afterwards is a race, not a mitigation.
+
+---
+
+## ▶▶ START HERE — cont. 12 (written 2026-07-20 at session end — superseded by cont. 13 above)
 
 **Read the STOP block above first** — local self-hosted runners are still DEFERRED
 until new hardware. Nothing here changes that; all of this is runner-agnostic
