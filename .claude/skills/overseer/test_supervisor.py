@@ -2378,6 +2378,32 @@ def test_wrapup_message_says_only_the_session_authorizes_the_restart():
     assert "not responding" in msg  # writing nothing ⇒ reported to a human
 
 
+def test_wrapup_message_tells_the_session_to_commit_the_handoff_via_a_worktree():
+    """Writing the handoff to disk is NOT saving it (plan/plan-thread-integrity/, W4).
+
+    The wrap-up used to say only "UPDATE {handoff}", and the word "commit" appeared
+    nowhere in this file — the "persisted is durable" conflation, sitting in the one
+    instruction every overseer-managed wind-down receives. A handoff was left dirty on
+    2026-07-19 and rescued only by luck.
+
+    A bare "commit it" would be worse than useless: the handoff lives in the PRIMARY
+    checkout, where the commit-refuse hook rejects commits, and a fresh worktree does
+    NOT contain the dirty edits. So the text must name the whole path INCLUDING the
+    copy step, or a low-context session strands itself at "my worktree is empty".
+    """
+    msg = supervisor.wrapup_message(remaining=40, repo="/data/projects/livespec", topic="t")
+    assert "COMMIT" in msg
+    assert "NOT saving it" in msg
+    # The refusal the session would otherwise walk into, and why a worktree is needed.
+    assert "commit-refuse hook rejects it" in msg
+    # The copy step — the part a "just use a worktree" instruction leaves out.
+    assert "worktree add" in msg
+    assert 'cp /data/projects/livespec/plan/t/handoff.md "$W/plan/t/handoff.md"' in msg
+    # The bypasses it must NOT offer as an escape.
+    assert "Never pass --no-verify" in msg
+    assert "do not discard the file" in msg
+
+
 def test_wrapup_escalates_from_suggestion_to_insistence():
     """The maintainer's escalation: a SUGGESTION while there is still room (50/40),
     turning INSISTENT at 30/20/10. Re-sending identical text five times is repetition,
