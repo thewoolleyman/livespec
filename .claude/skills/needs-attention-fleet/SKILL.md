@@ -42,7 +42,7 @@ correct as the manifest changes. Parse the JSONC by stripping `//` line comments
 (or use the vendored `jsoncomment`):
 
 - **`fleet`** — `{repo, class}` entries (core / enforcement-suite / impl-plugin /
-  driver-plugin / library / console). These contribute product `needs-attention`
+  driver-plugin / library / console / control-plane-tool). These contribute product `needs-attention`
   AND (for the internal fold in Step 3) their fleet-dev signals.
 - **`adopters`** — `{repo, profile, posture}` entries (governed repos that
   adopted the workflow but are not fleet — e.g. `openbrain`, `resume`). Adopters
