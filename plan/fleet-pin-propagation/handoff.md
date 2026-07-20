@@ -558,8 +558,43 @@ landed and what blocked. The live next actions are now:**
    `livespec-dev-tooling-zm5cbp`) on that extraction, so it is now this
    thread's critical path. It belongs to the shell-logic-hardening epic, not
    this one; groom it in its own context.
-3. `livespec-u7x5zn` self-routes now that `livespec-e7lanq` is `done`
-   (admission auto) — no action needed, just don't re-block it.
+3. ~~`livespec-u7x5zn` self-routes now that `livespec-e7lanq` is `done`
+   (admission auto) — no action needed, just don't re-block it.~~
+   **FALSIFIED 2026-07-20 — it did NOT self-route, and "no action needed" will
+   strand this item indefinitely if believed.**
+
+   Measured live: `livespec-e7lanq` is **`closed`**, and `livespec-u7x5zn` is
+   still **`pending-approval`**. The condition the claim was waiting on has
+   been satisfied and the routing did not happen. Two independent confirmations
+   that it is genuinely not dispatchable, not merely mislabelled:
+
+   - `dispatcher.py loop --repo /data/projects/livespec --budget 5 --dry-run`
+     returns `[]` — the tenant offers ZERO candidates.
+   - `drive --action impl:livespec-dbbgoc` (a different `ready` item in the
+     same tenant) is refused with `not in the ready set`, exit 3.
+
+   **Mechanism — HYPOTHESIS, deliberately not asserted.** Readiness is
+   `lane_of(...).name == "ready"`, and `_has_open_dependency` blocks on any
+   `depends_on` entry resolving to `OPEN`
+   (`_vendor/livespec_runtime/work_items/lifecycle.py`). `u7x5zn`'s remaining
+   non-closed dependency is the EPIC `livespec-n4ptl2`, which is `backlog`;
+   `dbbgoc`'s is `livespec-2hya5g`, which is `acceptance`. If `backlog` and
+   `acceptance` both resolve as `OPEN`, both observations follow. What does NOT
+   fit that story: `livespec-e7lanq` and `livespec-b7ropo` carry the same epic
+   dependency and DID dispatch to completion. So either the epic's status
+   changed since, or the blocking entry is something else. **Do not act on the
+   mechanism until it is confirmed** — a probe attempting to read the
+   dispatcher's own `depends_on` for these items failed to import
+   (`load_items` is not a public symbol of `_dispatcher_loop`), and the
+   shortcut check via `bd list --json` is VACUOUS because that surface omits
+   the `dependencies` array. Only `bd show --json` carries it.
+
+   What IS safe to rely on: attempting a gated item is cheap and harmless
+   (exit 3, no admission, no Fabro run, no strand), so the next session can
+   simply retry `u7x5zn` after the acceptances land and see whether it frees.
+   If it does not, the epic-dependency hypothesis above is the first thing to
+   test — and note that an epic which stays `backlog` while its children need
+   it `done` would deadlock every child under it.
 
 One defect found while grooming, filed as `bd-ib-dvmh`
 (`livespec-orchestrator-beads-fabro` tenant): groom's cross-repo slices mint
