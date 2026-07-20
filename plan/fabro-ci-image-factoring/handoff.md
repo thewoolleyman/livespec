@@ -353,9 +353,80 @@ the moment `453` iterates adopters.
 at a source that could not show the failure, passing in a way that looks exactly
 like confirmation.
 
+### 🔑 `453` — the adopter leg would be VACUOUS IN CI. Scoping DECIDED (option A + loudness)
+
+Found **before** implementing, which is the first time this session's recurring
+defect class was caught ahead of the code rather than behind it.
+
+**Measured:** only `homelab` is `posture: released` (openbrain and resume are
+`pinned`); `homelab` and `openbrain` are **private** while every fleet member is
+**public**; and `ci.yml`'s `check-fleet-conformance` job does **not** use the
+repo-scoped `GITHUB_TOKEN` — it mints a **fleet App installation token**.
+
+**Contract** (`non-functional-requirements.md:1033`, a MUST): *"the fleet App's
+installation MUST be restricted to fleet repos only."*
+
+So in CI the sweep structurally cannot read the one in-scope adopter. `453`'s
+adopter leg would evaluate **zero adopters** and the job would stay green —
+indistinguishable from "adopters are conformant".
+
+**This inverts the earlier warning in this document.** Landing `453` would NOT
+redden CI; it would go **silently green**, which is worse. The maintainer's
+fail-loud decision is achievable only where the adopter is actually readable —
+locally it does produce the error finding.
+
+**⚠️ One link is contractual, not measured.** The fleet App's real installation
+list could not be verified: `GET /installation/repositories` needs an App
+installation token and `GET /user/installations` needs an App-authorized token; the
+available PAT is rejected by both. Minting a fleet App token was not attempted (it
+means handling the App PEM to sign a JWT). **The conclusion holds either way** — if
+the App is not on homelab the leg is vacuous; if it *is*, that installation
+violates the line-1033 MUST and needs its own item. Confirm which before
+implementing.
+
+**DECIDED (maintainer, 2026-07-20) — option A + the loudness fix:**
+
+- **Option A** — the adopter leg is a **local/world-gate** concern, not a per-PR CI
+  one. Not a new pattern: it is exactly how the spec already treats
+  `branch_protection_alignment` (line 1023, *"deliberately NOT run in the per-PR CI
+  matrix, where it would always-skip"*).
+- **Explicitly rejected** — installing the fleet App on adopters to give CI reach.
+  That violates the line-1033 MUST and collapses the adopter-autonomy model.
+- **Deferred, not rejected** — option B, adopters self-reporting conformance from
+  inside their own repos under their own Apps, with the sweep reading the published
+  result. The right long-term shape; needs adopter-side buy-in.
+
+### 🔊 `livespec-dev-tooling-b02` (P1, NEW) — the root cause behind all four findings
+
+**The sweep cannot distinguish "this row PASSED" from "this row COULD NOT BE
+EVALUATED."** `RowSkip` is logged at `info` and affects neither the exit code nor
+any summary. That single gap produced every finding in this session:
+
+| Item | How it manifested |
+|---|---|
+| `7vj` | ref pinned to `master` → `main`-default repos silently skipped. **Merged.** |
+| `ahg` | `branch-protection` skips 8/8 in CI (admin scope) → never enforced anywhere |
+| (same run) | `secret-names` skips 8/8 in CI too. Nothing hidden **today** (all 8 pass locally), but identically blind |
+| `453` | the adopter leg would skip every adopter in CI |
+
+**The fix:** count, per row, how many applicable members were evaluated vs skipped.
+When a row is skipped for *every* applicable member, it enforced nothing — say so
+prominently, naming the row and the distinct skip reasons, and report a blind-row
+count in the summary beside `error_findings`. This one check would have caught
+`7vj`, `ahg`, and `453`'s leg automatically.
+
+**Severity is WARNING, deliberately, and this is not a lever.** It is *new* signal,
+not a demotion of an existing gate, so `.ai/ci-gate-discipline.md` doesn't apply.
+Error severity today would immediately redden CI, because `branch-protection` and
+`secret-names` are both structurally blind right now and stay so until `ahg` step 2
+lands — shipping a knowingly-red gate. **Once `ahg` step 2 clears them, escalate
+b02 to error.** That escalation is the intended end state, not an optional nicety.
+There is no env var, no exemption list, no opt-out; every row is always counted.
+
 ### ▶ THEN, unchanged from cont. 13
 
-1. **`livespec-dev-tooling-453`** — now UNBLOCKED, in the corrected narrow scope.
+1. **`livespec-dev-tooling-453`** — scoping now decided (option A); implement
+   alongside or after `b02`, and confirm the App installation list first.
 2. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
    Expect LESS than its byte share (init fell 36% while the image fell 42%). Needs a
    full `just check` across the FLEET — it risks native wheel builds.
