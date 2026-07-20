@@ -329,12 +329,12 @@ verification" — not the particular form. Text amended in livespec core
 `AGENTS.md` (surfaced as `.claude/CLAUDE.md` via symlink); `livespec-hmstw3`
 closed with the decision.
 
-**⚠ IN FLIGHT AT SESSION END:** that amendment is PR
-[#1488](https://github.com/thewoolleyman/livespec/pull/1488) — OPEN with
-auto-merge armed (50 pass / 20 pending at handoff time). It should merge
-unattended. **First thing: confirm it merged** (`gh pr view 1488 --json state`).
-If it did NOT, check why and land it — the rule text is the durable record of a
-maintainer decision, and `livespec-hmstw3` is already closed citing it.
+**LANDED — nothing in flight.** That amendment merged as PR
+[#1488](https://github.com/thewoolleyman/livespec/pull/1488), and this handoff's
+own update merged as [#1490](https://github.com/thewoolleyman/livespec/pull/1490);
+both were verified present on `origin/master` and on the primary checkout's disk
+before this session declared itself ready. No PR from this session is awaiting a
+merge, so **do not open by chasing one** — go straight to the next actions below.
 
 The thread's NEW next actions:
 
