@@ -205,6 +205,47 @@ step 1 below.
    user + DB-scoped grant, a tenant password in the 1Password Environment).
    Both are maintainer-authorization gates, not research questions.
 
+   #### 🔑 Measured capability facts for 2a — do NOT re-probe these
+
+   Established 2026-07-20 by direct probe; it took six of them, so they are
+   recorded rather than left to be rediscovered.
+
+   | Capability | Status |
+   |---|---|
+   | Create the GitHub repo | ✅ `gh` token carries `repo` + `workflow` |
+   | Run `wire-fleet-member` | ✅ under the wrapper: `GITHUB_APP_ID` (8B) and `GITHUB_PRIVATE_KEY` (1649B) both project |
+   | Reach fleet-conformance green **without a tenant** | ✅ `beads-tenant-connection-consistency` `RowSkip`s when `.beads/config.yaml` is absent — it checks CONSISTENCY if a tenant exists, not PRESENCE |
+   | Provision the beads tenant | ❌ **not from the livespec Environment** |
+
+   **The tenant blocker, precisely.** Under `with-livespec-env.sh` the ONLY
+   projected database credential is `BEADS_DOLT_PASSWORD`;
+   `DOLT_ADMIN_PASSWORD` / `DOLT_ROOT_PASSWORD` / `MYSQL_ROOT_PASSWORD` are all
+   **0 bytes — absent from that Environment entirely**. And the tenant user is
+   DB-scoped hard enough that `SHOW GRANTS FOR CURRENT_USER()` returns
+   `Access denied for user 'livespec'@'%' to database 'mysql'` — it cannot even
+   read its own grants, let alone `CREATE DATABASE` / `CREATE USER` / `GRANT`.
+   A tenant cannot mint another tenant; that is the isolation model working.
+
+   **✅ WHERE THE ADMIN CREDENTIAL ACTUALLY LIVES (maintainer, 2026-07-20):**
+   the **1Password `homelab` Environment**, reachable **via the `vps-info`
+   repo**. That is the path a future session must use to create the Dolt DB, the
+   SQL user, and the DB-scoped grant. It is a DIFFERENT Environment from the
+   livespec one every fleet wrapper injects — which is exactly why the probes
+   above came back empty, and why "the credential is missing" would have been
+   the wrong conclusion.
+
+   **⚠️ Do NOT hand the tenant password off through a `.env` file in `/tmp`.**
+   This was requested and deliberately not done. `/tmp` is `1777` and this
+   host's umask is `002`, so a file created there lands at mode **664 —
+   world-readable by every user and process on the box**, which is precisely
+   what the probe-only secret rule exists to prevent. If a file handoff is
+   needed at all, write it `umask 077` (mode 600) under `$HOME` and
+   `shred -u` it after import. But note it is usually unnecessary: whoever holds
+   the admin credential and creates the SQL user already knows the password, so
+   there is nothing to hand over. Generating a password for a user that does not
+   exist yet produces a credential that LOOKS real, imports cleanly, and then
+   fails `bd` with a confusing auth error — worse than no file at all.
+
    **2b — move the folder (BLOCKED on `b1uo.3`).** The one genuine code blocker
    is the positional path traversal in `_default_manifest` (`supervisor.py` —
    cite the SYMBOL, not the line; re-measured at `:2688` on 2026-07-20 against
@@ -218,6 +259,93 @@ Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
 likely superseded by D7. An earlier version of this page told you to start at
 `b1uo.1` because "the two Driver bindings have nothing to bind to"; that framing
 predates D7 and is wrong.
+
+# 🚨 URGENT, NOT OWNED BY THIS THREAD — the fleet Dolt backup has been DEAD for 11 days
+
+**Found 2026-07-20 while probing credentials for the `livespec-overseer` beads
+tenant. It has nothing to do with the overseer and everything to do with fleet
+data durability, so it MUST be relocated to a `dolt-server` work-item rather
+than left on this page.** Recorded here in full because losing it would be worse
+than misfiling it.
+
+**The multi-tenant Dolt database — which holds EVERY fleet repo's work-item
+ledger — has had no S3 backup since 2026-07-09.**
+
+| Fact | Value |
+|---|---|
+| Last successful backup | **Jul 9 22:02:34** — `all syncs succeeded (11/11)` |
+| First failure | **Jul 9 22:21:53** |
+| `doltdb.service` `ActiveEnterTimestamp` | **Jul 9 22:21:53** — the SAME second |
+| Consecutive failures since | **265** |
+| Successes since | **0** |
+
+## Root cause — a stale socket file, and a warning that should have been fatal
+
+Verbatim from `journalctl -u doltdb.service` at the restart:
+
+```
+Starting server with Config HP="127.0.0.1:3307"|…|S="/var/lib/doltdb/dolt.sock"
+level=warning msg="unix socket set up failed: file already in use: /var/lib/doltdb/dolt.sock"
+level=info    msg="Server ready. Accepting connections."
+```
+
+The chain, each link verified:
+
+1. A **stale `dolt.sock` file dated Jun 27** was left at the socket path (unclean
+   shutdown — the file outlived its server).
+2. On the **Jul 9 22:21:53** restart, Dolt tried to bind, found the path
+   occupied, and **logged a WARNING rather than failing**.
+3. It then proceeded to `Server ready. Accepting connections.` — **TCP-only**.
+   `ss -lnx` confirms **zero** unix-socket listeners; `ss -lntp` confirms TCP
+   3307 is live (pid 1134).
+4. `dolt-backup.service` connects **over the socket** as `${BACKUP_USER}=backup`,
+   so every hourly run since has failed.
+
+**The config is NOT the culprit — do not go looking there.**
+`/etc/doltdb/config.yaml:37` correctly specifies
+`socket: /var/lib/doltdb/dolt.sock`, and the file is unmodified since **Jun 9**,
+a month before the breakage.
+
+**The backup script is NOT the culprit either, and this is the important part.**
+`dolt-server`'s own `SPECIFICATION/spec.md:42` requires the server to listen on
+TCP **and** a Unix socket, and `scenarios.md:13` asserts exactly that. So the
+SERVER is out of spec and the backup is behaving correctly. **Repointing the
+backup at TCP would be fixing the bypass instead of the gate** — it would paper
+over a spec violation and silently retire the socket transport that
+`contracts.md:152` still prescribes.
+
+## Why nothing caught it
+
+This is a textbook silent degradation, and worth understanding beyond this bug:
+
+- `systemctl status doltdb.service` reports **`active (running)`**. It is — on
+  half its configured listeners.
+- Dolt treats a failed socket bind as **non-fatal**, so the process reaches
+  "Server ready" with a transport missing.
+- The stale socket FILE still exists on disk, so any check of the form "does
+  `/var/lib/doltdb/dolt.sock` exist?" **passes** while nothing listens on it.
+  Presence of the inode is not presence of a listener.
+- The only consumer of the socket is the backup, so the backup silently became
+  the sole canary — and `OnFailure=dolt-backup-alert@%n.service` has fired 265
+  times without anyone acting.
+
+## The fix — two parts, and the immediate one needs a maintenance window
+
+1. **Immediate:** remove the stale socket file and restart `doltdb.service` so
+   the bind succeeds. **This was NOT done in-session, deliberately** — a restart
+   interrupts ledger connectivity for every tenant, and there were 9 other live
+   worktrees mid-flight at the time. It needs a quiet window, not an ambush.
+   Verify afterwards with `ss -lnx | grep dolt.sock` returning a listener, and
+   confirm the next hourly run logs `all syncs succeeded (N/N)`.
+2. **Durable:** make this class of failure loud. A failed socket bind should be
+   fatal, or `doltdb.service` should carry a post-start assertion that BOTH
+   listeners are up, so the server cannot report healthy while out of spec. As
+   written, this recurs on ANY restart that follows an unclean shutdown.
+
+Also worth a look while in there: `secure_file_priv` is set to `""`, which Dolt
+itself warns is insecure ("any user with GRANT FILE privileges will be able to
+read any file which the sql-server process can read"). Unrelated to the outage;
+noticed in the same log.
 
 # 📍 STATE AT SESSION END — 2026-07-20
 
