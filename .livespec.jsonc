@@ -67,7 +67,8 @@
       "SPECIFICATION/contracts.md §\"Shared check inventory\"",
       "SPECIFICATION/contracts.md §\"Cross-repo coordination automation surface\"",
       "SPECIFICATION/contracts.md §\"Sibling discovery\"",
-      "SPECIFICATION/contracts.md §\"Semver discipline\""
+      "SPECIFICATION/contracts.md §\"Semver discipline\"",
+      "SPECIFICATION/contracts.md §\"Bump-pin policy\""
     ],
     "openbrain": [
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
