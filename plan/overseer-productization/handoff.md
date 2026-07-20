@@ -1653,6 +1653,65 @@ new repo that copies every baseline FILE and forgets that key still fails fleet
 conformance. (`_contract_rows.py` `baseline-harnesses` →
 `_rows_baseline.py::assert_baseline_harnesses`.)
 
+**Verified 2026-07-20, with two refinements that matter.** The fleet-time row
+really is just non-empty — literally `isinstance(harnesses, dict) and harnesses`
+— so the sentence above is accurate. But:
+
+1. **It is ERROR severity, not a warning** (exit 4), and a GENUINELY-ABSENT
+   `.livespec.jsonc` on a registered member is itself an ERROR finding — the
+   deliberate "vacuous-pass closure" that stops a config-less member from
+   passing the conformance net by being unreadable. This is what gives
+   register-first its teeth: during the window between registering and wiring,
+   the new repo is LOUDLY red, exactly as intended.
+2. **A second, stricter consumer reads the same key and the handoff never
+   mentioned it.** Per `_rows_baseline.py`'s module docstring, the per-repo
+   `check-plugin-resolution` Verifier reads the declaration at commit time and
+   expects each harness to be marked `supported` (with a `canonical_command`)
+   or `exempt` (with a `reason`). So a junk-but-non-empty `harnesses` object
+   satisfies the FLEET row and still fails the new repo's OWN `just check`.
+   Copy the SHAPE from `livespec-runtime`, not just the key.
+
+### 🔧 HOW TO ACTUALLY RUN `wire-fleet-member` — pinned 2026-07-20
+
+The birth procedure says "run `wire-fleet-member`" without saying how, and
+there is **no justfile target for it in `livespec-dev-tooling`** — so a reader
+looking for `just wire-fleet-member` finds nothing. The exact invocation is in
+`livespec_dev_tooling/fleet/wire_fleet_member.py`'s module docstring:
+
+```bash
+with-livespec-env.sh -- env PATH="$HOME/.local/bin:$PATH" uv run python -m \
+    livespec_dev_tooling.fleet.wire_fleet_member --repo <member>
+```
+
+**It MUST run under the environment wrapper** (`with-livespec-env.sh`, or
+whichever conforming `credential_wrapper` the project declares) — it pushes
+secrets, and the docstring is explicit that values flow env→stdin only. The
+source env vars are `GITHUB_APP_ID` / `GITHUB_PRIVATE_KEY`; the destination
+Actions secret names are `APP_ID` / `APP_PRIVATE_KEY`. Run it without the
+wrapper and the secret projection is simply absent.
+
+**It is operator-invoked, NOT CI** — the docstring says so directly ("no run
+lever"). Nothing runs it for you; the dark factory will not pick it up.
+
+**What it does automatically, which resizes an earlier finding on this page.**
+For each violated row it applies that row's reconcile reference: pushes the
+secrets, sets branch protection **from the member's `ci.yml` matrix**, applies
+the `livespec-sibling` topic, and **opens ONE shim-workflow PR for missing
+shims** — or surfaces the row's `manual_hint` where no machine fix exists.
+
+Two consequences worth carrying:
+
+- **`ci.yml` must be correct BEFORE you run it**, because branch protection is
+  derived from that file's matrix. Wire first with a wrong `ci.yml` and you get
+  branch protection describing the wrong required checks.
+- **The missing-shim problem is loud and auto-remediated, not silent.** §"COPY
+  `livespec-runtime`, NOT THE CONSOLE" warns that copying the console leaves two
+  of the three shims missing. That warning stands — scaffolding from
+  `livespec-runtime` avoids an extra PR round-trip and gets `ci.yml` and
+  `pyproject.toml` right, which matter more — but be accurate about the
+  severity: `wire-fleet-member` DETECTS missing shims and opens a PR adding
+  them. The cost of the wrong model is rework, not an undetected hole.
+
 ### 🪤 THE REGISTER-FIRST TRAP — two rules that read as a deadlock
 
 Found 2026-07-20 while checking the relocation inventory against the spec. Two
