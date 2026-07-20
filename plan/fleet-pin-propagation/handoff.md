@@ -11,6 +11,78 @@ Everything below this section is history and reasoning. This section is the
 current truth. **Nothing is in flight; no PR of either session's is unmerged;
 every primary checkout is clean on its default branch.**
 
+### ✅ BOTH 2026-07-04 STALLED PROPOSALS ARE NOW RATIFIED
+
+The filed-but-never-ratified cluster is cleared. Both are live spec:
+
+| proposal | repo | outcome |
+|---|---|---|
+| `factory-sandbox-credential-capability-boundary` | orchestrator | **v045**, PR #852 (`e9a7507`) |
+| `reusable-release-park-parity` | dev-tooling | **v029**, PR #517 (`bcdf175`) |
+
+**v029's deliverable is verified by a falsifiable test, not a report:**
+`git grep -c 'reusable-release-park' origin/master -- SPECIFICATION/contracts.md`
+was **0** and is now **2**. A shipped workflow — the fleet's only detector for a
+release train that never departs — finally has contract coverage. `spec.md`'s
+category definition names the backstop, `history/v029/` is paired, and the queue
+holds only `README.md`.
+
+Getting there took two fixes to that proposal, both from its FIRST-EVER
+independent review (17 days pending, never reviewed):
+
+- **A real blocker:** it swept `contracts.md` but not the `spec.md` sentence
+  DEFINING the category, so ratifying would have landed a contradiction — the
+  spec asserting the category is pin-and-bump-only while its own inventory said
+  otherwise. Fourth target added (PR #510).
+- **Two staleness fixes** (PR #513): a sweep count that contradicted itself, and
+  a **dead design-record path** cited twice —
+  `plan/fleet-plugin-currency/research/design.md` no longer resolves; the thread
+  was archived and it now lives under `plan/archive/`. Both were narration, so
+  neither reached the ratified spec — but ratification freezes the proposal into
+  `history/` BYTE-IDENTICALLY, so they had to be fixed BEFORE the accept, not
+  after.
+
+### ⚠ THE RATIFICATION SURFACED A SYSTEMIC GATE GAP — already tracked, do NOT re-file
+
+v029's revise CLI **exited 3**: post-step doctor reported two FAILs that had
+nothing to do with the ratification. Confirmed pre-existing against the untouched
+master primary.
+
+**Root cause, and it is the interesting part: `livespec-dev-tooling` is the ONLY
+fleet repo whose `just check` does not wire `check-doctor-static`.** Measured
+2026-07-21 — `grep -c check-doctor-static justfile` is **0** there versus **2–3**
+in livespec, orchestrator-beads-fabro, console-beads-fabro, driver-claude, and
+runtime. So spec-tree violations accumulate invisibly and ambush the next
+unrelated revise. Its justfile comment asserting "doctor-static — dev-tooling has
+none" is FALSE: the repo has a six-file governed `SPECIFICATION/` tree. That stale
+comment is likely why the gap persisted.
+
+**All of it was ALREADY filed** — `livespec-dev-tooling-tem4t2` (the systemic
+gap, `blocked`), `7bfhkm` and `kkmhwo` (its two blockers), `goucoq`. **No new
+item was filed**, and that was a deliberate call: the ratifying run recommended
+filing "one small work-item covering both findings", which would have duplicated
+AND mis-scoped them.
+
+**The mis-scope is worth carrying as a method warning.** Post-step doctor names
+ONE offender for the section-citation finding (`livespec_dev_tooling/__init__.py`),
+which reads like a one-docstring fix. Measured: **116 `§"` occurrences across 71
+`.py` files**. The existing blockers already scope it correctly (~100-file,
+~16 cross-repo, matching 116/13 measured) — so the DOCTOR OUTPUT is the
+misleading artifact, and triaging from it alone under-scopes by two orders of
+magnitude. Caveat kept honest: the check scans comment tokens and docstrings
+only, and the same marker inside a normal string literal is legitimate, so 116 is
+an UPPER BOUND, not a violation count.
+
+**Two corrections journaled on `tem4t2`:**
+
+- Its evidence says findings (1)+(2) "are being fixed by a dedicated PR
+  (`fix-dt-stale-spec-citations`)". **That PR never existed** — no PR in any
+  state, no branch. Both findings are still live 17 days on. Do not read that
+  line as in-flight work.
+- Its prediction that finding (3) "resolves at the next `contracts.md` revise"
+  **came true** — v029 was that revise, and doctor now reports 2 findings, not 3.
+  The drop is vindication, not evidence drift.
+
 ### ✅ RATIFIED — the constraint is LIVE SPEC as of v045
 
 **The owed constraint is no longer a pending proposal.** A Fable agent drove
@@ -167,7 +239,48 @@ BRANCH REFRESH, not a gate fix.** Refresh #328 (or let the fan-out open a fresh
 bump PR) and re-read. Do not re-derive the completeness gate. **But it cannot
 merge yet** — see the console master red immediately below.
 
-### ⚠ NEW: the console's master CI is RED — filed P1
+### ⚠ THE CONSOLE MASTER RED IS DIAGNOSED — the behavior question is ANSWERED
+
+`livespec-console-beads-fabro-1s1` was filed with its behavior question
+deliberately left open ("resolve which semantics are correct before editing
+either side"). **It is now answered by reading the code: the TEST is stale, and
+the fix was deliberate.** Full mechanism journaled on the item; a fix is
+dispatched.
+
+`3c0496d4` scoped `ingest_needs_attention`'s `prior` set to the ingesting repo.
+`prior` is what an incoming snapshot is diffed against — anything in it but
+absent from the snapshot gets resolved. Before, that set was EVERY attention item
+regardless of origin, so ingesting repo A silently retired items belonging to
+anything else.
+
+**The decisive detail:** `autonomous_escalation_attention_item` builds its source
+ref as `AttentionSourceRef::new("orchestrator-journal", ...)` — the repo field is
+a LITERAL SENTINEL STRING, not a repo name. So the filter never matches for any
+real repo, and a journal escalation can never be resolved by ANY needs-attention
+ingest. It clears only through its own valve. That is the intended invariant: an
+operator-owed decision must not be swept away by an unrelated repo's routine
+snapshot.
+
+So the walkthrough's `attention: 0` assertion was **passing for the wrong
+reason** — it depended on the collateral sweep that WAS the bug. The fix could
+not help but fail it. Corroboration: the same commit renamed `scenario_15`'s test
+from `..._leaves_escalations` to `..._surfaces_escalations`, so the author knew
+escalations now persist and updated ONE of the two tests encoding the old
+expectation. The tmux walkthrough was missed — which is why 7 of 8 tmux tests
+still pass.
+
+**Do NOT "fix" this by reverting the repo filter or special-casing
+`orchestrator-journal` back into `prior`** — either restores the cross-repo
+collateral sweep the commit exists to remove. And do not skip or `#[ignore]` the
+walkthrough: it is the only e2e covering the full approve lifecycle across two
+repos.
+
+**Residual logged, not fixed:** that source-ref repo field is overloaded —
+sometimes a repo name, sometimes an origin kind. It works here, but any future
+code comparing `source_ref().repo()` against a repo list inherits the same silent
+non-match. Worth a typed distinction; out of scope for that item.
+
+### ⚠ ORIGINAL FILING: the console's master CI is RED — filed P1
 
 `livespec-console-beads-fabro`'s `check-e2e-tmux` fails on
 `tmux_tui_e2e_lifecycle_walkthrough_two_repos`. It is a REQUIRED check, so it
