@@ -98,6 +98,7 @@ def _write_livespec_jsonc(
     *,
     project_root: Path,
     cross_repo_targets: dict[str, Any] | None,
+    cross_repo_conformance_targets: dict[str, Any] | None = None,
 ) -> None:
     """Write a `.livespec.jsonc` carrying the given `cross_repo_targets` block.
 
@@ -111,6 +112,8 @@ def _write_livespec_jsonc(
     }
     if cross_repo_targets is not None:
         config["cross_repo_targets"] = cross_repo_targets
+    if cross_repo_conformance_targets is not None:
+        config["cross_repo_conformance_targets"] = cross_repo_conformance_targets
     _ = (project_root / ".livespec.jsonc").write_text(
         json.dumps(config, indent=2), encoding="utf-8"
     )
@@ -322,6 +325,56 @@ def test_passes_when_every_sibling_wires_full_canonical_set(
             "sibling-a": {
                 "github_url": "https://github.com/example/sibling-a",
                 "local_clone": str(sibling_clone),
+                "default_branch": "master",
+            },
+        },
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    result = wiring_completeness_cross_repo.run(ctx=ctx)
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="pass",
+        message=(
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_planning_only_targets_are_not_checked_for_wiring_completeness(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Planning-only siblings do not participate in Python wiring conformance."""
+    canonical = _get_canonical_slugs()
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    conforming_clone = _setup_sibling_clone(
+        tmp_path=tmp_path, slug="conforming-sibling", slugs=canonical
+    )
+    planning_clone = _setup_sibling_clone(tmp_path=tmp_path, slug="planning-only-sibling", slugs=())
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "conforming-sibling": {
+                "github_url": "https://github.com/example/conforming-sibling",
+                "local_clone": str(conforming_clone),
+                "default_branch": "master",
+            },
+            "planning-only-sibling": {
+                "github_url": "https://github.com/example/planning-only-sibling",
+                "local_clone": str(planning_clone),
+                "default_branch": "master",
+            },
+        },
+        cross_repo_conformance_targets={
+            "conforming-sibling": {
+                "github_url": "https://github.com/example/conforming-sibling",
+                "local_clone": str(conforming_clone),
                 "default_branch": "master",
             },
         },

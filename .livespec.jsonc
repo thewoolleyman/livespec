@@ -54,6 +54,11 @@
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
     ]
   },
+  // Planning/work-item-resolution registry. These targets are the repo slugs
+  // accepted by cross-tenant DependsOnEntry refs (`sibling_work_item`,
+  // `pull_request`, and `branch`). Do not use this block as an input to
+  // Python check-conformance gates; non-Python siblings can legitimately live
+  // here for planning only.
   "cross_repo_targets": {
     "livespec": {
       "github_url": "https://github.com/thewoolleyman/livespec",
@@ -63,6 +68,31 @@
     "livespec-orchestrator-git-jsonl": {
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
       "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
+      "default_branch": "master"
+    },
+    "livespec-dev-tooling": {
+      "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
+      "local_clone": "/data/projects/livespec-dev-tooling",
+      "default_branch": "master"
+    },
+    "livespec-console-beads-fabro": {
+      "github_url": "https://github.com/thewoolleyman/livespec-console-beads-fabro",
+      "local_clone": "/data/projects/livespec-console-beads-fabro",
+      "default_branch": "master"
+    }
+  },
+  // Code-conformance registry for doctor-wiring-completeness-cross-repo. This
+  // list is deliberately narrower than the planning registry: it contains only
+  // Python siblings expected to wire the fleet's canonical Python check slugs.
+  "cross_repo_conformance_targets": {
+    "livespec-orchestrator-git-jsonl": {
+      "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
+      "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
+      "default_branch": "master"
+    },
+    "livespec-dev-tooling": {
+      "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
+      "local_clone": "/data/projects/livespec-dev-tooling",
       "default_branch": "master"
     }
   }
