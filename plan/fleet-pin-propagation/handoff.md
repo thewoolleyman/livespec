@@ -470,6 +470,37 @@ landed and what blocked. The live next actions are now:**
   `livespec-dev-tooling-5o6ssu` both sit at `acceptance` under
   `ai-then-human`. Maintainer-owned; an operator accepting on the maintainer's
   behalf defeats the policy.
+
+  **This acceptance is the thread's only remaining unblock, and it releases two
+  MORE slices.** Verified live 2026-07-20: with the four dispatched, there is
+  NO further agent-dispatchable work in this thread — every other candidate is
+  gated behind these two acceptances.
+
+  | Follow-on slice | Blocked by | Releases when accepted |
+  |---|---|---|
+  | `livespec-dbbgoc` (the CI-blindness companion to the registry split) | `livespec-2hya5g` | ✅ |
+  | `livespec-dev-tooling-dqfmjr` (fan-out dedupe, the `y6kqgr` replacement) | `livespec-dev-tooling-5o6ssu` | ✅ |
+
+  So accepting two items releases two more, and both follow-ons avoid the new
+  infra defects (`dqfmjr` is a Python repo and touches no
+  `.github/workflows/`), so they should dispatch cleanly.
+
+  **A TRAP FOR THE NEXT SESSION — do not read a `ready` status as
+  dispatchable.** Both follow-ons show livespec status `ready` with
+  `admission:auto`, which looks dispatchable and is NOT. The dispatcher keeps
+  its OWN ready set, which additionally requires each blocker to be `done` —
+  and only the human acceptance moves an `acceptance` item to `done`. Both were
+  attempted and cleanly refused:
+
+  ```
+  ERROR: requested work-item(s) not in the ready set: livespec-dbbgoc
+  ```
+
+  This is a `--action impl:` exit code **3** (precondition), NOT the
+  empty-journal false-green of `bd-ib-c4jfp6`: the refusal is honest, nothing
+  is admitted, no Fabro run is burned, and the item is NOT stranded `active`.
+  Attempting a gated item is therefore cheap and safe — but pointless until the
+  acceptance lands.
 - **B. Route the two new P1 infra defects** — `bd-ib-w3d0` (workflow/image
   resolution) and `bd-ib-nga9` (sandbox `workflows` permission), both in the
   `livespec-orchestrator-beads-fabro` tenant. They block `…-5kd56a` and
