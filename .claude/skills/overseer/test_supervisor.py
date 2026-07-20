@@ -266,6 +266,13 @@ def _sup(tmp_path, fake, **kwargs):
     # a simulated session (see test_refresh_and_adopt_route_codex_through_injected_seams).
     kwargs.setdefault("codex_home", str(tmp_path / "codex-home-none"))
     kwargs.setdefault("codex_pids_of_comm", lambda _comm: [])
+    # Hermetic host preconditions: present them as SUPPORTED so no test depends on the
+    # RUNNER having tmux (or a /proc). Without these defaults the `run()` startup gate
+    # would fail every existing run() test on a container without tmux installed — the
+    # same host-coupling hazard the codex seams above already close. A
+    # precondition-behavior test overrides them to simulate an unsupported host.
+    kwargs.setdefault("proc_root", str(tmp_path))  # any existing dir reads as "has /proc"
+    kwargs.setdefault("which", lambda _name: "/usr/bin/tmux")
     return supervisor.Supervisor(
         tmux=fake,
         store_path=str(tmp_path / "map.jsonl"),
@@ -2091,6 +2098,84 @@ def test_run_loop_survives_a_tick_exception(tmp_path):
 
     sup.tick = boom  # type: ignore[assignment]
     sup.run(once=True)  # must NOT raise
+
+
+# --------------------------------------------------------------------------- #
+# Startup gate: Linux + tmux is a DECLARED REQUIREMENT (D4) — refuse, don't crash.
+# --------------------------------------------------------------------------- #
+
+
+def test_supported_host_yields_no_reasons(tmp_path):
+    """The happy path: an existing /proc and a resolvable tmux == zero reasons."""
+    sup = _sup(tmp_path, FakeTmux())
+    assert sup.unsupported_host_reasons() == []
+
+
+def test_absent_proc_is_an_unsupported_host(tmp_path):
+    """macOS has no /proc AT ALL, and both session readers parse /proc/<pid>/ — so a
+    missing proc_root is a declared-precondition failure, named as such."""
+    sup = _sup(tmp_path, FakeTmux(), proc_root=str(tmp_path / "no-such-proc"))
+    reasons = sup.unsupported_host_reasons()
+    assert len(reasons) == 1
+    assert "/proc" in reasons[0] and "Linux is required" in reasons[0]
+
+
+def test_absent_tmux_is_an_unsupported_host(tmp_path):
+    """Every acting mechanic shells out to a real tmux, so tmux-off-PATH is fatal."""
+    sup = _sup(tmp_path, FakeTmux(), which=lambda _name: None)
+    reasons = sup.unsupported_host_reasons()
+    assert len(reasons) == 1
+    assert "tmux is not on PATH" in reasons[0]
+
+
+def test_the_gate_asks_about_tmux_by_its_real_name(tmp_path):
+    """The gate must ask `which` about the literal 'tmux', NOT a caller's injected
+    tmux_bin: it answers 'is this host supported at all?', and the beside-tests' fake
+    tmux must never be able to satisfy it."""
+    asked: list[str] = []
+    sup = _sup(tmp_path, FakeTmux(), which=lambda name: asked.append(name) or "/usr/bin/tmux")
+    _ = sup.unsupported_host_reasons()
+    assert asked == ["tmux"]
+
+
+def test_run_refuses_on_an_unsupported_host_before_ticking(tmp_path):
+    """The refusal mirrors the gitignore gate: surface an actionable reason and return
+    from run() BEFORE any tick — an obscure FileNotFoundError several ticks deep is
+    exactly what declaring the precondition exists to prevent."""
+    repo, _topic = _make_plan(tmp_path)
+    err = _io.StringIO()
+    sup = _sup(
+        tmp_path,
+        FakeTmux(),
+        watch_repos=[str(repo)],
+        gitignore_check=lambda _r: True,
+        which=lambda _name: None,
+    )
+    ticked: list[bool] = []
+    sup.tick = lambda *, act: ticked.append(act)  # type: ignore[assignment]  # spy
+    with contextlib.redirect_stderr(err):
+        sup.run(once=True)
+    assert ticked == []  # NO tick ran
+    assert "refusing to start: unsupported host" in err.getvalue()
+
+
+def test_the_host_gate_precedes_the_gitignore_gate(tmp_path):
+    """Ordering matters: an unsupported host is the more fundamental failure, so it is
+    reported even when a watched repo ALSO has an ungitignored tmp/overseer/. Reporting
+    the gitignore offence first would send the operator to fix the wrong thing."""
+    repo, _topic = _make_plan(tmp_path)
+    err = _io.StringIO()
+    sup = _sup(
+        tmp_path,
+        FakeTmux(),
+        watch_repos=[str(repo)],
+        gitignore_check=lambda _r: False,  # ALSO an offender
+        which=lambda _name: None,
+    )
+    with contextlib.redirect_stderr(err):
+        sup.run(once=True)
+    assert "unsupported host" in err.getvalue()
+    assert "NOT gitignored" not in err.getvalue()
 
 
 # --------------------------------------------------------------------------- #
