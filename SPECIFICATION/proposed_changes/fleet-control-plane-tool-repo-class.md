@@ -33,10 +33,78 @@ A defining sentence for the new class MUST be added to the same paragraph, immed
 +A `control-plane-tool` member is a Control-Plane member that ships an operator TOOL rather than the cockpit APPLICATION the `console` class carries; the two are PEERS, and a `control-plane-tool` member MUST NOT be described as a component of, or a sidecar within, a `console` member. Unlike `console`, a `control-plane-tool` member is an ordinary pin-and-bump consumer — it is absent from the non-pin-consuming carve-out in `livespec-dev-tooling`'s `contracts.md` §"Bump-pin policy" and so inherits that policy's default, which the carve-out text itself governs; this contract MUST NOT restate the pin policy.
 ```
 
+### Required ride-along co-edits (added after independent review)
+
+An independent adversarial review found TWO further live enumerations of the
+closed class set that this change would leave contradicting the amended
+contract. Both MUST be co-edited in the same revise payload's
+`resulting_files[]`, spelled project-root-relative via the `../` join (the
+established pattern for `../tests/heading-coverage.json`):
+
+1. `.livespec-fleet-manifest.jsonc` — the manifest's own header comment
+   enumerates the closed set. This is the very artifact the amended paragraph
+   defines, so leaving it stale is precisely the drift livespec exists to
+   catch. The comment MUST be amended:
+
+```diff
+-// `fleet` entries are { repo, class } where `class` is one of:
+-// core / enforcement-suite / impl-plugin / driver-plugin / library / console.
++// `fleet` entries are { repo, class } where `class` is one of:
++// core / enforcement-suite / impl-plugin / driver-plugin / library / console /
++// control-plane-tool.
+```
+
+2. `.claude/skills/needs-attention-fleet/SKILL.md` — carries the same stale
+   closed-set enumeration. It is a LOCAL-ONLY, unsynced maintainer skill and is
+   behaviorally class-independent, so the stakes are lower, but it is still a
+   contradicting statement and MUST be amended:
+
+```diff
+-- **`fleet`** — `{repo, class}` entries (core / enforcement-suite / impl-plugin /
+-  driver-plugin / library / console). These contribute product `needs-attention`
++- **`fleet`** — `{repo, class}` entries (core / enforcement-suite / impl-plugin /
++  driver-plugin / library / console / control-plane-tool). These contribute product `needs-attention`
+```
+
+Neither co-edit is premature relative to the implementation ordering below: a
+JSONC comment is stripped before parsing and the SKILL.md line is prose, so
+neither is read by any validator and neither can break while
+`livespec-dev-tooling` still lacks the class value.
+
+### ⚠️ Ratification ordering constraint — the failure mode is TOTAL, not soft
+
+`livespec-dev-tooling`'s `contract.py` `_parse_member` rejects any entry whose
+`class` is absent from `REPO_CLASSES`, and `_parse_members` returns `None` for
+the WHOLE array on a single bad entry. So if
+`.livespec-fleet-manifest.jsonc` ever REGISTERS a member with
+`"class": "control-plane-tool"` before dev-tooling's `REPO_CLASSES` change has
+merged AND been RELEASED — fleet pins track releases, not master — the entire
+manifest becomes unparseable and every fleet sweep, release fan-out, and
+`ensure-plugins` derivation breaks at once.
+
+The strict order therefore MUST be: (1) ratify this spec change; (2) land and
+RELEASE the `REPO_CLASSES` addition in `livespec-dev-tooling`; (3) only then
+register `livespec-overseer` in the manifest. This proposal registers no
+member and so cannot itself trigger the failure, but whoever carries the
+dev-tooling work-item MUST carry this ordering with it.
+
 Two deliberate non-changes, recorded so a later reader does not read them as omissions:
 
 1. The pin-and-bump consequence MUST NOT be restated normatively in core. `livespec-dev-tooling`'s `contracts.md` §"Bump-pin policy" defines the non-pin-consuming-member carve-out and names `console` as its first and only member; a class absent from that carve-out is a pin-and-bump consumer by construction. Duplicating the rule in core would create two sources of truth for one policy.
 
 2. No `## ` heading is added, renamed, or removed by this change — it amends prose inside the existing §"Fleet membership contract" section — so `tests/heading-coverage.json` requires NO co-edit under `spec.md` §"Self-application". A reviewer SHOULD verify this rather than assume it.
 
-The paired implementation change is OUT OF SCOPE for this proposal and MUST land separately in `livespec-dev-tooling`: adding `control-plane-tool` to that repo's `REPO_CLASSES` tuple. No partition rework is required there, because both `_PIN_WEB_CLASSES` and `_DEV_TOOLING_PIN_CLASSES` are subtraction sets over the full class set and so admit a newly-added class automatically.
+The paired implementation change is OUT OF SCOPE for this proposal and MUST land separately in `livespec-dev-tooling`: adding `control-plane-tool` to that repo's `REPO_CLASSES` tuple. No partition rework is required there, because both `_PIN_WEB_CLASSES` and `_DEV_TOOLING_PIN_CLASSES` are subtraction sets over the full class set and so admit a newly-added class automatically. Independent review confirmed that the one ADDITIVE set, `_TEMPLATE_BORN_CLASSES`, is `frozenset({"impl-plugin"})`, so the new class is correctly excluded from the template-born rows automatically as well.
+
+### Noted, deliberately NOT changed here
+
+`spec.md`'s three-plane definition glosses the Control Plane as "the operator
+console; reference: `livespec-console-*`". A `control-plane-tool` member such as
+`livespec-overseer` matches neither that gloss nor that wildcard. This is NOT a
+flat contradiction — the parenthetical is a role gloss plus a reference
+implementation, not a closed membership enumeration — so amending it is not
+required for this change to be coherent, and bundling a `spec.md` plane-model
+edit into a fleet-membership amendment would widen this proposal's blast radius
+past its topic. It is recorded here so a later reader sees it was considered
+rather than missed, and SHOULD be revisited as its own proposal once the
+`livespec-overseer` repo exists.
