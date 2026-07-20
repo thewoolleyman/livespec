@@ -86,9 +86,15 @@ already solved in-fleet: `subagent_stop_guard` blocks with exit `2`, caps at
 three blocks per session, and fails open on every error path. Both superseded
 recommendations are struck and annotated in `design.md`, not deleted.
 
-Still open, and a genuine maintainer call: **which home** (the table above), and
+~~Still open, and a genuine maintainer call: **which home** (the table above), and
 whether the existing plan-persistence contract should be widened in the same
-pass or left alone.
+pass or left alone.~~
+
+**MOOT as of 2026-07-19 — see [`plan.md`](./plan.md).** No hook is built
+anywhere under the cut plan, so the home question is disposed rather than open.
+The table above is retained for its reasoning only. What remains is W3 (widen
+the uncommitted-edits invariant to `plan/`) and W4 (say "commit it" in the
+overseer wrap-up).
 
 One further constraint will waste a session if discovered late:
 

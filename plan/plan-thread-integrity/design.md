@@ -245,7 +245,10 @@ Three layers, named honestly by what each actually does:
    every error path. The hedge was reasonable before those were known; it is not
    a live objection now. See §"Why warn-only cannot achieve this thread's goal".
 2. **Detection — widen the existing invariant to cover `plan/`.** This makes the
-   condition visible to `just check`, to CI, and to every other session, rather
+   condition visible to `just check` ~~, to CI,~~ and to every other session
+   working in the affected checkout (**CORRECTED 2026-07-19: not CI** — the
+   check enumerates only worktrees of the checkout it runs in, so a fresh CI
+   clone cannot carry another host's uncommitted state), rather
    than only to the one that caused it. Severity stays `warn`: a dirty handoff
    should not block unrelated work, and the existing rationale (the violating
    work is not yet pushed, so the warning gives time to recover) still holds.
