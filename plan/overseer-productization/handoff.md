@@ -1623,16 +1623,42 @@ Measured 2026-07-20. This is the "what actually has to happen" list for
 the CLASS) nor `b1uo.3` (which only decides where the watch-set comes from) — so
 it can be prepared now.
 
-**What MOVES (the folder itself — 26 entries):** 8 product modules
-(`supervisor` `registry` `signals` `tmuxio` `claude_sessions` `codex_sessions`
-`jsonio` `streams`), 8 beside-test modules + `conftest.py`, the 2 extensionless
-executables (`overseerd`, `overseer-start`), 3 docs (`SKILL.md`, `AGENTS.md`,
-`marker-protocol.md`), and the nested `.claude/CLAUDE.md -> ../AGENTS.md`
-symlink that makes Claude Code load the maintenance guide in-folder.
+**What MOVES (the folder itself — 24 TRACKED entries).** Re-verified against
+`git ls-files` 2026-07-20; the count reconciles exactly as 8 + 9 + 1 + 2 + 3 + 1:
+
+| Group | Count | Entries |
+|---|---|---|
+| product modules | 8 | `supervisor` `registry` `signals` `tmuxio` `claude_sessions` `codex_sessions` `jsonio` `streams` |
+| beside-test modules | **9** | one per product module, **plus `test_overseer_start.py`** |
+| test fixture | 1 | `conftest.py` |
+| extensionless executables | 2 | `overseerd`, `overseer-start` |
+| docs | 3 | `SKILL.md`, `AGENTS.md`, `marker-protocol.md` |
+| nested symlink | 1 | `.claude/CLAUDE.md -> ../AGENTS.md`, which makes Claude Code load the maintenance guide in-folder |
+
+**⚠️ The previous version of this inventory was wrong three different ways at
+once**, and the disagreement between them is the tell: its headline said **26**,
+its own enumeration summed to **23**, and the truth is **24**. The substantive
+error is "8 beside-test modules" — there are **9**. The missed file is
+`test_overseer_start.py`, which tests the `overseer-start` EXECUTABLE rather
+than a product module, so anyone reasoning from test-per-product-module symmetry
+lands on 8 and silently leaves it behind.
+
+`__pycache__` appears in `ls -A` but is untracked build output and does NOT
+move — count with `git ls-files`, not `ls`, or you get 25.
 
 **What must be DELETED from core, or core breaks.** These are the ones a naive
 `git mv` leaves behind, and each fails LOUDLY rather than silently — pyright
-errors on include paths that no longer resolve, so `check-types` goes red:
+errors on include paths that no longer resolve, so `check-types` goes red.
+
+**✅ All seven rows RE-VERIFIED against live master 2026-07-20 — every line
+number below is still EXACT, zero drift.** That is worth stating as a positive
+result, because §"Reading warning" trains a reader to distrust every line
+citation on this page. The distrust is correctly aimed at `supervisor.py`
+specifically — a ~2900-line file that changes most days — and NOT at
+`pyproject.toml` / `justfile` / `.github/workflows/ci.yml`, which are stable
+enough that these coordinates can be used directly. (`supervisor.py`'s own
+`parents[3]` was re-measured at `:2688`, versus the `~:2686` cited below — still
+within the `~` tolerance, and still cite it by SYMBOL.)
 
 | Core file | Sites | What it does |
 |---|---|---|
