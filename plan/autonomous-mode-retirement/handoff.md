@@ -217,6 +217,17 @@ spanning three repos and two independent operators. Encountered here:
     the test it asked for would have passed vacuously in CI's root container.
     **A permission-based provocation is silently disarmed for root** — the same
     masking the item was filed to fix.
+11. PR #847 was reported as "OPEN, auto-merge deliberately off, dual review
+    running" when it had already merged unreviewed. `gh pr checks` was read as
+    if it reported merge STATE; merge state was actually reported from the
+    operator's own INTENT. **Not doing a thing is not evidence the thing did not
+    happen** — query `gh pr view --json state,mergedAt,reviews`.
+12. A concurrency probe was staged by copying the module off the FILESYSTEM of a
+    primary checkout that was 2 commits behind, so it silently tested the
+    PRE-fix code. Caught only because the copied source visibly lacked the fix.
+    **Read committed state with `git show origin/master:<path>`** — the standing
+    rule exists precisely for this, and a working tree deliberately left unpulled
+    is exactly when it bites.
 
 ## Corrections the overseer made to its own directives
 
@@ -241,7 +252,7 @@ above all remaining Defect-B work.
 |---|---|
 | 1. `just check` RED for non-root runners | ✅ FIXED, merged (PR #845) |
 | 2. `fcntl.flock` reclaim mutex has ZERO coverage | ✅ FIXED, merged (PR #845) |
-| 3. unguarded mutex I/O | ✅ **IMPLEMENTED — PR #847, OPEN, not yet merged** |
+| 3. unguarded mutex I/O | ✅ **MERGED** — PR #847, merge SHA `0cf21c53` |
 
 **Clause 3, as shipped.** `_stale_janitor_lock_reclaimed`
 (`.claude-plugin/scripts/livespec_orchestrator_beads_fabro/commands/_dispatcher_janitor_lock.py`)
@@ -254,10 +265,48 @@ known-adjacent defect.
 
 PR: `livespec-orchestrator-beads-fabro`
 [#847](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/847),
-branch `fix-janitor-mutex-io`, worktree
-`~/.worktrees/livespec-orchestrator-beads-fabro/fix-janitor-mutex-io`. CI 64
-pass / 1 skip (`export-telemetry`, expected on PRs). **Auto-merge deliberately
-OFF** per the item's hard constraint that this needs dual review.
+merged `2026-07-20T21:27:28Z` as `0cf21c53`, on `origin/master`, master CI green,
+release 0.45.17 cut on top. Both feature worktrees (`fix-janitor-mutex-io` and
+`docs-retire-mode-prose`) are fully merged and SAFE TO REAP.
+
+### 🛑 THE PREVIOUS REVISION OF THIS FILE SAID "OPEN, not yet merged". IT WAS WRONG.
+
+It also said "**Auto-merge deliberately OFF** per the item's hard constraint".
+Both false, and the reason is a fleet-wide defect, not an operator slip.
+
+`bd-ib-yqfw` carried the hard constraint "Do NOT enable auto-merge — this needs
+dual review". The operator complied literally and **the PR merged anyway,
+unreviewed, 136 seconds after creation** (`reviews: []`). Auto-merge was enabled
+by `app/livespec-pr-bot` at 21:26:12Z, not by any human or agent action.
+
+**`.github/workflows/auto-enable-merge.yml:68-75` enables `--auto --rebase` on
+every non-draft PR whose author is in the allowlist `["thewoolleyman"]` — the
+identity EVERY agent pushes under.** So "do not enable auto-merge" is
+**unenforceable by inaction**: not doing it accomplishes nothing, because the
+repo does it for you. The only levers the workflow actually honors are the
+**`do-not-merge` label** (`:70`) or opening the PR as a **draft** (`:69`). The
+item named a lever that does not exist, so its constraint read as satisfiable
+while being inert.
+
+Same defect class as D1's inert `auto_approve_ready`, one layer up: **a control
+that reads as governing but is structurally inert.** And nothing surfaces the
+override — `reviews: []` plus a clean green merge is indistinguishable from
+review-passed, which is `bd-ib-hdd6`'s "silence reads as a PASS" hole.
+
+Fleet-wide: the workflow is copier-generated from livespec core's
+`templates/impl-plugin/.github/workflows/auto-enable-merge.yml.jinja`, so EVERY
+`livespec-impl-*` repo behaves identically and every future "needs dual review"
+item has the same hole. **Filed as `livespec-4rq4` (P1, livespec core — where
+the template lives).** Disposition is deliberately NOT self-resolved: it is a
+fleet policy call between wiring the label into the dispatch path, re-wording
+items to name the real lever, or narrowing the allowlist (which risks
+re-stalling the release train `livespec-c1k9` fixed).
+
+**How the operator got it wrong, so the next session does not:** they read
+`gh pr checks` (which showed checks passing) and reported merge state from
+their own INTENT rather than querying it. `gh pr view <n> --json state,mergedAt,reviews`
+is the right source. This is instance 11 of this thread's standing lesson,
+committed while writing up that very lesson.
 
 ### ⚠ CORRECTION TO `bd-ib-yqfw`'s OWN PRESCRIBED REPRODUCTION — it is root-masked
 
@@ -480,13 +529,54 @@ second job.
 | `bd-ib-0s5` | orchestrator | Detached; design-human-gated cost-gate spec amendment. |
 | §B findings | various | Seven remain VERIFY-THEN-FILE (§ Preserved findings above). Verification MUST request CLOSED records — the default listing hides them. |
 
-**The ride-along prose is now CARRIED — the debt is discharged.** The three
-comment-only corrections (`dispatcher.py`, `_dispatcher_cost_pricing.py`,
-`commands/CLAUDE.md`) ride PR #847 alongside clause 3's real tests, which is
-exactly the carrier the previous session anticipated. Once #847 merges, the
-worktree `~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose`
-holds nothing unique and is **safe to reap** — verify with `git diff --cached`
-against the merged content first.
+**The ride-along prose is CARRIED AND MERGED — the debt is discharged.** The
+three comment-only corrections (`dispatcher.py`, `_dispatcher_cost_pricing.py`,
+`commands/CLAUDE.md`) rode PR #847 alongside clause 3's real tests, which is
+exactly the carrier the previous session anticipated, and landed in `0cf21c53`.
+The worktree `~/.worktrees/livespec-orchestrator-beads-fabro/docs-retire-mode-prose`
+now holds nothing unique and is **safe to reap**.
+
+One residual, P2 and cosmetic: `commands/CLAUDE.md` still says an unattended
+queue drain "refuses to keep picking on unobservable cost" UNQUALIFIED, while
+the `_dispatcher_cost_pricing.py` edit in that same PR correctly scopes refusal
+to `LIVESPEC_COST_MODE=enforce` (the default `report` never refuses). Prose
+half-corrected; self-resolvable in any later pass.
+
+### Clause 3 was NOT an ownership-correctness fix — do not describe it as one
+
+Verified in-session by a six-process probe against merged `origin/master`, and
+against `0cf21c53~1` for discrimination (the second reviewer went idle three
+times across two requests and never delivered, so this angle was verified
+directly rather than recorded as reviewed):
+
+| Code | mutex healthy | mutex BROKEN (dir at `<lock>.reclaim`) |
+|---|---|---|
+| merged `0cf21c53` | 1 winner, no exception | **0 winners, no exception**, stale lock intact |
+| pre-fix `0cf21c53~1` | 1 winner, no exception | 0 winners, **`IsADirectoryError` UNCAUGHT** |
+
+**The winner counts are identical before and after.** Double ownership was
+already impossible pre-fix — because CRASHING also prevents it. The only
+discriminator is the uncaught-exception field. So what clause 3 bought is: an
+expected environment error that **killed the whole dispatcher process mid-drain**
+now yields **one clean per-item `janitor-checkout-locked` outcome**. That is a
+fail-open-invariant repair (the `0jxs` class), NOT a race repair. Saying "fixed
+a lock race" would overclaim and misdirect anyone later auditing the ownership
+protocol. The mutex remains load-bearing for the original `bd-ib-w4h4` race;
+nothing here weakens it.
+
+Also confirmed: fail-closed refuses to **CLAIM**, not merely to reclaim (the
+safe direction), and the `for _ in range(2)` loop cannot reach a second
+iteration on the mutex-failure path — `claim_janitor_lock:47-48` returns the
+contention detail immediately. No permanent wedge: the mutex is opened only on
+the contention path, so removing the stale lock file recovers via `O_EXCL`
+without touching the mutex at all.
+
+**Follow-up filed as `bd-ib-lzau` (P2):** PR #847's claim that the mutex
+`open`/`flock` were "the only filesystem access in the module not wrapped in
+`attempt(...)`" was OVERSTATED. `claim_janitor_lock:38` (`mkdir`, on every claim
+path) and `_write_janitor_lock:62-64` (`os.fdopen` + writes, on the SUCCESS
+path, where an ENOSPC can leave a partial-payload lock that reads as "no pid
+recorded") are both still raw — same crash class.
 
 ## Deliberately NOT owned here
 
