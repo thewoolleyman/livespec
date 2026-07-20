@@ -1373,6 +1373,42 @@ code gate alone; only the ledger item spelled out the documentation clause. A
 green `just check` and live-exercise evidence cannot detect a missing doc
 sentence, so nothing mechanical would ever have caught this.
 
+### 🪤 THE REGISTER-FIRST TRAP — two rules that read as a deadlock
+
+Found 2026-07-20 while checking the relocation inventory against the spec. Two
+rules govern the birth of `livespec-overseer`, and taken at face value they
+contradict each other:
+
+- **`non-functional-requirements.md:1065` (Repo birth procedure)** — "Scaffold
+  … → **register in the manifest FIRST** → run `wire-fleet-member` → fleet
+  conformance green. Register-first makes a half-wired new repo red fleet CI
+  rather than an invisible straggler."
+- **The ordering constraint on the `control-plane-tool` proposal** —
+  registering a member whose class dev-tooling does not yet know makes
+  `_parse_members` return `None` for the WHOLE array, so the entire manifest
+  becomes unparseable and every consumer breaks at once.
+
+A reader who follows "register FIRST" literally, as the first act of the move,
+BRICKS THE FLEET MANIFEST.
+
+**There is no actual deadlock — the scopes differ, and that is the whole
+resolution.** "Register FIRST" is first *within the birth procedure*, not first
+overall. The birth procedure may not BEGIN until the class exists in a RELEASED
+`livespec-dev-tooling`. So the full sequence is:
+
+1. Ratify core's `control-plane-tool` proposal (the contract gains the class).
+2. Land AND **release** the `REPO_CLASSES` addition in `livespec-dev-tooling` —
+   fleet pins track releases, not master, so a merged-but-unreleased change is
+   NOT enough.
+3. **Only now** begin the birth procedure, and inside it register-first as
+   `:1065` requires: scaffold → register → `wire-fleet-member` → green.
+
+**Do not "resolve" this by reordering the birth procedure** (registering late to
+dodge the parse failure). Register-first exists so a half-wired repo shows up as
+red fleet CI instead of an invisible straggler; dropping it trades a loud
+failure for a silent one. The correct move is to satisfy its precondition
+first, which step 2 does.
+
 ### 📦 RELOCATION INVENTORY — everything core-side that the move touches
 
 Measured 2026-07-20. This is the "what actually has to happen" list for
