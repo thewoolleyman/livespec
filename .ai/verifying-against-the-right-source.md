@@ -23,7 +23,7 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Six instances — all observed on 2026-07-20, across three repos and two
+## Seven instances — all observed on 2026-07-20, across three repos and two
 ## independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
@@ -115,9 +115,27 @@ shows the pattern reaching the person REVIEWING the work as readily as the perso
 doing it — which is the strongest available argument that it is environmental
 rather than a matter of individual care.
 
+### 7. An archived plan thread moves every path it owns
+
+A fleet audit checked whether four confirmation artifacts existed, searched the
+LIVE thread path (`plan/<topic>/`), found nothing, and concluded the dispatches
+that would have produced them never ran. It then reported a work-item as wrongly
+parked in the `acceptance` lane.
+
+The artifacts existed — at `plan/archive/<topic>/`. The thread had been ARCHIVED
+after those dispatches completed, which moved every path it owned. The items were
+awaiting a legitimate acceptance of real work and belonged exactly where they
+were. Acting on the wrong conclusion caused churn.
+
+**Counter-move:** when checking whether a plan-thread artifact exists, search
+`plan/archive/` as well as `plan/`. More generally, before concluding from a
+path-based search that work never happened, ask whether the thing being searched
+for could have MOVED — archival, renames, and reorganisations all silently
+invalidate a path-shaped query while leaving it looking authoritative.
+
 ## Why this file exists in livespec CORE
 
-The six instances span THREE repositories — `livespec`,
+The seven instances span THREE repositories — `livespec`,
 `livespec-orchestrator-beads-fabro`, and `livespec-console-beads-fabro` — and
 core owns fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.

@@ -556,12 +556,13 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: six
+  A green-looking signal read off the wrong source is not evidence: seven
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
-  ledger listing that hides closed records during a dedup sweep, and a
-  directory listing that cannot tell "never existed" from "deleted".
+  ledger listing that hides closed records during a dedup sweep, a
+  directory listing that cannot tell "never existed" from "deleted", and an
+  archived plan thread that moved every path it owned.
 
 ## Working with the maintainer
 
