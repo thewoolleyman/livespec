@@ -84,6 +84,115 @@ Remediation MUST ride in the same PR — the check is already wired into this re
 zero iterations — `cvz`'s defect sits in SERIES with `qm5`'s); both layered orchestrator repos stay
 at 0; core gains 0, which is what unblocks slice 1b.
 
+### STATUS 2026-07-21 — IMPLEMENTED, DUAL-REVIEWED, **BLOCKED ON TWO FIXES**
+
+`livespec-dev-tooling` **PR #516** (`fix/except-check-breadth-aware`) — DRAFT, `do-not-merge`,
+**NOT accepted**. https://github.com/thewoolleyman/livespec-dev-tooling/pull/516
+
+**The reviewers SPLIT — the FOURTH productive disagreement in this thread. Codex: NO-BLOCKERS.
+Fable: BLOCKERS. Fable was right, Codex was wrong, AND SO WAS THE OVERSEER'S OWN ANALYSIS.**
+A single-reviewer gate would have shipped a live false-green into the fleet's ROP enforcement.
+
+**BLOCKER 1 — `builtins.Exception` classifies NARROW and defeats BOTH gates at once.**
+`_BROAD_NAMES` is compared against `ast.unparse`, so the dotted form misses the set and reads as a
+permitted narrow catch. Ruff DOES classify it broad, so a `# noqa: BLE001` on that line is a *used*
+directive — `RUF100` stays silent, ruff is suppressed — while the check never inspects the wording
+because it thinks the catch is narrow. Reproduced end-to-end:
+
+```
+except builtins.Exception:  # noqa: BLE001 — lifts onto the IO rail
+ruff  --select BLE,E722,RUF100  ->  All checks passed!
+no_except_outside_io            ->  files_inspected: 1, offenses: 0, exit 0
+```
+
+That wording is the exact phrase `non-functional-requirements.md:781` names as marking a violation.
+
+**BLOCKER 2 — the marker matcher accepts a comment INSIDE the handler body.**
+`_clause_line_span` ends at `body[0].lineno - 1`, so a comment between the `except …:` clause and
+the first statement is INSIDE the span. Verified: span `[4, 5]`, line 5 being the body comment,
+`carries marker -> True`. **The PR's claim that a body-placed marker is inert is FALSE**, as is its
+docstring. The shipped test covers only the first body STATEMENT's line — precisely the line the
+arithmetic already excludes — so the suite encodes a weaker property than the PR asserts. Raw
+substring scanning also lets marker text in a STRING LITERAL legalize.
+
+Both share ONE root cause: string-level matching where comment-aware and name-aware matching is
+required. Fixes requested; PR stays draft.
+
+### 🔴 A METHOD FAILURE WORTH MORE THAN THE BUGS — read this before trusting a "backstop"
+
+The overseer examined the dotted-name gap, verified ruff `BLE` covers the same trees the check
+inspects in all three repos where it inspects anything, and concluded "the backstop holds; not a
+blocker." **Wrong — and the error was checking the wrong link in the chain.** Tree COVERAGE was
+verified; whether the `noqa` DEFEATS ruff was never tested. A `# noqa: BLE001` suppresses ruff on
+the very line where the check is blind, so ruff covering the tree buys nothing.
+
+**Generalize: "mechanism B backstops mechanism A" is a claim about a specific INPUT, not about
+configuration overlap.** Verifying B is enabled and in scope does NOT establish that B fires on the
+input that defeats A. Construct the adversarial input and run BOTH mechanisms against it.
+
+Smaller instance, same session: the overseer praised `_clause_line_span` for excluding body lines by
+reading its DOCSTRING rather than testing it, and propagated the claim onward. The standing lesson
+"read the test before theorising about it" applies to docstrings verbatim.
+
+### 🚨 CROSS-REPO OBLIGATION — merging PR #516 makes core's RATIFIED SPEC FALSE
+
+`SPECIFICATION/non-functional-requirements.md:649` (verified against `origin/master`) currently:
+
+- scopes breadth-mode to "a repo without an `io/` layered tree (`io_trees` unset)" — but ruling 8
+  extends breadth-mode to the LAYERED branch too, which the line does not cover;
+- states "the shipped check still no-ops when `io_trees` is unset" — FALSE on merge;
+- states "enforced by REVIEW today … MUST NOT be described as already enforced" — FALSE on merge.
+
+Core's pending queue holds only `owned-heading-coverage-todos.md`, unrelated — **no proposal covers
+this.** Per the repo's multi-repo rule this belongs in THIS epic, not a later session. It MUST go
+through `/livespec:propose-change` + independent Fable review, never a direct edit backfilled by
+doctor (the PR #797 precedent). **Sequencing: do not RATIFY before #516 merges**, or the spec
+becomes false in the other direction.
+
+### TWO of the five sanctioned markers are INERT, not one
+
+The PR discloses that `— foreign-code isolation:` can never legalize anything under the implemented
+rule (it is not a `sole` marker and is accounted per extension invocation surface, which is never a
+`main()` direct child). **`— sole loop-iteration bug-catcher:` is inert for the SAME reason** — a
+conforming marked broad catch as direct child of a supervision-LOOP body is flagged, because
+position exemption is `main()`-direct-children only. No covered repo carries either today; both
+directions are false-RED, never false-green. A follow-up ruling must name BOTH.
+
+### `supervisor_entry_files` has FOUR consumers; the new comment says "two roles"
+
+Declaring the two agent-hook files also grants whole-file exemptions in `no_write_direct` (`:85`)
+and `supervisor_discipline` (`:89`), plus a `partition_completeness` claim (`:70`). Contents are
+clean today, but a future `print()` in a guard hook — where stdout is a LIVE hook-protocol channel —
+would now pass `no_write_direct` unflagged.
+
+### WHAT BOTH REVIEWERS CONFIRMED — the change is otherwise sound
+
+No inert tests (each reverted the impl and watched them fail: 8 of 18, then 3 more). `green_token`
+narrowings correct against the ACTUAL callees. Marker truthfulness CONFIRMED (both hooks log to
+STDERR and return 0; exit 0 emits no decision, so "silent pass-through" describes the OUTPUT
+CONTRACT). Blast radius clean — BASE and HEAD executed in every fleet repo, no repo gains a red, no
+repo loses live coverage. TDD trailers genuine.
+
+**NOT checked, so do not assume:** `except*` / `ast.TryStar` handling — the 3.10 floor cannot parse
+it. Pre-existing and unchanged, but nothing establishes the checks' behavior on it.
+
+### `BLE` WAS NEVER SELECTED IN `livespec-dev-tooling` — the markers were UNWRITABLE
+
+Found by the implementing agent, verified independently. Master carried 27 ruff categories with
+`BLE` ABSENT while its own comment claimed to mirror core's, so EVERY `# noqa: BLE001` was a dead
+directive `RUF100` would flag. Ruling 8 could not have been implemented without adding it. Same
+family as `e9j`: the enforcement split the ratified rule rests on had only ONE half wired in the
+repo that SHIPS the checks. Fleet survey: only `livespec-dev-tooling` (now fixed) and
+`livespec-runtime` (still open, already covered by `livespec-4nlb` step 2 — no duplicate filed).
+
+### `livespec-h2hs` IS PRE-EMPTED AND CARRIES A DEFECTIVE INSTRUCTION
+
+PR #516 executes h2hs's step 2 and 4 of its 5 blind-catches. **h2hs step 3 instructs marking the
+hook boundaries `# noqa: BLE001 — fail-open by contract`, which is NOT in the closed set** — while
+listing the closed set correctly two lines below. Dispatching it as written would have produced the
+exact non-conforming marker this sweep exists to eliminate. Re-scope before dispatch; do not
+dispatch until #516's fate is known (they collide on the same four files).
+
 ### STATUS: DISPATCHED 2026-07-21
 
 A sub-agent is implementing the combined change in `livespec-dev-tooling`, briefed to leave the PR
