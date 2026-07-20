@@ -1,4 +1,96 @@
-# rop-sweep-fleet-policy — ZERO BLOCKERS. Dispatch is UP. sw0i+47gr+z45 DONE, ftbvgc un-stranded. e9j is P0 and next
+# rop-sweep-fleet-policy — RULING 7 IS DEAD, RULING 8 REPLACES IT. The combined check change is DISPATCHED. e9j slice 1b is unblocked
+
+## 🔴 2026-07-21 — RULING 7 COULD NOT BE IMPLEMENTED. RULING 8 SUPERSEDES IT.
+
+**Do not plan against ruling 7. It was falsified by measurement and is retired.** Its text is kept
+below only for the reasoning; every conclusion it drew about slice 1b is wrong.
+
+**What ruling 7 said:** unblock slice 1b by teaching `no_except_outside_io` to honor the five
+sanctioned v169 markers, then legalize core's three blocking sites by marking them.
+
+**Why that is impossible.** The five markers are `# noqa: BLE001` comments, and `BLE001` fires
+ONLY on BROAD catches (`non-functional-requirements.md:781` says so directly). Core's three
+blocking sites are ALL NARROW typed catches, so there is no diagnostic for a marker to suppress.
+Measured consequence — marking them turns core RED, not green:
+
+```
+probe.py:9:26: RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+    except SyntaxError:  # noqa: BLE001 - foreign-code isolation: probe
+```
+
+`RUF100` (unused-`noqa`) is live in core: `RUF` is selected wholesale and core's `ignore` list
+holds only `ISC001` and `PLC0414`. Applying ruling 7 would have produced three lint failures.
+
+Two further defects, each independently fatal: the `foreign-code isolation` marker is scoped by
+`non-functional-requirements.md:673` to "a call into user-provided EXTENSION code" — sites 162/180
+parse arbitrary TEXT and site 158 imports a FIRST-PARTY sibling; and the marker's `reported`
+clause is FALSE at all three sites, which `return None` silently.
+
+**The root confusion, worth carrying forward: `BLE001` polices catch BREADTH;
+`check-no-except-outside-io` polices catch POSITION.** Core's three sites are POSITION offenses.
+Markers are a BREADTH instrument. They do not meet. Ruling 7 assumed without checking that a
+marker could excuse a position offense.
+
+### RULING 8 (2026-07-21) — make the check BREADTH-AWARE
+
+For each catch outside the wholesale-exempt `io_trees`:
+
+- **NARROW typed catch → PASS.** v169's ratified "narrow at the seam", sanctioned regardless of
+  package shape. No marker required, and none PERMITTED (RUF100 would fire).
+- **BROAD catch → OFFENSE**, unless BOTH (a) it is in a sanctioned position — a direct child of
+  `main()` in a `supervisor_entry_files` / `commands_trees` artifact — AND (b) it carries one of
+  the five closed-set markers.
+
+Core's three sites then pass UNTOUCHED: no marker, no relocation, no spec change, no code churn.
+
+**What this strengthens:** the check does not inspect handler types at ALL today, so a broad catch
+passes on position alone and its marker wording is enforced only by review. Under ruling 8 the
+wording is mechanically gated — which makes `livespec-dev-tooling-jjb` LOAD-BEARING, the outcome
+ruling 7 was reaching for, now attached to the catches markers actually belong on.
+
+**What it gives up, stated honestly:** the two layered orchestrator repos stop flagging NARROW
+catches outside `io/`. Both measure 0 offenses today, so nothing regresses. This corrects
+OVER-enforcement rather than surrendering warranted coverage — v169 sanctions narrow-at-the-seam,
+so flagging it exceeded what the spec ratified. Ruling 7 declined to relax the layered branch on
+the grounds that strict compliance was "achievable and currently free there" — a COST argument,
+not a correctness one, and it does not survive this finding.
+
+### THE FLAT AND LAYERED BRANCHES NOW CARRY ONE RULE
+
+Ruling 1 set the FLAT branch to broad-only; ruling 8 sets the LAYERED branch to broad-only plus
+marker honoring. `io_trees` reverts to its honest meaning: which trees are wholesale exempt.
+**This collapses `qm5`, `cvz` and ruling 8 into ONE change** to `no_except_outside_io` — drop the
+`io_trees` early return (`qm5`), make an unset `source_trees` LOUD instead of a silently-empty walk
+(`cvz`), add breadth discrimination + marker honoring (ruling 8) — with `6vz`'s sibling check
+carrying the identical two structural defects.
+
+### MEASURED BLAST RADIUS — ruling 8 is what makes this landable
+
+Simulated against `livespec-dev-tooling` master using the repo's OWN `load_config`:
+
+```
+BROAD  (offenses under ruling 8):                                    4
+NARROW (PASS under ruling 8; were offenses under the strict rule):  33
+```
+
+Under the strict rule the Green commit could not have been made at all. The 4 are two genuine
+`main()` hook boundaries needing declaration + a conforming marker
+(`agent_hooks/pretooluse_background_guard.py`, `agent_hooks/subagent_stop_guard.py`) and two
+genuine violations in ordinary helpers needing NARROWING (`green_token.py:~102`, `:~127`).
+Remediation MUST ride in the same PR — the check is already wired into this repo's own
+`just check`. Full detail is journaled on `livespec-dev-tooling-e9j` and `qm5`.
+
+**NOT in the blast radius:** both Drivers stay vacuous (no `source_trees`, so the walk still runs
+zero iterations — `cvz`'s defect sits in SERIES with `qm5`'s); both layered orchestrator repos stay
+at 0; core gains 0, which is what unblocks slice 1b.
+
+### STATUS: DISPATCHED 2026-07-21
+
+A sub-agent is implementing the combined change in `livespec-dev-tooling`, briefed to leave the PR
+OPEN for the mandatory dual review and explicitly forbidden from enabling auto-merge. It was told
+to HALT and report if it concludes the fail-open marker is not truthful for the two hook sites
+(both `log.warning` before returning 0, while the marker says "silent pass-through"; the reading
+that "silent" governs the hook's OUTPUT CONTRACT, not diagnostics, needs independent confirmation).
 
 ## 🟢 2026-07-20 (later session) — THE `codex login` BLOCKER IS GONE
 
@@ -15,7 +107,14 @@ dispatch. `bd-ib-zz6gii` (instrument `codex-cred-status` across refreshes) is th
 for making this legible.
 
 
-## ⚖️ SIX MAINTAINER RULINGS. Do not re-litigate any of them.
+## ⚖️ EIGHT MAINTAINER RULINGS. Do not re-litigate any of them — EXCEPT ruling 7, which is RETIRED.
+
+**Ruling 7 was falsified by measurement on 2026-07-21 and REPLACED by ruling 8** (see the top of
+this file). It is the one ruling in this thread that did not survive contact with the code. Rulings
+1-6 stand. Ruling 8 is the live rule for slice 1b.
+
+The list below numbers 1-6; ruling 7 is recorded on the `livespec-dev-tooling-e9j` ledger item and
+ruling 8 is at the top of this file. Both are also journaled on `qm5`, `cvz`, `6vz`, and `jjb`.
 
 6. **(2026-07-20, later session) Acceptance may proceed on dual review + live exercise even when
    the exact changed branch is not naturally reproducible live**, PROVIDED the limitation is
@@ -190,8 +289,13 @@ MEASURED BY EXECUTION 2026-07-20 (full detail journaled on the e9j ledger item):
 - **Slice 1a — DONE, PR #1497 open.** Declaring `dataclasses_tree` ALONE arms
   `newtype_domain_primitives` in core, and it passes rc=0 clean. That retires one of the FOUR
   checks e9j found had never enforced anything in ANY fleet repo, with zero remediation.
-- **Slice 1b — RULING 7 (2026-07-20) unblocks it: teach the check to HONOR THE FIVE SANCTIONED
-  v169 MARKERS.** A SECOND correction: broad-only does NOT unblock 1b. Ruling 1 scopes broad-only
+- **Slice 1b — ⚠️ THIS BULLET IS SUPERSEDED BY RULING 8 (2026-07-21); see the top of this file.**
+  Ruling 7's marker route is IMPOSSIBLE: markers are `# noqa: BLE001` escapes, `BLE001` fires only
+  on BROAD catches, core's three sites are all NARROW, and marking them trips `RUF100` and lint-
+  fails core. Ruling 8 replaces it with breadth-awareness (narrow passes; broad needs position +
+  marker). The measured analysis below remains accurate and is why ruling 8 was needed —
+  read it as diagnosis, not as direction. **(Historical text follows.)**
+  A SECOND correction: broad-only does NOT unblock 1b. Ruling 1 scopes broad-only
   to repos declaring NO `io_trees` — but that is exactly the branch where `no_except_outside_io`
   RETURNS 0 WITHOUT INSPECTING ANYTHING (which is why `qm5` exists; its Red commit is literally
   "run no_except_outside_io when io_trees is unset"). Slice 1b DECLARES `io_trees`, putting core on
