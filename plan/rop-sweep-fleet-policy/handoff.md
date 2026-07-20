@@ -922,6 +922,18 @@ Every finding below passed all mechanical gates:
   plain-text output is not visible to the overseer. **State the delivery mechanism (`SendMessage`)
   as a hard requirement in every reviewer brief**, and when one goes idle, ASK it for the verdict
   before assuming it failed. This cost the prior session three rounds and held `sw0i` for a day.
+- **🚨 FORBIDDING AUTO-MERGE IN A BRIEF IS ALSO NOT ENOUGH — THE REPO ENABLES IT FOR THE AGENT.**
+  Root-caused 2026-07-21, and it supersedes the "forbid enabling auto-merge" lesson directly below.
+  `livespec` AND `livespec-dev-tooling` both carry `.github/workflows/auto-enable-merge.yml`, and
+  `app/livespec-pr-bot` turns auto-merge (REBASE) on automatically within seconds of PR creation —
+  observed live on livespec PR #1571, `enabledBy: app/livespec-pr-bot`. **So an agent can comply
+  perfectly with "do not enable auto-merge" and its PR will still merge itself on green, bypassing
+  the dual-review gate.** This is the STRUCTURAL cause of the z45 process violation, which was
+  wrongly recorded as the implementing agent's fault. The working counter-measure is to
+  **create the PR as a DRAFT** (`gh pr create --draft`) — GitHub will not auto-merge a draft —
+  and additionally verify `gh pr view <N> --json autoMergeRequest` returns `null`, running
+  `gh pr merge --disable-auto <N>` until it does. Put BOTH steps in every dispatch brief whose PR
+  must survive to review.
 - **"Do not merge" is NOT enough in a dispatch brief — forbid ENABLING AUTO-MERGE explicitly.**
   The z45 agent's PR was merged by `app/livespec-pr-bot` on green despite the brief saying to leave
   it open, bypassing the dual-review gate on a fleet-wide RELEASE gate — and the review that was
