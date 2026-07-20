@@ -3,6 +3,123 @@
 **Ledger anchor:** epic `livespec-n4ptl2` (livespec CORE tenant).
 **Opened:** 2026-07-19.
 
+---
+
+## 🟢 START HERE — definitive resume state, 2026-07-20 (session close)
+
+Everything below this section is history and reasoning. This section is the
+current truth. **Nothing is in flight; no PR of this session's is unmerged; the
+primary checkout is clean on `master`.**
+
+### The dispatch round is COMPLETE — all four slices resolved
+
+| Slice | Outcome |
+|---|---|
+| `livespec-2hya5g` | MERGED (livespec #1508) → **`acceptance`, awaits you** |
+| `livespec-dev-tooling-5o6ssu` | MERGED (dev-tooling #495) → **`acceptance`, awaits you** |
+| `livespec-console-beads-fabro-5kd56a` | Work LANDED (console `f5fa99f`); item closed |
+| `livespec-dev-tooling-gbjuua` | **DONE** — dev-tooling #506, closed with evidence |
+
+### ⚠ THE AUTHORIZATION-BOUNDARY RULE — maintainer-declared 2026-07-20
+
+**This is the load-bearing decision of the session. Read it before touching any
+workflow-editing item.**
+
+| Surface | `.github/workflows/` writes | Why |
+|---|---|---|
+| **Factory sandbox** (Fabro, unattended) | **DENIED — and this stays** | Self-hosted runners ⇒ workflow write is arbitrary code execution on the maintainer's host; an unattended agent could rewrite the very gates that validate it; GitHub's `workflows` permission is all-or-nothing (no per-path scoping) |
+| **Attended host session** (a `/livespec:*` session like this one) | **ALLOWED**, via `gh`/git | Supervised, every diff seen, credential already held legitimately |
+
+**Granting the sandbox `workflows` permission is REJECTED, not deferred.** The
+existing asymmetry is correct by design: `livespec-pr-bot[bot]` (the fan-out)
+holds it because it is a deterministic pin-string rewrite; the sandbox is an
+open-ended agent.
+
+**The resolution is ROUTING, not privilege — and NEVER manual maintainer work.**
+Requiring the maintainer to hand-edit is explicitly unacceptable. A
+workflow-touching item is performed FROM THE HOST SESSION, automatically.
+**Proven the same day:** `gbjuua` failed twice in the factory at publish, then
+landed from a host session in one pass (#506, comment-only, CI green). Zero
+manual steps. The boundary costs no autonomy — it relocates which actor
+publishes.
+
+### NEXT ACTIONS, in order
+
+1. **Accept `livespec-2hya5g` and `livespec-dev-tooling-5o6ssu`** (maintainer;
+   `ai-then-human`). **Full clause-by-clause AI-leg evidence is already
+   journaled on each item**, including a genuinely satisfied live-exercise
+   clause for `5o6ssu` (fleet sweep: ONE open bump PR fleet-wide, console
+   13 → 1, after two real post-merge releases). Accepting them moves both to
+   `done` and **releases two more slices**:
+   - `livespec-dbbgoc` and `livespec-dev-tooling-dqfmjr`. Both were
+     PRE-VERIFIED 2026-07-20 (journaled): premises still hold, `dbbgoc`'s DO
+     step 3 is already satisfied by `2hya5g`, and `dqfmjr` is confirmed NOT
+     workflow-exposed (it edits a COMPOSITE ACTION under `.github/actions/`,
+     proven safe because `5o6ssu` merged a change to that same file).
+2. **OWED — file the constraint.** "Credentials passed into the factory MUST
+   NOT carry `workflows` permission" currently lives only in ledger comments.
+   It belongs in `livespec-orchestrator-beads-fabro`'s `SPECIFICATION/` as a
+   real constraint, via `/livespec:propose-change`. **This was agreed and not
+   yet done — it is the first piece of unfinished work.**
+3. **Implement the re-scoped `bd-ib-nga9`** (orchestrator tenant). Its title and
+   scope were corrected: the permission boundary is NOT the defect; the
+   FAILURE HANDLING is. It should deliver (a) pre-dispatch refusal keyed on the
+   `.github/workflows/` prefix **specifically** — not a broader `.github/` or
+   `*.yml` heuristic, which would wrongly refuse dispatchable work like
+   `dqfmjr`; (b) a NON-INTERACTIVE terminal verdict, so a refusal never parks on
+   an `[R]/[I]/[A]` prompt nobody can answer; (c) a message naming the
+   host-session route.
+4. **Groom `livespec-dev-tooling-9j8.6`** (maintainer). Still gates three
+   slices. **Consider DECOMPOSITION rather than blanket refusal:** most of its
+   value is new tested modules under `livespec_dev_tooling/` that the sandbox
+   CAN push, with only a thin `run:`-glue swap on the privileged surface. The
+   right question per item is not "does it touch workflows" but "does it touch
+   anything else worth an agent's time" — `gbjuua` was 100% workflow comments
+   (factory added nothing); `9j8.6` is the opposite.
+
+### Loose ends — surfaced, deliberately NOT acted on
+
+| Item | State |
+|---|---|
+| `livespec-u7x5zn` | Stuck `pending-approval` though its blocker `e7lanq` is `closed`. The handoff's "self-routes, no action needed" is **FALSIFIED**. Cause **unconfirmed** — hypothesis recorded WITH its contradiction; do not act on the hypothesis |
+| `livespec-console-beads-fabro-5kd56a` | Closed with `resolution: None` + empty reason. **The work DID land** (`f5fa99f`) — do NOT reopen; may warrant a backfilled reason |
+| `livespec-console-beads-fabro-ogpok4` | STATE section **stale** (claims 13 open bump PRs / #320; reality is 1 / #328 → v0.18.4). Correction journaled on the item |
+| `livespec-dev-tooling-2kt` | The **propagation blind spot**: release-park leg (b) unimplemented — the only detector for a release train that NEVER DEPARTS, i.e. a silent fleet-wide propagation stall |
+| `reusable-release-park-parity.md` | Pending ~16 days in dev-tooling; **verified still ratifiable** — all three `FIND (verbatim)` targets resolve exactly once |
+
+### Ledger repairs made this session
+
+- **Epic `livespec-n4ptl2`'s cross-tenant refs were ALL DEAD** (five, all
+  pointing at regroomed-out closed items). Repointed to the live set; every
+  mapping read from each closed item's own regroomed-out reason, so nothing was
+  invented. Filed as a THIRD symptom on `bd-ib-dvmh` (parent side of the gap;
+  its two existing symptoms are the child side).
+- **`bd-ib-w3d0` FIXED and CLOSED** by me after verifying `c8bde4a` landed —
+  the image pulled flipped `python-agent` → `python-rust-agent`, exit 0.
+- **Corrected a misattribution** on `livespec-console-beads-fabro-6ma`: it
+  quoted my operator note as an aborted run's own log. The stranding bug is
+  REAL (two reproductions) but "the agent lied in its run log" is not.
+
+### Method traps — each cost real time; do not repeat
+
+- **A merge SHA is not a PR.** Reading only `5o6ssu`'s merge commit shows a
+  1-line change and makes it look unimplemented. Verify a PR's FULL file set.
+- **`bd list --json` OMITS the dependencies array** — a dependency check via
+  `bd list` returns cleanly and looks like a negative result. Only `bd show
+  --json` carries it.
+- **The fleet is non-uniform on default branch.** `openbrain`/`homelab` use
+  `origin/main`; everything else `origin/master`. Reading `origin/master:<path>`
+  in the first two returns nothing and reads as "not declared" rather than
+  erroring — it silently under-reported two of three adopters.
+- **`git ls-remote` is NOT an auth probe** on a public repo (succeeds
+  anonymously). **`git push --dry-run` from the PRIMARY CHECKOUT is not one
+  either** (the commit-refuse hook rejects it, not GitHub). The valid probe is
+  `git push --dry-run` **from a worktree**.
+- **Status-page ≠ capability.** GitHub showed `partial_outage` while the fleet
+  merged normally. Measure recent CI runs + a real auth probe instead.
+
+---
+
 Status is READ from the ledger, never stored here. This file carries no
 checkbox queue.
 
