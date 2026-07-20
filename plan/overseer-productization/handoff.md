@@ -480,9 +480,15 @@ and a matrix leg absent from the required list is a warning, exit 0. No test ass
 the live justfile target list or CI matrix; `tests/heading-coverage.json` has no
 justfile-target dimension.
 
-The target deliberately runs WITHOUT `--cov` so host-glue modules never enter the
-`fail_under = 100` gate, and it sorts after `check-coverage`/`check-per-file-coverage` in
-the aggregate — keep it there if it ever moves.
+~~The target deliberately runs WITHOUT `--cov`~~ — **TRUE AT GATE A, FALSE NOW.**
+Gate B reversed it: the live recipe is
+`COVERAGE_FILE=.coverage.overseer uv run pytest .claude/skills/overseer/ -q
+--cov=.claude/skills/overseer --cov-report=term-missing` (verified 2026-07-20),
+because Gate B brought the folder to 100% coverage and there was no longer a
+reason to hold it out of measurement. The separate `COVERAGE_FILE` is what keeps
+it from colliding with the product suite's data file. The target still sorts
+after `check-coverage`/`check-per-file-coverage` in the aggregate — keep it there
+if it ever moves.
 
 Two operational lessons from landing it, both worth carrying into Gates C/D:
 
@@ -1366,6 +1372,54 @@ declaring completion, not just the plan text.** The handoff described b1uo.2 as
 code gate alone; only the ledger item spelled out the documentation clause. A
 green `just check` and live-exercise evidence cannot detect a missing doc
 sentence, so nothing mechanical would ever have caught this.
+
+### 📦 RELOCATION INVENTORY — everything core-side that the move touches
+
+Measured 2026-07-20. This is the "what actually has to happen" list for
+`b1uo.1`, and it depends on NEITHER the pending ratification (which only decides
+the CLASS) nor `b1uo.3` (which only decides where the watch-set comes from) — so
+it can be prepared now.
+
+**What MOVES (the folder itself — 26 entries):** 8 product modules
+(`supervisor` `registry` `signals` `tmuxio` `claude_sessions` `codex_sessions`
+`jsonio` `streams`), 8 beside-test modules + `conftest.py`, the 2 extensionless
+executables (`overseerd`, `overseer-start`), 3 docs (`SKILL.md`, `AGENTS.md`,
+`marker-protocol.md`), and the nested `.claude/CLAUDE.md -> ../AGENTS.md`
+symlink that makes Claude Code load the maintenance guide in-folder.
+
+**What must be DELETED from core, or core breaks.** These are the ones a naive
+`git mv` leaves behind, and each fails LOUDLY rather than silently — pyright
+errors on include paths that no longer resolve, so `check-types` goes red:
+
+| Core file | Sites | What it does |
+|---|---|---|
+| `pyproject.toml` | `[tool.ruff]` extend-include (~:196) | matches the 2 extensionless `overseer*` files, which ruff would otherwise skip — it resolves by EXTENSION |
+| `pyproject.toml` | `[tool.ruff.lint.per-file-ignores]` (~:381) | the beside-test allowances (S101/SLF001/ARG001/2/S108) |
+| `pyproject.toml` | `[tool.pyright]` include (~:398-400) | the folder PLUS the 2 extensionless files named individually |
+| `pyproject.toml` | `[tool.pyright]` exclude (~:410-411) | `test_*.py` + `conftest.py` — the repo's tests-are-not-source rule, spelled out because these live BESIDE their source |
+| `pyproject.toml` | `[tool.coverage.run]` omit (~:570-571) | same two, kept out of measurement |
+| `justfile` | `check-overseer` recipe (~:752) + aggregate membership (~:259) | the gate itself |
+| `.github/workflows/ci.yml` | matrix leg (~:178-182) | the `py_changed`-gated CI leg |
+
+**What must be RECREATED in `livespec-overseer`:** all seven rows above, in that
+repo's own `pyproject.toml` / `justfile` / CI. The new repo inherits the twelve
+`_ALL_CLASSES` obligation rows plus `dev-tooling-pin` and the three pin-web
+shims, so its `just check` must stand on its own — it cannot lean on core's.
+
+**What does NOT block the move (measured, so nobody re-derives it):**
+
+- **No hardcoded core path in product code.** The only two
+  `/data/projects/livespec` occurrences are a docstring example in
+  `claude_sessions.py` and a prose example in `registry.py` — neither is
+  executed. (`grep -rn '/data/projects/livespec'` over the non-test modules.)
+- **No third-party dependency and no import from livespec core** — re-confirmed;
+  the move needs no dependency negotiation.
+- **`conftest.py` already puts the folder on `sys.path`**, so the beside-tests
+  keep resolving `import registry` etc. from any repo root without change.
+
+**The ONE genuine code blocker remains `_default_manifest`'s positional
+`parents[3]` traversal** — see §"The ONE real coupling". That is `b1uo.3`'s
+subject and the only item here gated on a maintainer decision.
 
 ### ⚠️ Why all five are in the LIVESPEC tenant — do NOT "fix" this
 
