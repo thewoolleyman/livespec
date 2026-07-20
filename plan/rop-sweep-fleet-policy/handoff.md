@@ -474,8 +474,8 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | ~~`bd-ib-sw0i`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Both held counts cleared; accepted |
 | ~~`livespec-dev-tooling-z45`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #485). Gate was BYPASSED at merge; post-merge dual review found a REGRESSION -> `6j6`. See STATE |
 | ~~`livespec-dev-tooling-6j6`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #487), dual-reviewed NO-BLOCKERS x2. Restored the `rc>=2` hard fail. **The gate-arming blocker is CLEARED.** |
-| `bd-ib-rxxx` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor gate is CHECKOUT-DEPENDENT: `supervisor_discipline` passes on master (rc=0, 8 warns, 0 errors) but hard-fails in a fresh janitor checkout via git-derived coverage (`newly_covered: true`), STRANDING items with no defect in the change. **Blocks re-dispatching `w4h4`.** Distinct from `wmqsn7` — not flakiness; re-running will not help |
-| `bd-ib-w4h4` | livespec-orchestrator-beads-fabro | P1 | **STRANDED `active`, NO PR** — dispatch died at the janitor gate above, though its impl commit `ba9fdaf` EXISTS in the kept checkout `~/.worktrees/livespec-orchestrator-beads-fabro/janitor-bd-ib-w4h4`. **Reconcile will NOT help (no merged PR)** — fix `rxxx` first, then re-dispatch |
+| `bd-ib-rxxx` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20 — DIAGNOSIS CORRECTED TWICE, read its notes before acting.** NOT checkout-dependent and NOT `supervisor_discipline` (which passes everywhere, rc=0); the reconcile's real failure was `check-coverage`. Candidate causes now: a dev-tooling version delta (janitor ran v0.50.7; v0.50.8 landed 18 min later) and/or concurrent master pushes. Original (superseded) claim was CHECKOUT-DEPENDENT: `supervisor_discipline` passes on master (rc=0, 8 warns, 0 errors) but hard-fails in a fresh janitor checkout via git-derived coverage (`newly_covered: true`), STRANDING items with no defect in the change. **Blocks re-dispatching `w4h4`.** Distinct from `wmqsn7` — not flakiness; re-running will not help |
+| `bd-ib-w4h4` | livespec-orchestrator-beads-fabro | P1 | **MERGED (PR #836, master CI GREEN) but STRANDED `active`.** Reconcile attempted and FAILED on `check-coverage` — almost certainly because ANOTHER SESSION pushed `952d874` to master in the same minute and the valve's fresh checkout took that in-flight commit. **Retry the valve once master settles**; then the mandatory DUAL REVIEW is still outstanding (focus: live-lock direction + the three-claimant cascade) |
 | `livespec-dev-tooling-y27` | livespec-dev-tooling | P2 | **NEW 2026-07-20.** Residual after 6j6: `rc=1` with a PARTIAL tally still poisons the ratchet. PRE-EXISTING (predates z45). rc 1 is genuinely ambiguous — the naive `mutants_total`-shrink fix has its own false-fail risk when code is legitimately deleted |
 | `livespec-e9j` slice 1a | livespec | — | **PR #1497 OPEN** — declares `dataclasses_tree`, arming `newtype_domain_primitives` (one of the four never-enforcing checks). Verified armed + green; 71 targets pass |
 | ~~`livespec-ftbvgc`~~ | livespec | — | **DONE 2026-07-20.** Switched to `ai-only` and accepted after a Fable+Codex acceptance review |
@@ -826,6 +826,18 @@ Every finding below passed all mechanical gates:
   across four scenarios); Opus found a deleted guard with before/after execution evidence. The
   disagreement WAS the finding. Always run both, and when they disagree, VERIFY THE DIFF YOURSELF —
   the overseer confirmed the deletion in `git diff` in one command.
+- **NEVER conclude "no PR exists" from a truncated list.** `gh pr list --limit 2` showed two newer
+  unrelated PRs and `w4h4`'s #836 sat one row below the cut, producing a WRONG "no PR, reconcile
+  cannot help" diagnosis that was filed on a work-item. **Filter by head branch
+  (`--head feat/<id>`) or search the id — never eyeball the top N.**
+- **`reconcile-merged` runs `just check` against CURRENT master, so a CONCURRENT PUSH by another
+  session can fail the valve** for reasons unrelated to the item. Observed: the valve failed on
+  `check-coverage` in the same minute another session pushed `952d874` whose own CI was still
+  in_progress. Check whether another session is dispatching (look for foreign `janitor-*`
+  worktrees) BEFORE blaming the item, and let master settle before retrying.
+- **Read the FAILING RECIPE NAME, not the loudest line in the journal.** The dispatch journal's
+  outcome detail quoted a `supervisor_discipline` / footgun message, which sent this thread chasing
+  the wrong check twice. The actual failure was `error: Recipe \`check-coverage\` failed`.
 - **A transient CI flake STRANDS a work-item `active`.** `bd-ib-12fw`'s dispatch died on
   `mise ERROR Failed to install aqua:koalaman/shellcheck@0.11.0: HTTP timed out` — a download
   timeout during tool setup, so the check never ran; `ci-green` failed with it, the PR went BLOCKED,
