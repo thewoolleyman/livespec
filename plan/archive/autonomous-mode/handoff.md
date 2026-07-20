@@ -6,9 +6,9 @@
 > review-loop records, and its build-phase logs are **deliberately deleted** —
 > all of it remains in git history.
 >
-> **This file is retained at this path, not archived, for one reason:** three
-> LIVE-SPEC citations name it as a design record, and the section they cite is
-> preserved verbatim below.
+> **ARCHIVED 2026-07-20** to `plan/archive/autonomous-mode/`. The three
+> live-spec citations that name it as a design record were repointed to this
+> path in the same landing — see below.
 
 ## Successors
 
@@ -25,9 +25,9 @@ The orchestrator-side sibling (`livespec-orchestrator-beads-fabro:plan/autonomou
 was archived 2026-07-19; its work shipped and was superseded at orchestrator
 spec v034.
 
-## ⚠ DO NOT MOVE OR DELETE THIS FILE
+## ⚠ THREE LIVE SPECS CITE THIS PATH — do not move it again without amending them
 
-Three live-spec citations name this exact path as the **design record**:
+Three live-spec citations name this exact path (`plan/archive/autonomous-mode/handoff.md`) as the **design record**:
 
 | Repo | Location |
 |---|---|
@@ -40,7 +40,11 @@ design record is the **TIEBREAKER over shipped spec text**, and citation
 fidelity is review-enforced only — no mechanical check would catch a dangling
 path. Moving or deleting this file, or renaming that section heading, silently
 corrupts future spec-conflict resolution. Amend all three citations first if
-this file must ever move.
+this file must ever move again.
+
+All three were repointed from `plan/autonomous-mode/handoff.md` to this
+archived path on 2026-07-20, in the same landing as the archive move, so no
+window existed in which they dangled.
 
 ---
 
