@@ -1011,6 +1011,48 @@ tenants and a bare suffix cannot be turned into a command.
    reveals how many (a)-class instances actually exist. Deliberately not
    generalized ahead of the data; revisit once the sweep lands.
 
+## ⚠ A propagation BLIND SPOT this thread never named — `livespec-dev-tooling-2kt`
+
+Surfaced 2026-07-20 by a fleet-wide `needs-attention` sweep (93 items across all
+11 repos, zero unreachable). Not owned by this thread, but it sits directly on
+this thread's causal chain and no other section here mentions it.
+
+**The chain this thread depends on**, as stated in `.claude/CLAUDE.md`:
+dogfooding pins track the latest RELEASE → release-please cuts a release on
+every `feat:`/`fix:` push → the fan-out's `bump-pin` rewrites every consumer pin
+to each new release tag. **Every link is downstream of a release actually being
+CUT.**
+
+`reusable-release-park.yml` is the backstop for a stalled release train, and it
+ships only ONE of the TWO detection legs its design record specifies:
+
+- **leg (a), IMPLEMENTED** — a `release-please--*` PR that is open and PARKED
+  beyond `park_threshold_hours`.
+- **leg (b), NOT IMPLEMENTED** (`livespec-dev-tooling-2kt`, `backlog`) — the
+  default branch carries `feat`/`fix` commits newer than the latest release tag
+  beyond the threshold, i.e. **release-please never opened a release PR at all.**
+
+If a release PR is never opened, no tag appears, so the fan-out never fires, so
+NO consumer pin moves — and nothing alarms, because leg (a) can only see a PR
+that exists. **A train that never departs is invisible to leg (a) by
+construction.** That is strictly worse than the parked case: parked is visible
+in the PR list; never-opened is visible nowhere.
+
+So leg (b) is the only detector for a SILENT fleet-wide propagation stall — the
+exact failure this thread exists to prevent. Worth weighing when `2kt` is
+prioritised: its value is not spec parity, it is the absence of any alarm on the
+failure mode that stops propagation entirely.
+
+**Its paired spec change is still ratifiable — verified, not assumed.**
+`livespec-dev-tooling`'s `SPECIFICATION/proposed_changes/reusable-release-park-parity.md`
+has been pending since 2026-07-04 (~16 days), long enough for replace-target
+drift to make it unratifiable. It has NOT drifted: all THREE declared
+`FIND (verbatim)` blocks were checked against
+`origin/master:SPECIFICATION/contracts.md` and each resolves EXACTLY ONCE.
+Ratifying it does NOT close `2kt` — by design the contract describes the
+two-leg DESIGN while the missing leg stays tracked, so it is not silently
+contracted away.
+
 ## What could invalidate the plan
 
 The superseded-PR count is a snapshot and drifts upward as the fan-out keeps
