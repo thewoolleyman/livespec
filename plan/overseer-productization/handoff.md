@@ -1373,6 +1373,39 @@ code gate alone; only the ledger item spelled out the documentation clause. A
 green `just check` and live-exercise evidence cannot detect a missing doc
 sentence, so nothing mechanical would ever have caught this.
 
+### 🏗️ WHERE THE NEW REPO'S BASELINE COMES FROM — there is NO copier template
+
+The birth procedure says "Scaffold **(via the copier template where the class
+has one)**". `control-plane-tool` will NOT have one:
+`_TEMPLATE_BORN_CLASSES = frozenset({"impl-plugin"})`, so only impl-plugins are
+template-born. The parenthetical is doing real work — it anticipates exactly this
+case — but it does not say what to do instead, and a reader can be left looking
+for a template that will never exist.
+
+**Copy `livespec-console-beads-fabro`, which is the existing non-template-born
+precedent.** Verified 2026-07-20: it carries NO `.copier-answers.yml`, so it was
+hand-authored, and it is the closest structural analogue — a Control-Plane member
+that consumes `livespec-dev-tooling` for its toolchain without being generated
+from a template.
+
+Its hand-carried baseline, which is the checklist for the new repo:
+`.livespec.jsonc`, `.github/`, `.claude/`, `.ai/`, `.gitignore`, `.mise.toml`,
+`.python-version`, `.beads/`, plus `pyproject.toml` and `justfile`.
+
+**One detail worth stealing outright.** The console is PURE RUST and still
+carries `pyproject.toml` + `.python-version`, for one reason its own file states:
+to reuse the shared `livespec-dev-tooling` commit-refuse hook installer and the
+baseline verifier. `livespec-overseer` IS Python, so it needs that anyway — but
+the console's file is the worked example of the MINIMAL shape (a pin and nothing
+else: no `[build-system]`, no `[project.dependencies]`), which is a better
+starting point than copying core's much larger `pyproject.toml`.
+
+**The `baseline-harnesses` obligation is easy to miss** because it is not a file
+at all — it asserts a NON-EMPTY `harnesses` object inside `.livespec.jsonc`. A
+new repo that copies every baseline FILE and forgets that key still fails fleet
+conformance. (`_contract_rows.py` `baseline-harnesses` →
+`_rows_baseline.py::assert_baseline_harnesses`.)
+
 ### 🪤 THE REGISTER-FIRST TRAP — two rules that read as a deadlock
 
 Found 2026-07-20 while checking the relocation inventory against the spec. Two
