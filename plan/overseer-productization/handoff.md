@@ -23,10 +23,25 @@ live-exercised. Gate E needs no code: the ruling landed broad-only and the
 overseer already conforms (verified mechanically — see §"Gate E"). All that is
 left is a role-key declaration that must wait on the rop-sweep thread's `cvz`.
 
-**Phase 2 is now the live work**: all three of its decisions (D4/D5/D6) were
-resolved on 2026-07-19 and it is anchored to epic `livespec-b1uo` with five
-children. Start at `livespec-b1uo.1` — it is foundational and the two Driver
-bindings have nothing to bind to until it lands.
+**Phase 2 is now the live work**: decisions D4/D5/D6 were resolved on
+2026-07-19, it is anchored to epic `livespec-b1uo`, and it was then RESHAPED the
+same day by D7 (the overseer is Control Plane, not Spec Plane).
+
+# ⛔ START HERE — the ONE open question
+
+**`livespec-b1uo.1` — where does the overseer live?** Everything else in Phase 2
+is either done, unchanged, or waiting on this. Read §"D8 — the home question"
+BEFORE anything else; it carries a full measured dependency analysis done
+2026-07-19 that you should NOT re-derive.
+
+**The maintainer's current leaning: a separate dedicated repo** — "loosely
+coupled, cohesive, keeps bloat out of core." NOT yet a ruling. The remaining
+work is to settle the cost/membership question in §D8, then decide.
+
+Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
+likely superseded by D7. An earlier version of this page told you to start at
+`b1uo.1` because "the two Driver bindings have nothing to bind to"; that framing
+predates D7 and is wrong.
 
 # ✅ Gate B — DONE (was blocked all of 2026-07-19; the blocker is gone)
 
@@ -792,7 +807,100 @@ have an interactive half today (the bottom pane), so some per-runtime binding
 may still be needed — the open question is from whose surface, which `.1`
 decides.
 
-### The open question `.1` must answer — "Control Plane" is not a repo
+### D8 — the home question (THE live question; measured 2026-07-19)
+
+**Maintainer's leaning, not yet a ruling: a SEPARATE DEDICATED REPO** — "loosely
+coupled, cohesive, keeps bloat out of core." They asked for the dependencies and
+their DIRECTION to be worked out carefully before committing. That analysis was
+done and is below. **Do not re-derive it; extend it.**
+
+#### Measured dependency facts (re-runnable commands in parentheses)
+
+- **Zero third-party packages. Zero imports from livespec core.** Pure stdlib
+  (`argparse`, `json`, `pathlib`, `subprocess`, `fcntl`, `re`, `os`, `sys`,
+  `time`, `traceback`, `dataclasses`, `typing`, `contextlib`, `datetime`,
+  `itertools`, `shlex`, `tempfile`, `collections`) plus its own 8 modules.
+  (AST walk over `.claude/skills/overseer/*.py` collecting `Import`/`ImportFrom`.)
+- **Binaries it shells out to:** `tmux` (INJECTABLE — `tmux_bin: str = "tmux"`,
+  `tmuxio.py:150`), `git` (one `check-ignore` call), and the `claude` / `codex`
+  CLIs when restarting a session.
+- **Orchestrator dependency: NONE.** Zero beads / fabro / dolt references; the
+  single "fabro" hit (`registry.py:917`) is a comment naming a tmux session.
+  (`grep -rn -i 'beads\|fabro\|dolt' .claude/skills/overseer/*.py`)
+- **Driver dependency: NONE, in either direction.** It observes the agent
+  RUNTIMES (`~/.claude/sessions/<pid>.json`, `~/.codex/sessions/…`) and invokes
+  their CLIs. It never imports or resolves `livespec-driver-*`. It runs with
+  neither Driver installed.
+- **State lives in `$HOME`, not in any repo** — `~/.livespec-overseer.jsonl`,
+  `~/.livespec-overseer-stamps.json` (`registry.py:111`).
+
+#### The ONE real coupling, and it is shallow
+
+`supervisor.py:2629` resolves the fleet manifest by POSITIONAL PATH TRAVERSAL —
+`Path(__file__).resolve().parents[3] / ".livespec-fleet-manifest.jsonc"`, i.e.
+"three directories up is the repo root". **That breaks the instant the folder
+moves anywhere**, so it is the concrete relocation blocker.
+
+But the fix is small, and this RESIZES `livespec-b1uo.3` — it is not the refactor
+that item was filed as. The manifest is used for exactly ONE thing: deriving the
+watch-set of repos. And `watch_repos: list[str] | None = None` is ALREADY an
+injectable field (`supervisor.py:554`) that short-circuits the manifest entirely
+(`supervisor.py:700`). Today only the beside-tests inject it — the CLI
+deliberately exposes no knob ("de-gold-plated 2026-07-13"). **So b1uo.3 is
+exposing an existing seam on the CLI, not building one.**
+
+#### Dependency DIRECTION — the part the maintainer asked to weigh
+
+After `b1uo.3`, every arrow points OUTWARD and nothing points in:
+
+    overseer -> livespec core     NONE (the manifest edge is what b1uo.3 removes)
+    overseer -> Drivers           NONE
+    overseer -> orchestrator      NONE
+    anything -> overseer          NONE
+
+It satisfies the No-Circular-Dependency Directive trivially, because it would
+depend on nothing in the fleet at all. That is the strongest argument for the
+separate-repo instinct: it is not loosely coupled, it is UNCOUPLED.
+
+#### The question that falls out — decide this deliberately
+
+**If it depends on nothing, what makes it a FLEET MEMBER rather than an
+independent tool that merely understands livespec's plan convention?** Membership
+would be by CONVENTION-CONSUMPTION, which is a different basis from every one of
+the current eight members. Worth an explicit answer rather than a default.
+
+#### What a 9th fleet repo actually costs (priced 2026-07-19)
+
+The manifest currently lists eight members, each with a `class`; a member's
+profile is DERIVED from its class. A ninth would need a new class and inherits:
+the `baseline` conformance profile, the copier scaffold, the
+`livespec-dev-tooling` pin and enforcement suite, **its own beads tenant** (Dolt
+DB, SQL user, DB-scoped grant, a tenant password in the 1Password Environment,
+`.beads/` pointers), its own CI and branch protection, and permanent
+participation in every future cross-repo pin bump — standing overhead for ~1832
+statements.
+
+An earlier turn recommended "a standalone tool" WITHOUT pricing this, then
+withdrew the recommendation once it was priced. Do not re-make that mistake:
+whatever is chosen, price it first.
+
+#### Adopter usability (the maintainer's last question) — YES, cleanly
+
+Full requirement list for a third party: follow the `plan/<topic>/handoff.md`
+convention, run Linux with tmux, use Claude Code and/or Codex, and supply a
+watch-set (once `b1uo.3` exposes it). **No livespec install required at all** —
+there are no core imports to satisfy. That is a materially larger addressable
+audience than Phase 2's original "adopters with a fleet manifest" framing.
+
+#### Skill-confusion risk (also asked) — judgment, not measurement
+
+Mechanically there is no collision: a separate repo installs as its own plugin
+under its own namespace, not `/livespec:*`. The residual risk is conceptual — a
+user seeing a third livespec-ish plugin and not knowing which supplies what.
+Mitigable by naming and docs, and meaningfully LESS confusing than today, where
+the overseer is invisible to everyone but the maintainer.
+
+### The three candidate homes (superseded framing — kept for the costs)
 
 The reference Control-Plane implementation, `livespec-console-beads-fabro`, is a
 **Rust** application carrying **zero** first-party Python (measured 2026-07-19:
