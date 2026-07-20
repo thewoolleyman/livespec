@@ -17,11 +17,10 @@ running from that repo's clone (`/data/projects/<repo>`).
 ## Read-first chain
 
 1. This file.
-2. `plan/archive/autonomous-mode/research/stage2-live-tui-findings.md` — the
+2. `plan/autonomous-mode-acceptance/research/live-tui-findings.md` — the
    live-TUI findings and the POST-FIX VALIDATION RUNBOOK from the last
-   acceptance attempt. **Until the retirement thread performs the archive move,
-   this file is still at `plan/autonomous-mode/research/stage2-live-tui-findings.md`
-   — try the archived path first, then the live one.**
+   acceptance attempt. It moved here from the superseded thread; this thread
+   owns it.
 
 That is the whole chain.
 
@@ -124,9 +123,11 @@ maintainer's step, and it is the acceptance.
   duplicated that programme's tracking, and that duplication caused a
   lost-pointer crisis. **Do not re-home any of it here.** Reference it; never
   copy its state.
-- **Retiring the old thread.** `plan/autonomous-mode-retirement/` owns the
-  archive moves, the design-record citation repair, the directive migration,
-  and the findings sweep.
+- **The superseded thread's cleanup.** Already DONE 2026-07-19, not a pending
+  task: `plan/autonomous-mode/handoff.md` was collapsed 3220 → ~280 lines
+  (its cited design record preserved verbatim in place, so the three live-spec
+  citations still resolve), its `design.md` and review-loop research removed,
+  and the orchestrator's stale sibling thread archived. Nothing is owed there.
 
 ## Implementation route
 
