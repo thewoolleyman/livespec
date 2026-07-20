@@ -184,8 +184,27 @@ evidence.
 No credential probe is needed first. If you want one anyway, it is a trivial `codex exec`, not a
 dispatch (see the 2026-07-20 note at the top).
 
-**`livespec-dev-tooling-e9j` (P0) is the next move.** It is the biggest remaining item and it
-SLICES cleanly:
+**`livespec-dev-tooling-e9j` (P0) is the next move — and it re-slices into THREE, not two.**
+MEASURED BY EXECUTION 2026-07-20 (full detail journaled on the e9j ledger item):
+
+- **Slice 1a — DONE, PR #1497 open.** Declaring `dataclasses_tree` ALONE arms
+  `newtype_domain_primitives` in core, and it passes rc=0 clean. That retires one of the FOUR
+  checks e9j found had never enforced anything in ANY fleet repo, with zero remediation.
+- **Slice 1b — BLOCKED, and this CORRECTS the plan below.** Declaring `source_trees` + `io_trees`
+  turns core's `just check` RED on three narrow catches
+  (`no_spec_section_citation_in_code.py:162,180`, `wiring_completeness_cross_repo.py:159`).
+  **The broad-only rule is RATIFIED IN THE SPEC but NOT YET IMPLEMENTED IN THE CHECK** —
+  `no_except_outside_io` still bans ALL try/except outside io/. So 1b is blocked on the re-cut
+  `qm5`/`cvz` work, NOT free as the text below claims.
+  **Generalize: a ratified rule does not change a check's behavior until the check is edited.**
+  Plan declaration slices against the check AS IMPLEMENTED, never as ruled.
+- **Slice 2 — `pure_trees`.** `livespec-dev-tooling-6j6` is MERGED, so that half of the gate is
+  clear; slice 2 now waits on `livespec-mutreal.1` ALONE.
+
+**Measured dependency inversion worth holding: `e9j` is NOT purely upstream of `qm5`/`cvz` — its
+1b slice DEPENDS on them.** The ordering is `1a -> (qm5/cvz broad-only) -> 1b -> mutreal.1 -> 2`.
+
+The older two-slice framing below is superseded on the 1b point but otherwise still accurate:
 
 1. **Slice 1 — declare core's structural role keys EXCEPT `pure_trees`.** Near-free (0 offenses
    under the ruled broad-only rule) and it gets five of seven checks genuinely enforcing in one
@@ -442,7 +461,9 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | ~~`bd-ib-47gr`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Merged PR #820, dual-reviewed x2, live-exercised, accepted |
 | ~~`bd-ib-sw0i`~~ | livespec-orchestrator-beads-fabro | — | **DONE 2026-07-20.** Both held counts cleared; accepted |
 | ~~`livespec-dev-tooling-z45`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #485). Gate was BYPASSED at merge; post-merge dual review found a REGRESSION -> `6j6`. See STATE |
-| `livespec-dev-tooling-6j6` | livespec-dev-tooling | P1 | **NEW 2026-07-20, BLOCKS ARMING.** z45 deleted the `rc>=2` hard fail; a crashed/OOM partial mutmut run passes GREEN and poisons the committed ratchet. One-line fix. **Must land before `pure_trees` is declared anywhere** |
+| ~~`livespec-dev-tooling-6j6`~~ | livespec-dev-tooling | — | **MERGED 2026-07-20** (PR #487), dual-reviewed NO-BLOCKERS x2. Restored the `rc>=2` hard fail. **The gate-arming blocker is CLEARED.** |
+| `livespec-dev-tooling-y27` | livespec-dev-tooling | P2 | **NEW 2026-07-20.** Residual after 6j6: `rc=1` with a PARTIAL tally still poisons the ratchet. PRE-EXISTING (predates z45). rc 1 is genuinely ambiguous — the naive `mutants_total`-shrink fix has its own false-fail risk when code is legitimately deleted |
+| `livespec-e9j` slice 1a | livespec | — | **PR #1497 OPEN** — declares `dataclasses_tree`, arming `newtype_domain_primitives` (one of the four never-enforcing checks). Verified armed + green; 71 targets pass |
 | `livespec-ftbvgc` | livespec | — | **UN-STRANDED**; in `acceptance`, awaits MAINTAINER final acceptance (`ai-then-human`) |
 | `bd-ib-12fw` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor lock leaks on exception path; NO liveness check (no PID), so a leak wedges the venue permanently and the error misdirects the operator |
 | `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **UNBLOCKED** (`backlog`), still `needs-regroom` — premise falsified, scope needs re-cutting |
