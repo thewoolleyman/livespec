@@ -8,7 +8,12 @@ children. Status is READ from the ledger, never stored here.
 fully inside the product gates as a first-class LOCAL module (Phase 1), then design
 host-decoupling + adopter shipping (Phase 2). Phase 1's value is independent of Phase 2.
 
-## ⚠️ Push blocker 2026-07-20 — GitHub partial API outage (diagnosis CORRECTED)
+## ✅ RESOLVED — the 2026-07-20 push blocker (GitHub partial API outage)
+
+**Not a live blocker. Skip to §"START HERE" unless you are debugging a mint
+failure.** The outage cleared; the branch pushed on retry attempt 7 and merged as
+livespec PR #1494. Kept only for the diagnosis lesson below and the still-open
+`livespec-runtime` retry gap it exposed.
 
 This branch could not be pushed. The `livespec-pr-bot` App credential helper
 (`/home/ubuntu/.local/bin/livespec-agent-github-credential-helper` → the
@@ -162,6 +167,73 @@ Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
 likely superseded by D7. An earlier version of this page told you to start at
 `b1uo.1` because "the two Driver bindings have nothing to bind to"; that framing
 predates D7 and is wrong.
+
+# 📍 STATE AT SESSION END — 2026-07-20
+
+Everything below is committed; the primary checkout was left clean on `master`
+with no worktrees outstanding. **Read this before re-deriving anything.**
+
+## What is ACTIONABLE right now (no decision required)
+
+Honest answer: **very little in this thread.** The move is now specified
+end-to-end and the remaining steps are gated. Do NOT invent work — if this list
+is empty for you, say so and check §"Gate E" and the ledger instead.
+
+- Nothing on the critical path. `b1uo.1`'s next step is the maintainer's
+  ratification, and everything after it is ordered behind that (see §"REGISTER-FIRST
+  TRAP").
+
+## What is BLOCKED, and on WHOM
+
+| Item | Blocked on | Note |
+|---|---|---|
+| `control-plane-tool` proposal | **maintainer** — `/livespec:revise` | FILED + twice independently reviewed, NO BLOCKERS. Accept payload needs THREE `resulting_files[]`; see §"Proposal FILED and REVIEWED" for the exact `../`-prefixed spellings |
+| `b1uo.3` (watch-set source) | **maintainer** — a design call | Recommendation recorded: a `$HOME` config beside the store/stamp sidecars. Do NOT add a `--watch-repos` CLI flag; that reverses a deliberate de-gold-plating |
+| `b1uo.2` close | **maintainer** — acceptance leg | Work is DONE and live-exercised; all three ACCEPTANCE clauses now met |
+| Gate E | **`rop-sweep-fleet-policy` thread** — its `cvz` | Re-verified 2026-07-20: all four role keys still empty tuples |
+| `b1uo.4` / `b1uo.5` | the home move | Likely superseded by D7 |
+
+## Session-only state that would otherwise be LOST
+
+- **The `livespec-runtime` mint-retry issue is staged at
+  `/data/projects/livespec-runtime/tmp/mint-retry/issue.md`.** That path is
+  GITIGNORED SCRATCH and may be swept at any time — it is not a durable artifact.
+  It is fully REGENERABLE from §"Side finding … the mint has no transient-5xx
+  retry" above, which carries the six-site table, the do-not-reuse-`retry_with_backoff`
+  trap, and the status-aware-retry recommendation. Filing it needs a session
+  rooted in `livespec-runtime` (`capture-work-item` has no `--project-root`, and
+  hand-rolling the record with raw `bd` is the documented way to produce a
+  doctor-static rejection).
+
+## Ledger edits already made — do NOT redo them
+
+- **Epic `livespec-b1uo`** description was rewritten: the superseded pre-D7 goal
+  replaced, `53`→`54` slugs, the "spans three repos (core + two Drivers)" framing
+  corrected, and a **D7/D8/D9 block** added (D4/D5/D6 had been reading as the
+  complete decision set).
+- **`livespec-b1uo.1`** was retitled to name the outcome and now leads with a
+  RULED banner; its body previously said the distribution mechanism "is still
+  open", and carried the four-clause-wrong 9th-member pricing.
+
+## Reading warning — four DISTINCT staleness classes were found in this file today
+
+Sixteen stale claims were corrected (livespec PR #1529) plus several more after.
+Only the first class below is catchable by a file-and-line sweep, so a clean
+sweep is NOT a clean bill of health:
+
+1. **Code drift** — line numbers and counts. (The `grep` this page recommended for
+   counting `raise`/`except` produced BOTH wrong numbers it reported.)
+2. **Ledger drift, running BACKWARDS** — the ledger was MORE current than this
+   page; three citations pointed at a closed work-item.
+3. **A FABRICATED citation** — a `contracts.md` quote that exists nowhere in the
+   spec, laundered from another plan document's prose.
+4. **Accurate-then-invalidated** — `check-overseer` "deliberately runs WITHOUT
+   `--cov`" was TRUE when written and silently reversed by a later gate in this
+   same thread. This class is the hardest to spot: it reads as a deliberate design
+   statement, and it was one.
+
+**Cite `supervisor.py` by SYMBOL, not line** — the same fact was found cited at
+three different line numbers, all wrong.
 
 # ✅ Gate B — DONE (was blocked all of 2026-07-19; the blocker is gone)
 
