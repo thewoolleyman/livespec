@@ -277,6 +277,65 @@ journaled on the epic `livespec-n4ptl2` (comment dated 2026-07-20) and on each
 original item's regroomed-out close record. Everything below this paragraph in
 this section is the pre-completion state, kept for the reasoning.
 
+### Adversarial verification round — COMPLETE, no blocking concerns
+
+The maintainer directed that the delegate's work be confirmed by independent
+Codex agents until no blocking concerns remained, with a Fable tie-break if the
+driving session and Codex disagreed. **Three Codex reviews ran; all closed
+clean; no tie-break was needed** (the driving session never disagreed with
+Codex). One review indexed 2,568 items across four tenants and found zero
+orphans and zero dangling references.
+
+**One genuine blocking concern was found and repaired.**
+`livespec-bg47fr`'s regroomed-out reason named only ONE of its THREE
+replacement slices. This was NOT a delegate error — it is a SILENT second
+symptom of the cross-repo defect the delegate had itself filed as `bd-ib-dvmh`:
+`groom`'s `file_approved_slices` records only LOCAL slices in that field, so
+cross-tenant replacements are dropped. `livespec-bg47fr` was the ONLY cut in
+the set whose slices span two tenants (verified across all eight), so it is the
+only exposure. Repaired via `bd close --reason-file`; `status: done` and
+`resolution: no-longer-applicable` verified intact afterward. `bd-ib-dvmh` now
+carries this as a second symptom plus a regression test to pin.
+
+**Two follow-on defects surfaced BY that repair**, both catalogued in
+`.ai/beads-gaps-workarounds.md` as **Entry 13**:
+- `.beads/interactions.jsonl` logs only `status` VALUE changes, so
+  reason/label/metadata edits are recorded NOWHERE. The repair moved
+  `updated_at`/`closed_at` but wrote no log row; the log's newest entry for
+  that issue still shows the SUPERSEDED reason.
+- The `bd close` reason-rewrite ALSO overwrites `closed_at` with the repair
+  time (`23:04:14Z` → `23:41:31Z` on `livespec-bg47fr`). These compound: the
+  only surviving record of the true first-close time is the very log Entry 13
+  says not to trust. If that timestamp matters, capture it BEFORE repairing.
+
+**Also repaired:** `livespec-b1uo` (unrelated epic) pointed at
+`livespec-fxxfq6` as the live tracker for the dual-purpose-registry defect.
+This thread closed that item, so the pointer dangled. Repointed to the live
+successors `livespec-2hya5g` / `livespec-i6pyy6`.
+
+### SETTLED — the live-exercise rule now covers research deliverables
+
+**Maintainer-declared 2026-07-20.** The rule carried its scope qualifier in
+sentence 1 ("any *behavior-bearing change*") but omitted it in sentence 2's
+unqualified `MUST NOT trigger accept:` — and that valve gates EVERY item. Both
+readings were defensible and produced opposite actions.
+
+Resolved: **ad hoc adversarial review IS the discharge mechanism** for
+non-behavior-bearing (research/document) deliverables, and satisfies the
+`ai-then-human` acceptance policy's second leg. The review must re-derive the
+deliverable's factual claims against live state rather than trust the artifact,
+CI-green, or its author. What never relaxes is "no release with zero
+verification" — not the particular form. Text amended in livespec core
+`AGENTS.md` (surfaced as `.claude/CLAUDE.md` via symlink); `livespec-hmstw3`
+closed with the decision.
+
+**⚠ IN FLIGHT AT SESSION END:** that amendment is PR
+[#1488](https://github.com/thewoolleyman/livespec/pull/1488) — OPEN with
+auto-merge armed (50 pass / 20 pending at handoff time). It should merge
+unattended. **First thing: confirm it merged** (`gh pr view 1488 --json state`).
+If it did NOT, check why and land it — the rule text is the durable record of a
+maintainer decision, and `livespec-hmstw3` is already closed citing it.
+
 The thread's NEW next actions:
 
 1. **Dispatch the four READY slices** (no open dependencies):
@@ -284,6 +343,21 @@ The thread's NEW next actions:
    `livespec-dev-tooling-5o6ssu` (close-superseded automation),
    `livespec-dev-tooling-gbjuua` (fan-out prose fix),
    `livespec-console-beads-fabro-5kd56a` (re-key the completeness stamp).
+
+   **⚠ `drive` LIES ABOUT SUCCESS WHEN IT DISPATCHES NOTHING — read this
+   before you dispatch, not after.** `drive --action impl:<id>` runs the
+   dispatcher with `--budget 1 --parallel 1`, so if another item is already
+   `active` there is NO CAPACITY: the loop runs zero iterations, exits 0, and
+   `_dispatch_status` maps an empty journal + exit 0 onto `status: "green"`
+   with the summary "Dispatcher reported green for <id>". The item never
+   moves. This was hit live this session and cost a full round-trip. Filed as
+   `bd-ib-c4jfp6` (`livespec-orchestrator-beads-fabro` tenant); details at
+   §"A defect found while dispatching" below.
+
+   So: **dispatch these ONE AT A TIME, and after each one re-read the item's
+   status** to confirm it actually went `active`. A `green` verdict whose
+   `stdout_json` is `[]` means NOTHING HAPPENED. Do not fire all four and
+   assume four dispatches.
 2. **Groom `livespec-dev-tooling-9j8.6`** — the sequencing call gated three
    slices (`livespec-dev-tooling-qrunmn`, `livespec-dev-tooling-z7wxbd`,
    `livespec-dev-tooling-zm5cbp`) on that extraction, so it is now this
