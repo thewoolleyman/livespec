@@ -47,8 +47,28 @@ enforcement would repeat the error this thread exists to correct.
 > text below would build the withdrawn mechanism. That is the failure both
 > reviewers named.
 
-Nothing is in flight apart from the plan itself, which is on branch
-`docs/plan-thread-integrity-mechanism-plan`.
+**STATE 2026-07-20 — W4 landed; W3 committed and BLOCKED ON A GITHUB OUTAGE.**
+
+| | Item | State |
+|---|---|---|
+| W4 | Overseer wrap-up says COMMIT the handoff, not just update it | **MERGED** (PR #1492) and live-verified |
+| W3 | Widen the invariant to `plan/` | **Committed as v170, UNPUSHED** — see below |
+
+W3 is complete through ratification and blocked only on network:
+
+- Branch `spec/widen-uncommitted-edits-to-plan`, worktree
+  `~/.worktrees/livespec/spec-widen-uncommitted-edits-to-plan`.
+- Proposal filed, then AMENDED for a real blocker found by the mandatory
+  independent Fable review (the section's committed-violations delegation was
+  false for `plan/`); re-reviewed to **NO BLOCKERS**; revise driven; **v170 cut**;
+  `just check` **all 71 targets passed**.
+- `git push` fails with HTTP 503 from the GitHub App credential helper.
+  githubstatus.com reports a Minor Service Outage; `gh api` 503s as well. This
+  is external and not a defect in the change.
+
+**To resume: push, PR, merge, then refresh the primary and remove the worktree.**
+Nothing needs re-deciding and nothing needs re-reviewing — the review verdict is
+recorded in the commit messages on that branch.
 
 ~~Recommended first move is **layer 1**, the session-end check.~~ A 2026-07-19
 investigation reshaped what that means; read `design.md` §"A `Stop` hook already
