@@ -23,7 +23,7 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Five instances — all observed on 2026-07-20, across three repos and two
+## Six instances — all observed on 2026-07-20, across three repos and two
 ## independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
@@ -92,9 +92,32 @@ request closed records explicitly. A default listing answers "what is open?", no
 "what exists?" — and those are different questions whenever you are checking for
 prior art.
 
+### 6. A directory listing cannot distinguish "never existed" from "deleted"
+
+A supervisor checked whether a plan thread existed, found the path absent from a
+directory listing, and issued the directive "it does not exist active or
+archived; you were pointed at a handoff that was never written." The thread DID
+exist — it had been removed by a `git rm` an hour earlier and was restored
+shortly after. Obeyed literally, that directive would have abandoned a 253-line
+handoff holding findings recorded nowhere else.
+
+The listing was accurate. The inference was not: an empty result was read as
+proof of NON-EXISTENCE rather than as one observation, from one source, at one
+moment.
+
+**Counter-move:** when concluding that something never existed, check a source
+that records HISTORY, not just current state — `git log --diff-filter=D -- <path>`
+finds a deletion; a listing never will. More generally, absence in a
+point-in-time view is evidence about that view, not about the past.
+
+**Recorded deliberately as a supervisor's error.** Along with instance 5, it
+shows the pattern reaching the person REVIEWING the work as readily as the person
+doing it — which is the strongest available argument that it is environmental
+rather than a matter of individual care.
+
 ## Why this file exists in livespec CORE
 
-The five instances span THREE repositories — `livespec`,
+The six instances span THREE repositories — `livespec`,
 `livespec-orchestrator-beads-fabro`, and `livespec-console-beads-fabro` — and
 core owns fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.
