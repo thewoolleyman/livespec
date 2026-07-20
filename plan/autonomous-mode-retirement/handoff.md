@@ -242,11 +242,13 @@ operator's corrections and not the supervisor's is not an honest record.
 
 ## RUNNING STATE — 2026-07-20 (cont. — clause 3 session)
 
-### `bd-ib-yqfw` (P0) — ALL THREE CLAUSES NOW IMPLEMENTED; clause 3 awaits merge
+### ✅ `bd-ib-yqfw` (P0) — CLOSED. All three clauses landed and bar 4 is proven.
 
 **The maintainer escalated this in their own words: "Something is fucked up with
 the factory. Make sure this gets fixed."** It ranked above every §B finding and
-above all remaining Defect-B work.
+above all remaining Defect-B work. It is now closed `resolution:completed`, with
+the full evidence appended to the ledger item so the record does not depend on
+any session transcript.
 
 | Clause | State |
 |---|---|
@@ -412,21 +414,21 @@ Three orchestrator dispatches stranded; the one console dispatch completed
 cleanly through the same janitor. **Do not assume Defect A is still running — it
 finished and is closed.**
 
-### 🚩 A GREEN GATE IS NOT A WORKING FACTORY — this is the actual finish line
+### ✅ A GREEN GATE IS NOT A WORKING FACTORY — and the factory is now PROVEN to close work
 
-**Do not mistake #845 merging for the factory being fixed.** It has been proven
-GREEN ON A GATE, as uid 1000. It has NOT been proven to close work.
+The bar was never "the gate is green"; it was **a real item dispatched and
+reaching `done` with NO human hand-closing it**. Before 2026-07-20 that had never
+happened in the orchestrator repo: the day produced three correct merged fixes
+and three MANUAL closes (D1, D2, the git-jsonl retirement). **That bar is now
+met** — see the proof-dispatch section below.
 
-**The proof is a real item dispatched and reaching `done` with NO human
-hand-closing it.** That has not happened in the orchestrator repo. Today produced
-**three correct merged fixes and three manual closes** — D1, D2, and the git-jsonl
-retirement all needed a human to read the outcome and close the item by hand. A
-gate that passes is a precondition for that, not evidence of it.
-
-The console evidence above is ONE run and does not settle this. It shows the
-console repo did not strand *that time*; it does not show the orchestrator repo
-now succeeds. Those are different claims and only the second is the maintainer's
-bar.
+**⚠ SCOPE RESTRAINT — the correct claim is "fixed, and demonstrated in two
+ecosystems", NOT "working everywhere".** Overseer directive 2026-07-20, recorded
+here so this thread's record never overstates it. Unattended closes are proven in
+**exactly two repos**: `livespec-orchestrator-beads-fabro` (Python, `bd-ib-lmi5`)
+and `livespec-console-beads-fabro` (Rust, `-bgc`). **The other six fleet repos
+have NO post-fix unattended-close evidence.** A single green run per ecosystem is
+one observation, and the reflection record says so (`green_streak: 1`).
 
 Also carry forward: `bd-ib-9yi` (cargo-not-found / no Rust toolchain in the
 orchestrator image). The overseer's sharper read, which holds: that ticket
@@ -436,7 +438,7 @@ under the per-user worktree root, where cargo exists. So `bd-ib-9yi` was **not
 refuted by that run — it was simply not exercised**, and stays latent for the
 containerized path. Do not close it on the strength of `-bgc`.
 
-### 🔬 THE PROOF DISPATCH IS RUNNING — `bd-ib-lmi5`
+### ✅ THE PROOF DISPATCH — `bd-ib-lmi5` — CLOSED UNATTENDED
 
 Launched 2026-07-20 21:30:50Z, alongside clause 3 rather than after it.
 
@@ -462,12 +464,68 @@ WHITELIST filter on the ranked ready set; (2) `[: args.budget]` with budget 1;
 iteration; (4) the ready queue is empty anyway. Journal confirms
 `loop-pick → picked: ["bd-ib-lmi5"], budget: 1`.
 
-**⚠ Sizing caveat — do not misread a bounce.** The factory warned at 21:30:52Z:
-`description is 4688 chars (> 1500): heavy items have exceeded one unattended ACP
-turn` and `carries 3 enumerated parts`. If lmi5 fails to converge and bounces to
-`needs-regroom`, that is a **sizing** outcome, NOT a verdict on the janitor fix —
-it leaves the bar unproven rather than disproven, and the next step is a smaller
-non-substrate item, not a re-investigation of the janitor.
+**Sizing caveat — it did NOT materialize.** The factory warned at 21:30:52Z that
+the 4688-char, 3-part description exceeded one unattended turn. The item
+converged anyway (`converged: true`, `bounced_to_regroom: false`,
+`fix_loop_count: 21`, 2405s wall clock). **The warning is conservative, not
+predictive** — do not pre-emptively split an item on the strength of it alone.
+
+### ✅ OUTCOME — bar 4 is MET
+
+    22:10:59Z  janitor-post-merge   exit_code 0   <- the EXACT stage that stranded
+                                                     all three pre-fix dispatches
+    22:11:00Z  ledger-complete
+    22:11:00Z  acceptance-ai-pass   verdict PASS, criteria matched vs merged diff
+    22:11:05Z  ledger-accept
+    22:11:05Z  auto-disposition     ai-auto-accept (governing: acceptance_mode)
+    22:11:05Z  outcome              stage done, status green, PR 850, sha 108d390
+    22:11:06Z  reflection           green_streak 1
+
+Cross-checked against **three independent sources**, never the dispatcher's own
+summary: the live-window journal, GitHub (`#850 MERGED 22:08:15Z`, `108d390` on
+`origin/master`), and the ledger (`bd-ib-lmi5` CLOSED, assignee `fabro`).
+
+**Attribution was ESTABLISHED, not assumed.** The overseer captured a ledger
+baseline at 22:00:25Z showing `lmi5` ACTIVE and re-read at 22:11:20Z showing
+CLOSED; between those reads the operator was idle holding for checks and the
+overseer performed only reads. No human closed it. *Bracketing a state change
+with two timestamped reads while all actors are provably read-only is how you
+attribute an unattended close — a green outcome record alone does not.*
+
+Benign detail for anyone reconstructing the chain: `janitor-checkout-preclean
+exit_code 128` is git's "not a working tree" on a pre-clean of a non-existent
+path — non-fatal; the next `janitor-checkout-add` succeeded.
+
+### ⚠ `reviewCount: 0` IS NOT EVIDENCE OF NO REVIEW — do not repeat this error
+
+The operator read `gh pr view 850 --json reviews` returning `reviewCount: 0` and
+reported that the factory's output "lands unreviewed". **False, and corrected by
+the overseer.** A zero GitHub review count means no GitHub-native review OBJECT
+was created; the workflow's in-workflow review node does not create one. The
+journal shows it fired and approved:
+
+    review-gate-telemetry : review_verdict "approve", review_fix_rounds 0,
+                            review_hit_cap false, pr_shipped_on_cap false
+    acceptance-ai-pass    : verdict PASS, diff.observed true (16038 bytes,
+                            "merged diff read")
+
+**Two independent gates fired**, neither bypassed by auto-merge. This was a null
+in one system read as an absence in another — the same silence-reads-as-PASS
+inversion as `bd-ib-hdd6`, pointed the other way.
+
+**Two cases must never be collapsed** — the distinction is the whole substance of
+`livespec-4rq4`:
+
+| | PR #847 | PR #850 |
+|---|---|---|
+| Origin | HAND-BUILT substrate, never dispatched | FACTORY dispatch |
+| In-workflow review node | none existed | fired, verdict `approve` |
+| Reviewed before merge? | **NO — no review of any kind** | yes |
+| Verdict | the genuine defect (`livespec-4rq4`) | the DESIGNED path, not a hole |
+
+To establish whether a dispatched PR was reviewed, read the journal's
+`review-gate-telemetry` — not GitHub's review objects. For a hand-built PR no
+such record exists, and THAT absence is real.
 
 ### ⚠ READING THE DISPATCH JOURNAL — filter on `at`, or you will read history as live
 
