@@ -553,6 +553,14 @@ existing file):
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
   INTO a downstream consumer; cross-repo consistency checks live on the
   consumer side reading the producer, or the coupling is designed away.
+- **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
+  passing check, an empty query result, or a green test suite as EVIDENCE,
+  and before reporting such a conclusion or deciding work is already done.
+  A green-looking signal read off the wrong source is not evidence: five
+  recorded instances with their concrete counter-moves — a suite that never
+  exercises the call site, a fixture asserting the retired shape, `gh pr list`
+  defaulting to open-only, a stale `remotes/origin/*` cache, and a default
+  ledger listing that hides closed records during a dedup sweep.
 
 ## Working with the maintainer
 
