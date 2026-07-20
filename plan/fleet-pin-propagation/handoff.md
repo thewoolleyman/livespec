@@ -251,6 +251,43 @@ extraction target of `livespec-dev-tooling-9j8.6`. Implementing the adopter fix
 in shell first and extracting afterward is either double work or a silent drop of
 the change during extraction.
 
+**MEASURED 2026-07-20 — the adopter numbers `bg47fr` never took.** Latest
+livespec release at measurement: **v0.18.4**. Its replacement slices are
+`livespec-qhxcsp`, `livespec-dev-tooling-qrunmn` (released posture) and
+`livespec-dev-tooling-z7wxbd` (pinned posture); the measurement is journaled on
+the latter two.
+
+| adopter | posture | pin | gap | last pin change |
+|---|---|---|---|---|
+| `openbrain` | pinned | **v0.6.10** | ~12 minors | 2026-07-08, human |
+| `resume` | pinned | **v0.7.1** | ~11 minors | 2026-07-10, human |
+| `homelab` | released | **v0.17.1** | ~1 minor | 2026-07-18, human |
+
+This confirms the earlier unmeasured guess that `openbrain` is staler than
+`resume`, and it establishes the core defect **by commit authorship rather than
+by inference**: NOT ONE adopter pin was ever moved by `livespec-pr-bot[bot]`.
+All three were hand-edited, each as a side effect of some other change
+(onboarding, a compatibility fix, a store migration). Fleet MEMBERS get
+bot-authored bumps by name through v0.50.8. So "no adopter is wired into the
+fan-out" is now direct evidence, not a deduction from staleness.
+
+**⚠ A TRAP IN THAT TABLE — `homelab` is NOT evidence that the released-posture
+path works.** At ~1 minor behind it looks healthy beside the other two. That is
+an artifact of RECENT ONBOARDING (its pin was hand-set on 2026-07-18 when the
+repo was seeded), not of any fan-out reaching it. Nothing automated will move
+it, and it will drift exactly as the other two did — it is simply younger.
+Sampling adopter staleness on a single day would wrongly suggest the released
+path is fine and only the pinned path is broken. **Both are unwired**, which
+matters because `qrunmn` is scoped precisely to the released-posture path.
+
+**⚠ METHOD TRAP, and it fails SILENTLY.** `openbrain` and `homelab` default to
+**`origin/main`**; `resume` and every fleet member default to **`origin/master`**.
+Reading `origin/master:.livespec.jsonc` in the first two returns nothing and
+reads as "no pin declared" rather than as an error — it under-reported two of
+three adopters on the first attempt here. Any cross-repo adopter sweep MUST
+resolve each repo's own default branch (`git rev-parse --abbrev-ref origin/HEAD`)
+instead of assuming `master`.
+
 **Recommendation for grooming (a sequencing call, still the maintainer's):**
 decide `livespec-dev-tooling-9j8.6`'s position relative to these four BEFORE
 cutting any of them. Extracting first means the fixes are written once, in tested
@@ -588,6 +625,32 @@ landed and what blocked. The live next actions are now:**
   |---|---|---|
   | `livespec-dbbgoc` (the CI-blindness companion to the registry split) | `livespec-2hya5g` | ✅ |
   | `livespec-dev-tooling-dqfmjr` (fan-out dedupe, the `y6kqgr` replacement) | `livespec-dev-tooling-5o6ssu` | ✅ |
+
+  **Both were pre-verified 2026-07-20 (journaled on each), because each one's
+  BLOCKER edited the very code the slice targets — so their premises could have
+  gone stale between grooming and dispatch. Both still hold, with adjustments:**
+
+  - `livespec-dbbgoc`: premise intact — Path A still reads
+    `git -C <local_clone> show HEAD:justfile` with no fetch, Path B still
+    fallback-only. But **DO step 3 is ALREADY SATISFIED** by `2hya5g` (the check
+    now reads the conformance registry), so remaining scope is steps 1–2 only.
+    A ride-along worth taking: `filter_sibling_targets` still names its
+    parameter `cross_repo_targets` while every caller passes the CONFORMANCE
+    registry — the same overloaded-name hazard that caused this thread, now
+    re-created at the code level.
+  - `livespec-dev-tooling-dqfmjr`: defect still live — `gh pr create` runs with
+    NO existence check, and supersession runs AFTER it. **`5o6ssu` pre-wired the
+    fix**: it ships `class BumpKey` documented as "the shared bump identity used
+    by supersession and future dedupe logic". **And it is NOT exposed to
+    `bd-ib-nga9`** — it edits `.github/actions/…/action.yml`, a composite action,
+    not `.github/workflows/`. Proven, not assumed: `5o6ssu` modified that same
+    file and merged through the factory. So this slice has no substrate blocker
+    and should dispatch cleanly.
+
+  **⚠ Do NOT cite the clean fleet sweep as evidence `dqfmjr` is unnecessary.**
+  One open bump PR fleet-wide proves duplicates are CLOSED, not that they are
+  never OPENED. The wasteful create and its CI run still happen; only the
+  residue is swept. That is cleanup, not prevention.
 
   So accepting two items releases two more, and both follow-ons avoid the new
   infra defects (`dqfmjr` is a Python repo and touches no
