@@ -855,6 +855,24 @@ text itself (the `livespec-bg47fr` reason carries a dated
 `CORRECTION …` paragraph explaining what changed and why), so the
 record is self-describing even though the interaction is absent.
 
+**The `bd close` reason-rewrite has a second cost, and it compounds
+with this very gap — know it before using the workaround above.**
+Re-running `bd close` on an already-closed item to fix its reason
+also overwrites `closed_at` with the REPAIR time. On
+`livespec-bg47fr`, `closed_at` moved from the true first close
+(`2026-07-19T23:04:14Z`) to `2026-07-19T23:41:31Z`; `created_at` was
+correctly left alone. So after the repair, "when was this actually
+first closed" is no longer answerable from the item at all.
+
+The compounding is the dangerous part: the only surviving record of
+the original close time is the `interactions.jsonl` entry — i.e. the
+log this very entry documents as incomplete and not-authoritative.
+Repair one field, and the fallback for another becomes a log you
+have just been told not to trust. If the true close time matters
+(release timing, SLA, incident reconstruction), capture it BEFORE
+running the repair, and state it in the inline `CORRECTION …`
+paragraph alongside the reason fix.
+
 ### Proposed upstream change
 
 Emit a `field_change` interaction for every mutated field, not only
