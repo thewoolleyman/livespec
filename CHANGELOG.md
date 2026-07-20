@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/thewoolleyman/livespec/compare/v0.18.4...v0.19.0) (2026-07-20)
+
+
+### Features
+
+* **overseer:** read the watch-set from $HOME, not the fleet manifest (b1uo.3) ([d1b4428](https://github.com/thewoolleyman/livespec/commit/d1b4428c9a1abe669edbcc61e35bbce6c149386d))
+
 ## [0.18.4](https://github.com/thewoolleyman/livespec/compare/v0.18.3...v0.18.4) (2026-07-20)
 
 
