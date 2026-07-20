@@ -171,14 +171,50 @@ spanning three repos and two independent operators. Encountered here:
 
 ## Corrections the overseer made to its own directives
 
-Recorded because they are load-bearing, and because a thread that logs only the
-operator's corrections and not the supervisor's is not an honest record.
+Recorded at the overseer's own instruction. A thread that logs only the
+operator's corrections and not the supervisor's is not a modest record, it is a
+WRONG one — it would fail this thread's own test, being a source that could not
+have contradicted the person writing it.
 
-1. **"The thread does not exist, active or archived."** False — it existed and
-   had been deleted. See the reclaim rationale above.
-2. **"The retirement is essentially done."** Retracted on discovering
-   `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
-   so the retirement is not fleet-wide complete.
+The operational reason matters more than the fairness one: **the overseer's
+directives are in this thread, and a future reader who follows a superseded one
+will act on a false premise.** These corrections are not decoration; they are
+what makes the surviving directives safe to follow.
+
+### 1. "There is no `plan/autonomous-mode-retirement/` thread — it does not exist active or archived." — FALSE, and load-bearing
+
+It existed. It had been deleted by a `git rm` on 2026-07-19 and was restored as
+`46ade934` / `116a4147`.
+
+**Had this directive been obeyed literally, a 253-line handoff holding findings
+that exist nowhere else would have been abandoned** — very nearly the exact harm
+this sweep was convened to prevent.
+
+**Why it was wrong, which is the part worth keeping:** the overseer checked a
+DIRECTORY LISTING at a moment when the file was deleted, and reported the absence
+as PROOF OF NON-EXISTENCE rather than as one observation from one source at one
+time.
+
+That is **instance 6 of this thread's own lesson, committed by the supervisor** —
+a green-looking signal (an authoritative-looking empty listing) read off a source
+that could not have distinguished "never existed" from "deleted an hour ago". It
+belongs beside the other instances, and it is recorded in
+`.ai/verifying-against-the-right-source.md` as such.
+
+### 2. "The retirement is essentially done — stale prose only." — FALSE
+
+Retracted on discovering `bd-gj-rb3`. It is a live cross-repo spec divergence,
+and verification showed it is WORSE than the overseer stated: git-jsonl's
+`contracts.md:28` still ratifies the **LLM-resolves-consent-gates** behavior that
+v034 dropped as its riskiest part. See the BLOCKER section above.
+
+### 3. The duplicate sweep during the acceptance run was wrong in METHOD
+
+A tenant's 28 VISIBLE items were swept for duplicates and reported clean; the
+tenant also held 61 CLOSED records that were never examined, and a duplicate
+filing did in fact exist among them. Recorded as instance 5 of
+`.ai/verifying-against-the-right-source.md`. The counter-move: any dedup or
+has-this-been-filed sweep MUST request closed records explicitly.
 
 ## NEXT ACTION
 
