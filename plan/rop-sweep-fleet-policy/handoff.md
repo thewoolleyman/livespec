@@ -465,7 +465,8 @@ its tracking test will fail BY DESIGN. File the paired git-jsonl repair BEFORE l
 | `livespec-dev-tooling-y27` | livespec-dev-tooling | P2 | **NEW 2026-07-20.** Residual after 6j6: `rc=1` with a PARTIAL tally still poisons the ratchet. PRE-EXISTING (predates z45). rc 1 is genuinely ambiguous — the naive `mutants_total`-shrink fix has its own false-fail risk when code is legitimately deleted |
 | `livespec-e9j` slice 1a | livespec | — | **PR #1497 OPEN** — declares `dataclasses_tree`, arming `newtype_domain_primitives` (one of the four never-enforcing checks). Verified armed + green; 71 targets pass |
 | `livespec-ftbvgc` | livespec | — | **UN-STRANDED**; in `acceptance`, awaits MAINTAINER final acceptance (`ai-then-human`) |
-| `bd-ib-12fw` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor lock leaks on exception path; NO liveness check (no PID), so a leak wedges the venue permanently and the error misdirects the operator |
+| ~~`bd-ib-12fw`~~ | livespec-orchestrator-beads-fabro | — | **MERGED 2026-07-20** (PR #822). Dual review SPLIT (Codex BLOCKERS / Opus NO-BLOCKERS) on severity of a TOCTOU race both found; **maintainer ruled merge + follow-up**. Reconciled to un-strand |
+| `bd-ib-w4h4` | livespec-orchestrator-beads-fabro | P1 | **NEW 2026-07-20.** Janitor stale-lock reclamation is TOCTOU: unlink-by-pathname can delete a LIVE lock, so two janitors both own the venue. Demonstrated by BOTH reviewers. Fix: atomic takeover (temp+`os.link`/`rename`, or read-back-confirm-own-pid). Ride-along: a pre-existing assertion can no longer detect the defective contention message |
 | `livespec-dev-tooling-qm5` | livespec-dev-tooling | P1 | **UNBLOCKED** (`backlog`), still `needs-regroom` — premise falsified, scope needs re-cutting |
 | `livespec-dev-tooling-cvz` | livespec-dev-tooling | P1 | **NEW.** `source_trees` undeclared → check scans ZERO files in core + both Drivers |
 | `livespec-dev-tooling-e9j` | livespec-dev-tooling | **P0** | Role-key non-declaration silently disarms 7 checks fleet-wide; core runs 5+ structural gates vacuous-but-green. Raised to P0 2026-07-20. Superset of `cvz` |
@@ -794,6 +795,22 @@ Every finding below passed all mechanical gates:
   across four scenarios); Opus found a deleted guard with before/after execution evidence. The
   disagreement WAS the finding. Always run both, and when they disagree, VERIFY THE DIFF YOURSELF —
   the overseer confirmed the deletion in `git diff` in one command.
+- **A transient CI flake STRANDS a work-item `active`.** `bd-ib-12fw`'s dispatch died on
+  `mise ERROR Failed to install aqua:koalaman/shellcheck@0.11.0: HTTP timed out` — a download
+  timeout during tool setup, so the check never ran; `ci-green` failed with it, the PR went BLOCKED,
+  and the dispatcher gave up with "PR did not reach MERGED within the poll budget". Re-running the
+  failed jobs turned it fully green (63 pass / 0 fail), confirming pure flake. **Re-running a
+  root-caused infra timeout is NOT a test skip.** Recovery is `reconcile-merged`. This is a live
+  argument for `bd-ib-wmqsn7`.
+- **Reviewer disagreements come in TWO shapes, and both justify the two-reviewer rule.** On `z45`
+  they disagreed on FACTS (Codex missed a deleted guard) — the disagreement caught a defect. On
+  `bd-ib-12fw` they agreed on facts entirely (both demonstrated the same TOCTOU race by execution)
+  and disagreed only on SEVERITY — surfacing a genuine maintainer judgment call that a single
+  reviewer would have silently decided either way. **When they split on severity, route it to the
+  maintainer; do not self-waive in either direction.**
+- **The factory enables auto-merge on its own PRs.** #822 merged by itself the moment CI went green,
+  even though the dispatcher had already given up. Do not assume a failed dispatch means nothing
+  landed — CHECK the PR state before planning recovery.
 - **Ask a reviewer to diff against the PRE-change version, not just to read the post-change code.**
   The z45 regression was a REMOVAL. A reviewer inspecting only what is present cannot see what is
   missing; the finding came from running the same fixture against `e9dcf46` and `e9dcf46^`.
