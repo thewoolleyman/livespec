@@ -15,9 +15,8 @@
 Per `SPECIFICATION/contracts.md`:
 
   A doctor invariant `wiring-completeness-cross-repo` MUST walk
-  every registered sibling repo (per the `livespec-dev-tooling`,
-  `livespec-runtime`, and `livespec-impl-*` registries declared
-  in `.livespec.jsonc`'s `cross_repo_targets` block), read its
+  every code-conformance sibling repo declared in `.livespec.jsonc`'s
+  `cross_repo_conformance_targets` block, read its
   `justfile`'s `check` recipe, compute the canonical-set
   difference, and fire `fail` on any aggregate lacking any
   canonical slug.
@@ -40,7 +39,7 @@ Cross-boundary mechanism:
     `resolve_effective_local_clone` helper: the
     `LIVESPEC_SIBLING_CLONES_ROOT` env-var override (`<root>/<sibling-slug>`)
     when set, otherwise the manifest's
-    `cross_repo_targets[<slug>].local_clone` field. CI sets the
+    `cross_repo_conformance_targets[<slug>].local_clone` field. CI sets the
     env var to a freshly-cloned siblings-root so the check passes
     on ephemeral GitHub Actions runners; local-dev usage leaves it
     unset and reads from `/data/projects/<sibling>` via the
@@ -166,9 +165,9 @@ def _resolve_canonical_slugs() -> tuple[str, ...] | None:
 def _evaluate_manifest(
     *,
     ctx: DoctorContext,
-    cross_repo_targets: dict[str, Any],
+    cross_repo_conformance_targets: dict[str, Any],
 ) -> IOResult[Finding, LivespecError]:
-    """Walk every non-host sibling, aggregate per-sibling drift, build Finding."""
+    """Walk every non-host conformance sibling and build a Finding."""
     canonical_slugs = _resolve_canonical_slugs()
     if canonical_slugs is None:
         return IOSuccess(
@@ -183,7 +182,7 @@ def _evaluate_manifest(
             ),
         )
     sibling_targets = filter_sibling_targets(
-        cross_repo_targets=cross_repo_targets, project_root=ctx.project_root
+        cross_repo_targets=cross_repo_conformance_targets, project_root=ctx.project_root
     )
     if not sibling_targets:
         return IOSuccess(
@@ -212,6 +211,17 @@ def _evaluate_manifest(
     )
 
 
+def _select_conformance_targets(*, parsed: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the conformance registry, with legacy fallback for old configs."""
+    conformance_targets = parsed.get("cross_repo_conformance_targets")
+    if isinstance(conformance_targets, dict):
+        return conformance_targets
+    legacy_targets = parsed.get("cross_repo_targets")
+    if isinstance(legacy_targets, dict):
+        return legacy_targets
+    return None
+
+
 def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecError]:
     """Handle the .livespec.jsonc-parsed config; route to manifest walker."""
     if not isinstance(parsed, dict):
@@ -225,8 +235,8 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             ),
         )
-    cross_repo_targets = parsed.get("cross_repo_targets")
-    if not isinstance(cross_repo_targets, dict):
+    cross_repo_conformance_targets = _select_conformance_targets(parsed=parsed)
+    if cross_repo_conformance_targets is None:
         return IOSuccess(
             make_finding(
                 ctx=ctx,
@@ -237,7 +247,9 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             ),
         )
-    return _evaluate_manifest(ctx=ctx, cross_repo_targets=cross_repo_targets)
+    return _evaluate_manifest(
+        ctx=ctx, cross_repo_conformance_targets=cross_repo_conformance_targets
+    )
 
 
 def run(*, ctx: DoctorContext) -> IOResult[Finding, LivespecError]:
