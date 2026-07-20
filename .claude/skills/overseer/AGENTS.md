@@ -194,7 +194,7 @@ for the marker's edge-triggered lifecycle.
    state-file protocol replaced.
 
    **The overseer NEVER touches files under `plan/`.** It touches ONLY its own
-   config (the mapping store, the injection-stamp sidecar, the fleet manifest)
+   config (the mapping store, the injection-stamp sidecar, the watch-set declaration)
    and temp files (`<repo>/tmp/overseer/<topic>/`). A session's `handoff.md` and
    everything else under `plan/<topic>/` is the SESSION's own workflow — the
    overseer never reads, writes, or hashes it. Discovery enumerates `plan/*/`
@@ -853,9 +853,11 @@ for the marker's edge-triggered lifecycle.
   Beyond `--warn-percent`, there are **no config knobs**: store
   (`~/.livespec-overseer.jsonl`) and injection-stamp
   (`~/.livespec-overseer-stamps.json`) paths are hard-coded via the `registry`
-  defaults, and the watch-set is the whole fleet read from
-  `.livespec-fleet-manifest.jsonc` (resolved relative to the module file, so it
-  works from any cwd) — no `--store` / `--stamp` / `--repos` / `--repos-only` /
+  defaults, and the watch-set is read from `~/.livespec-overseer-repos.json`
+  (an absolute `$HOME` path, so it works from any cwd AND from any install
+  location — it is deliberately NOT derived from the module's own position,
+  which is what previously pinned this package to
+  `<core>/.claude/skills/overseer/`) — no `--store` / `--stamp` / `--repos` / `--repos-only` /
   `--manifest`, and `overseerd` takes no `--interval` / `--once` / `--recover`
   (surface-only: no startup auto-recovery). The `Supervisor` dataclass keeps
   `store_path` / `stamp_path` / `watch_repos` / `manifest_path` injectable, but
@@ -958,7 +960,7 @@ end-to-end check is the discovery + render path, exercised safely read-only:
 
 1. Run a **read-only render** against the real fleet:
    `uv run --no-project python .claude/skills/overseer/supervisor.py list` — it
-   calls `tick(act=False)`, so it discovers every fleet-manifest repo's `plan/*/`,
+   calls `tick(act=False)`, so it discovers every declared repo's `plan/*/`,
    joins the mapping, and prints the `Status · Topic · tmux · Ctx% · Repo` table
    **without injecting or restarting anything**. This exercises the whole reshaped
    surface (module invocation, fixed store path, fleet-only watch-set) with zero
@@ -968,14 +970,35 @@ end-to-end check is the discovery + render path, exercised safely read-only:
    renders and refreshes. Surface-only means it will not act on any real session
    unless that session is genuinely at threshold + certified + idle.
 
-   **Isolation tip for exercising `overseerd` safely off the real fleet:** because
-   `overseerd` has no `--repos`/`--manifest` knob and resolves the manifest
-   relative to the module file, run a COPY of this folder inside a scratch repo
-   tree (`<scratch>/<repo>/.claude/skills/overseer/`) with a scratch
-   `.livespec-fleet-manifest.jsonc` beside it and a scratch `plan/<topic>/`. The
-   copied `overseerd` then discovers ONLY the scratch fleet — real sessions
-   untouched (verified: `overseerd` via its uv shebang renders the scratch fleet
-   identically from cwd `/tmp`, `/`, and `~`). Two gotchas learned the hard way:
+   **Isolation tip for exercising `overseerd` safely off the real fleet — this
+   got MUCH simpler, and the old recipe is obsolete.** The watch-set is now an
+   absolute `$HOME` path, so isolation is just a scratch `HOME`:
+
+   ```bash
+   mkdir -p /tmp/ov/{home,projects/demo/plan/demo-topic}
+   printf '{"repos": ["/tmp/ov/projects/demo"]}' > /tmp/ov/home/.livespec-overseer-repos.json
+   touch /tmp/ov/projects/demo/plan/demo-topic/handoff.md
+   HOME=/tmp/ov/home .venv/bin/python3 .claude/skills/overseer/supervisor.py list
+   ```
+
+   That redirects the watch-set AND the mapping store AND the stamp sidecar in
+   one move, since all three are `$HOME`-anchored — real sessions untouched.
+   Verified 2026-07-20: it renders exactly one row, `unassigned  demo-topic`,
+   which also demonstrates the invariant the design turns on — a plan with NO
+   assigned session is still discovered, because the watch-set is declared
+   rather than derived from the mapping store's existing rows.
+
+   **Gotcha: do NOT wrap this in `mise exec` / `uv run`.** `mise` reads its own
+   config out of `$HOME`, so overriding `HOME` makes it fail with
+   "Config files in /home/ubuntu/mise.toml are not trusted" before your code
+   runs at all. Invoke the venv interpreter directly, as above.
+
+   The SUPERSEDED recipe was to copy this whole folder into a scratch repo tree
+   (`<scratch>/<repo>/.claude/skills/overseer/`) with a scratch
+   `.livespec-fleet-manifest.jsonc` beside it, because the manifest was resolved
+   by walking up from the module file — so the only way to change the watch-set
+   was to physically move the code. Do not do that any more; it works by
+   accident at best. Two gotchas from that era still apply:
    - **Do NOT point `HOME` at a fresh empty dir to isolate the store.** `uv run`
      keys its cache off `$HOME/.cache/uv`; an empty HOME forces uv to cold-rebuild
      its whole environment and **hangs** (looks exactly like a daemon bug — it is

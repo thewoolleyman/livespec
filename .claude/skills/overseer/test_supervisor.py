@@ -3143,7 +3143,7 @@ def test_window_name_is_badged_with_the_attention_count(tmp_path):
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=50))
     _declare(repo, topic, "blocked: needs you")
-    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    sup = _sup(tmp_path, fake, own_pane="%7", watch_set_path=None, watch_repos=[str(repo)])
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
 
     with contextlib.redirect_stderr(_io.StringIO()):
@@ -3157,7 +3157,7 @@ def test_window_name_drops_the_badge_when_nothing_needs_attention(tmp_path):
     session = registry.tmux_id(str(repo), topic)
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=90))  # healthy
-    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    sup = _sup(tmp_path, fake, own_pane="%7", watch_set_path=None, watch_repos=[str(repo)])
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
 
     with contextlib.redirect_stderr(_io.StringIO()):
@@ -3172,7 +3172,7 @@ def test_window_name_is_only_rewritten_when_the_count_changes(tmp_path):
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=50))
     _declare(repo, topic, "blocked: x")
-    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    sup = _sup(tmp_path, fake, own_pane="%7", watch_set_path=None, watch_repos=[str(repo)])
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
 
     with contextlib.redirect_stderr(_io.StringIO()):
@@ -3189,7 +3189,7 @@ def test_read_only_list_never_renames_the_window(tmp_path):
     fake = FakeTmux()
     fake.serve(session, repo, capture=_idle_capture(ctx=50))
     _declare(repo, topic, "blocked: x")
-    sup = _sup(tmp_path, fake, own_pane="%7", manifest_path=None, watch_repos=[str(repo)])
+    sup = _sup(tmp_path, fake, own_pane="%7", watch_set_path=None, watch_repos=[str(repo)])
     registry.append_mapping(_mapped_track(repo, topic, session), sup.store_path, added_at="t")
 
     with contextlib.redirect_stderr(_io.StringIO()):
@@ -4190,14 +4190,32 @@ def _fleet_manifest(tmp_path, *repo_names):
     return manifest
 
 
-def test_watch_set_comes_from_the_fleet_manifest_when_no_repos_are_injected(tmp_path):
-    """With no explicit `watch_repos`, the daemon watches the fleet the manifest names —
-    but only checkouts that EXIST and carry a `plan/` dir, so a manifest entry that is not
-    cloned locally is silently absent rather than a phantom watched repo."""
+def test_watch_set_comes_from_the_home_declaration_when_no_repos_are_injected(tmp_path):
+    """With no explicit `watch_repos`, the daemon watches what the `$HOME` declaration
+    names — but only checkouts that EXIST and carry a `plan/` dir, so a declared repo that
+    is not cloned locally is silently absent rather than a phantom watched repo.
+
+    This is the relocation-critical path: the declaration is an ABSOLUTE `$HOME` path, so
+    it resolves identically no matter where the overseer package itself lives. The
+    superseded manifest seeding walked UP three directories from this file, which broke
+    the instant the package moved out of `<core>/.claude/skills/`.
+    """
     alpha, _ = _make_plan(tmp_path, repo_name="alpha")
     (tmp_path / "gamma").mkdir()  # cloned, but no plan/ dir
-    manifest = _fleet_manifest(tmp_path, "alpha", "beta", "gamma")  # beta is not cloned
-    sup = _sup(tmp_path, FakeTmux(), manifest_path=str(manifest))
+    declaration = tmp_path / "repos.json"
+    declaration.write_text(  # beta is declared but not cloned
+        json.dumps(
+            {
+                "repos": [
+                    str(tmp_path / "alpha"),
+                    str(tmp_path / "beta"),
+                    str(tmp_path / "gamma"),
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    sup = _sup(tmp_path, FakeTmux(), watch_set_path=str(declaration))
 
     assert sup._resolve_watch() == [os.path.normpath(str(alpha))]
 
@@ -4489,25 +4507,40 @@ def test_gitignore_check_fails_soft_to_not_ignored_when_git_cannot_spawn(monkeyp
 # --------------------------------------------------------------------------- #
 
 
-def test_default_manifest_resolves_to_the_core_repo_checkout_not_the_cwd(tmp_path):
-    """The daemon runs from an arbitrary cwd, so the fleet manifest is resolved relative
-    to THIS module's own checkout. The returned path must be the manifest of the core repo
-    that owns `supervisor.py` — a wrong number of `parents[]` hops would miss it."""
-    manifest = supervisor._default_manifest()
+def test_watch_set_location_does_not_depend_on_where_this_package_lives(tmp_path):
+    """The watch-set declaration is an ABSOLUTE `$HOME` path, independent of this module's
+    position on disk. This is the property that makes the package relocatable, and it is
+    the direct inverse of what the superseded implementation guaranteed.
 
-    assert manifest.name == ".livespec-fleet-manifest.jsonc"
-    owner = manifest.parent / ".claude" / "skills" / "overseer" / "supervisor.py"
-    assert owner.is_file()  # the manifest's dir IS the checkout holding this module
+    That implementation resolved the fleet manifest as `Path(__file__).parents[3]` — "three
+    directories up is the repo root" — which is true ONLY while the package sits at
+    `<core>/.claude/skills/overseer/`. Moving it anywhere else silently repointed the
+    lookup outside the repo, which is why it was the single genuine code blocker on the
+    relocation. Asserting the path is under `$HOME` and contains no `..` traversal pins
+    that the coupling is gone rather than merely relocated.
+    """
+    declared = Path(registry.DEFAULT_WATCH_SET_PATH)
+
+    assert declared.is_absolute()
+    assert declared.parent == Path.home()
+    assert ".." not in declared.parts
+    # And it is NOT derived from this module's own location.
+    assert Path(supervisor.__file__).resolve().parent not in declared.parents
 
 
 def test_build_supervisor_has_no_knobs_and_badges_its_own_tmux_pane(monkeypatch):
-    """The de-gold-plated builder: the watch-set is the fleet manifest and the store /
+    """The de-gold-plated builder: the watch-set is the `$HOME` declaration and the store /
     stamp paths are the hard-coded registry defaults (None → the module default), with
-    `own_pane` read from `$TMUX_PANE` so the window badge works without a flag."""
+    `own_pane` read from `$TMUX_PANE` so the window badge works without a flag.
+
+    Asserting the registry constant rather than a recomputed path is deliberate: the whole
+    point of the change is that the daemon no longer DERIVES its watch-set location from
+    this file's position on disk.
+    """
     monkeypatch.setenv("TMUX_PANE", "%42")
     sup = supervisor._build_supervisor()
 
-    assert sup.manifest_path == supervisor._default_manifest()
+    assert sup.watch_set_path == registry.DEFAULT_WATCH_SET_PATH
     assert sup.own_pane == "%42"
     assert sup.watch_repos is None  # no --repos knob
     assert sup.store_path is None and sup.stamp_path is None  # no --store / --stamp knobs
@@ -4516,15 +4549,24 @@ def test_build_supervisor_has_no_knobs_and_badges_its_own_tmux_pane(monkeypatch)
     assert supervisor._build_supervisor().own_pane is None  # not under tmux → no badge
 
 
-def test_cli_colliding_reads_the_same_fleet_watch_set_the_daemon_does(tmp_path, monkeypatch):
+def test_cli_colliding_reads_the_same_watch_set_the_daemon_does(tmp_path, monkeypatch):
     """A one-shot `add`/`start` must name its session EXACTLY as the daemon would, so it
-    computes collisions over the same manifest-derived watch-set: only a topic present in
-    TWO repos is repo-qualified; a topic unique to one repo stays bare."""
+    computes collisions over the same `$HOME`-declared watch-set: only a topic present in
+    TWO repos is repo-qualified; a topic unique to one repo stays bare.
+
+    Patching the registry CONSTANT rather than a supervisor helper is the point — after the
+    relocation change there is no path-deriving function left to patch, which is exactly the
+    coupling that had to go.
+    """
     _make_plan(tmp_path, repo_name="alpha", topic="shared")
     _make_plan(tmp_path, repo_name="alpha", topic="only-alpha")
     _make_plan(tmp_path, repo_name="beta", topic="shared")
-    manifest = _fleet_manifest(tmp_path, "alpha", "beta")
-    monkeypatch.setattr(supervisor, "_default_manifest", lambda: manifest)
+    declaration = tmp_path / "repos.json"
+    declaration.write_text(
+        json.dumps({"repos": [str(tmp_path / "alpha"), str(tmp_path / "beta")]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DEFAULT_WATCH_SET_PATH", declaration)
 
     assert supervisor._cli_colliding() == frozenset({"shared"})
 

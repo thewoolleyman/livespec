@@ -41,6 +41,7 @@ __all__ = [
     "DEFAULT_CTX_THRESHOLD",
     "DEFAULT_STAMP_PATH",
     "DEFAULT_STORE_PATH",
+    "DEFAULT_WATCH_SET_PATH",
     "Track",
     "add_notified_band",
     "append_mapping",
@@ -60,7 +61,7 @@ __all__ = [
     "rewrite_mapping",
     "set_resume_pending",
     "tmux_id",
-    "watch_set",
+    "watch_set_from_config",
     "write_injection_stamp",
 ]
 
@@ -110,6 +111,15 @@ DEFAULT_CTX_THRESHOLD = 50
 # them at a tmp_path.
 DEFAULT_STORE_PATH = Path.home() / ".livespec-overseer.jsonl"
 DEFAULT_STAMP_PATH = Path.home() / ".livespec-overseer-stamps.json"
+# The watch-set declaration: which repo checkouts this host supervises. It sits
+# beside the two sidecars above for one reason beyond tidiness — it is what lets
+# a relocated overseer learn its watch-set WITHOUT reading
+# `.livespec-fleet-manifest.jsonc`, which decision D5 forbids a shipped overseer
+# from depending on (that manifest is fleet self-application infrastructure, not
+# a contract a governed consumer inherits). Keeping the declaration in `$HOME`
+# also keeps the daemon's invocation surface knob-free, honoring the deliberate
+# de-gold-plating that removed `--repos` / `--manifest` / `--store` / `--stamp`.
+DEFAULT_WATCH_SET_PATH = Path.home() / ".livespec-overseer-repos.json"
 
 # The durable keys serialized to a mapping row. `added_at` is written on append
 # but is not a Track field (it is bookkeeping only).
@@ -639,60 +649,65 @@ def _parse_jsonc(text: str) -> object:
     return json.loads(stripped)
 
 
-def _manifest_repo_names(manifest: object) -> list[str]:
-    """Collect ``repo`` names from a parsed manifest's fleet + adopters arrays."""
-    names: list[str] = []
-    parsed = jsonio.as_object(manifest)
-    if parsed is None:
-        return names
-    for section in ("fleet", "adopters"):
-        entries = jsonio.as_list(parsed.get(section))
-        if entries is None:
-            continue
-        for raw_entry in entries:
-            entry = jsonio.as_object(raw_entry)
-            if entry is None:
-                continue
-            repo = entry.get("repo")
-            if isinstance(repo, str):
-                names.append(repo)
-    return names
-
-
-def watch_set(
-    fleet_manifest_path: str | os.PathLike[str],
+def watch_set_from_config(
+    config_path: str | os.PathLike[str],
     extra_repos: Iterable[str | os.PathLike[str]] = (),
 ) -> list[str]:
-    """Compute the default watch-set: local-checkout repos that have a ``plan/``.
+    """Compute the watch-set from the ``$HOME`` declaration rather than a manifest.
 
-    Seeded from ``.livespec-fleet-manifest.jsonc`` (fleet members + adopters),
-    each name resolved against the projects-root (the parent of the manifest's
-    own repo checkout — e.g. a manifest at ``/data/projects/livespec/...``
-    resolves siblings under ``/data/projects/``). A manifest repo is included
-    only if its checkout exists AND has a ``plan/`` dir. ``extra_repos`` (an
-    off-manifest manual override) are included if they exist. Fail-soft on an
-    unreadable/unparsable manifest — the extras still apply.
+    This is the manifest-free counterpart to :func:`watch_set`, and it is what
+    makes the overseer relocatable: :func:`watch_set` seeds from
+    ``.livespec-fleet-manifest.jsonc`` resolved by walking UP from this file,
+    which breaks the moment the package moves out of ``<core>/.claude/skills/``.
+    Reading an absolute ``$HOME`` path instead is position-independent, and it
+    drops the manifest dependency D5 forbids a shipped overseer from carrying.
+
+    The document is ``{"repos": ["<checkout>", ...]}``, parsed as JSONC rather
+    than strict JSON: this is a HAND-EDITED operator file, so ``//`` comments
+    beside an entry ("paused while the migration lands") are worth more than
+    format purity, and the repo already carries the lenient parser.
+
+    Each entry is included only if the checkout exists AND has a ``plan/`` dir —
+    the SAME admission rule the superseded manifest seeding applied, so
+    relocating does not quietly widen or narrow what gets supervised.
+
+    Listing a repo that has no assigned track yet is the POINT, not an edge
+    case: discovery has to scan repos with zero mapping rows in order to surface
+    their unassigned plans at all. That is why the watch-set cannot be derived
+    from the mapping store's own rows — doing so would make a brand-new plan
+    invisible until someone had already assigned it.
+
+    Fail-soft in the same shape as the rest of this module: an absent,
+    unreadable, or malformed declaration warns and yields just the ``extra_repos``,
+    rather than taking the daemon down. An absent file is the ordinary
+    first-run state, so it warns without ceremony.
     """
-    manifest_path = Path(fleet_manifest_path).expanduser()
-    projects_root = manifest_path.resolve().parent.parent
+    path = Path(config_path).expanduser()
 
     selected: list[str] = []
     seen: set[str] = set()
 
-    def _add(path: Path) -> None:
-        norm = _norm(path)
+    def _add(candidate: Path) -> None:
+        norm = _norm(candidate)
         if norm not in seen:
             seen.add(norm)
             selected.append(norm)
 
+    declared: list[str] = []
     try:
-        manifest = _parse_jsonc(manifest_path.read_text(encoding="utf-8"))
+        document = jsonio.as_object(_parse_jsonc(path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
-        _warn(f"unreadable/unparsable manifest {manifest_path}: {exc}")
-        manifest = None
+        _warn(f"unreadable/unparsable watch-set {path}: {exc}")
+        document = None
+    if document is not None:
+        entries = jsonio.as_list(document.get("repos"))
+        if entries is None:
+            _warn(f"watch-set {path}: 'repos' is missing or not a list")
+        else:
+            declared = [entry for entry in entries if isinstance(entry, str)]
 
-    for name in _manifest_repo_names(manifest):
-        candidate = projects_root / name
+    for name in declared:
+        candidate = Path(name).expanduser()
         if candidate.is_dir() and (candidate / "plan").is_dir():
             _add(candidate)
 

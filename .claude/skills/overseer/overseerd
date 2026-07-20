@@ -12,11 +12,13 @@ Path discovery is self-contained so it "just works" from any working directory:
   * this script's own directory is pinned onto ``sys.path`` below, so
     ``import supervisor`` (and supervisor's sibling ``registry`` / ``signals`` /
     ``tmuxio``) resolve regardless of cwd or how uv launches the script;
-  * the fleet manifest is resolved RELATIVE TO the supervisor module file
-    (``_default_manifest``), not the cwd, so the watch-set is the real fleet no
-    matter where you launch from;
+  * the watch-set is read from an ABSOLUTE ``$HOME`` path
+    (``~/.livespec-overseer-repos.json``), so it resolves identically from any
+    cwd AND from any location this package is installed to. It used to be
+    derived by walking up from the supervisor module file, which tied the
+    daemon to living at ``<core>/.claude/skills/overseer/``;
   * the mapping store + injection-stamp paths are the hard-coded ``$HOME``
-    defaults.
+    defaults, beside that same declaration.
 """
 
 import argparse

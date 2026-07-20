@@ -436,54 +436,110 @@ def test_join_is_repo_qualified_no_cross_link(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def _write_manifest(projects_root, fleet_names, adopter_names=()):
-    core = projects_root / "livespec"
-    core.mkdir(parents=True, exist_ok=True)
-    fleet = ",\n".join(f'    {{ "repo": "{n}", "class": "library" }}' for n in fleet_names)
-    adopters = ",\n".join(
-        f'    {{ "repo": "{n}", "profile": ["baseline"], "posture": "pinned" }}'
-        for n in adopter_names
-    )
-    manifest = (
-        "// fleet membership manifest (JSONC — comments allowed)\n"
-        "{\n"
-        '  "owner": "thewoolleyman",\n'
-        f'  "fleet": [\n{fleet}\n  ],\n'
-        f'  "adopters": [\n{adopters}\n  ]\n'
-        "}\n"
-    )
-    path = core / ".livespec-fleet-manifest.jsonc"
-    path.write_text(manifest, encoding="utf-8")
+def _write_watch_set(path, repos):
+    path.write_text(json.dumps({"repos": [str(r) for r in repos]}), encoding="utf-8")
     return path
 
 
-def test_watch_set_selects_manifest_repos_with_plan_dir_plus_extras(tmp_path):
-    projects_root = tmp_path / "projects"
-    manifest_path = _write_manifest(
-        projects_root,
-        fleet_names=["livespec", "sibling-a", "no-plan"],
-        adopter_names=["adopter-x"],
+def test_watch_set_from_config_admits_only_cloned_repos_that_carry_a_plan_dir(tmp_path):
+    """The `$HOME` declaration applies the SAME admission rule the manifest path applied:
+    a declared repo counts only if its checkout exists AND has a `plan/` dir. Keeping the
+    rule identical is what makes the relocation a move rather than a behavior change."""
+    alpha = tmp_path / "alpha"
+    (alpha / "plan").mkdir(parents=True)
+    (tmp_path / "gamma").mkdir()  # cloned, but no plan/ dir
+    declaration = _write_watch_set(
+        tmp_path / "repos.json",
+        [alpha, tmp_path / "beta", tmp_path / "gamma"],  # beta is not cloned
     )
-    # Give each candidate a plan/ dir except 'no-plan'.
-    for name in ("livespec", "sibling-a", "adopter-x"):
-        (projects_root / name / "plan").mkdir(parents=True, exist_ok=True)
-    (projects_root / "no-plan").mkdir(parents=True, exist_ok=True)  # no plan/ → excluded
-    extra = tmp_path / "off-manifest-repo"
-    extra.mkdir()
 
-    result = registry.watch_set(manifest_path, [extra])
-    result_names = {registry.repo_slug(p) for p in result}
-    assert result_names == {"livespec", "sibling-a", "adopter-x", "off-manifest-repo"}
-    assert "no-plan" not in result_names  # excluded: no plan/ dir
+    result = registry.watch_set_from_config(declaration)
+
+    assert [registry.repo_slug(p) for p in result] == ["alpha"]
     assert all(p == registry._norm(p) for p in result)  # normalized absolute
 
 
-def test_watch_set_fail_soft_on_unreadable_manifest(tmp_path):
-    missing = tmp_path / "projects" / "livespec" / ".livespec-fleet-manifest.jsonc"
+def test_watch_set_from_config_admits_a_repo_with_no_assigned_track(tmp_path):
+    """A declared repo with a plan but ZERO mapping rows must still be watched — that is
+    the whole reason the watch-set cannot be derived from the mapping store's own rows.
+    Discovery has to reach repos with no assigned track in order to surface their
+    UNASSIGNED plans; deriving from assigned rows would make a brand-new plan invisible
+    until someone had already assigned it."""
+    fresh = tmp_path / "fresh"
+    (fresh / "plan" / "brand-new-topic").mkdir(parents=True)
+    declaration = _write_watch_set(tmp_path / "repos.json", [fresh])
+
+    assert [registry.repo_slug(p) for p in registry.watch_set_from_config(declaration)] == ["fresh"]
+
+
+def test_watch_set_from_config_fail_soft_on_absent_declaration(tmp_path):
+    """An absent declaration is the ordinary FIRST-RUN state, not a crash: warn and fall
+    back to the extras, matching how the manifest path failed soft."""
     extra = tmp_path / "extra"
     extra.mkdir()
-    result = registry.watch_set(missing, [extra])
+
+    result = registry.watch_set_from_config(tmp_path / "nope.json", [extra])
+
     assert [registry.repo_slug(p) for p in result] == ["extra"]
+
+
+def test_watch_set_from_config_fail_soft_on_malformed_declaration(tmp_path):
+    """Unparsable JSON warns and yields the extras rather than taking the daemon down."""
+    declaration = tmp_path / "repos.json"
+    declaration.write_text("{ not json", encoding="utf-8")
+    extra = tmp_path / "extra"
+    extra.mkdir()
+
+    result = registry.watch_set_from_config(declaration, [extra])
+
+    assert [registry.repo_slug(p) for p in result] == ["extra"]
+
+
+def test_watch_set_from_config_fail_soft_when_repos_key_is_missing_or_wrong_type(tmp_path):
+    """A well-formed document whose `repos` is absent or not a list is a DISTINCT failure
+    from unparsable bytes, and is reported separately rather than silently yielding an
+    empty watch-set that looks like 'nothing to supervise'."""
+    for payload in ('{"repos": "not-a-list"}', "{}"):
+        declaration = tmp_path / "repos.json"
+        declaration.write_text(payload, encoding="utf-8")
+
+        assert registry.watch_set_from_config(declaration) == []
+
+
+def test_watch_set_from_config_ignores_non_string_entries(tmp_path):
+    """A declaration is hand-edited, so a stray non-string entry must be skipped rather
+    than crashing the whole enumeration — name the good rows, drop the bad one."""
+    alpha = tmp_path / "alpha"
+    (alpha / "plan").mkdir(parents=True)
+    declaration = tmp_path / "repos.json"
+    declaration.write_text(json.dumps({"repos": [str(alpha), 17, None]}), encoding="utf-8")
+
+    assert [registry.repo_slug(p) for p in registry.watch_set_from_config(declaration)] == ["alpha"]
+
+
+def test_watch_set_from_config_skips_an_extra_that_is_not_cloned(tmp_path):
+    """An `extra_repos` override naming a path that does not exist is skipped, and the
+    scan CONTINUES to the remaining extras rather than aborting — the same
+    name-the-good-rows-and-drop-the-bad discipline the declared entries get."""
+    present = tmp_path / "present"
+    present.mkdir()
+    declaration = _write_watch_set(tmp_path / "repos.json", [])
+
+    result = registry.watch_set_from_config(declaration, [tmp_path / "absent", present])
+
+    assert [registry.repo_slug(p) for p in result] == ["present"]
+
+
+def test_watch_set_from_config_dedupes_a_repo_named_twice(tmp_path):
+    """A repo both declared and passed as an extra appears ONCE — the dedupe the manifest
+    path performed must survive the move."""
+    alpha = tmp_path / "alpha"
+    (alpha / "plan").mkdir(parents=True)
+    declaration = _write_watch_set(tmp_path / "repos.json", [alpha])
+
+    result = registry.watch_set_from_config(declaration, [alpha])
+
+    assert [registry.repo_slug(p) for p in result] == ["alpha"]
 
 
 def test_parse_jsonc_is_string_aware_and_tolerates_trailing_comma():
@@ -516,47 +572,6 @@ def test_strip_jsonc_comments_consumes_an_unterminated_string_literal():
     assert registry._strip_jsonc_comments(text) == text
     with pytest.raises(json.JSONDecodeError):
         registry._parse_jsonc(text)
-
-
-def test_watch_set_skips_a_non_list_section_and_non_dict_entries(tmp_path):
-    """The manifest walk is fail-soft over shape: a section that is not an array,
-    and array members that are not objects, contribute nothing while the
-    well-formed entries in the same manifest still resolve."""
-    projects_root = tmp_path / "projects"
-    core = projects_root / "livespec"
-    core.mkdir(parents=True)
-    manifest_path = core / ".livespec-fleet-manifest.jsonc"
-    manifest_path.write_text(
-        "{\n"
-        '  "fleet": "not-a-list",\n'  # non-list section → skipped wholesale
-        '  "adopters": ["bare-string", 7, null, { "repo": 7 }, { "repo": "sibling-a" }]\n'
-        "}\n",
-        encoding="utf-8",
-    )
-    (projects_root / "sibling-a" / "plan").mkdir(parents=True)
-
-    result = registry.watch_set(manifest_path)
-    assert [registry.repo_slug(p) for p in result] == ["sibling-a"]
-
-
-def test_watch_set_dedupes_extras_against_the_manifest_and_skips_missing_ones(tmp_path):
-    """An extra_repo that the manifest ALREADY selected appears exactly once — a repo
-    listed twice would be discovered, and therefore supervised, twice. An extra with
-    no checkout on disk contributes nothing."""
-    projects_root = tmp_path / "projects"
-    manifest_path = _write_manifest(projects_root, fleet_names=["sibling-a"])
-    (projects_root / "sibling-a" / "plan").mkdir(parents=True)
-
-    result = registry.watch_set(
-        manifest_path,
-        [projects_root / "sibling-a", tmp_path / "no-such-checkout"],
-    )
-    assert [registry.repo_slug(p) for p in result] == ["sibling-a"]
-
-
-# --------------------------------------------------------------------------- #
-# archive-GC.
-# --------------------------------------------------------------------------- #
 
 
 def test_archived_or_gone(tmp_path):

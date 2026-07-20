@@ -561,14 +561,15 @@ class Supervisor:
 
     All external state is injectable so tests drive it with a fake ``tmux`` and
     ``tmp_path`` stores — no real tmux, no touching ``~``. ``watch_repos`` may
-    be given explicitly (tests) or computed from a fleet manifest (daemon CLI).
+    be given explicitly (tests) or read from the ``$HOME`` watch-set declaration
+    (daemon CLI).
     """
 
     tmux: tmuxio.PaneDriver = field(default_factory=tmuxio.TmuxIO)
     store_path: str | os.PathLike[str] | None = None
     stamp_path: str | os.PathLike[str] | None = None
     watch_repos: list[str] | None = None
-    manifest_path: str | os.PathLike[str] | None = None
+    watch_set_path: str | os.PathLike[str] | None = None
     extra_repos: list[str] = field(default_factory=list)
     # Daemon-wide default warn threshold (remaining-% at which the FIRST wrap-up
     # fires) for any track WITHOUT a per-track ``ctx_threshold`` override. Set from
@@ -726,8 +727,8 @@ class Supervisor:
     def _resolve_watch(self) -> list[str]:
         if self.watch_repos is not None:
             return [os.path.normpath(r) for r in self.watch_repos]
-        if self.manifest_path is not None:
-            return registry.watch_set(self.manifest_path, self.extra_repos)
+        if self.watch_set_path is not None:
+            return registry.watch_set_from_config(self.watch_set_path, self.extra_repos)
         return [os.path.normpath(r) for r in self.extra_repos]
 
     def archive_gc(self) -> int:
@@ -2683,17 +2684,12 @@ class Supervisor:
 # --------------------------------------------------------------------------- #
 
 
-def _default_manifest() -> Path:
-    """``<core-repo>/.livespec-fleet-manifest.jsonc`` relative to this script."""
-    return Path(__file__).resolve().parents[3] / ".livespec-fleet-manifest.jsonc"
-
-
 def _build_supervisor() -> Supervisor:
     """Build the daemon's ``Supervisor`` for the CLI — with NO tunable surface.
 
     The invocation surface carries no watch-set / store / stamp knobs (they were
-    de-gold-plated 2026-07-13): the watch-set is the whole fleet, read from the
-    core repo's ``.livespec-fleet-manifest.jsonc``, and the mapping store + the
+    de-gold-plated 2026-07-13): the watch-set is declared in ``$HOME``
+    (``~/.livespec-overseer-repos.json``), and the mapping store + the
     injection-stamp sidecar are the hard-coded ``registry`` defaults
     (``~/.livespec-overseer.jsonl`` / ``~/.livespec-overseer-stamps.json``). The
     ``Supervisor`` dataclass keeps ``store_path`` / ``stamp_path`` / ``watch_repos``
@@ -2704,19 +2700,22 @@ def _build_supervisor() -> Supervisor:
     It is used only to badge the attention count onto the window name, so when it is
     absent (not under tmux) the badge simply never fires.
     """
-    return Supervisor(manifest_path=_default_manifest(), own_pane=os.environ.get("TMUX_PANE"))
+    return Supervisor(
+        watch_set_path=registry.DEFAULT_WATCH_SET_PATH,
+        own_pane=os.environ.get("TMUX_PANE"),
+    )
 
 
 def _cli_colliding() -> frozenset[str]:
     """Cross-repo topic-collision set for one-shot CLI naming (``add`` / ``start``).
 
-    Reads the SAME fleet watch-set the daemon uses (the core repo's
-    ``.livespec-fleet-manifest.jsonc``) and computes :func:`registry.colliding_topics`
+    Reads the SAME watch-set the daemon uses (the ``$HOME`` declaration at
+    ``~/.livespec-overseer-repos.json``) and computes :func:`registry.colliding_topics`
     over its discovery, so a CLI-created session is named EXACTLY as the daemon would
     name it: the bare plan topic, or ``<slug>-<topic>`` only when the topic collides
     across repos.
     """
-    watch = registry.watch_set(_default_manifest(), [])
+    watch = registry.watch_set_from_config(registry.DEFAULT_WATCH_SET_PATH, [])
     return registry.colliding_topics(registry.discover_plans(watch))
 
 
