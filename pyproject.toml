@@ -108,6 +108,31 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # Requires livespec-dev-tooling >= v0.39.0 (the flip lever; pinned).
 file_lloc_hard_gate = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
+
+# e9j slice 1a — arm `newtype_domain_primitives`.
+#
+# Core stopped receiving dev-tooling's `_livespec_core_config()` fallback on
+# 2026-05-31 (core commit 8f6ecc59), when this block was added to declare
+# `scenario_tiers` for an unrelated check. The fallback applies ONLY when the
+# block is ABSENT, so that one edit silently moved core from "fallback supplies
+# every structural role key" to the empty flat baseline — and seven checks that
+# early-return on a missing role key have been no-ops in core ever since, while
+# CI reported them green. A no-op and a pass are visually identical in CI.
+#
+# Declaring `dataclasses_tree` re-arms `newtype_domain_primitives`, one of the
+# four checks that had never enforced anything in ANY fleet repo. Verified by
+# execution against this tree: the check runs and exits 0 with no offenses, so
+# this is a pure severity restoration with no remediation attached.
+#
+# `source_trees` / `io_trees` are deliberately NOT declared here. They arm
+# `no_except_outside_io`, which still bans ALL try/except outside io/ — narrow
+# included — because v169's ratified "narrow at the seam; broad only at the
+# boundary" rule is not yet implemented in the check. Declaring them today would
+# fail core on three legitimate foreign-code-isolation catches. They land once
+# the broad-only rule is implemented. `pure_trees` stays gated on the mutation
+# staging-tree construction and on the check_mutation rc>=2 regression.
+dataclasses_tree = ".claude-plugin/scripts/livespec/schemas/dataclasses"
+
 destructive_cli_allowlist = []
 # Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
 # (canonical, added in livespec-dev-tooling v0.14.1) exempts from its
