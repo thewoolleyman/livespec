@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.3](https://github.com/thewoolleyman/livespec/compare/v0.18.2...v0.18.3) (2026-07-20)
+
+
+### Bug Fixes
+
+* **doctor:** widen master-direct-uncommitted-spec-edits to plan/ ([a979c24](https://github.com/thewoolleyman/livespec/commit/a979c2490f857d0f2f6e18d38403ffd91b29b481))
+* **overseer:** tell the wind-down to COMMIT the handoff, not just update it ([b68ab75](https://github.com/thewoolleyman/livespec/commit/b68ab750f9d8131b122f8a59a9c5fe564ea21c21))
+
 ## [0.18.2](https://github.com/thewoolleyman/livespec/compare/v0.18.1...v0.18.2) (2026-07-19)
 
 
