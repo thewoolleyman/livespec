@@ -5,11 +5,157 @@
 
 ---
 
-## 🟢 START HERE — definitive resume state, 2026-07-20 (session close)
+## 🟢 START HERE — definitive resume state, 2026-07-20 (second session close)
 
 Everything below this section is history and reasoning. This section is the
-current truth. **Nothing is in flight; no PR of this session's is unmerged; the
-primary checkout is clean on `master`.**
+current truth. **Nothing is in flight; no PR of either session's is unmerged;
+every primary checkout is clean on its default branch.**
+
+### What the SECOND session did — the owed constraint is FILED
+
+**Action 2 of the previous next-actions list is DONE.** The
+"credentials passed into the factory MUST NOT carry `workflows` permission"
+boundary no longer lives only in a ledger comment. It is filed as a proposed
+change in the `livespec-orchestrator-beads-fabro` repo and MERGED:
+[PR #844](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/844)
+(`abdc50cc`), landing
+`SPECIFICATION/proposed_changes/factory-sandbox-credential-capability-boundary.md`.
+
+**It is a PROPOSAL, not yet ratified.** It sits in `proposed_changes/` awaiting
+a `/livespec:revise` pass in THAT repo. Until that pass runs, the spec still
+carries the contradicting text the proposal repairs.
+
+**Written at the CAPABILITY level, per maintainer direction mid-session** ("you
+should document this in the specifications for future scenarios that are like
+this as well"). The rule is not about one GitHub grant: no credential projected
+into the factory sandbox may carry a capability that executes code on the host
+substrate or modifies a gate validating the factory's own output. `workflows`
+read-write is the worked instance. The rationale for generalizing is that the
+rejection's three properties — self-hosted substrate, gates defined in the
+governed artifacts, coarser-than-needed grant — are all substrate-independent,
+so a `workflows`-only rule would need re-amending for the next such grant.
+
+**The proposal is 7 changes, not 1, because the spec actively asserted the
+OPPOSITE posture in three places.** A drift sweep found them; filing the
+constraint alone would have left the spec self-contradictory:
+
+| Location | What it said |
+|---|---|
+| `contracts.md` §"Self-contained plugin dispatch" | preflight + adopter docs MUST surface the `workflows` grant as an App-installation **requirement** |
+| `scenarios.md` Scenario 32 | the Gherkin twin of that requirement |
+| `contracts.md` §"Work-item beads-issue mapping" | the `factory_safety` sharp line classifies writing CODE as factory-safe — making a `.github/workflows/` edit **factory-safe**, i.e. exactly the dispatch the boundary forbids |
+
+The third is the load-bearing one: it is why an item could pass grooming, be
+admitted, burn a full implement cycle, and only fail at publish.
+
+**Maintainer decided (picker, 2026-07-20):** route workflow edits under the
+**EXISTING** `mutates-host-machinery` reason rather than adding a fourth
+`factory_safety` enum member. That reason already covers work that "changes the
+live host substrate the factory itself runs on", which is the rejection's own
+leading argument. The enum stays closed at three, and the admission valve's
+existing non-null-`factory_safety` refusal path needs no new machinery.
+
+**A NEGATIVE scenario was added deliberately:** `.github/actions/` must NOT be
+refused. Without it, an implementation could satisfy every other scenario with
+a `.github/` or `*.yml` glob that wrongly refuses dispatchable work such as
+`livespec-dev-tooling-dqfmjr`. Proven by two adjacent-directory items on
+opposite sides of the line (dev-tooling PR #495 published a composite action
+through the sandbox; PR #506's three workflow files had to land from a host
+session).
+
+**Independent Fable review ran and found a REAL blocker**, which was fixed
+before merge: a bullet lead-in read `**No self-examining capability.**` while
+its body stated the all-or-nothing granularity rule — naming a rule the
+maintainer never decided, and backwards besides (examining is fine; rewriting
+the examiner is bullet 1). Renamed to
+`**Coarse grants are judged at the granularity offered.**` All eight
+replacement targets were verified to resolve EXACTLY ONCE, twice.
+
+### `bd-ib-nga9`'s description was REWRITTEN (maintainer-authorized)
+
+Its title had been re-scoped and a comment declared fix option 1 REJECTED, but
+the **description** still opened its FIX OPTIONS with "Grant the sandbox token
+`workflows` permission" — the field an implementer reads first. An agent
+picking it up description-first would have implemented the rejected option.
+
+The rejected option is now removed outright. The body leads with the boundary
+being correct and staying, and scopes the deliverable to (a) pre-dispatch
+refusal keyed on the `.github/workflows/` prefix specifically, (b) a
+non-interactive terminal verdict, (c) a refusal message naming the host-session
+route. `Autonomy tier at groom.` is preserved — **it is still `backlog` and NOT
+dispatchable**; it needs the maintainer's grooming pass.
+
+**Audit caveat:** per `.ai/beads-gaps-workarounds.md` Entry 13,
+`.beads/interactions.jsonl` logs only status VALUE changes, so a description
+rewrite is recorded NOWHERE. A comment was added to that item as the only
+durable record that the body changed and why.
+
+### ⚠ A REAL MASTER BREAKAGE was found and fixed — read this, it generalizes
+
+`livespec-orchestrator-beads-fabro`'s master was **red on local `just check`
+while CI reported green**. Root-caused precisely, and it is the same signature
+as the P0 in livespec `aa1feb80` ("master's just check is red for non-root, CI
+masks it").
+
+**The mechanism.** `_dispatcher_janitor_lock.py:133` is the `return True` in
+`_pid_is_alive` — the branch taken when the lock-holding process IS alive. Its
+test hardcoded `pid: 1` (init). Root may signal init; a normal user may not:
+
+| Environment | `os.kill(1, 0)` | Line 133 | `just check` |
+|---|---|---|---|
+| CI (root) | succeeds | executes | 100% → **green** |
+| Local (uid 1000) | `PermissionError` | never runs | 99.99% → **red** |
+
+So coverage of that line was **privilege-dependent**. Fixed in the same PR
+(#844, separate commit `chore(test):` so the two are independently revertible).
+Verified as uid 1000: 100.00%, 1928 passed.
+
+**Three traps this cost real time on; do not repeat them:**
+
+- **A stale `.coverage` lies.** `just check-coverage` REUSES an existing
+  `.coverage` file rather than running the suite ("no duplicate suite run"). A
+  fresh worktree inherited a stale one and reported 67 misses across four
+  files, implicating innocent modules. `rm -f .coverage` before believing any
+  coverage failure. The real gap was ONE statement.
+- **`os.getpid()` does NOT fix it.** The caller short-circuits on
+  `lock.pid == os.getpid()` BEFORE consulting `_pid_is_alive`, so a self-PID
+  lock never reaches the branch. This was tried and measured, not assumed.
+- **Spawning a process is banned** (`check-tests-no-subprocess-spawn`). The
+  working shape is to fake the probe, which additionally lets the test ASSERT
+  the probe shape (exactly one signal-0 check against the lock's own PID).
+
+**The Red-Green-Replay path for a test-only fix** (this is documented nowhere
+obvious and cost a rejected commit): a tests-only staged tree whose test PASSES
+is rejected as `test-passed-at-red` under a `feat:`/`fix:` subject, because that
+prefix DECLARES a behavior change. Per the check's own rule 3, **any other
+prefix is a test-only cleanup and takes the green-verified leg** — `chore(test):`
+ran the full suite and recorded `TDD-Suite-Green-*` trailers. Use it for
+coverage repairs; it is the designed path, not a bypass.
+
+### ⚠ OVERLAPPING UNMERGED WORK — not mine to reconcile
+
+`livespec-orchestrator-beads-fabro` carries an unmerged branch and worktree
+**`fix-janitor-lock-nonroot`** (`2f33a21`, "fix: restore the janitor gate for
+non-root runners and cover the reclaim mutex"), based on the same commit as
+PR #844 and adding a NEW 115-line `test_dispatcher_janitor_lock_nonroot.py`.
+Another actor hit the same non-root problem independently.
+
+**PR #844 merged first**, so that branch is now PARTLY REDUNDANT — but only
+partly: it also covers **the reclaim mutex**, which #844 does not. Do NOT
+delete it as a duplicate, and do not force-push it; it belongs to whoever
+created it. Reconciling it is a live task for its owner.
+
+### Also observed, deliberately NOT acted on
+
+- **`bd-ib-w4h4` is stranded `active`** (`assignee: fabro`, last moved 18:20Z)
+  even though its TOCTOU fix ALREADY LANDED as `ba9fdaf`, an ancestor of
+  master. This is the known stranded-`active` shape — `reconcile-merged` covers
+  only an already-MERGED active item. Its two janitor worktrees are still on
+  disk.
+- **The dark factory is landing into `livespec-orchestrator-beads-fabro`
+  concurrently.** `origin/master` advanced twice mid-session (`349fe79` Fabro,
+  `c5e2aab` release). Re-read that repo's state immediately before acting on
+  it; do not trust a reading from earlier in a session.
 
 ### The dispatch round is COMPLETE — all four slices resolved
 
@@ -56,19 +202,26 @@ publishes.
      step 3 is already satisfied by `2hya5g`, and `dqfmjr` is confirmed NOT
      workflow-exposed (it edits a COMPOSITE ACTION under `.github/actions/`,
      proven safe because `5o6ssu` merged a change to that same file).
-2. **OWED — file the constraint.** "Credentials passed into the factory MUST
-   NOT carry `workflows` permission" currently lives only in ledger comments.
-   It belongs in `livespec-orchestrator-beads-fabro`'s `SPECIFICATION/` as a
-   real constraint, via `/livespec:propose-change`. **This was agreed and not
-   yet done — it is the first piece of unfinished work.**
-3. **Implement the re-scoped `bd-ib-nga9`** (orchestrator tenant). Its title and
-   scope were corrected: the permission boundary is NOT the defect; the
-   FAILURE HANDLING is. It should deliver (a) pre-dispatch refusal keyed on the
-   `.github/workflows/` prefix **specifically** — not a broader `.github/` or
-   `*.yml` heuristic, which would wrongly refuse dispatchable work like
-   `dqfmjr`; (b) a NON-INTERACTIVE terminal verdict, so a refusal never parks on
-   an `[R]/[I]/[A]` prompt nobody can answer; (c) a message naming the
-   host-session route.
+2. ~~**OWED — file the constraint.**~~ **DONE 2026-07-20 (second session).**
+   Filed and merged as
+   [PR #844](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/844)
+   in `livespec-orchestrator-beads-fabro`. **Residual step: it is a PROPOSAL
+   awaiting `/livespec:revise` IN THAT REPO** — until ratified, the spec still
+   carries the three contradicting statements the proposal repairs. Per the
+   standing discipline the independent Fable review is already DONE (one
+   blocker found and fixed), so the ratification is unblocked. See
+   §"What the SECOND session did" above.
+3. **Implement the re-scoped `bd-ib-nga9`** (orchestrator tenant). Its title,
+   scope, **and now its DESCRIPTION** are corrected: the permission boundary is
+   NOT the defect; the FAILURE HANDLING is. It should deliver (a) pre-dispatch
+   refusal keyed on the `.github/workflows/` prefix **specifically** — not a
+   broader `.github/` or `*.yml` heuristic, which would wrongly refuse
+   dispatchable work like `dqfmjr`; (b) a NON-INTERACTIVE terminal verdict, so a
+   refusal never parks on an `[R]/[I]/[A]` prompt nobody can answer; (c) a
+   message naming the host-session route.
+   **It is still `backlog` and needs a GROOMING pass before dispatch** (it
+   carries "Autonomy tier at groom."), so it is maintainer-gated like item 4.
+   The rule it enforces is now specified — see item 2.
 4. **Groom `livespec-dev-tooling-9j8.6`** (maintainer). Still gates three
    slices. **Consider DECOMPOSITION rather than blanket refusal:** most of its
    value is new tested modules under `livespec_dev_tooling/` that the sandbox
