@@ -17,14 +17,22 @@ of mine is unmerged.**
 closed with this thread's headline reading "fleet propagation is STALLED right
 now". That is no longer true, and the correction is measured, not assumed.
 
-Final state, measured 2026-07-21T04:42Z:
+Final state, measured 2026-07-21T04:42Z and re-measured 18:5xZ:
 
-    latest livespec release          v0.20.0
-    all SEVEN consumers pinned at    v0.20.0      <- gap ZERO
+    latest livespec release          v0.20.0  -> v0.20.1 by the re-measure
+    all SEVEN consumers pinned at    tracked the move; gap ZERO at BOTH readings
     fan-out attempt 4               preflight SUCCESS,
                                     all EIGHT dispatch jobs SUCCESS
                                     (livespec-overseer included)
     fleet conformance                passed, 9 members, 0 error findings
+
+**⚠ THE INVARIANT IS "gap ZERO", NOT ANY PARTICULAR TAG.** The tags above moved
+within one session — the first reading said `v0.20.0` on both lines and was
+literally correct when written, then expired. What did NOT change is that every
+consumer tracked the producer. **Re-measure before citing a version number from
+this file**; a stale tag here is expected drift, not evidence the fleet has
+regressed. This is the same expiring-claim trap this thread has now recorded
+against three different documents including this one.
 
 **The root cause was a single one:** the fleet GitHub App did not cover
 `livespec-overseer`, the 9th member registered ten minutes before the v0.20.0
@@ -240,9 +248,11 @@ thread's FOUNDING problem** (the console ~12 releases behind while every sibling
 stayed current): it was never really about that repo's gates, it is the only repo
 with no recovery path. `oq9w` also records that the fleet manifest's
 console-class rationale — "non-pin-consuming ... ships none of the three shims" —
-is contradicted on BOTH clauses by live state (it carries a `v0.20.0` **livespec**
-pin and ships one of the three), which is probably why the absence went
-unquestioned. Do not just add the shim: settle which side is authoritative first,
+is contradicted on BOTH clauses by live state (it carries a **livespec** release
+pin — `v0.20.1` at the latest reading, and current — and ships one of the three),
+which is probably why the absence went unquestioned. The clause that matters is
+that it carries a livespec pin AT ALL, not which tag; do not read the tag as the
+finding. Do not just add the shim: settle which side is authoritative first,
 because either choice needs the contract text amended in the same change.
 
 **⚠ A METHOD WARNING ABOUT THIS SESSION'S OWN WORK.** I first journaled on
