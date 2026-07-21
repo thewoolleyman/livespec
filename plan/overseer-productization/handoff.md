@@ -8,6 +8,12 @@ gone from core.** `b1uo.3` is complete too. What remains is one coding task
 §"START HERE", and read its 🔴 first section before anything else, because the
 LIVE DAEMON is running from a path this relocation deleted.
 
+**The seed task is now fully SCOPED and gated on exactly one maintainer
+decision — the intent statement.** Read §"Item 1 — scoped 2026-07-21" before
+touching it; that section resolves two of the three pre-seed dialogue
+questions, records the seed CLI's verified `.livespec.jsonc` behavior, and
+carries three drafted intent framings. **Do not re-derive any of it.**
+
 **⚠️ This file was heavily rewritten 2026-07-21.** Everything below
 §"URGENT … Dolt backup" is HISTORY retained for its reasoning and its lessons;
 it describes a world in which the overseer still lived in core. Do not act on
@@ -173,6 +179,157 @@ merges as soon as this lands.
 endpoints ("must authenticate with an access token authorized to a GitHub App").
 It is a UI step at github.com/settings/installations → `livespec-pr-bot` → add
 `livespec-overseer`.
+
+## Item 1 — scoped 2026-07-21. Gated on ONE maintainer decision.
+
+A session scoped the seed and then STOPPED at the intent gate rather than
+authoring the spec, at the maintainer's instruction: the seed is to be driven
+from a Fable-model session for authoring quality. Everything below is verified;
+re-deriving it is waste.
+
+### The failure is confirmed to be exactly what this page claimed
+
+`check-doctor-static` on PR #1 run
+[29798420612](https://github.com/thewoolleyman/livespec-overseer/actions/runs/29798420612)
+fails on **six** findings, every one of them the same missing tree — not six
+problems:
+
+| `check_id` | message |
+|---|---|
+| `doctor-template-files-present` | `fs.read_text: No such file or directory: 'SPECIFICATION/spec.md'` |
+| `doctor-proposed-changes-and-history-dirs` | `fs.list_dir: … 'SPECIFICATION/proposed_changes'` |
+| `doctor-version-directories-complete` | `fs.list_dir: … 'SPECIFICATION/history'` |
+| `doctor-version-contiguity` | `fs.list_dir: … 'SPECIFICATION/history'` |
+| `doctor-revision-to-proposed-change-pairing` | `fs.list_dir: … 'SPECIFICATION/history'` |
+| `doctor-proposed-change-topic-format` | `fs.list_dir: … 'SPECIFICATION/proposed_changes'` |
+
+Plus `doctor-bcp14-keyword-wellformedness`, `doctor-gherkin-blank-line-format`,
+`doctor-anchor-reference-resolution`, `doctor-accept-decision-snapshot-consistency`,
+and `doctor-no-cross-spec-reference` failing on the bare `'SPECIFICATION'`
+directory. The recipe exits **3**. `ci-green` is red solely as its aggregate.
+
+One **warn**, benign and expected, do not chase it: `doctor-config-named-cli-callability`
+reports the `credential_wrapper` `/usr/local/bin/with-livespec-env.sh` does not
+resolve — it is host-provisioned and legitimately absent on a CI runner.
+
+### ✅ The hand-authored `.livespec.jsonc` is NOT at risk
+
+The obvious fear — that seed rewrites `.livespec.jsonc` and destroys the
+carefully-commented repo-class rationale, `harnesses` block, and `compat` pin —
+is unfounded, **verified in source, not assumed**. `seed.py`'s config writer
+carries `if config_path.exists(): return …` before the write, with the docstring
+"Preserves any pre-existing `.livespec.jsonc` verbatim". The prose's `template` ↔
+on-disk consistency check still applies, which is why question 1 below is
+answered from the file rather than freshly chosen.
+
+### Pre-seed dialogue — 2 of 3 questions SELF-RESOLVED
+
+`prose/seed.md` §"Steps" mandates a three-question pre-seed dialogue. Two do not
+need the maintainer:
+
+1. **Template — `livespec`.** Not a free choice. `.livespec.jsonc` already
+   declares `"template": "livespec"`, and the prose says that when the config is
+   already present a session MAY skip the question and re-use the on-disk value.
+   Choosing anything else exits **3** on the CLI's consistency check.
+2. **Sub-spec emission — `no`, so `sub_specs: []`.** This question exists for
+   meta-projects that ship their own livespec templates under
+   `SPECIFICATION/templates/<name>/`. `livespec-overseer` ships none; it is an
+   ordinary consumer. livespec core itself is the "yes" case, which is what makes
+   this easy to get backwards.
+3. **Intent — OPEN. This is the whole gate.** See below.
+
+### The generation contract, so it is not re-read
+
+- **Six files**, all required, from the template's `specification-template/SPECIFICATION/`:
+  `spec.md`, `contracts.md`, `constraints.md`, `non-functional-requirements.md`,
+  `scenarios.md`, `README.md`.
+- **Two properties are mechanically asserted** against the prompt's response by
+  the prompt-QA harness (`prompts/seed.md` §"Catalogue contract"):
+  `headings_derived_from_intent` (every file's first non-blank line begins with
+  `# `) and `asks_v020_q2_question` (`sub_specs` is `[]` given a "no").
+- **`non-functional-requirements.md` has a mandated shape** the other five do
+  not: it MUST open with a `## Boundary` section, then mirror a four-file
+  decomposition with `## Spec`, `## Contracts`, `## Constraints`, `## Scenarios`.
+- **`scenarios.md` Gherkin is plain GFM**, blank-line delimited — NOT fenced code
+  blocks. `doctor-gherkin-blank-line-format` checks this.
+- Exit **4** is the retryable schema-validation signal; exit **3** is not
+  retryable.
+- Cite spec **FILES, not headings**, in any code comment or docstring —
+  `doctor-no-spec-section-citation-in-code` rejects the `§"…"` form, and it
+  already bit the overseer folder once (Gate C).
+
+### The intent gate — three framings drafted, none chosen
+
+The intent is preserved verbatim in the auto-captured
+`history/v001/proposed_changes/seed.md` and shapes all six files, so it is a
+genuine design decision rather than a formality. The recommendation is **A**.
+
+**A — supervision contract (RECOMMENDED).** Frames the spec around the
+externally-visible supervision contract and explicitly holds it above internal
+Python composition, which is what the repo's own "specify architecture, not
+mechanism" rule demands. Drafted text:
+
+> livespec-overseer is the Control-Plane operator tool that keeps long-running
+> agent sessions productive across context exhaustion. It watches every tracked
+> session's remaining context headroom, injects an escalating wrap-up prompt as a
+> session approaches its limit, and atomically restarts that session ONLY once
+> the session has declared itself ready on the filesystem — so no work is lost to
+> a mid-flight restart.
+>
+> It is a two-part system: a headless `overseerd` daemon that polls session state
+> and drives the marker-file handshake, and a thin interactive tmux pane that
+> renders every tracked track for an operator.
+>
+> The specification governs the SUPERVISION CONTRACT — the marker protocol
+> between overseer and supervised session, the watch-set declaration, session-name
+> derivation, the atomicity and fail-soft rules — not the internal composition of
+> the Python package.
+
+That draft is derived from the hand-authored `.livespec.jsonc` header, which is
+the most authoritative existing prose about what this repo is.
+
+**B — contract plus operator surface.** A, plus first-class governance of the
+interactive pane as an operator cockpit (the track table, its columns, the
+operator commands). Produces a materially larger spec.
+
+**C — narrow mechanism framing.** "A tmux supervisor daemon for Claude Code and
+Codex sessions." Shorter, but anchors the spec to tmux/Claude/Codex mechanism
+rather than to the contract — which is the thing the repo's rules push against.
+
+### Source material for whoever authors it
+
+The design is documented in three large files inside the repo, totalling ~150KB:
+`overseer/AGENTS.md` (~95KB), `overseer/SKILL.md` (~33KB), and
+`overseer/marker-protocol.md` (~21KB), plus the eight flat modules beside them.
+
+**Read them directly. Do NOT seed from a sub-agent's digest.** This session
+dispatched two digest agents and then killed them and discarded the output
+deliberately: THIS PAGE already records a fabricated `contracts.md` quote that
+was laundered out of another document's prose and promoted into a spec citation
+(§"Reading warning", staleness class 3). A spec authored from a summary of a
+summary is exactly how that recurs, and the whole reason the maintainer routed
+this to a Fable session is authoring fidelity.
+
+**Cite `supervisor.py` by SYMBOL, never by line** — the same fact has been found
+cited at three different wrong line numbers.
+
+### Housekeeping found while scoping — not blockers
+
+- **Two `livespec-overseer` master CI runs are permanently stuck `queued`**
+  (`29789483091`, `29789970033`, 3h+ as of 2026-07-21T05:40Z). Both were launched
+  BEFORE `CI_RUNNER_LABELS` was set at 03:20:15, so they are waiting on the
+  self-hosted pool that does not serve this repo — they will never start. They do
+  not block PR #1 (which gets its own `pull_request` runs), but they leave master's
+  status ambiguous. Cancel them; do not debug them. This is the same
+  `CI_RUNNER_LABELS` trap §"Two UNDOCUMENTED birth-procedure steps" already
+  records, showing up a second time as a *residue* rather than as a fresh failure.
+- **The daemon is still alive as pid `1570280`**, running
+  `/data/projects/livespec/.venv/bin/python3 .claude/skills/overseer/overseerd`
+  from the deleted path, exactly as §"🔴 DO THIS FIRST" describes. Untouched.
+- **No worktrees are outstanding in `livespec-overseer`.** A
+  `chore/seed-specification` worktree and branch were created for this work and
+  then removed unused when the session stopped at the intent gate — the next
+  session should create its own rather than look for one.
 
 ## What was completed 2026-07-20/21 — do NOT redo any of it
 
