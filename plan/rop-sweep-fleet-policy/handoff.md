@@ -84,7 +84,50 @@ Remediation MUST ride in the same PR — the check is already wired into this re
 zero iterations — `cvz`'s defect sits in SERIES with `qm5`'s); both layered orchestrator repos stay
 at 0; core gains 0, which is what unblocks slice 1b.
 
-### STATUS 2026-07-21 — IMPLEMENTED, DUAL-REVIEWED, **BLOCKED ON TWO FIXES**
+### STATUS 2026-07-21 (later) — BOTH BLOCKERS FIXED; RE-LANDED AS `3257f419`; FRESH REVIEW RUNNING
+
+Both blockers are closed and the branch was re-landed as ONE Red→Green pair (the canonical shape;
+the repo has no precedent for stacked TDD commits). **New head `3257f419`**, `+933 −225` across
+exactly the 9 in-scope files, both trailer blocks present. `just check`: all 60 targets.
+
+**Verified by the overseer against its OWN original fixture**, not the implementer's — the dotted
+broad catch carrying the spec-forbidden `— lifts onto the IO rail` wording that previously passed
+BOTH gates now reports `offenses: 1`. Closure confirmed from two independent directions.
+
+Fixes: `_is_broad` compares the operand's final dotted component and resolves
+`from builtins import Exception as Broad`; marker matching now TOKENIZES, counting only
+`tokenize.COMMENT` tokens on the clause's own lines and ending at the clause's closing colon
+(depth-0 scan). Ending at the first body STATEMENT was the bug — **a comment is not a statement**.
+Documented in-code that a plain rebinding (`Broad = Exception`) and a variable-held tuple stay out
+of reach, at parity with ruff, which misses them too.
+
+Also corrected: the false inertness claim in the PR body; the `_clause_line_span` docstring (that
+function is gone); and the `pyproject` comment, which now names ALL FOUR `supervisor_entry_files`
+consumers — `no_write_direct`, `supervisor_discipline`, `no_except_outside_io`,
+`partition_completeness` — flagging explicitly that `no_write_direct`'s is a WHOLE-FILE exemption,
+so a future `print()` in a guard hook would go unflagged where stdout is a live hook-protocol
+channel. Nothing was re-keyed.
+
+**The prior verdicts are STALE and are NOT carried forward.** They assessed `0676d99` on an older
+base; the shipped code differs by both fixes AND a rebase onto a newer master. A fresh dual review
+was dispatched UNPRIMED — deliberately not told what the first round found, since naming the
+expected artifact converts an independent check into a confirmation.
+
+Incidental, kept because it will be "helpfully" reverted otherwise: a `@dataclass` in the check
+module broke the standalone-import test — `dataclasses` resolves string annotations via
+`sys.modules[cls.__module__]`, which is `None` for a module loaded by path. Plain typed helpers
+replaced it rather than weakening the test; an 8-line comment above `_comment_lines` records the
+`AttributeError: 'NoneType' object has no attribute '__dict__'` and ends "Do not reintroduce a
+dataclass here."
+
+**NEW ITEM `livespec-dev-tooling-39i` (P1)** — `red_leg_scope`'s coverage floor names only two of
+the three coverage gates, so a STACKED Red commit is structurally impossible. Latent, not
+dormant-by-design: a FIRST Red on a fresh branch yields an empty `origin/master...HEAD` set and
+passes trivially. The implementer correctly REFUSED to fix it inside PR #516 — editing a gate's
+exemption floor from an unrelated PR to make one's own commit land is the anti-pattern even when
+the edit is independently justified. Primary evidence is journaled on the item.
+
+### STATUS 2026-07-21 — IMPLEMENTED, DUAL-REVIEWED, **BLOCKED ON TWO FIXES** (superseded above)
 
 `livespec-dev-tooling` **PR #516** (`fix/except-check-breadth-aware`) — DRAFT, `do-not-merge`,
 **NOT accepted**. https://github.com/thewoolleyman/livespec-dev-tooling/pull/516
@@ -991,6 +1034,43 @@ Every finding below passed all mechanical gates:
   where it was aimed while reddening the repo shipping it.
 
 ## MECHANICS (hard-won — do not rediscover)
+
+- **🚨 RESETTING AN AGED BRANCH TO MASTER SILENTLY REVERTS OTHER SESSIONS' MERGED WORK.** Found
+  2026-07-21 landing PR #516. The branch base was 9 commits behind; capturing the change with
+  `git diff master` produced a **3,640-line patch across 35 files**, including DELETIONS of
+  `SPECIFICATION/history/v029/**` and `_ci_job_names.py` and reversals of `fleet_conformance.py`
+  and `branch_protection_alignment.py` — it would have reverted two spec revisions and two fleet
+  fixes belonging to other threads. Caught on the file-stat readout; re-deriving from the TRUE
+  MERGE BASE (`git diff <base>`) gave exactly the intended 9 files. **Always derive a captured
+  change from the merge base, NEVER from `master`**, and read the file-stat line before applying
+  any patch — a file count far above what you touched is the tell. Then rebase onto current master
+  and check whether master touched any of your files (here: only a `version =` line).
+- **`gh pr edit` LIES ABOUT SUCCESS on these repos — verify by reading back, never by exit code.**
+  It prints a Projects-classic GraphQL deprecation error, exits, and changes NOTHING. Observed on
+  BOTH `--add-label` (the `do-not-merge` label silently not applied) and `--body-file` (PR body
+  silently unchanged; grep of the live body returned 0 matches). `gh api -X PATCH
+  repos/<owner>/<repo>/pulls/<n> -F body=@file` works. Treat any `gh pr edit` exit status as
+  untrustworthy here and confirm the value landed.
+- **ON AN AGENT GOING IDLE: INSPECT THE ARTIFACT FIRST, ASK SECOND.** Four idle-without-delivery
+  events occurred in one session across three agents; in every case the work EXISTED and only the
+  delivery failed. The recorded counter-measure (ask before concluding failure) held every time,
+  but stating "deliver via `SendMessage`" as a hard brief requirement did NOT prevent recurrence in
+  any of the four. Checking the underlying artifact directly — the PR, the branch tip, the worktree
+  status — is cheaper than asking AND does not depend on the agent still being alive. One idle
+  proved to be a snapshot taken mid-turn: the work completed seconds later and the reports crossed.
+- **RE-READ REPOSITORY STATE AT THE MOMENT YOU REPORT A FINDING.** A `uv.lock`-vs-`pyproject`
+  version drift was observed, independently confirmed by the overseer, and reported as a standing
+  hygiene defect — then found to have RESOLVED ITSELF between two probes minutes apart, when
+  `3e06989` landed carrying the lock update. It was ordinary release lag (the self-bump workflow
+  carries the lock in a follow-up commit), not drift. A spurious work-item was nearly filed. **When
+  two of your own probes disagree, resolve the contradiction rather than trusting the more recent
+  one** — and note this is the same "FALSE vs STALE" distinction already recorded for `ftbvgc`,
+  now landing on the overseer rather than a reviewer.
+- **A REVIEWER'S "MECHANISM B BACKSTOPS MECHANISM A" CLAIM IS ABOUT AN INPUT, NOT A CONFIG.** See
+  the method-failure note in the ruling-8 section: verifying that ruff `BLE` was enabled and in
+  scope over the same trees did NOT establish that ruff fires on the input defeating the check —
+  a `# noqa: BLE001` suppresses ruff on the exact line where the check is blind. Construct the
+  adversarial input and run BOTH mechanisms against it.
 
 - **These repos REBASE-merge.** A "merge SHA" is a span tip, not a two-parent merge commit;
   `git show <tip>` reviews only the last commit — in one case an entirely unrelated commit.
