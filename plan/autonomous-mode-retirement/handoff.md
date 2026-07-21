@@ -9,44 +9,62 @@ it points you at.**
 
 | | State |
 |---|---|
-| **P0 fleet propagation** (`livespec-dh9r`) | ✅ **RESOLVED** — App install landed, v0.20.1 propagated to 7 consumers unattended, verified by arbiter. `dh9r` + `livespec-cbmw` are dischargeable but still OPEN in the ledger (quota, below) |
+| **P0 fleet propagation** (`livespec-dh9r`) | ✅ Dispatch-stage failure **RESOLVED** — v0.20.1 fan-out green, 8/8 siblings dispatched (re-verified 2026-07-21). **But do NOT close `dh9r` or `livespec-cbmw` — see the ⛔ below; that instruction was stale and destructive** |
 | **`bd-ib-sfa2`** (non-root CI matrix) | ✅ CLOSED. Shipped, released 0.45.17→0.45.19. Follow-up `bd-ib-phsu` (P3) filed |
 | **`bd-ib-9yi`** (containerized janitor / cargo) | ✅ CONFIRMED LIVE with reproduction. Do NOT close as stale |
 | **`livespec-4rq4`** (review requirement) | GROOMED into 3 slices, **none dispatched, none dispatchable** — see below |
-| **`livespec-overseer`** | 🔴 **LIVE BLOCKER** — adrift, bump PRs #5/#6 blocked on its own failing checks |
-| **1Password ledger quota** | 🔴 **EXHAUSTED** — `op run` exit 9. No ledger reads/writes made since |
+| **`livespec-overseer`** | 🔴 **LIVE BLOCKER, root cause now DIAGNOSED** — no `SPECIFICATION/` tree. **Owned by `plan/overseer-productization/`, gated on one maintainer decision. Not this thread's to execute** |
+| **1Password ledger quota** | ✅ **RESET** as of 2026-07-21 ~11:30Z — wrapper probed clean, ledger reads and writes working |
 
-### ⛔ TWO THINGS THAT WILL WASTE YOUR TIME IF YOU MISS THEM
+### ⛔ THREE THINGS THAT WILL WASTE YOUR TIME IF YOU MISS THEM
 
-1. **THE LEDGER IS RATE-LIMITED.** The quota is account-wide, shared across every
-   tenant, and DAILY. Do **not** retry into exit 9, do not reach for the secret
-   another way. **Several findings are recorded in this file specifically because
-   they could not be filed** — search this file for *"file it when quota returns"*
-   and *"paste this when quota returns"*. **Filing those is a good first action if
-   you have quota.**
+1. **DO NOT CLOSE `livespec-dh9r` OR `livespec-cbmw`.** An earlier revision of this
+   block said closing both was "a clean first action for whoever has quota next".
+   **That is stale and following it would destroy live records.** Verified
+   2026-07-21 by reading both records:
+   - **`livespec-cbmw` has been REPURPOSED** by `plan/fleet-pin-propagation/` into
+     the live record of the fleet's *only remaining* propagation blockage. Its body
+     carries a fuller, more current account than this file does. Closing it buries
+     the one thing keeping a fleet member from receiving releases.
+   - **`livespec-dh9r` carries an unresolved residual** — its journaled corrections
+     narrow the ask to *"what is missing is an ALARM"* (assert on the gap
+     PERSISTING ACROSS a sweep, not on the gap existing). Its originating v0.20.0
+     defect is fixed; the item is not discharged.
+   - **Method note:** `bd show --json`'s `comments` field read `0` on both while the
+     text form (`bd show <id>`) carried pages of journaled corrections. A field that
+     is not the carrier is not evidence of absence. This is the thread's own
+     wrong-source lesson, hit while checking for exactly that.
 2. **THE 4rq4 SLICES CANNOT BE DISPATCHED AS-IS.** All three are `status: backlog`
    and a backlog item is never a dispatch candidate. They were filed with raw
    `bd create`, which bypasses the intake Definition-of-Ready. Only slice 1
    (`livespec-runtime-jo9`) would clear the gates; slice 2 needs its cross-tenant
    dependency edge, slice 3 should be split. **Do NOT hand-promote to `ready`** —
    that bypasses a correct gate. Full detail in §"NEXT CLEAN ACTION".
+3. **`livespec-overseer` IS NOT THIS THREAD'S TO FIX.** Root cause is diagnosed
+   (below) but the repair is owned elsewhere and is gated on a maintainer decision
+   deliberately routed to a Fable-model session. Surface it; do not seed it, and do
+   not touch its PRs #1 / #6 / #7.
 
 ### Ranked next actions
 
-1. **File the quota-blocked findings** (if you have quota) — they are written out
-   verbatim in this file, ready to paste.
-2. **`livespec-overseer` is the live blocker.** Its bump PRs cannot merge because
-   `check-doctor-static` + `check-source-trees-scoped-to-consumer` fail on the
-   bump branches. Its pin is still the `"master"` bootstrap placeholder. This is a
-   **stuck-at-merge** failure, distinct from the v0.20.0 stall (dispatch) that is
-   now fixed.
-3. **The 4rq4 slices** — resolve the intake-gate precondition first.
-4. `bd-ib-phsu`, `livespec-bmxs`, `livespec-f73t`, `livespec-h95t`,
-   `livespec-dev-tooling-6ge` — all filed, none started.
+1. **Surface the overseer intent-statement gate to the maintainer** — it is the
+   single decision standing between the fleet and a fully-propagating release
+   train. Do NOT re-scope or re-ask it from here: `plan/overseer-productization/`
+   has already drafted three framings and recommends one, and the maintainer routed
+   the authoring to a Fable session reading that source directly. **Re-asking it
+   from a digest is the one thing that thread explicitly forbids.**
+2. **The 4rq4 slices** — resolve the intake-gate precondition (`livespec-h95t`)
+   first.
+3. `bd-ib-phsu`, `livespec-f73t`, `livespec-h95t`, `livespec-dev-tooling-6ge` —
+   all filed, none started.
+4. `livespec-bmxs` — still open, and its fix now carries **three verified
+   constraints** (derive the member list, read the authoritative ref, stay
+   credential-free) plus a demonstrated second blind spot. Recorded on the item
+   2026-07-21; see §"THE COUNTER-MOVE".
 
 ### The one habit this thread most wants you to keep
 
-**Verify what you are told, including this file.** Fourteen signals came apart
+**Verify what you are told, including this file.** Fifteen signals came apart
 under checking in this thread, and four supervisor framing errors plus one false
 defect were caught the same way — by looking at what produced the number rather
 than the number. §"THE COUNTER-MOVE" carries the reusable form: attach an
@@ -250,7 +268,7 @@ against live source before filing, not taken from the memo.
 
 ## 🔬 THE COUNTER-MOVE — attach an EXECUTABLE ARBITER to every claim
 
-The list below catalogues fourteen signals that came apart under checking. Every
+The list below catalogues fifteen signals that came apart under checking. Every
 one came apart the same way: **someone looked at what actually produced the
 number, instead of at the number.** This section is that principle made cheap and
 repeatable, which is strictly better than any individual being careful.
@@ -475,12 +493,44 @@ red. Propagation is stuck one stage later, and **the bump workflow's green is
 honest about its own scope while being useless as a propagation signal.** Exactly
 why `livespec-bmxs` argues for reading the outcome rather than any intent.
 
-**Not filed in the ledger** — the 1Password quota was exhausted. Recorded here so it
-is not lost; **file it when quota returns.** Two candidate items: overseer's failing
-checks (the actionable blocker) and the arbiter's member-coverage gap (which belongs
-on `livespec-bmxs` as a constraint on its fix).
+**✅ BOTH ARE NOW DISPOSITIONED — quota reset 2026-07-21 ~11:30Z; do not re-file.**
 
-#### ✅ INDEPENDENTLY REPRODUCED by a second operator — paste this when quota returns
+- **The arbiter's member-coverage gap → FILED** as a comment on `livespec-bmxs`,
+  in the terms this file prescribed, plus a second demonstrated blind spot (below).
+- **Overseer's failing checks → NOT filed, deliberately: it would have been a
+  DUPLICATE.** `livespec-cbmw` already carries the finding, recorded by
+  `plan/fleet-pin-propagation/`, in more current detail than this file. This is the
+  §B VERIFY-THEN-FILE rule doing its job — the check that prevented the duplicate
+  also found the record this file was about to tell someone to close.
+
+#### 🔬 ROOT CAUSE — diagnosed and locally reproduced 2026-07-21
+
+The blocked checks are **not** bump-related. Both fail on **master** too; nobody had
+seen that because **overseer's master CI has never completed a run** (its only two
+master runs are the cancelled ones documented above). The bump PRs are innocent
+bystanders — the repo has never been green.
+
+| Check | Root cause | State |
+|---|---|---|
+| `check-doctor-static` | The repo has **no `SPECIFICATION/` tree at all** — 11 doctor checks error on `No such file or directory: SPECIFICATION/spec.md` | ⬜ needs the seed |
+| `check-source-trees-scoped-to-consumer` | `pyproject.toml` declared source-tree roles for a **plugin-repo layout that does not exist here** (`.claude-plugin/scripts/livespec`, `dev-tooling`, `tests`); the actual layout is a flat `overseer/` package with co-located tests | ✅ already fixed by overseer **PR #1**, which sets the roles empty (deliberately empty, *not* `["overseer"]` — declaring the tree would arm the Result-railway checks prematurely) |
+
+Reproduce either without credentials:
+
+```bash
+cd <livespec-overseer checkout>
+python3 <livespec>/.claude-plugin/scripts/bin/doctor_static.py --project-root .
+uv run python -m livespec_dev_tooling.checks.source_trees_scoped_to_consumer
+```
+
+**⛔ DO NOT ACT ON THIS FROM THIS THREAD.** The seed is owned by
+`plan/overseer-productization/`, which has already scoped it fully and gated it on
+**one** maintainer decision — the spec's intent statement — with three framings
+drafted and one recommended. That thread routes the authoring to a **Fable-model
+session reading its source directly** and explicitly forbids seeding from a
+sub-agent's digest. Surface the gate; do not pre-empt it.
+
+#### ✅ INDEPENDENTLY REPRODUCED by a second operator — FILED 2026-07-21, do not re-paste
 
 Both findings were reproduced by the supervisor without reference to the operator's
 run. Two separate parties, same observations:
@@ -641,6 +691,15 @@ spanning three repos and two independent operators. Encountered here:
     here: the discipline names it in one line, and it was walked into while
     investigating a defect of exactly that shape. Disproven by the unbroken
     pin-bump chain and retracted by its author.
+15. `bd show <id> --json` reported **`comments: 0`** on `livespec-dh9r`,
+    `livespec-cbmw` and `livespec-bmxs`, while `bd show <id>` (the TEXT form) on
+    the same records carried **pages** of journaled corrections. Read as written,
+    the JSON said a sibling thread's claim to have "journaled corrections on
+    `cbmw` and `dh9r`" was false. It was not — the JSON field simply is not the
+    carrier. **An empty field is not evidence of absence unless you have
+    established that field is where the thing would be.** Caught before it became
+    a report, and it mattered: the wrong reading would have cleared the way for
+    the very close-out that this revision retracts.
 
 ## Corrections the overseer made to its own directives
 
@@ -659,10 +718,21 @@ operator's corrections and not the supervisor's is not an honest record.
 > maintainer's App install on `livespec-overseer` landed and the next release
 > (v0.20.1) propagated to all seven consumers unattended — see
 > §"RESOLVED — the App install landed" below for the run and the arbiter output.
-> **`livespec-dh9r` and `livespec-cbmw` are both dischargeable and remain open in
-> the ledger only because the 1Password quota was exhausted; closing them is a
-> clean first action for whoever has quota next.** The narrative below is retained
-> because its diagnosis and its three follow-up defects are still live.
+> **⛔ RETRACTED 2026-07-21 — this block previously said `livespec-dh9r` and
+> `livespec-cbmw` were "both dischargeable" and that closing them was "a clean first
+> action for whoever has quota next". DO NOT DO THAT.** Both were read directly once
+> quota returned, and neither is dischargeable:
+> - **`cbmw` has been repurposed** into the live record of the fleet's only
+>   remaining propagation blockage (overseer's unmergeable bumps), by
+>   `plan/fleet-pin-propagation/`. Closing it buries that.
+> - **`dh9r` has an unresolved residual** — its own journaled correction narrows the
+>   ask to *the missing ALARM* (assert on a gap PERSISTING ACROSS a sweep). The
+>   v0.20.0 defect is fixed; the item is not.
+>
+> What IS true, and is the durable half of the original claim: the **dispatch-stage**
+> failure is genuinely resolved and re-verified (run `29814729538` — preflight green,
+> 8/8 siblings dispatched). The narrative below is retained because its diagnosis and
+> its three follow-up defects are still live.
 
 **This is the newest block and outranks everything below it.** The fleet is
 current; the fault is not fixed.
