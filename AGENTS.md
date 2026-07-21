@@ -548,6 +548,14 @@ existing file):
   `--budget 1 --parallel 1` rule and why `--network host` forbids parallelism,
   the ban on hand-editing beads `admission:*` labels instead of using the
   `set-admission` valve, and the re-enumerate-every-iteration rule.
+- **`.ai/spec-proposal-review.md`** — read when performing or briefing the
+  independent adversarial review required before every `/livespec:revise`
+  accept, and when authoring a proposed change meant to survive it. Carries the
+  three LATENT defect classes the five `AGENTS.md` criteria do not catch:
+  claims that expire at ratification, negative assertions about sibling-owned
+  surfaces that rot without notice, and clause-lockstep (counts and
+  enumerations that must be re-derived when the set they describe changes).
+  Each is drawn from a defect that actually shipped.
 - **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
   check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
@@ -742,6 +750,9 @@ existing file):
   co-edits for any `## ` heading change), and cross-repo consistency. A
   NO-BLOCKERS verdict is a precondition for driving the accept; any blocker
   routes to the maintainer with a recommended fix — it is never self-waived.
+  Those five catch a proposal that is wrong at review time; for the three
+  LATENT defects that ratify cleanly and rot afterwards, see
+  `.ai/spec-proposal-review.md`.
 - **`depends_on` entries are typed dicts** `{"kind": "local", "work_item_id":
   "..."}`, never bare id strings — the store wrapper accepts bare strings but
   doctor-static (full `just check`) rejects them; copy the shape from an existing
