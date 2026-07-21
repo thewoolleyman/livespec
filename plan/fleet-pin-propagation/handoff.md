@@ -5,58 +5,114 @@
 
 ---
 
-## 🔴 START HERE — 2026-07-21 (third session close). READ THIS FIRST.
+## 🟢 START HERE — 2026-07-21 (FOURTH session close). READ THIS FIRST.
 
 **Everything below this section is history. This section is the current truth.
 Nothing of mine is in flight; every primary checkout is clean on `master`; no PR
 of mine is unmerged.**
 
-### THE ONE URGENT THING: fleet propagation is STALLED right now
+### THE P0 IS RESOLVED — propagation restored AND the fan-out itself verified
 
-**`livespec-dh9r` (P0, livespec core tenant) — filed 2026-07-21T02:15Z, and it
-was still live at session close.** Do this before anything else in this file.
+**`livespec-dh9r` (P0) no longer needs emergency action.** The third session
+closed with this thread's headline reading "fleet propagation is STALLED right
+now". That is no longer true, and the correction is measured, not assumed.
 
-The **v0.20.0 release fan-out FAILED**, so no sibling received a bump PR:
+Final state, measured 2026-07-21T04:42Z:
 
-    Release dispatch (fan-out to siblings)   00:35:58Z   FAILURE
-      dispatch / discover-siblings                       success
-      dispatch / fleet-conformance preflight (BLOCKING)  FAILURE
-      dispatch / dispatch <sibling>                      SKIPPED
-    run: https://github.com/thewoolleyman/livespec/actions/runs/29790751188
+    latest livespec release          v0.20.0
+    all SEVEN consumers pinned at    v0.20.0      <- gap ZERO
+    fan-out attempt 4               preflight SUCCESS,
+                                    all EIGHT dispatch jobs SUCCESS
+                                    (livespec-overseer included)
+    fleet conformance                passed, 9 members, 0 error findings
 
-Measured consequence: latest release **v0.20.0**, every one of the seven
-consumers still pinned at **v0.19.0**, and **zero** open bump PRs fleet-wide.
+**The root cause was a single one:** the fleet GitHub App did not cover
+`livespec-overseer`, the 9th member registered ten minutes before the v0.20.0
+release. Installing the App (maintainer-only; that obligation row has no
+reconcile function by design) cleared it. Registering before wiring is BY DESIGN
+— the fleet manifest says so in its own header comment — so the red was the
+system working, not a defect.
 
-**Cause — a 9th fleet member registered ten minutes before the release:**
+**⚠ THE HANDOFF'S OWN UNBLOCK HYPOTHESIS WAS TWO-THIRDS WRONG.** The third
+session predicted the blockers were the App install "plus its stale dev-tooling
+pin and its missing impl-plugin connection block". Measured against the actual
+CI findings: the stale pin is severity **WARNING** and the connection block is a
+**SKIP**. Neither can move the exit code, so neither was ever blocking. Only
+rows returning a finding at error severity fail the gate. Check the severity
+before treating a conformance line as a blocker.
 
-    00:09:39Z  livespec-overseer repo created
-    00:25:35Z  f9664481 registers it as the 9th member in the fleet manifest
-    00:35:58Z  v0.20.0 released -> BLOCKING preflight fails -> dispatch skipped
-    (23:06:27Z the previous fan-out, with 8 members, SUCCEEDED)
+**⚠ TWO OF THE THREE "VIOLATIONS" WERE FALSE.** `merge-settings` and
+`delete-branch-on-merge` reported violated with values `is None`. `None` there
+meant the field was ABSENT from the payload — the App token could not read it —
+not that the setting was wrong. An admin-scoped token showed all five settings
+already correct at the same moment. Both rows went green with **no repo setting
+ever changed**. The tell is the literal word `None` in a conformance finding.
+**Fixed and merged this session:** livespec-dev-tooling PR #523 (`61f2d7bf`)
+makes both rows report absence as not-evaluable, matching the sibling
+`secret-names` / `branch-protection` rows. Filed as `livespec-dev-tooling-6ge`.
 
-The preflight runs `just check-fleet-conformance` across EVERY manifest member,
-and `dispatch` declares `needs: [discover-siblings, fleet-preflight]`, so ONE
-unwired member blocks the fan-out to ALL of them.
+**⚠ A SECOND, INDEPENDENT BLOCKER the third session never saw.**
+`livespec-overseer` had **zero CI runners**: its `CI_RUNNER_LABELS` was unset, so
+it fell back to `["self-hosted","local-ci"]` while having none registered. Its CI
+sat QUEUED from 00:35Z for ~2h and had never once run, which is why its PR #1 —
+the PR that clears the stale pin and the connection block — was permanently
+unmergeable. Seven of nine members set `["ubuntu-latest"]`; the only other member
+leaving it unset (`livespec-orchestrator-beads-fabro`) legitimately has 6 online
+self-hosted runners. **Fixed this session** (maintainer-approved): set
+`CI_RUNNER_LABELS=["ubuntu-latest"]` on `livespec-overseer`. Its CI now runs.
 
-**To unblock:** finish wiring `livespec-overseer` — most likely installing the
-fleet GitHub App on it, plus its stale dev-tooling pin (v0.51.0 vs latest
-v0.51.3) and its missing impl-plugin connection block — then re-run the failed
-fan-out or let the next release carry it.
+### ⚠ THE RESIDUAL — a red run status on a WORKING fan-out
 
-**⚠ VERIFY BY RE-RUNNING THE WORKFLOW, NOT LOCALLY.** A local
-`check-fleet-conformance` run PASSES, because without an App token the
-`app-installation` row is unevaluable and skipped for every member (it logs
-"obligation row enforced NOTHING this run"). CI is strictly STRONGER. A green
-local run is NOT evidence the fleet is conformant, and that is why the most
-probable failing row — `app-installation` against the brand-new repo — could not
-be confirmed from here.
+Run 29790751188's OVERALL conclusion still reads `failure`, because a run's
+conclusion reflects its worst attempt and attempts 1–3 failed. Attempt 4 is
+wholly green. **So "the fan-out run is red" and "the fan-out is broken" are now
+different statements**, and anyone polling run status will read a false alarm.
 
-**The gate is behaving as designed; that is NOT the defect.** Blocking is
-correct and no-circular-gating holds. The defect is that it is not LOUD: it is
-loud only in a CI run nobody watched, and silent in every signal an operator
-reads. Cross-referenced on `livespec-b1uo.1` (the relocation whose landing
-registered the member) as an ORDERING problem, not a criticism — the
-recommendation there is wire-first-register-last for future member additions.
+This is the THIRD instance of this thread's central lesson, after the
+open-bump-PR count and the blind-row false violations: **a status artifact is not
+a health signal.** PIN CURRENCY remains the correct measure.
+
+### ⚠ DO NOT TRUST THE SIBLING THREAD'S P0 SECTION — it is stale
+
+`plan/autonomous-mode-retirement/handoff.md` carries a P0 block (livespec commit
+`dde445c7`, written 04:39:03Z) stating "The fleet GitHub App still does not cover
+`livespec-overseer`" and predicting "the next release stalls identically". Both
+are FALSE as of 04:42:25Z — three minutes later — when the fan-out preflight
+logged `fleet conformance passed` and dispatched to all eight siblings. That
+block also frames the recovery as "a MANUAL REPLAY of one release's fan-out, not
+a fix"; the automated path is now exercised end-to-end. Corrections are journaled
+on `livespec-cbmw` and `livespec-dh9r`.
+
+The method point generalizes: that claim was written from an earlier reading and
+recorded as current without re-measuring. **When two sessions work the same
+problem concurrently, a conclusion about live forge state has a shelf life of
+minutes.** Re-measure before acting on any P0 text, including this section.
+
+### What the FOURTH session landed
+
+| what | where |
+|---|---|
+| `CI_RUNNER_LABELS=["ubuntu-latest"]` — unblocked a ~2h-queued CI that had never run | `livespec-overseer` repo variable |
+| can't-read vs misconfigured fix for two conformance rows, +5 tests | dev-tooling PR #523 (`61f2d7bf`) |
+| Fan-out re-run to attempt 4 — preflight green, 8/8 dispatches | livespec run 29790751188 |
+| Corrected diagnosis + stale-claim correction | `livespec-dh9r`, `livespec-cbmw`, `livespec-dev-tooling-6ge` |
+
+### Still open — none of it urgent, all maintainer-gated
+
+1. **`livespec-overseer` is substantially unwired**, and its CI can finally show
+   it. Now-visible reds: **no `SPECIFICATION/` tree at all** (every
+   `doctor-static` check errors on `SPECIFICATION/spec.md`), source-tree role
+   config still pointing at livespec CORE's paths
+   (`.claude-plugin/scripts/livespec`, `dev-tooling`), and `Release Please`
+   failing on its master. **None of this blocks the fan-out** — no conformance
+   row inspects a member's CI result — but it blocks its own PR #1. Owned by
+   `plan/overseer-productization/`, not by this thread.
+2. **The systemic half of `livespec-dh9r`** — a persisting-gap assertion keyed on
+   PIN CURRENCY in `reusable-pin-freshness.yml`. Unaffected by any of the above
+   and still the right fix; the residual above is a fresh argument for it.
+3. The four items the third session left open (heading-coverage TODO sequencing,
+   `livespec-u7x5zn`'s self-parent dependency, Driver defects `tun` + `6lc`,
+   `reconcile-merged-dispatch-lock`) are untouched and still accurate below.
 
 ### ⚠ THE METRIC THIS THREAD USED IS NOT A HEALTH SIGNAL — correct this belief
 
