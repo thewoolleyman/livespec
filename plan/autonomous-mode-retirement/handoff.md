@@ -331,6 +331,64 @@ is not lost; **file it when quota returns.** Two candidate items: overseer's fai
 checks (the actionable blocker) and the arbiter's member-coverage gap (which belongs
 on `livespec-bmxs` as a constraint on its fix).
 
+#### ✅ INDEPENDENTLY REPRODUCED by a second operator — paste this when quota returns
+
+Both findings were reproduced by the supervisor without reference to the operator's
+run. Two separate parties, same observations:
+
+- overseer's bump PR **#6** (opened `08:34:25Z`, v0.20.1) is `mergeStateStatus
+  BLOCKED` with `check-doctor-static` **FAILURE**. So `livespec-overseer` is now a
+  conformance-PASSING, dispatch-RECEIVING member **whose bump cannot land.**
+- **THE ARBITER PRINTED `adrift 0/7` AND `propagation healthy` AT THE SAME MOMENT
+  THAT A FLEET MEMBER SAT BLOCKED WITH AN UNMERGEABLE BUMP.**
+
+**Record the second one on `livespec-bmxs` in exactly those terms.** "The check
+reported healthy while a member was stuck" is far stronger than "coverage may be
+incomplete" — it is no longer a theoretical constraint on the fix, it has produced
+a FALSE HEALTHY VERDICT in front of two operators. The member the arbiter omits is
+precisely the one currently adrift.
+
+**Name the shape once more, because it has now closed a loop.** This is a check
+that READS AS GOVERNING WHILE BEING PARTIAL — the same class as `bd-ib-yqfw`'s
+masked gate, `livespec-4rq4`'s overridden constraint, the silent fan-out, and the
+possibly-ignored `sibling_work_item` edge kind. **It has now appeared inside the
+very check built to catch that class.** That is not an embarrassment; it is the
+strongest available argument that member enumeration MUST be derived from the
+manifest: *a hardcoded list cannot fail when a member is added* — for the same
+structural reason CI running only as root could not exhibit a non-root divergence.
+
+#### ⛔ ONE CORRECTION to that reproduction — the pin is NOT absent
+
+The supervisor's report says overseer's pin "reads as absent entirely, not merely
+stale … it has no pin at all." **That is wrong, and the distinction changes the
+diagnosis.** Read directly from the file on the forge:
+
+    "livespec-overseer": {
+      "compat": {
+        "livespec": ">=0.1.0,<1.0.0",
+        // Bootstrap placeholder; the first successful cross-repo fan-out
+        // rewrites this to a livespec release tag.
+        "pinned": "master"
+      }
+    }
+
+The pin is present and is the **documented bootstrap placeholder**, with the file
+itself stating the expected transition. Per the standing fleet rule, `bump-pin`
+rewriting `"master"` to a release tag is *correct-by-design* — `"master"` values
+are placeholders that become tags on the first successful fan-out.
+
+So the defect is NOT a malformed or missing config. It is precisely that **the
+first successful fan-out did not complete the documented transition**, because the
+bump PR it opened cannot merge. That is a stuck-at-merge failure, not a
+configuration failure, and anyone told "it has no pin" would go looking in the
+wrong place.
+
+**Where the `<none>` reading came from:** an experimental manifest-derived arbiter
+whose shell loop failed to word-split, so the API call was made against a
+malformed repo name and returned empty. An artifact of the probe, not a property
+of the repo — and a reminder that a hastily-written arbiter needs the same
+scepticism as the claim it is meant to adjudicate.
+
 **⚠ CORRECTION — the "four pin formats" figure above was WRONG, and it came from
 a comment that is wrong fleet-wide.** The authoritative list is in
 `livespec-dev-tooling`'s `cross_repo/` and has **SIX**:
