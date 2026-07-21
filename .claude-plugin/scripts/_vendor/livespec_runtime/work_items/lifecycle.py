@@ -14,9 +14,11 @@ functions: the only injected status source is the in-memory `index`
 store-reading (`resolve_store_config` / the `read_work_items` free
 function / `StoreConfig`) does NOT move here — that would be a
 `runtime → beads` back-edge. Sibling work-item dependencies therefore
-resolve to `UNKNOWN` (non-blocking) at this layer; the orchestrator
-keeps its own beads-backed sibling reading. PR / branch dependencies
-resolve through the existing `livespec_runtime.cross_repo` `gh` provider.
+resolve to `UNKNOWN` at this layer, and an unresolved sibling BLOCKS
+(fail-closed) so a still-open cross-repo blocker cannot be dispatched
+past; the orchestrator keeps its own beads-backed sibling reading. PR /
+branch dependencies resolve through the existing
+`livespec_runtime.cross_repo` `gh` provider.
 
 This module imports NO beads / orchestrator symbol — only the shared
 `livespec_runtime.cross_repo` resolution surface and the `WorkItem`
@@ -97,11 +99,13 @@ def lane_of(
     - every other state → `Lane(<status>, None)`.
 
     "Open dependency": a dependency blocks iff it `resolve_ref`-resolves to
-    `OPEN`, or is unparseable (fail-closed). `CLOSED` / `UNKNOWN` do not
-    block, so `lane_of` and `is_item_ready` agree by construction. Local
-    dependencies resolve against `index`; sibling work-item dependencies
-    resolve to `UNKNOWN` (no `runtime → beads` back-edge); PR / branch
-    dependencies resolve via the `cross_repo` `gh` provider.
+    `OPEN`, is unparseable (fail-closed), or is a `sibling_work_item` that
+    did not resolve to `CLOSED` (also fail-closed — see `_entry_blocks`).
+    `CLOSED` never blocks, and `UNKNOWN` blocks for a `sibling_work_item`
+    entry ONLY, so `lane_of` and `is_item_ready` agree by construction.
+    Local dependencies resolve against `index`; sibling work-item
+    dependencies resolve to `UNKNOWN` (no `runtime → beads` back-edge);
+    PR / branch dependencies resolve via the `cross_repo` `gh` provider.
     """
     if item.status == "blocked":
         return Lane(name="blocked", reason=item.blocked_reason)
@@ -140,11 +144,27 @@ def _entry_blocks(
     index: dict[str, WorkItem],
     manifest: CrossRepoManifest,
 ) -> bool:
-    """Return True iff the raw depends_on entry resolves to `OPEN`.
+    """Return True iff the raw depends_on entry blocks readiness.
 
-    Unparseable entries (`_parse_entry` returning None) are treated as
-    blocking — a malformed `depends_on` cell must not let a candidate slip
-    through as ready (fail-closed).
+    Three blocking cases:
+
+    - the entry resolves to `OPEN`;
+    - the entry is unparseable (`_parse_entry` returning None) — a
+      malformed `depends_on` cell must not let a candidate slip through as
+      ready (fail-closed);
+    - the entry is a `sibling_work_item` that did NOT resolve to `CLOSED`.
+      A cross-repo blocker resolves to `UNKNOWN` whenever the caller
+      supplies no `sibling_status_lookup` (which, at this layer, is
+      always), so treating that `UNKNOWN` as non-blocking would dispatch
+      candidates whose cross-repo blockers are still open — and would make
+      a WELL-FORMED cross-tenant entry less blocking than a malformed one.
+
+    The narrow kind check is deliberate. An unresolved LOCAL reference
+    (a missing id) still resolves `UNKNOWN` and still does NOT block:
+    orphaned local ids are the doctor's `no-orphan-dependency` invariant's
+    business, not the readiness gate's. `pull_request` / `branch` entries
+    resolve against a live `gh` view whose `UNKNOWN` means transient query
+    failure, and keep their tolerate-partial-visibility semantics.
     """
     entry = _parse_entry(raw=raw)
     if entry is None:
@@ -155,7 +175,9 @@ def _entry_blocks(
         local_status_lookup=_local_status_lookup_for(index=index),
         sibling_status_lookup=None,
     )
-    return status == RefStatus.OPEN
+    if status == RefStatus.OPEN:
+        return True
+    return entry.kind == "sibling_work_item" and status == RefStatus.UNKNOWN
 
 
 def _parse_entry(*, raw: object) -> DependsOnEntry | None:

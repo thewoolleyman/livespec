@@ -9,15 +9,16 @@ Python-level realization.
 
 This is the SHARED lift of the model both `livespec-impl-git-jsonl`
 and `livespec-impl-beads` re-implemented identically. The unified
-shape is a 23-field record: 15 required fields (including the `rank`
-ordering key) followed by 8 optional-on-read fields. `rank` is the
+shape is a 24-field record: 15 required fields (including the `rank`
+ordering key) followed by 9 optional-on-read fields. `rank` is the
 sole ordering authority — the prior `priority: int` is REMOVED (two
 order sources are two conflicting truths). The `spec_commitment_hint`
 / `acceptance_criteria` / `notes` / `supersedes` pointers and the
 `admission_policy` / `acceptance_policy`
-/ `blocked_reason` / `factory_safety` policy fields all follow the
-blessed `… | None` optional-on-read pattern: legacy records lacking
-them read back as `None`, with no in-place migration.
+/ `blocked_reason` / `factory_safety` / `review_requirement` policy
+fields all follow the blessed `… | None` optional-on-read pattern:
+legacy records lacking them read back as `None`, with no in-place
+migration.
 
 Transitive type closure: the only non-primitive type reachable from
 `WorkItem` is `AuditRecord` (via the `audit` field). `AuditRecord`'s
@@ -38,6 +39,7 @@ __all__: list[str] = [
     "FactorySafety",
     "Origin",
     "Resolution",
+    "ReviewRequirement",
     "StoredBlockedReason",
     "WorkItem",
     "WorkItemStatus",
@@ -73,6 +75,7 @@ FactorySafety = Literal[
     "mutates-host-machinery",
     "needs-privileged-host",
 ]
+ReviewRequirement = Literal["human-before-merge"]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -157,6 +160,11 @@ class WorkItem:
     means factory-safe; legacy records lacking the field read back as
     `None` with no in-place migration. Non-None values carry the stored
     reason a factory-autonomous runner must treat as not runnable.
+
+    `review_requirement` follows the same optional-on-read pattern.
+    `None` means no item-level human review requirement; legacy records
+    lacking the field read back as `None` with no in-place migration.
+    `human-before-merge` requires human review before merge.
     """
 
     id: str
@@ -182,3 +190,4 @@ class WorkItem:
     acceptance_policy: AcceptancePolicy | None = None
     blocked_reason: StoredBlockedReason | None = None
     factory_safety: FactorySafety | None = None
+    review_requirement: ReviewRequirement | None = None
