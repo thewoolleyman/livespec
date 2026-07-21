@@ -64,12 +64,21 @@ it points you at.**
 
 ### The one habit this thread most wants you to keep
 
-**Verify what you are told, including this file.** Fifteen signals came apart
+**Verify what you are told, including this file.** Seventeen signals came apart
 under checking in this thread, and four supervisor framing errors plus one false
 defect were caught the same way — by looking at what produced the number rather
 than the number. §"THE COUNTER-MOVE" carries the reusable form: attach an
 **executable arbiter** to every claim, and prefer one that needs no credential
 wrapper so a second party can check while the ledger is throttled.
+
+**And verify the VERIFIER first.** Five of those seventeen were not the system
+failing — they were the CHECK being wrong while its wrongness looked like news
+(a false regression, a false drift, a false absence, a false silent-write-failure,
+a false missing-text). They came from both operators, on the same day. Before
+acting on any check that reports a problem, establish the check is sound: right
+field, current data, authoritative source, and a probe that fails loudly rather
+than returning a plausible empty. See §"THE TWO KINDS" — it is the highest-leverage
+paragraph in this file.
 
 **Contradicting your supervisor must stay cheap.** It is a standing instruction,
 not an act of nerve; the moment it becomes expensive, every one of those errors
@@ -268,7 +277,7 @@ against live source before filing, not taken from the memo.
 
 ## 🔬 THE COUNTER-MOVE — attach an EXECUTABLE ARBITER to every claim
 
-The list below catalogues fifteen signals that came apart under checking. Every
+The list below catalogues seventeen signals that came apart under checking. Every
 one came apart the same way: **someone looked at what actually produced the
 number, instead of at the number.** This section is that principle made cheap and
 repeatable, which is strictly better than any individual being careful.
@@ -700,6 +709,67 @@ spanning three repos and two independent operators. Encountered here:
     established that field is where the thing would be.** Caught before it became
     a report, and it mattered: the wrong reading would have cleared the way for
     the very close-out that this revision retracts.
+16. `bd update --acceptance` wrote successfully and `bd` printed
+    **`✓ Updated issue`** — then a verification reading `d["acceptance"]` returned
+    **empty**, because the stored key is **`acceptance_criteria`**. Read as
+    written, this said a write had SILENTLY FAILED while its tool reported
+    success — the single most alarming shape in this whole file, and it was the
+    verifier that was wrong. **This is the expensive direction:** a false absence
+    (lesson 15) merely hides something, but a verifier that INVENTS a failure
+    sends the next person hunting a bug that does not exist while the real state
+    goes unexamined.
+17. A predicate checking that a stored block carried the phrase
+    `NOT part of the maintainer` reported **MISS** on text that contained it
+    verbatim — the phrase wrapped across a newline, so the substring never
+    matched. A third false alarm in one session, from the checker rather than the
+    checked. **A search that can be defeated by line-wrapping is not a
+    verification.**
+
+### 🪞 THE TWO KINDS — and why the second is worse
+
+**Overseer extension, 2026-07-21, and it reframes this entire list.** Every signal
+above is one of exactly two kinds, and until now only the first was being named:
+
+- **Kind one — a SYSTEM whose failure is silent.** The root-masked gate, the
+  constraint auto-merge overrides, the fan-out that skips all siblings, the job
+  that queues forever instead of failing, the arbiter blind to the member that is
+  adrift, the filing system with no exit. The system breaks and says nothing.
+- **Kind two — a VERIFIER whose own error masquerades as a finding about the
+  system.** The checker is wrong, and its wrongness looks like news.
+
+**Five instances of kind two landed in a single day, across TWO INDEPENDENT
+OPERATORS** — which is why it is recorded here as a class rather than filed under
+either party's carelessness:
+
+| # | Operator | The verifier's error | What it falsely claimed |
+|---|---|---|---|
+| 8 | overseer | a 16-hour-old `.coverage` re-reported by the short-circuiting recipe | master had REGRESSED (it had not) |
+| 14 | overseer | a local clone never fetched, read as authoritative | a fleet propagation DEFECT (none existed) |
+| 15 | operator | `comments: 0` off a field that is not the carrier | a sibling thread's journaling claim was FALSE |
+| 16 | operator | `d["acceptance"]` vs the stored `acceptance_criteria` | a write had SILENTLY FAILED |
+| 17 | operator | a substring search defeated by a line wrap | required text was MISSING |
+
+Entries 8 and 14 are **not duplicated** as new items — they were already in this
+list and are classified here, so the taxonomy has one source of truth and cannot
+drift from the instances it describes.
+
+**THE PRACTICAL RULE — the actionable half, and the point of the taxonomy:**
+
+> **When a check reports a problem, establish that the CHECK is sound before
+> acting on what it says.** Confirm the field exists and is the one you mean;
+> confirm the data is current and from the authoritative source; and prefer a
+> probe that would FAIL LOUDLY if misaimed over one that returns a plausible
+> empty. **A verifier's false alarm is more expensive than a system failure,
+> because it sends someone hunting a bug that does not exist while the real state
+> goes unexamined.**
+
+One precision worth keeping, since the rule will be re-read by people who must act
+on it: kind two runs in BOTH directions. Lessons 8, 14, 16 and 17 are false
+ALARMS — the verifier claimed a problem that was not there. Lesson 15 is the
+mirror, a false ABSENCE — the verifier missed a thing that was. The false alarm is
+the costlier one and is what the rule above is aimed at, but a probe that reports a
+comfortable nothing deserves the same scepticism; "it came back clean" is a claim
+about the probe as much as about the system.
 
 ## Corrections the overseer made to its own directives
 
