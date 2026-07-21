@@ -241,6 +241,63 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
+## ✅ SESSION CLOSE 2026-07-21 — the factory mandate is COMPLETE
+
+**All five bars closed. `bd-ib-yqfw` is CLOSED. The factory closed a real
+orchestrator-repo item unattended.** Detail in the sections below; this block is
+the START HERE for the next session.
+
+### What is DONE — do not re-do
+
+| | Evidence |
+|---|---|
+| yqfw clauses 1–3 | #845 + #847 (`0cf21c53`), released 0.45.17 |
+| Post-merge review of `0cf21c53` | CLEAN — 8 angles checked, 2 P2s filed, 1 P2 fixed |
+| Bar 4 — unattended close | `bd-ib-lmi5`, `janitor-post-merge exit 0`, PR #850, `108d390` |
+| §B sweep | 4 of 8 dispositioned (see §B table) |
+
+### ⏭ START HERE — highest value first
+
+1. **`bd-ib-sfa2` (P1)** — the spike is DONE and recorded on the item with a
+   reproducible invocation. **The maintainer tradeoff is NOT decided:** a narrow
+   chmod route that provably catches the uid class but is a partial replica,
+   versus a faithful replica costing a fleet-wide image change in
+   `livespec-dev-tooling`. Criterion 2 is proven ONCE (by the operator); the
+   overseer's independent reproduction was INCONCLUSIVE — a broken harness, NOT
+   a contradiction. **Double-sourcing it is one run**; the exact command is on
+   the item. Still owed: a full-matrix CI demonstration, and criteria 3–4.
+   `ci.yml` is UNTOUCHED.
+2. **`livespec-4rq4` (P1, livespec core)** — DECIDED (mechanical option): the
+   dispatch/PR-creation path must apply `do-not-merge` (or draft) when an item
+   declares a review requirement, which means the item schema must carry that
+   flag. **Fix belongs in the copier TEMPLATE**, then propagates by re-sync.
+3. **The `mint_app_token.py` security note** — currently buried in §B's
+   "orchestrator operational lessons" row. It mints a REAL token. **Pull it
+   forward and file it standalone rather than leaving it in a guidance
+   backlog** (operator judgment, overseer concurred 2026-07-21).
+4. **Four §B findings remain** — see the §B table for each one's state.
+5. `bd-ib-lzau` (P2), `bd-ib-yf2m` (P2, widened), `bd-ib-d9gf` (P2),
+   `livespec-console-beads-fabro-0w5` (P3), `livespec-runtime-6m4` (P3).
+
+### ⚠ Two corrections future sessions must not re-derive
+
+- **`abdc50c` is NOT the pre-fix baseline for criterion 2 — `abdc50c~1`
+  (`bf2d859`) is.** `abdc50c` IS the coverage fix; measured there, line 133 is
+  covered under both uids and the route reads as "decorative". Both the operator
+  and the overseer walked into a bad baseline here, by different routes. A
+  hand-mutation restoring the short-circuit ALSO fails to discriminate, because
+  #845 added a test asserting the short-circuit's absence, so root reddens too.
+- **A 54-minute container capturing zero bytes is the mise auto-install hang,
+  NOT a slow non-root path.** Point `MISE_DATA_DIR` at the baked tree and set
+  `MISE_NOT_FOUND_AUTO_INSTALL=0`. The working non-root leg runs in ~49s.
+
+### Worktrees — NOT reaped, deliberately
+
+`verify-criterion2` (orchestrator, `abdc50c`) is the overseer's, and four
+`janitor-*` detached worktrees are leftovers from the pre-fix stranded
+dispatches. They are reapable now the janitor works, but they belong to other
+sessions — use `just reap-stale-worktrees`, never hand-delete unfamiliar state.
+
 ## RUNNING STATE — 2026-07-20 (cont. — clause 3 session)
 
 ### ✅ `bd-ib-yqfw` (P0) — CLOSED. All three clauses landed and bar 4 is proven.
