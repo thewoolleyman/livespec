@@ -197,3 +197,134 @@ A footnote that is itself evidence: the first attempt to journal the console acc
 note was DENIED by the repaired host guard, because the note quoted hazard command
 strings and the shell quoting made the command line unparseable — so the guard failed
 CLOSED, exactly as designed. The note was re-routed through a file.
+
+---
+
+## ADDENDUM 2026-07-21 — L1 was removed; two properties this epic never recorded
+
+**Appended, not rewritten.** Everything above stands as the record of what was
+believed and done at the time. This addendum records what was learned afterwards.
+It was written by [`plan/tmux-fleet-visibility/`](../../tmux-fleet-visibility/handoff.md)
+(ledger epic `livespec-l4g7wi`), which **supersedes the L1 environment-inversion
+layer of this epic** on evidence that post-dates it. The L2 command guards, L3's
+explicit per-invocation socket scoping, and the console AST check all STAND — L2 is
+now the sole mechanical control.
+
+### Finding 1 — L1 fails OPEN, silently, whenever its directory is missing
+
+tmux falls back to the **shared default namespace** when `$TMUX_TMPDIR` does not
+exist. No warning, no error — the scoping just stops applying. Read-only
+reproduction:
+
+```sh
+P=/tmp/probe-$$
+env -u TMUX TMUX_TMPDIR=$P /usr/bin/tmux ls    # dir ABSENT  -> lists the real fleet
+mkdir -p $P
+env -u TMUX TMUX_TMPDIR=$P /usr/bin/tmux ls    # dir PRESENT -> error connecting to $P/tmux-<uid>/default
+rm -rf $P
+env -u TMUX TMUX_TMPDIR=$P /usr/bin/tmux ls    # dir GONE    -> lists the real fleet again
+```
+
+Why that is reachable rather than theoretical: `/tmp` is **tmpfs** (wiped every
+reboot); systemd-tmpfiles carries `q /tmp 1777 root root 10d` (10-day age-out); and
+`supervisor.py::_agent_tmux_tmpdir()` did `mkdir(exist_ok=True)` at **spawn time
+only**, with nothing recreating the directory afterwards. Long-lived agents carry
+`TMUX_TMPDIR` in their process environment for days, so any of those events silently
+un-scoped every one of them **while they still believed they were isolated**.
+
+A control that fails open with no signal provides false confidence, which is worse
+than a known absence.
+
+### Finding 2 — `TMUX` overrides `TMUX_TMPDIR`, so `unset TMUX` was the load-bearing half
+
+With the private directory existing (so finding 1 is not a confound):
+
+```sh
+P=/tmp/prec-$$; mkdir -p $P/tmux-$(id -u)
+TMUX_TMPDIR=$P /usr/bin/tmux ls              # TMUX set   -> lists the real fleet
+env -u TMUX TMUX_TMPDIR=$P /usr/bin/tmux ls  # TMUX unset -> resolves to $P
+rm -rf $P
+```
+
+Inside a tmux pane, tmux sets `TMUX` itself, so `TMUX_TMPDIR` alone would have been
+inert. Any future removal or reintroduction must take the WHOLE prefix; deleting only
+the `TMUX_TMPDIR` export would leave dead configuration that reads as protective.
+
+### Correction to the Calibration bullet above ("the reason L1 matters")
+
+That bullet reads:
+
+> **A `PreToolUse` hook cannot see inside a script's subprocesses.** It sees only the
+> top-level command string; `python3 foo.py` is opaque. This is a structural limit of
+> L2 and the reason L1 matters.
+
+**The first two sentences are correct and still stand.** The conclusion does not.
+L1 did not reliably cover that gap — finding 1 shows it lapsed silently whenever its
+directory was absent, a condition guaranteed by reboot. The gap is now knowingly left
+open, on the record that all four kills were top-level command strings the guards
+could see, while L1's cost was paid continuously. **The evidence that would reopen
+this:** a fleet kill originating INSIDE a script's subprocess, where the guards saw
+only an opaque top-level command. If that happens, close the gap with a mechanism
+that does not blind — not by restoring L1.
+
+### Why L1 was removed at all — the categorical argument
+
+Not cost/benefit. Tmux selects one server per invocation, and that selection governs
+**every** subcommand. `TMUX`, `TMUX_TMPDIR`, `-L`, `-S` all answer *which server am I
+talking to*; none can answer *what am I allowed to do to it*. So an agent that can
+reach the fleet socket can list it **and** destroy it; one that cannot can do neither.
+**Visibility and destructive power are the same bit**, and any namespace-level scoping
+trades them one-for-one. No directory, location, or socket name yields protection
+without blindness — `/run/user/<uid>` was considered and rejected, because it fixes
+the fail-open but not the blindness.
+
+Distinguishing a listing from a teardown requires reading the *command*, which is what
+the L2 guards do. L2 is therefore not merely the layer doing the most work; it is the
+only layer that **can** do this work. L1 was not badly implemented — it was
+categorically unable to succeed. **This is recorded specifically to stop anyone
+rebuilding an "L1 v2" with a better directory.**
+
+Secondary: this epic's recorded root cause for the 2026-07-18 kill was an agent that
+wanted a clean tmux server *"assuming an isolated environment."* L1 systematically
+manufactured exactly that belief in every agent it scoped — a mitigation inducing the
+mental state that caused the incident it prevents.
+
+### The harm that forced the reversal
+
+L1's blindness produced repeated false claims about session liveness. On 2026-07-19
+two separate sessions reported fleet sessions dead that were alive the whole time; the
+agent namespace held one socket and no `default`, so `tmux ls` returned a clean,
+plausible, wrong "no server running". Six of sixteen live sessions were scoped at that
+point. Probe (read-only):
+
+```sh
+for s in $(/usr/bin/tmux ls -F '#{session_name}'); do
+  pid=$(/usr/bin/tmux list-panes -t "$s" -F '#{pane_pid}' | head -1)
+  printf '%-32s %s\n' "$s" "$(tr '\0' '\n' < /proc/$pid/environ | grep '^TMUX_TMPDIR=' || echo unset)"
+done
+```
+
+As of 2026-07-21 no live pane carries `TMUX_TMPDIR`, and a freshly spawned agent
+running a bare `tmux ls` lists the real fleet.
+
+### Not implicated: the oh-my-zsh `tmux` plugin
+
+The superseding thread also removed an oh-my-zsh shell plugin that broke `tmux` inside
+Claude Code Bash calls. **That plugin was NOT a cause of any of the four kills** — an
+exhaustive read of this epic's files and all six revisions of its thread directory
+found zero mentions of it, and decisively, the two 2026-07-18 kill commands invoked
+tmux by absolute path, which bypasses alias resolution entirely. It is recorded here
+only so a future reader does not mistake its removal for a root-cause fix. One
+incidental security gain: that plugin shipped `tksv`, a four-keystroke alias for the
+server-teardown command, live in every interactive shell. It is gone.
+
+### Sandbox mirror `bd-ib-zaq3` — left in place, and the open question is ANSWERED
+
+The Calibration bullet above asks whether the fabro provider bind-mounts host `/tmp`.
+**It does not**: `fabro-sandbox/src/docker.rs` `host_config()` sets `binds: None`,
+pinned by fabro's own test `container_config_has_no_bind_mounts_or_socket`. So the
+sandbox mirror was defense-in-depth on an already-airtight boundary, exactly as this
+epic supposed. It was deliberately LEFT in place: inside a container there is no host
+fleet to reach (no protective value lost) and none to see (no blindness cost), and its
+fail-open lands harmlessly inside the same container. Reopen only if that provider
+ever starts bind-mounting host paths.
