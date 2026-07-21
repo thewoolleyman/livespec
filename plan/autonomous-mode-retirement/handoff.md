@@ -68,8 +68,11 @@ it points you at.**
    Read `.ai/dispatcher-drain-operations.md` first: dispatch is strictly
    `--budget 1 --parallel 1`, `--fabro-bin` is an OVERRIDE not a requirement, and a
    backgrounded `drive` detaches so its exit code and log tell you nothing.
-3. **`bd-ib-qiqz6b` (P1, REOPENED)** — make a cross-tenant dependency actually gate
-   readiness. Smallest safe fix is to fail CLOSED on an unresolvable sibling ref
+3. **`bd-ib-qiqz6b` (P1, REOPENED)** — ⚠ **fail-closed half MERGED as
+   `livespec-runtime` PR #296 (`8eff84b`) but NOT LIVE** (see the merged-is-not-live
+   block above); the remaining work is the release+pin, then the
+   `sibling_status_lookup` so a CLOSED sibling stops blocking. Original framing kept
+   for context: fail CLOSED on an unresolvable sibling ref
    (consistent with how the same function already treats malformed entries); the
    real fix is to supply a `sibling_status_lookup` from the orchestrator, which
    holds both the beads client and the manifest. Retire the consumer test that pins
@@ -80,6 +83,55 @@ it points you at.**
    constraints** (derive the member list, read the authoritative ref, stay
    credential-free) plus a demonstrated second blind spot. Recorded on the item
    2026-07-21; see §"THE COUNTER-MOVE".
+
+### ⚠ MERGED IS NOT LIVE — the `bd-ib-qiqz6b` fix is shipped at source and INERT
+
+**Read this before treating the cross-repo dependency defect as closed.** The
+fail-closed fix merged to `livespec-runtime` as **PR #296 (`8eff84b`)**, and it is
+**not in effect anywhere.** The orchestrator runs a VENDORED copy of
+`livespec_runtime` pinned at `v0.11.0`; the fix is on master and unreleased.
+
+Verified rather than assumed — the same probe, run after the merge:
+
+    is_dispatch_candidate(livespec-qhxcsp) -> True     (STILL mis-selecting)
+
+`livespec-qhxcsp` is `pending-approval` with two `livespec-dev-tooling` sibling deps
+that are **both still open**, and the running factory would pick it today. That is the
+live consequence, and it survives the merge.
+
+**Both this fix AND 4rq4 slice 2 are gated on the SAME thing:** `livespec-runtime`
+v0.12.0 (release PR #295, which now carries both `bbf4980` and `8eff84b`) merging,
+then the orchestrator's `livespec-runtime` pin moving off `v0.11.0`. Release-merge
+latency in that repo has historically ranged from **1 minute to 8 days** — it is not
+automated (the release PR's bot author is not in the `auto-enable-merge` allowlist),
+so it waits on a human.
+
+**Do not report `bd-ib-qiqz6b` as done on the strength of the merge.** This repo's own
+rule is that done means rolled out and exercised live. The remaining acceptance is:
+release lands → pin bumps → the probe above returns `False`.
+
+### Filed this pass
+
+| Item | Tenant | What |
+|---|---|---|
+| `bd-ib-4m5f` (P2) | orchestrator | `next` and the Dispatcher disagree on the candidate SET — a `pending-approval` item is invisible to `next` but selectable by the drain. Sharper for the history: `livespec-impl-beads-i3jiny` fixed a divergence between these same two surfaces and noted they "share the SAME readiness filter"; they have now diverged again one layer ABOVE that shared primitive |
+| `livespec-runtime-0h8` (P2) | runtime | PR #296 falsified a sentence in `SPECIFICATION/contracts.md` ("`CLOSED`/`UNKNOWN` do not block"). **No gate catches it** — doctor compares the spec tree against its own history, never against source. Needs a propose-change → revise pass; sequence it with the `sibling_status_lookup` follow-up, which amends the same paragraph |
+
+### The visibility fix is validated CROSS-TENANT — 24 high-priority items surfaced
+
+The `untriaged_backlog_items` lane was exercised in a second tenant, not just the one
+it was built against:
+
+| Tenant | P0/P1 surfaced per-item | P2+ remainder |
+|---|---|---|
+| `livespec` | 12 | 55 |
+| `livespec-orchestrator-beads-fabro` | 12 | 40 |
+
+Not noise. The orchestrator set includes `bd-ib-6t4` (an invalid factory graph "took
+the factory DOWN on 2026-07-16"), `bd-ib-4sy` (">60-minute runs … teardown destroys
+the finished work"), `bd-ib-2nq` (App token-TTL fix "pending production rollout"),
+and `bd-ib-d6v1` (the stale-`.coverage` false-GREEN this file warns about elsewhere).
+All were invisible to every surface before 2026-07-21.
 
 ### The one habit this thread most wants you to keep
 
