@@ -469,9 +469,25 @@ Three properties to preserve if it is promoted into CI (the `livespec-bmxs` fix)
 3. **Credential-free**, so it runs when the ledger is throttled — which is exactly
    when a second party most needs to verify without taking anyone's word.
 
-**Remaining limitation, unchanged:** it checks only `.livespec.jsonc` `compat.pinned`,
-one of six pin formats (see the correction below). A member could be current here
-and adrift on another. Widen before treating it as a complete gate.
+**Remaining limitation:** the v2 above checks only `.livespec.jsonc` `compat.pinned`,
+one of six pin formats (see the correction below). That was recorded as a theoretical
+gap; it is not. `livespec-overseer` is adrift on the core pin **and** on its
+`pyproject.toml` uv-sources dev-tooling pin (`v0.51.0` against `v0.51.7`), and v2 can
+only see the first.
+
+**→ A v3 covering TWO formats is recorded on `livespec-bmxs`** (2026-07-21), with the
+script, its verified output, and three design choices worth preserving. It performs
+**15 pin-checks against v2's 8** over the same 8 members, and it names overseer's
+SECOND defect. Deliberately NOT duplicated here — the item is the single source for
+the script, this file is the narrative. Notably it also treats an ABSENT pin as `n/a`
+rather than a violation (conflating those is the `livespec-dev-tooling-6ge` defect),
+and its verdict names its own scope: *"propagation healthy ON THE COVERED FORMATS"*,
+listing the four still unchecked. **A check that cannot state what it does not cover
+is how v1 produced a FALSE HEALTHY verdict in front of two operators.**
+
+Four formats remain uncovered (`vendor_jsonc`, `github_workflow_uses_ref`,
+`fabro_sandbox_docker_image`, `codex_acp_docker_arg`). Widen further before treating
+even v3 as a complete gate.
 
 **This is the SEED of `livespec-bmxs`'s fix, not merely a diagnostic.** That item
 argues the outcome-reading check beats every intent-reading one because it does
