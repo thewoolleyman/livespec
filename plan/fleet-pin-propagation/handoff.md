@@ -96,6 +96,64 @@ minutes.** Re-measure before acting on any P0 text, including this section.
 | can't-read vs misconfigured fix for two conformance rows, +5 tests | dev-tooling PR #523 (`61f2d7bf`) |
 | Fan-out re-run to attempt 4 — preflight green, 8/8 dispatches | livespec run 29790751188 |
 | Corrected diagnosis + stale-claim correction | `livespec-dh9r`, `livespec-cbmw`, `livespec-dev-tooling-6ge` |
+| Two P1 defects found in the propagation SAFETY NET (below) | `livespec-oq9w`, `livespec-dev-tooling-bmf` |
+
+### 🔴 THE SAFETY NET IS DEGRADED — found by checking, not by reading
+
+The fleet's backstop for a failed fan-out is the daily 13:00 UTC pin-freshness
+sweep: each consumer independently re-checks its own pins and opens its own bump
+PR. **It is real and it does work** — that is what bounds any fan-out failure at
+~24h rather than indefinitely. But it is degraded in two independent ways, and
+**neither is visible from the sweep's status**, because the sweep is red anyway.
+
+**1. The sweep reports FAILURE on every member, every day —
+`livespec-dev-tooling-bmf` (P1).** Measured across all seven members carrying the
+shim (runs of 2026-07-20T15:0xZ): `scan-pin-freshness` SUCCESS everywhere,
+`open-bump-pr livespec-dev-tooling` FAILURE everywhere, one cause —
+
+    nothing to commit, working tree clean
+    ##[error]Process completed with exit code 1.
+
+The rewrite yields an empty diff because the fan-out already landed that bump,
+and `git commit` on an empty diff returns non-zero under `set -euo pipefail`. A
+no-op is treated as a hard failure. It hits the dev-tooling leg specifically
+because that source released v0.51.0 → v0.51.4 inside one day and so loses the
+race on essentially every sweep, while the slower `livespec` leg wins it and
+SUCCEEDS in the same runs.
+
+**2. The scan can silently MISS a stale pin — `livespec-dev-tooling-ews` (P1,
+filed 2026-07-19, not mine).** A SIGPIPE-corrupted ordinal distance makes the
+scan emit `stale=[]` and skip `open-bump-pr` entirely.
+
+**They degrade it in OPPOSITE directions** — `bmf` fails loudly on a pin needing
+nothing, `ews` passes silently over a pin needing everything — and they compound:
+because `bmf` makes red the normal daily state, red carries no information, so
+**`bmf` also conceals `ews`.** Anyone checking whether the backstop works sees red
+either way. (`ews`'s symptom was NOT present in the 2026-07-20 runs, so it is
+intermittent or already addressed — re-measure, don't assume.)
+
+**3. One member has no backstop at all — `livespec-oq9w` (P1).**
+`livespec-console-beads-fabro` is the only member of nine with no
+`pin-freshness.yml`. It ships `bump-pin-from-dispatch.yml`, so it RECEIVES a
+fan-out push but never PULLS — the one repo where nothing ever retries, and no
+~24h bound applies. **This is very likely the mechanical explanation for this
+thread's FOUNDING problem** (the console ~12 releases behind while every sibling
+stayed current): it was never really about that repo's gates, it is the only repo
+with no recovery path. `oq9w` also records that the fleet manifest's
+console-class rationale — "non-pin-consuming ... ships none of the three shims" —
+is contradicted on BOTH clauses by live state (it carries a `v0.20.0` **livespec**
+pin and ships one of the three), which is probably why the absence went
+unquestioned. Do not just add the shim: settle which side is authoritative first,
+because either choice needs the contract text amended in the same change.
+
+**⚠ A METHOD WARNING ABOUT THIS SESSION'S OWN WORK.** I first journaled on
+`livespec-dh9r` that the backstop was sound and bounded the stall at ~12.5h. That
+was reasoned from the workflow's documented behavior and its cron **without
+opening a single actual run**. Checking the runs falsified the confident half
+within minutes. The mechanism claim survived; the health claim did not. Corrected
+in place on `dh9r`. **Reading what a system is SUPPOSED to do is not
+measurement** — the same failure this thread has now recorded three times in
+other people's work.
 
 ### Still open — none of it urgent, all maintainer-gated
 
