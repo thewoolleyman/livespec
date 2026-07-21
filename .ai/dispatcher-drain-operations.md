@@ -8,20 +8,66 @@ invocation contract, its policy settings, and the post-merge acceptance lanes
 live in `livespec-orchestrator-beads-fabro`'s `SPECIFICATION/contracts.md` and
 `SPECIFICATION/scenarios.md`.
 
-## Pass `--fabro-bin` explicitly — PATH resolution does not survive the wrapper
+## `--fabro-bin` is an OVERRIDE, not a requirement — corrected 2026-07-21
 
-The credential wrapper that injects the tenant `BEADS_DOLT_PASSWORD` and the
-GitHub App environment scrubs `PATH`. A dispatch that relies on PATH to find the
-Fabro engine therefore dies with `fabro engine binary not resolvable`, which
-reads like a missing install but is purely an environment artifact. Always name
-the binary on the command line:
+> **This section previously said the flag was "mandatory in every real
+> invocation". That is no longer true, and following it literally blocks the
+> sanctioned path — `drive` accepts no such flag.**
+
+The underlying hazard was real: the credential wrapper that injects the tenant
+`BEADS_DOLT_PASSWORD` and the GitHub App environment scrubs `PATH`, so a bare
+`fabro` PATH lookup fails and the dispatch dies with `fabro engine binary not
+resolvable` — which reads like a missing install but is an environment artifact.
+
+**That bug is FIXED at the resolver.** `resolve_fabro_bin` (orchestrator
+`commands/_config.py`) resolves **env > config > default**:
+
+1. a non-empty `LIVESPEC_FABRO_BIN`;
+2. else `.livespec.jsonc` `dispatcher.fabro_bin`;
+3. else `_default_fabro_bin()`, which probes the ABSOLUTE `$HOME/.fabro/bin/fabro`
+   FIRST (the wrapper preserves `HOME` even while scrubbing `PATH` — this is the
+   fix), then falls back to a `PATH` lookup (which is what resolves inside the
+   orchestrator container, where `fabro` lives at `/usr/local/bin/fabro`).
+
+An explicit `--fabro-bin <path>` still wins outright, so passing it is harmless.
+It is simply not required, and treating it as required creates a contradiction:
+**the sanctioned `drive --action impl:<id>` path exposes no `--fabro-bin` flag at
+all.** An operator reading the old text would conclude the sanctioned path could
+not be used.
+
+Verified by observation 2026-07-21, not by reading the resolver: `drive --action
+impl:livespec-runtime-jo9` was invoked with NO `--fabro-bin` and a sandbox came
+up (`fabro-run-…`, image `livespec-fabro-sandbox:python-agent-v0.51.7`).
+
+Pass the flag when you deliberately want a non-default engine. Otherwise let the
+resolver do its job.
+
+## A backgrounded `drive` DETACHES — its exit code and log tell you nothing
+
+`drive.py` re-invokes itself under the credential wrapper when the required
+credential env is absent (`sudo` → `with-livespec-env.sh` → `op run` → python).
+Run it in the background and **the parent returns almost immediately with exit 0
+and a log containing one line**:
+
+    livespec: required credential env absent; re-invoking under credential_wrapper
+
+The real dispatch continues in the detached child. So a background-task
+"completed, exit code 0" notification fires on the PARENT, minutes before the
+dispatch is anywhere near done, and the tiny log looks exactly like a run that
+died on startup. **Neither signal carries information about the dispatch.**
+
+This is the same family as the recorded trap where a dispatch reported `exit 0`
+while its status was `failed` — but pointed the other way: here exit 0 plus an
+empty-looking log accompanies a dispatch that is running perfectly.
+
+**Query the authoritative signals instead** — all three agree or you do not have
+an answer:
 
 ```bash
---fabro-bin /home/ubuntu/.fabro/bin/fabro
+pgrep -af "drive.py|dispatcher.py"          # the wrapper/op-run/python chain
+docker ps --format '{{.Names}}\t{{.Image}}' # a fabro-run-* sandbox is UP
+bd show <work-item-id>                      # status: active, assignee: fabro
 ```
-
-Treat the flag as mandatory in every real invocation, not as an override for
-unusual setups.
 
 ## Factory dispatch is strictly sequential — one Fabro run at a time
 
