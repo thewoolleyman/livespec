@@ -1,4 +1,23 @@
-# rop-sweep-fleet-policy — RULING 7 IS DEAD, RULING 8 REPLACES IT. The combined check change is DISPATCHED. e9j slice 1b is unblocked
+# rop-sweep-fleet-policy — PR #516 IS REVIEW-CLEARED (both reviewers NO-BLOCKERS). It is blocked ONLY by an unrelated fleet red needing ONE maintainer action
+
+## 👤 WHAT NEEDS THE MAINTAINER — one action, one judgment, then three spec-side decisions
+
+1. **`livespec-cbmw` (P1) — install the fleet GitHub App on `livespec-overseer`.** Needs OWNER
+   access; no session token can do it. This unblocks EVERY fleet repo's master, not just PR #516.
+   The other leg (`wire-fleet-member` reconcile for merge-settings + delete-branch-on-merge) can be
+   driven by anyone with admin scope.
+2. **A judgment call, deliberately NOT filed:** should a declared-but-unwired fleet member
+   HARD-FAIL every OTHER repo's `ci-green` and block their merges? Register-first guarantees the
+   finding SURFACES; surfacing and blocking are separable. If the blast radius is wrong, the fix is
+   how `check-fleet-conformance` GRADES a not-yet-wired member versus a DRIFTED one — a severity
+   question in `livespec-dev-tooling`, never a suppression, never a new upstream→downstream read.
+3. **Then, in order:** the core spec amendment (the `non-functional-requirements.md:649` staleness
+   AND the §"ROP composition" ambiguity, in ONE proposal, via `/livespec:propose-change` +
+   independent review, NOT ratified before #516 merges); the two structurally inert markers; and
+   `qm5`'s `needs-regroom`, whose scope ruling 8 settled.
+
+**Release sequence for PR #516 once green:** mark ready FIRST, THEN remove `do-not-merge` —
+removing the label is itself what re-arms auto-merge (`unlabeled` is a workflow trigger).
 
 ## 🔴 2026-07-21 — RULING 7 COULD NOT BE IMPLEMENTED. RULING 8 SUPERSEDES IT.
 
@@ -83,6 +102,65 @@ Remediation MUST ride in the same PR — the check is already wired into this re
 **NOT in the blast radius:** both Drivers stay vacuous (no `source_trees`, so the walk still runs
 zero iterations — `cvz`'s defect sits in SERIES with `qm5`'s); both layered orchestrator repos stay
 at 0; core gains 0, which is what unblocks slice 1b.
+
+### ✅ PR #516 IS REVIEW-CLEARED — BOTH ROUND-2 REVIEWERS NO-BLOCKERS
+
+Round 2 was run UNPRIMED (neither reviewer told what round 1 found). **Codex: NO-BLOCKERS.
+Second reviewer: NO-BLOCKERS.** The dual-review guard is SATISFIED. The PR is blocked ONLY by the
+unrelated fleet red below (`livespec-cbmw`) — nothing in it, and no review finding, holds it.
+
+The second reviewer proved non-inertness by **9 separate mutations**, each undoing one
+implementation hunk and each killing its paired test — including re-introducing round 1's exact
+body-comment bug shape and counting STRING tokens as comments. It ran a 14-fixture adversarial
+battery against BOTH the check and ruff and could construct NO input getting a banned broad catch
+past the combined gate on the fleet's real toolchain.
+
+**Safe-direction asymmetry worth keeping:** ruff 0.8.6 `BLE001` does NOT flag
+`except (ValueError, Exception)` — the tuple-embedded broad catch — but the check DOES. On tuples
+the check is the ONLY live gate, and it holds. That is the opposite of the dotted-name case that
+motivated ruling 8's fix, so the split is asymmetric in BOTH directions depending on construct.
+
+### 🔴 CORRECTION — e9j's LOUDNESS remedy is only HALF delivered, and the overseer overstated it
+
+The overseer told the maintainer and this handoff that the new `files_inspected` field means
+"'inspected 0' can no longer masquerade as a pass". **That is an overstatement.** Measured against
+the shipped code on a repo declaring no `source_trees`:
+
+```
+{"check_id": "no_except_outside_io", "role": "source_trees", "event": "role key absent — check no-ops"}
+EXIT=0
+```
+
+**It still exits 0 and still shows GREEN in CI.** The count is REPORTED; a no-op and a pass remain
+identical to anything reading exit codes or CI status, distinguishable only by a human reading the
+log. That is exactly one of the four properties `e9j` identifies as having hidden the seven-week
+blind spot. So PR #516 makes the no-op VISIBLE, not IMPOSSIBLE TO MISTAKE, and **`e9j` MUST NOT be
+treated as discharged on its loudness axis when this merges.** The open severity question `e9j`
+still owns: should an armed-but-inspecting-nothing check EXIT NON-ZERO? Its own `check_mutation`
+reasoning already argues yes — *"when a run-lever is explicitly ARMED and the check then no-ops on
+missing config, that must be an ERROR, not an INFO."*
+
+### NEW ITEMS FROM ROUND 2
+
+- **`livespec-dev-tooling-9ar` (P2)** — `except*` / `ast.TryStar` is INVISIBLE to the check. Safe
+  today (the 3.10 floor makes it crash loudly), but the day any consumer reaches >= 3.11 it
+  recreates the both-halves-fall-together bypass THIS PR just fixed: ruff DOES flag `except*`, so
+  the `# noqa` is consumed silently while the check never looks. **Filed now rather than deferred
+  because the arming trigger is a routine version bump** — at which point the check stops crashing
+  and starts silently passing, which reads as the bump having FIXED something. Fix is widening to
+  `(ast.Try, ast.TryStar)` in the walk AND in `_supervisor_main_try_lines`; the awkward part is
+  testing under a 3.10 floor that cannot parse the syntax (prefer constructing the node
+  programmatically over a version-gated fixture, which would be inert until the defect arms).
+- **Marker substring tolerance** (verified by the overseer, routed to `jjb`): a sanctioned marker
+  with trailing junk passes both gates —
+  `# noqa: BLE001 — sole supervisor bug-catcher: log traceback, exit 1 -- but actually swallows`.
+  The spec's set is exact (*"Any other reason wording marks a violation"*), so the in-code claim
+  "matched literally and never pattern-relaxed" overstates. It CANNOT legalize a misplaced or
+  unmarked catch — position is still required — so this is misleading decoration on an otherwise
+  legal boundary catch, not a hole.
+- Doc-precision only: the in-code "two evasions stay out of reach" list undercounts its own family;
+  `except (Exception if True else ValueError):` and `except (*(Exception,),):` also classify narrow
+  and are also missed by ruff. Arbitrary-expression operands, deliberate obfuscation, ruff-parity.
 
 ### 🚧 PR #516 IS BLOCKED BY A FLEET-WIDE CONFORMANCE RED IT DID NOT CAUSE
 
