@@ -236,6 +236,59 @@ For the last two, an executable arbiter costs the very quota it is meant to make
 cheap. Attach one anyway if a credential-free formulation is found; do not force
 one that is not.
 
+### The `livespec-bmxs` arbiter, WRITTEN OUT AND VERIFIED
+
+An arbiter that has not been run is exactly the narrative claim this section
+warns about, so here is the fleet-propagation one as an actual command, executed
+2026-07-21. It needs **no credential wrapper** — `gh` only — so it works while the
+ledger is rate-limited.
+
+```bash
+latest=$(gh release view --repo thewoolleyman/livespec --json tagName -q .tagName)
+drift=0
+for r in livespec-orchestrator-beads-fabro livespec-console-beads-fabro \
+         livespec-dev-tooling livespec-runtime livespec-driver-claude \
+         livespec-orchestrator-git-jsonl livespec-driver-codex; do
+  pin=$(gh api repos/thewoolleyman/$r/contents/.livespec.jsonc --jq '.content' \
+        | base64 -d | grep -oE '"pinned": *"v[0-9.]+"' | head -1 | grep -oE 'v[0-9.]+')
+  [ "$pin" = "$latest" ] && st=OK || { st=DRIFT; drift=$((drift+1)); }
+  printf '  %-36s %-9s %s\n' "$r" "$pin" "$st"
+done
+[ "$drift" -eq 0 ] && echo "propagation healthy" || echo "propagation STALLED"
+```
+
+Verified output (all seven current at core's latest release):
+
+    core latest release: v0.20.0
+      livespec-orchestrator-beads-fabro    v0.20.0   OK
+      livespec-console-beads-fabro         v0.20.0   OK
+      livespec-dev-tooling                 v0.20.0   OK
+      livespec-runtime                     v0.20.0   OK
+      livespec-driver-claude               v0.20.0   OK
+      livespec-orchestrator-git-jsonl      v0.20.0   OK
+      livespec-driver-codex                v0.20.0   OK
+    consumers adrift: 0/7
+    ARBITER VERDICT: propagation healthy
+
+**This is the SEED of `livespec-bmxs`'s fix, not merely a diagnostic.** That item
+argues the outcome-reading check beats every intent-reading one because it does
+not depend on the failing component to report its own failure. This is that check,
+in eight lines, reading the OUTCOME (consumer pins) rather than the INTENT
+(dispatch job results). Run against the v0.20.0 stall it would have printed
+`consumers adrift: 7/7` immediately — while the fan-out's own jobs were reporting
+SKIPPED, which is indistinguishable from success.
+
+**Two properties worth preserving if it is promoted into CI:** it reads the
+authoritative ref via the API (not a local clone — see lesson 14), and it is
+credential-free, so it can run in any context including one where the ledger is
+throttled or the App token is missing.
+
+**Known limitation, stated so nobody trusts it further than it goes:** it checks
+only `.livespec.jsonc compat.pinned`. The bump path rewrites FOUR pin formats
+(`compat.pinned`, `pyproject.toml [tool.uv.sources]`, `.vendor.jsonc`,
+`.copier-answers.yml _commit`), so a consumer could be current on this pin and
+adrift on another. Widen it before treating it as a complete propagation gate.
+
 ### ⚠ OPERATIONAL — the 1Password service-account quota is SHARED and DAILY
 
 Hit in this session: `op run` exited **9**. The wrapper's own message is explicit
