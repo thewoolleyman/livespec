@@ -5,6 +5,34 @@
 **Everything below this block is detail. Read this first, then jump to the section
 it points you at.**
 
+### ⏭ SESSION 2026-07-22 — THE RELEASE LANDED; qiqz6b CLAUSE 1 IS LIVE. This block supersedes the stale claims named in it.
+
+Human-decision-queue **item 2 (merge `livespec-runtime` PR #295) is DONE**, and driving
+it cleared the gate under both qiqz6b and 4rq4 slice 2. Everything here was verified live,
+not inferred — the arbiter for each claim is named so the next reader re-runs rather than trusts.
+
+| What | Now | Evidence (re-runnable) |
+|---|---|---|
+| `livespec-runtime` PR #295 (release 0.12.0) | ✅ MERGED `f6c362e0`, v0.12.0 published | `gh release view --repo thewoolleyman/livespec-runtime` → `v0.12.0` |
+| Orchestrator `livespec-runtime` pin | ✅ moved off v0.11.0 → v0.12.0 (bump PR #867 `2cb4a642`) — **both** `pyproject.toml` AND `.vendor.jsonc` | fix live at vendored `lifecycle.py:180` |
+| **qiqz6b clause 1** (open sibling blocks) | ✅ **LIVE + probe flips** `is_dispatch_candidate(livespec-qhxcsp) -> False` (was `True`) | `scratchpad/probe_qiqz6b.py` under the credential wrapper |
+| Over-block blast radius | ✅ measured **0** non-terminal items fleet-wide (7 tenants, 717 items) | `scratchpad/probe_fleet_overblock.py` |
+| **qiqz6b clause 2** (closed sibling satisfied) | 🔴 **STILL OPEN** — the fail-closed net makes a CLOSED sibling *over-block* until a `sibling_status_lookup` is threaded from the orchestrator | commit msg of `8eff84b` says so outright |
+| **`livespec-runtime-0h8`** (falsified `contracts.md`) | ⏳ propose-change **FILED + merged** (PR #297) into `proposed_changes/`; ratification (Fable review → revise) still owed | queued file `contracts-sibling-block-rule.md` |
+| **`dqfmjr`** duplicate-PR finding | ✅ sharpened + live repro recorded — supersession **structurally cannot** close an equal-version pair (`_newer_sibling` uses strict `>`); live pairs in `livespec-overseer` #6/#8, #7/#9 | the strict-greater read of `bump_pr_supersession.py` |
+
+**These downstream sections are now STALE — trust this block over them:** §"⚠ MERGED IS NOT LIVE"
+(the fix IS now live), Ranked-next-action **#2/#3** (the pin half landed), and human-decision-queue
+**item 2** (done). **One correction carried forward:** the note that a consumer test "pins the
+fail-open scenario / will re-lock if not retired" is FALSE — that test asserts the *resolution*
+layer (`resolve_ref` → UNKNOWN), orthogonal to the *blocking* layer the fix changed; `8eff84b`
+never touched it and CI is green. Do not retire it.
+
+**The next substantive step for qiqz6b is clause 2** — a two-repo change (livespec-runtime must
+accept+thread a `sibling_status_lookup`; the orchestrator must supply it from its beads client +
+manifest) plus the clause's required closed-satisfied unit coverage. Not started; it is real code
+work under Red-Green-Replay, deliberately left un-begun rather than half-done.
+
 ### State in one table
 
 | | State |
