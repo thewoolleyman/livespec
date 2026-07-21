@@ -248,6 +248,104 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
+## ⏭ NEXT CLEAN ACTION — launch the `livespec-4rq4` dispatches
+
+**This is the newest block and the START HERE.** Three slices are FILED AND
+GROOMED; **none is dispatched**. The dispatch launch was deliberately left as the
+first action of a fresh session, because the session that groomed them was
+running a loaded context and stopped before degrading rather than after failing.
+
+| Slice | Tenant | Id | Dispatchable? |
+|---|---|---|---|
+| 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | YES |
+| 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | YES |
+| 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | YES |
+
+**Order: 2 depends on 1** — land slice 1, tag a `livespec-runtime` release, pin it,
+then slice 2. Slice 3 is independent and can go in parallel.
+
+Before driving any of these through the factory, read
+`.ai/dispatcher-drain-operations.md`: `--fabro-bin` is mandatory (the credential
+wrapper scrubs `PATH`), dispatch is strictly sequential `--budget 1 --parallel 1`
+(Fabro sandboxes use `--network host`, so two runs collide), never hand-edit an
+`admission:*` label, and re-enumerate the ready queue every iteration.
+
+### ⚖ THE DESIGN CHANGED DURING GROOMING — do not implement the old disposition
+
+`livespec-4rq4`'s own description still says "apply the `do-not-merge` label on
+the dispatch/PR-creation path". **That is SUPERSEDED for the dispatched path.**
+Two reasons, both verified against committed state:
+
+1. **The label is INERT there, not merely incomplete.** A `do-not-merge` label
+   gates the `auto-enable-merge.yml` WORKFLOW only. It does **not** block an
+   auto-merge armed directly by `gh pr merge --auto` — and the dispatched agent
+   arms it directly, itself. `prompts/pr.md` is titled *"publish the work and arm
+   rebase auto-merge"*; step 4 runs the arming and **step 5 RETRIES if it did not
+   take**. Corroborated in `workflow.toml`, which names "the in-sandbox
+   `gh pr create` + rebase-auto-merge arming". A label applied at `gh pr create`
+   is stepped over one line later.
+2. **A prompt instruction is not mechanization.** There is no `gh pr create` in
+   any orchestrator Python — an LLM follows markdown. Making that prompt the
+   enforcement point for a control whose entire defect is "reads as governing but
+   is structurally inert" **reproduces the defect class one layer up**. The
+   maintainer chose the mechanical option precisely so a review requirement stops
+   being a thing someone must REMEMBER. An instruction in a prompt is a thing
+   something must remember. **Swapping a human's memory for a model's is not
+   mechanization.**
+
+**What replaces it: REFUSE AT ADMISSION.** An item declaring a human review
+requirement is not a candidate for unattended dispatch at all, so the dispatcher
+declines it pre-emptively with a named reason — exactly as `bd-ib-nga9`
+prescribes for workflow-editing items. This **eliminates** the race rather than
+policing it: no label to apply, no arming to neutralize, no prompt to follow, and
+no window between PR creation and arming.
+
+The label is **KEPT for the HAND-BUILT path** (slice 3). That is where 4rq4
+actually bit (PR #847) and where the WORKFLOW, not an agent, does the arming — so
+there the label genuinely holds.
+
+### ✂ The planned gated slice is ELIMINATED
+
+A fourth, hand-build-only slice was planned: a copier re-sync landing regenerated
+files at each repo's ROOT `.github/workflows/`, gated by the `bd-ib-nga9`
+boundary. **It is not needed.** `auto-enable-merge.yml` already honors
+`do-not-merge` and `draft`, and refuse-at-admission handles the dispatched path
+in Python — so **no root workflow file changes in any repo**.
+
+Two path facts, both verified rather than reasoned:
+
+- The **nested template path is NOT gated** by nga9. Commit `ffd70423`, authored
+  by `Fabro <noreply@fabro.sh>`, has **already pushed successfully** to
+  `templates/orchestrator-plugin/.github/workflows/`. Only the regenerated ROOT
+  copies are gated.
+- `livespec-4rq4`'s description cites `templates/impl-plugin/...`, which **no
+  longer exists** (renamed at `a304b096`).
+
+### 🚫 NOT IN SCOPE FOR ANY SLICE — do not build, do not assume
+
+**GitHub-side required review via branch protection** is the only enforcement
+neither a prompt, a label, nor an agent can bypass (armed auto-merge respects it
+by waiting). It is a fleet **policy posture change**, it is **with the maintainer,
+undecided**, and it must not be built or assumed.
+
+### ⬜ Also owed, not started — STEP 3, the containerized janitor
+
+The one genuine unknown left, chosen by the maintainer over re-proving the six
+remaining fleet repos. **Both** unattended closes to date ran the janitor
+HOST-SIDE, in a worktree where cargo exists; the **containerized** path in the
+Python-only orchestrator image **has never actually run**. Drive one dispatch
+through the containerized orchestrator (not the host-direct loop) against a
+**Rust** target so the toolchain question is live, and see whether the janitor's
+gate finds cargo.
+
+- If it FAILS: `bd-ib-9yi` is confirmed live and its three fix directions apply.
+- If it PASSES: `bd-ib-9yi` is stale and should be closed with the evidence.
+
+**Either result is a real answer — capture the observed output, not a
+conclusion.** Note `bd-ib-9yi` may be an image-layer question, in which case it
+should land together with `bd-ib-phsu` rather than forcing two fleet-wide
+republishes.
+
 ## ✅ SESSION 2026-07-21 (cont.) — `bd-ib-sfa2` DECIDED AND SHIPPED
 
 **This is the newest block. Read it before the one below it.** The thread's only
@@ -339,6 +437,20 @@ true pre-fix baseline `bf2d859` (= `abdc50c~1`), two separate containers:
 `1928 passed, 1 skipped` on BOTH legs — the divergence is invisible to the suite
 and surfaces only through coverage.
 
+### ✅ `bd-ib-sfa2` is CLOSED, and its deferred half is filed as `bd-ib-phsu`
+
+Maintainer-directed: ship detection today at zero fleet risk, carry the
+relocation separately at lower priority. **`bd-ib-phsu` (P3)** — "Relocate the
+sandbox toolchain to a world-readable path so the non-root CI leg is a FAITHFUL
+replica, not a partial one". It is deliberately NOT a stub: it carries the
+fidelity gap verbatim, the `/root`-is-0700-and-no-toolchain-copy evidence, the
+fleet rebuild/republish/pin-bump cost, five acceptance criteria, and the
+vacuous-`py_changed` trap — written to be picked up cold without reading sfa2.
+
+**Sequencing note recorded on it:** `bd-ib-9yi` is also an image-layer question,
+so if 9yi needs an image change the two should land together rather than forcing
+two fleet-wide republishes.
+
 ### ⬜ The one residual on `bd-ib-sfa2`, stated rather than glossed
 
 Criterion 2's red demonstration was **local** — same image, same recipe, but not
@@ -393,11 +505,14 @@ the START HERE for the next session.
    criterion 2 is met with one **stated residual** (its red demonstration was
    local, not a red run inside GitHub CI). **Do not re-run the harness to
    re-derive the decision** — it is made and shipped.
-2. **`livespec-4rq4` (P1, livespec core)** — the previously-recorded disposition
-   ("apply `do-not-merge` in the dispatch/PR-creation path; fix belongs in the
-   copier TEMPLATE") **rests on three factual errors, all now verified against
-   committed state and recorded on the item.** Re-open the option choice before
-   implementing:
+2. **`livespec-4rq4` (P1, livespec core)** — ⚠ **SUPERSEDED. It is now GROOMED
+   INTO THREE FILED SLICES and its disposition has CHANGED to refuse-at-admission
+   — see §"NEXT CLEAN ACTION" at the top of this file, which is authoritative.**
+   The detail below is retained because it is the evidence the re-design rests
+   on; read it as rationale, not as instructions. The previously-recorded
+   disposition ("apply `do-not-merge` in the dispatch/PR-creation path; fix
+   belongs in the copier TEMPLATE") **rests on three factual errors, all verified
+   against committed state and recorded on the item:**
    - **There is a SECOND auto-merge lever this item misses entirely.** Fixing
      the workflow alone does NOT close the hole. `livespec-orchestrator-beads-fabro`'s
      `.claude-plugin/.fabro/workflows/implement-work-item/prompts/pr.md` has the
