@@ -3,12 +3,12 @@
 **Thread**: `plan/tmux-fleet-visibility/` (repo `livespec`).
 **Ledger epic anchor**: `livespec-l4g7wi` (livespec tenant; filed 2026-07-19,
 routed `backlog` — epic-shaped, driven from this plan track, not dispatched).
-**Status**: OPEN — Phases 0–2 complete (0–1 on 2026-07-19, gate PASSED and the
-inversion removed from both spawn paths; 2 on 2026-07-21, zero live panes now
-carry `TMUX_TMPDIR`). See the execution records at the end of this file.
-Next: Phase 3 (remove the oh-my-zsh `tmux` plugin, repo `vps-info`) — now the
-only work standing between here and the thread's acceptance test, since a bare
-`tmux ls` in a Claude Code Bash call still dies at exit 127. Authored 2026-07-19.
+**Status**: ALL PHASES COMPLETE (0–1 on 2026-07-19; 2–4 on 2026-07-21).
+**The acceptance test PASSES**: a freshly spawned agent running a bare
+`tmux ls` — no absolute path, no wrapper — lists the maintainer's real fleet.
+See the per-phase execution records at the end of this file. Two residuals are
+deliberately left open and one new finding was routed elsewhere; see
+"Residuals / open questions". Authored 2026-07-19.
 
 **Supersedes**: the **L1 environment-inversion layer** of
 [`plan/archive/tmux-fleet-kill-prevention/`](../archive/tmux-fleet-kill-prevention/handoff.md)
@@ -505,7 +505,23 @@ what was verified, by what method, and what was left deliberately in place.
 3. **Claude Code's snapshot filter is an upstream defect**, not fixed here. It will
    keep breaking any alias pointing at a single-underscore function, in any plugin,
    on any host. Removing this plugin fixes the instance, not the class. Worth
-   reporting upstream; out of scope for this thread.
+   reporting upstream; out of scope for this thread. Now also recorded in
+   `vps-info` AGENTS.md, so a future `command not found: _something` from inside a
+   Claude Code Bash call is recognizable as this same shape.
+4. **NEW 2026-07-21 — the `Stop` no-shadow-ledger WARN hook may not be firing.**
+   Found while executing Phase 2, not sought. `SPECIFICATION/contracts.md`
+   specifies a `Stop` hook (`no_shadow_ledger.py`, REQUIRED in BOTH Driver
+   bundles) that warns when a turn persists a planning artifact carrying
+   `[ ]`/`[x]` checkbox items at or above a threshold. This session wrote
+   `plan/tmux-fleet-visibility/handoff.md` TWICE with a ten-item checkbox block
+   present — and, on the first write, flipped one box, which is the precise
+   violation the hook exists to catch — and NO `systemMessage` was surfaced
+   either time. Either the threshold is above ten or the hook is not firing.
+   **This is not diagnosed**; the observation is recorded so it is not lost.
+   It matters beyond this thread: the shadow ledger here was caught by the
+   maintainer reading the artifact, which is exactly the manual review the
+   mechanical guard is supposed to make unnecessary. Belongs as a work-item
+   against the Driver repos, not to this thread.
 
 ---
 
@@ -689,3 +705,111 @@ Phase 3 may proceed — and is now the whole remaining critical path. Re-verifie
 in this session: a bare `tmux` in a Claude Code Bash call still resolves to
 `_zsh_tmux_plugin_run` and dies `command not found`, so finding 4 is live and
 the thread's acceptance test cannot pass until the plugin is gone.
+
+---
+
+## Phase 3 execution record (2026-07-21)
+
+**The acceptance test for the whole thread PASSES.** A freshly spawned agent
+(headless `claude -p`, whose shell snapshot is regenerated at spawn) ran a
+**bare** `tmux ls` and listed the real 22-session fleet. Not `/usr/bin/tmux`;
+not a wrapper it had to know to invoke. That was the criterion the thread
+existed for, and it is met.
+
+### Pre-removal re-verification (the phase text said to; it was worth it)
+
+The plugin defined exactly five aliases — `tksv`, `tl`, `tmuxconf`, `tmux`,
+`tds` — read directly from
+`~/.oh-my-zsh/plugins/tmux/tmux.plugin.zsh`. A search across `/data/projects`
+and the host's dotfiles and `/usr/local/{bin,lib}` found NOTHING depending on
+any of them. The handoff's authoring-time claim held.
+
+### Host changes (all reversible; maintainer-authorized per-instance)
+
+1. `~/.acfs/zsh/acfs.zshrc` — `tmux` removed from the multi-line
+   `plugins=(...)` list; `tmuxinator` deliberately KEPT (its aliases point at
+   the real binary, so the snapshot defect does not touch them).
+2. `~/.zshrc.local` — a commented, guarded
+   `unalias tmux tksv tds tl tmuxconf 2>/dev/null || true`. Sourced AFTER
+   `acfs.zshrc` (`~/.zshrc` line 2 then line 5) and not owned by acfs, which is
+   what makes the fix survive a re-template.
+3. Backup: `~/backups/acfs/acfs.zshrc.20260721T041052.bak` — outside `/tmp`,
+   because `/tmp` is tmpfs and would not survive the reboot you would want the
+   backup for.
+
+Verified: a fresh interactive shell resolves `tmux` → `/usr/bin/tmux`, and
+`tksv` is gone.
+
+### `tksv` — the incidental result that may matter more than the intended one
+
+The plugin shipped `alias tksv='tmux kill-server'`: a FOUR-KEYSTROKE alias for
+the exact fleet-destroying command that has destroyed this host's live sessions
+three times (2026-07-03, and twice on 2026-07-18). It was live in every
+interactive shell. Removing the plugin removed it. This was not the goal of the
+thread and is not claimed as one — finding 5 in this file still stands that the
+plugin caused none of the four kills — but the hazard surface is genuinely
+smaller now.
+
+### Codification — `vps-info` PR #13 (MERGED)
+
+`thewoolleyman/vps-info` [PR #13](https://github.com/thewoolleyman/vps-info/pull/13),
+merged 2026-07-21. Extends `services/tmux-config/` (rather than adding a new
+service) so that "make tmux behave on this host" stays in one place and the
+installer remains the supported repair path. Delegated to a sub-agent with the
+findings pinned verbatim; **independently verified afterwards rather than taken
+on report** — the agent went idle without delivering one, and the verification
+below is the actual evidence:
+
+- **Idempotent on the already-fixed host**: run twice, identical output, exit 0
+  both times, exactly ONE `unalias` line in `~/.zshrc.local` (no double-append).
+- **Repairs a regressed state**: its awk filter, run against a synthetic
+  `acfs.zshrc` with `tmux` restored to the plugins block, removes `tmux`,
+  preserves `tmuxinator`, and leaves a `tmux` substring in a comment OUTSIDE the
+  block untouched.
+- **Fails loudly rather than shipping a dead fix**: against a single-line
+  `plugins=(git pip tmux tmuxinator systemd)` — a shape the line-oriented filter
+  cannot handle — the follow-up detection guard fires and the installer would
+  exit 1 rather than silently no-op.
+
+The sub-agent improved on the brief in one respect worth keeping: it verifies
+with `zsh -ic`, not `zsh -lc`, because **zsh reads `.zshrc` only for INTERACTIVE
+shells** — a login-but-non-interactive shell loads none of the oh-my-zsh aliases
+(2 vs 457) and would pass the assertion VACUOUSLY. That is the
+verifying-against-the-right-source trap in its exact local form.
+
+### The misattribution correction had TWO sites, not one
+
+The phase text named `vps-info/CLAUDE.md` only. The identical wrong claim —
+that the breakage is about "non-interactive shells" — was ALSO in a comment at
+`services/tmux-config/install.sh:8-9`. Both are corrected to name Claude Code's
+per-session shell-snapshot filter. Plain `zsh -c` and `zsh -lc` both resolve
+`/usr/bin/tmux` correctly; the old text would have sent the next investigator to
+a layer that was never broken.
+
+The standing "use `/usr/bin/tmux`, never bare `tmux`" guidance was re-framed
+rather than deleted: bare `tmux` works now, so the rule survives as
+defence-in-depth against an acfs re-template restoring the plugin — not as
+"bare tmux is broken", which is no longer true. The neighbouring
+`tmux kill-server` warning is untouched; that hazard is unchanged.
+
+---
+
+## Phase 4 execution record (2026-07-21)
+
+`livespec` [PR #1595](https://github.com/thewoolleyman/livespec/pull/1595),
+merged as `43284de4`. **Appended** to
+`plan/archive/tmux-fleet-kill-prevention/handoff.md`; nothing above the addendum
+was rewritten, so the archive still reads as the record of what its authors
+believed at the time.
+
+The addendum carries: finding 1 (L1's silent fail-open) with its read-only
+reproduction and why `/tmp` being tmpfs plus a 10-day tmpfiles age-out makes it
+reachable rather than theoretical; finding 2 (`TMUX` overrides `TMUX_TMPDIR`, so
+`unset TMUX` was the load-bearing half); the correction to the Calibration
+bullet — the `PreToolUse` subprocess blind spot is REAL and stands, but "the
+reason L1 matters" does not follow, because L1 never reliably covered it; the
+categorical argument (tmux server selection governs every subcommand, so
+visibility and destructive reach are the same bit) recorded specifically to stop
+anyone rebuilding an "L1 v2" with a better directory; the ANSWERED bind-mount
+question; and an explicit note that the oh-my-zsh plugin caused none of the four
+kills, so its removal is not mistaken for a root-cause fix.
