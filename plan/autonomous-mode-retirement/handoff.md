@@ -34,15 +34,19 @@ it points you at.**
      text form (`bd show <id>`) carried pages of journaled corrections. A field that
      is not the carrier is not evidence of absence. This is the thread's own
      wrong-source lesson, hit while checking for exactly that.
-2. **SLICE 2's ORDERING GUARANTEE DOES NOT EXIST.** A `sibling_work_item`
-   dependency edge persists and holds an item at `pending-approval` at INTAKE, but
-   is **not consulted when ranking readiness** — `lifecycle.py:156` hardcodes
-   `sibling_status_lookup=None`, so the ref resolves `UNKNOWN` and does not block.
-   **Approving slice 2 onward makes it dispatchable while slice 1 is still open,
-   silently.** Sequence by observation instead. Known, closed, and **REOPENED**
-   as `bd-ib-qiqz6b` (P1). Full detail in §"NEXT CLEAN ACTION".
-   *(Slice 1 itself is now ROUTED and dispatchable — see the same section. Do NOT
-   hand-promote the others; route them through `apply_intake_dor`.)*
+2. **LEAVE SLICE 2 (`bd-ib-qrth`) IN `backlog`. ROUTING IT DISPATCHES IT.** A
+   `sibling_work_item` edge is **not consulted when ranking readiness** —
+   `lifecycle.py:156` hardcodes `sibling_status_lookup=None`, so the ref resolves
+   `UNKNOWN` and never blocks. And `pending-approval` is **not a hold**: it is
+   tested via a ready PROJECTION, and its live admission policy is `auto`, so it
+   would be approved to `ready` **and admitted to a sandbox in the same pass** —
+   no human step — while slice 1 is still open. **`backlog` is the only effective
+   hold.** Its visibility cost is already paid by the un-triaged-backlog lane.
+   Root defect known, closed, and **REOPENED** as `bd-ib-qiqz6b` (P1). Full detail
+   in §"NEXT CLEAN ACTION".
+   *(Slice 1 is ROUTED and was dispatched 2026-07-21. Slice 3 is routed to
+   `blocked`/`needs-human`, its correct lane. Never hand-promote — route through
+   `apply_intake_dor`.)*
 3. **`livespec-overseer` IS NOT THIS THREAD'S TO FIX.** Root cause is diagnosed
    (below) but the repair is owned elsewhere and is gated on a maintainer decision
    deliberately routed to a Fable-model session. Surface it; do not seed it, and do
@@ -56,11 +60,13 @@ it points you at.**
    has already drafted three framings and recommends one, and the maintainer routed
    the authoring to a Fable session reading that source directly. **Re-asking it
    from a digest is the one thing that thread explicitly forbids.**
-2. **DISPATCH `livespec-runtime-jo9` (4rq4 slice 1)** — it is `ready` and is the
-   `livespec-runtime` tenant's only candidate. Read `.ai/dispatcher-drain-operations.md`
-   first: `--fabro-bin` is mandatory, dispatch is strictly `--budget 1 --parallel 1`.
-   Then confirm it merged and is pinned BEFORE approving slice 2 — that ordering is
-   now operator-enforced, not edge-enforced.
+2. **`livespec-runtime-jo9` (4rq4 slice 1) — DISPATCHED 2026-07-21**, via
+   `drive --action impl:livespec-runtime-jo9`. Confirm the outcome by OBSERVATION
+   (merge SHA on `livespec-runtime` master, release tagged, pin bumped) BEFORE
+   touching slice 2 — that ordering is operator-enforced, not edge-enforced.
+   Read `.ai/dispatcher-drain-operations.md` first: dispatch is strictly
+   `--budget 1 --parallel 1`, `--fabro-bin` is an OVERRIDE not a requirement, and a
+   backgrounded `drive` detaches so its exit code and log tell you nothing.
 3. **`bd-ib-qiqz6b` (P1, REOPENED)** — make a cross-tenant dependency actually gate
    readiness. Smallest safe fix is to fail CLOSED on an unresolvable sibling ref
    (consistent with how the same function already treats malformed entries); the
@@ -975,7 +981,7 @@ running a loaded context and stopped before degrading rather than after failing.
 |---|---|---|---|
 | 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | ✅ **ROUTED TO `ready` — DISPATCHABLE NOW** |
 | 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | ⛔ hold — sequence AFTER slice 1 **by observation**; its ordering edge does not gate (below) |
-| 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | ⬜ `backlog`; NEEDS-HUMAN in part — split recommended |
+| 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | ✅ ROUTED to `blocked` / `needs-human` — its correct lane; split still recommended |
 
 ### ✅ SLICE 1 IS UNBLOCKED — routed THROUGH the gate, not hand-promoted
 
@@ -1094,9 +1100,26 @@ half true, and the false half is the load-bearing one.**
 | **Intake routing** | ✅ yes — `apply_intake_dor` sends any item with `depends_on` to `pending-approval`, not `ready`. **Real protection** |
 | **Ranking / dispatch** | 🔴 **NO** — `livespec_runtime/work_items/lifecycle.py:156` hardcodes `sibling_status_lookup=None`, so the ref resolves `UNKNOWN`, and `_entry_blocks` returns `status == RefStatus.OPEN` → **False**. It does not block |
 
-**So the protection lasts exactly until someone approves the item onward — the
-routine act — and then evaporates with no warning.** Verified on `livespec-runtime`
-`origin/master`, not a working tree. `git grep sibling_status_lookup` across the
+**⛔ CORRECTION TO THIS SECTION'S OWN FIRST DRAFT — IT WAS TOO SOFT, AND THE SOFT
+VERSION IS DANGEROUS.** That draft said the protection "lasts exactly until someone
+approves the item onward — the routine act". **There is no approval step. Nothing
+human is required.** Each link verified, and the last one probed live:
+
+    is_dispatch_candidate:  a `pending-approval` item is tested via a READY
+                            PROJECTION (`replace(item, status="ready")`); the
+                            sibling dep resolves UNKNOWN, so it IS a candidate.
+    plan_admissions:        a `pending-approval` item whose effective admission
+                            policy is `auto` is APPROVED to `ready` and "may also
+                            be admitted in the same pass".
+    probed live:            bd-ib-qrth -> EFFECTIVE ADMISSION POLICY: auto
+
+**So routing slice 2 to `pending-approval` today approves AND admits it to a sandbox
+in a single pass, while slice 1 is still open.** `pending-approval` is NOT a hold —
+it is one `is_dispatch_candidate` call away from `ready`, and that call does not
+consult the sibling edge. **`backlog` is currently the only effective hold on slice
+2. Leave it there until slice 1 has merged and been pinned.**
+
+Verified on `livespec-runtime` `origin/master`, not a working tree. `git grep sibling_status_lookup` across the
 fleet finds exactly ONE non-`None` supply site and it is a **unit test**; a consumer
 test (`tests/consumer/test_cross_repo_resolution.py:329`) additionally **pins the
 fail-open scenario as expected behaviour**, so it will re-lock if not retired.
@@ -1113,16 +1136,30 @@ bootstrap exit 127) on a promise of later hand-verification that never happened.
 **REOPENED 2026-07-21** with the full evidence. A deferred gate is not a passed gate.
 
 **Order: 2 depends on 1 — and that ordering must now be SEQUENCED BY OBSERVATION,
-not delegated to the edge.** Land slice 1, confirm it merged and is pinned, and only
-then approve slice 2. Record the edge anyway — it is correct, it persists, and it
-holds slice 2 at `pending-approval` at intake — but do NOT treat it as a
-dispatch-time gate. Slice 3 is independent and can go in parallel.
+not delegated to the edge.** Concretely:
+
+1. **Leave slice 2 (`bd-ib-qrth`) in `backlog`.** Do NOT route it through intake to
+   "make it visible" — that is what admits it. Its visibility cost is already paid:
+   the un-triaged-backlog lane surfaces it as a P1 without touching its status.
+2. Land slice 1, and confirm by OBSERVATION that it merged and its pin landed —
+   merge SHA on `livespec-runtime` master, release tagged, pin bumped — not by
+   trusting a status field.
+3. **Then** route slice 2 through `apply_intake_dor`. Record the sibling edge
+   regardless: it is correct, it persists, and it is the right declaration of
+   intent. Just never rely on it to gate anything until `bd-ib-qiqz6b` is fixed.
+
+Slice 3 (`livespec-rbpl`) is independent; it was routed to `blocked` /
+`needs-human` on 2026-07-21, which is its correct lane — its convention half is a
+wording judgement a factory cannot verify.
 
 Before driving any of these through the factory, read
-`.ai/dispatcher-drain-operations.md`: `--fabro-bin` is mandatory (the credential
-wrapper scrubs `PATH`), dispatch is strictly sequential `--budget 1 --parallel 1`
-(Fabro sandboxes use `--network host`, so two runs collide), never hand-edit an
-`admission:*` label, and re-enumerate the ready queue every iteration.
+`.ai/dispatcher-drain-operations.md`. **NOTE: that file was corrected 2026-07-21 —
+`--fabro-bin` is an OVERRIDE, not mandatory (the sanctioned `drive` path exposes no
+such flag), and a backgrounded `drive` detaches so its exit code and log say nothing
+about the dispatch.** The remaining rules stand unchanged: dispatch is strictly
+sequential `--budget 1 --parallel 1` (Fabro sandboxes use `--network host`, so two
+runs collide), never hand-edit an `admission:*` label — use the `set-admission`
+valve — and re-enumerate the ready queue every iteration.
 
 ### ⚖ THE DESIGN CHANGED DURING GROOMING — do not implement the old disposition
 
