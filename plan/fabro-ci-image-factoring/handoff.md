@@ -423,10 +423,86 @@ lands — shipping a knowingly-red gate. **Once `ahg` step 2 clears them, escala
 b02 to error.** That escalation is the intended end state, not an optional nicety.
 There is no env var, no exemption list, no opt-out; every row is always counted.
 
-### ▶ THEN, unchanged from cont. 13
+### ✅ SESSION CLOSE — what shipped, and the one thing to do next
 
-1. **`livespec-dev-tooling-453`** — scoping now decided (option A); implement
-   alongside or after `b02`, and confirm the App installation list first.
+Two more fixes landed and were verified by this session independently of the
+implementing agents (SHA confirmed an ancestor of `origin/master`, then the real
+gate re-run — never the agent's report, CI-green, or a passing unit test alone).
+
+| Item | State | Evidence |
+|---|---|---|
+| `7vj` — per-repo canonical ref | **CLOSED** | probe flipped `RowSkip` → `RowFinding` for homelab; member unchanged |
+| `ahg` step 1 — top-level gate job | **MERGED** `c20463c` | gate went 8 error findings → **0**, exit 4 → **0** |
+| `b02` — blind-row visibility | **CLOSED** `a0f82258` | see the two-context table below |
+| `ahg` steps 2 & 3 | **OPEN** | — |
+| `453` | **OPEN**, scoped (option A) | — |
+| `6cf` — parser-duplication convention | **OPEN** (P2) | — |
+
+**`b02` made the context asymmetry visible for the first time.** Verified in both
+vantages:
+
+| Context | Blind rows | Summary |
+|---|---|---|
+| Local (maintainer admin token) | `app-installation` 8/8 | exit **0**, `blind_rows: 1` |
+| CI (fleet App installation token) | `secret-names` 8/8, `branch-protection` 8/8 | pass, `blind_rows: 2` |
+
+They are blind in **different places**, and `app-installation` — the blind one
+locally — evaluates fine in CI. **No single vantage would have caught this**, which
+is precisely why the four defects behind `b02` stayed hidden. The exit code is
+deliberately unchanged; `blind_rows` is reported separately from `error_findings`.
+
+### ▶ DO THIS NEXT — `ahg` step 2, which unlocks the escalation
+
+`ahg` step 2 is now the highest-value item, because it is the gate on a recorded
+end state rather than just another fix. **Once it resolves the two CI-blind rows,
+`b02`'s signal escalates from warning to ERROR** — that escalation is recorded in
+`fleet_conformance.py`'s module docstring and on both items, and it is the intended
+end state, not an optional nicety. Until then, error severity would be shipping a
+knowingly-red gate.
+
+**Do not read the gate's current "fleet conformance passed" as "the gate is
+fixed".** Step 1 removed the false *positives*; the false *confidence* is still
+there, now at least labelled. That is the whole point of `b02`.
+
+### ▶ THEN
+
+1. **`livespec-dev-tooling-453`** — scoping decided (option A: local/world-gate, not
+   per-PR CI). **Confirm the fleet App's installation list first** — it selects which
+   of two findings applies, and there is a finding either way (see above).
+2. **`livespec-dev-tooling-ahg` step 3** — the hardcoded
+   `branches/master/protection`, same class as `7vj`, latent until adopters are
+   iterated.
+3. **`livespec-dev-tooling-6cf`** — the package convention that CAUSED `ahg` ("each
+   check duplicates small self-contained parsers rather than sharing one"), which
+   the same file contradicts ~20 lines later by explaining that sharing is what
+   prevents drift. Recommendation on the item is to retire the duplication
+   convention; scoped explicitly so it does not become a sweeping refactor.
+4. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
+   Expect LESS than its byte share. Needs a full `just check` across the FLEET.
+5. **`livespec-bg47fr`** — still blocked on the maintainer; shares `453`'s root cause.
+6. **`livespec-3lev.1`** — Honeycomb trigger; close the `docker_stats` observability
+   gap first.
+
+### The through-line of this session
+
+**Five findings, one class.** A check pointed at a source that could not show the
+failure, passing in a way that looks exactly like confirmation:
+
+1. `7vj` — ref pinned to `master`; `main`-default repos silently skipped.
+2. `ahg` (1) — 8 false positives against a *correctly configured* fleet, behind a
+   hint that would have rewritten branch protection across 8 repos.
+3. `ahg` (2) — the row never enforced anywhere, in any automated context.
+4. `453` — the adopter leg would evaluate zero adopters in CI. **Caught before the
+   code existed.**
+5. `secret-names` — identically blind in CI; nothing hidden today, latent tomorrow.
+
+Plus two of this session's own probes, discarded rather than reported: `| tail`
+swallowing an exit status, and a timeout that was the adapter *working*.
+
+`b02` is the structural answer to the class, and `6cf` names the convention that
+manufactured one instance of it. **The transferable rule: before trusting a green
+signal, ask whether that source could have shown the failure** — and prefer running
+the real gate over reading the code or the tick.
 2. **`livespec-dev-tooling-oik`** — the buildpack-deps re-base, the other 185.5 MB.
    Expect LESS than its byte share (init fell 36% while the image fell 42%). Needs a
    full `just check` across the FLEET — it risks native wheel builds.
