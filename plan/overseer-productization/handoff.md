@@ -487,9 +487,44 @@ livespec-overseer" and that `b1uo.3` was a pending maintainer decision. Both are
 DONE — see §"What was completed 2026-07-20/21".
 
 Current state in one line: **the only coding work left is seeding
-`SPECIFICATION/` in `livespec-overseer`**; everything else outstanding needs the
-maintainer (the GitHub App install, and relaunching the daemon from its new
-path).
+`SPECIFICATION/` in `livespec-overseer`**; the one remaining maintainer step is
+relaunching the daemon from its new path.
+
+### ✅ THE GITHUB APP INSTALL IS DONE — 2026-07-21 (was one of the two maintainer-only steps)
+
+`livespec-pr-bot` (installation `131208965`) now covers `thewoolleyman/livespec-overseer`.
+Repository access went **8 → 9 selected repositories**; all eight pre-existing entries were left
+untouched. Done via the browser under maintainer authorization, from the
+`rop-sweep-fleet-policy` thread.
+
+**Why that thread cared, and why this was more urgent than it looked:** registering
+`livespec-overseer` in `.livespec-fleet-manifest.jsonc` (`f9664481`, 00:32:49Z) made
+`check-fleet-conformance` evaluate it FLEET-WIDE immediately, because the manifest is fetched from
+livespec core master AT RUN TIME. It reported 3 errors, `ci-green` failed with them, and unrelated
+PRs in other repos were blocked — `livespec-dev-tooling` PR #516 among them, with no defect of its
+own. Filed and tracked as `livespec-cbmw`.
+
+**A diagnosis worth keeping: two of those three errors were READ FAILURES, not misconfiguration.**
+CI reported `merge-settings` as "allow_merge_commit is None, must be False; allow_rebase_merge is
+None, must be True; …" and `delete-branch-on-merge` as "is None, must be True". Those `None` values
+were not wrong settings — **`wire-fleet-member` had ALREADY wired this member correctly** (recorded
+above: "reported member fully wired"). They were `None` because the App token could not SEE the
+repo at all, the App not being installed on it. So a single missing App install manifested as three
+distinct obligation violations, two of which read as configuration drift.
+
+Confirmed by measurement: with a `repo`-scoped personal token that CAN read those settings, the
+central sweep now passes — `{"members": 9, "blind_rows": 1, "event": "fleet conformance passed"}`,
+zero error findings, and the `merge-settings` / `delete-branch-on-merge` rows for this member do not
+appear at all (only violations are logged).
+
+**Do NOT treat that local pass as proof CI is green.** A personal token cannot evaluate the
+`app-installation` row itself — it reports "not evaluable (can't-read is not absent)" and SKIPS.
+The authoritative confirmation is a CI run under the App token, which is why the blocked PR's failed
+jobs were re-run rather than the local exit code trusted.
+
+**Generalizes:** when a fleet member shows several unrelated `github-state` obligations failing at
+once with `None`-shaped details, suspect ONE missing read capability before suspecting N
+misconfigurations.
 
 `b1uo.2`'s ledger acceptance leg is still open — the work is done and
 live-exercised with all three ACCEPTANCE clauses met, so this is a status
