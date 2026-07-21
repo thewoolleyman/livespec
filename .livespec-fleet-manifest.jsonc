@@ -51,7 +51,8 @@
     { "repo": "livespec-orchestrator-beads-fabro", "class": "impl-plugin" },
     { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
     { "repo": "livespec-runtime", "class": "library" },
-    { "repo": "livespec-console-beads-fabro", "class": "console" }
+    { "repo": "livespec-console-beads-fabro", "class": "console" },
+    { "repo": "livespec-overseer", "class": "control-plane-tool" }
   ],
   "adopters": [
     // openbrain: first registered adopter (github-app-auth D17, 2026-07-03).

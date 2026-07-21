@@ -175,11 +175,6 @@ jobs:
           - check-rop-pipeline-shape
           - check-tests-mirror-pairing
           - check-tests-no-subprocess-spawn
-          # Beside-tests for the LOCAL-ONLY overseer supervisor daemon
-          # under .claude/skills/overseer/, which the default pytest
-          # testpaths does not collect. py_changed-gated like the rest:
-          # nothing to run when a PR touches no .py.
-          - check-overseer
           # The CLI end-to-end harness consumer (mock tier) relocated to
           # the livespec-driver-claude repo together with the /livespec:*
           # skill bindings; its matrix entry moved with it. The wrapper-

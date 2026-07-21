@@ -169,15 +169,6 @@ line-length = 100
 # they are out of scope for livespec's own style rules (mirrors how the
 # Driver's `.sh` hooks are not linted). pyright already scopes them out
 # via `[tool.pyright].include`.
-#
-# `.claude/skills/overseer/**` USED to be excluded here on the same
-# grounds. It no longer is: the folder is now inside the ruff gate
-# (plan/overseer-productization, Gate C). Being LOCAL-ONLY is about
-# distribution, not about whether the code is held to the project's
-# style rules — and the folder had accumulated exactly the defects an
-# unlinted tree accumulates. It stays out of pyright / coverage /
-# import-linter for now (Gates D and B are separate decisions); ruff is
-# the first product gate it entered after its beside-tests.
 extend-exclude = [
     "**/_vendor/**",
     "**/__pycache__/**",
@@ -185,15 +176,6 @@ extend-exclude = [
     ".claude/hooks/**",
 ]
 
-# `ruff check .` walks a directory tree by EXTENSION, so a Python file with no
-# `.py` suffix is silently skipped — it is never reported as excluded, it simply
-# never appears. The overseer's two executables (`overseer-start`, `overseerd`)
-# are exactly that: Python with a shebang, invoked by bare name, so they sat
-# outside the lint gate even after the folder entered it. The glob matches the
-# folder's naming convention (every executable there is named `overseer*`), so a
-# new launcher is covered by following the convention rather than by remembering
-# to edit this list.
-extend-include = [".claude/skills/overseer/overseer*"]
 
 [tool.ruff.lint]
 # 28 categories total. v011 baseline (11) + v012 additions (16) + ROP sweep (1).
@@ -249,19 +231,6 @@ ignore = [
     "PLC0414",
 ]
 
-# `❯` (U+276F) and `›` (U+203A) are DOMAIN VOCABULARY in this repo, not
-# typos: they are the prompt glyphs Claude Code and Codex actually print
-# in their TUIs, so the overseer's pane-signal matchers, their
-# docstrings, and the comments explaining them all name the real
-# characters. RUF001/RUF002/RUF003 flag them as confusable with ASCII
-# `>`, but substituting ASCII would make the matchers WRONG and the prose
-# describing them inaccurate. Whitelisting the two codepoints repo-wide
-# is deliberately narrower than a per-file-ignore: a per-file entry would
-# disable all three rules across whole files, hiding a genuinely
-# confusable character (a Cyrillic `а`, say) if one were ever introduced
-# there. Every OTHER confusable stays flagged everywhere, and the repo is
-# at zero findings for these rules outside these two glyphs.
-allowed-confusables = ["❯", "›"]
 
 [tool.ruff.lint.pylint]
 max-args = 6
@@ -358,7 +327,6 @@ ban-relative-imports = "all"
 # argv lists. Same S603/S607/S404 carve-out shape as the peer
 # mutating tool above.
 "dev-tooling/reap_stale_worktrees.py" = ["S603", "S607", "S404"]
-# The overseer's beside-tests. They are tests, so they inherit the
 # same rationale as the `tests/**.py` carveout above for S101,
 # PLR2004, PT018, S105, S108, and TRY003 — see that entry for the
 # per-category reasoning; it is not repeated here. Three additions are
@@ -369,46 +337,28 @@ ban-relative-imports = "all"
 #   them only through the public `evaluate` would mean asserting on
 #   the daemon's aggregate behavior rather than on the guard that
 #   actually decides — the opposite of what these tests exist for.
-# - ARG001/ARG002: the hand-rolled test doubles (`FakeTmux.run`
-#   mirroring `subprocess.run`, the `overseerd` entry-point stub)
-#   must MATCH the real signature to be substitutable, so they
+# - ARG001/ARG002: the hand-rolled test doubles (mirroring the real
+#   collaborators they stand in for) must MATCH the real signature to be substitutable, so they
 #   necessarily accept arguments they do not use. Renaming those
 #   parameters to satisfy the linter would break the substitution.
 #   Also covers unused `tmp_path` fixtures requested for isolation
 #   rather than for their value.
 # - S108: the tmux socket paths under /tmp that the tmuxio tests
 #   assert on are the REAL paths tmux uses; they are the fixture.
-".claude/skills/overseer/test_*.py" = [
-    "S101", "PLR2004", "PT018", "S105", "S108", "TRY003",
-    "SLF001", "ARG001", "ARG002",
-]
 
 # ---------------------------------------------------------------------------
 # Pyright — strict + seven strict-plus diagnostics + returns plugin.
 # ---------------------------------------------------------------------------
 
 [tool.pyright]
-# The two extensionless entries are the overseer's executables (Python with a
-# shebang, invoked by bare name). A directory scan resolves files by EXTENSION,
-# so `.claude/skills/overseer` alone does NOT reach them — they are named
-# individually, the same blind spot `[tool.ruff].extend-include` closes above.
 include = [
     ".claude-plugin/scripts",
     "dev-tooling",
-    ".claude/skills/overseer",
-    ".claude/skills/overseer/overseer-start",
-    ".claude/skills/overseer/overseerd",
 ]
 exclude = [
     "**/_vendor/**",
     "**/__pycache__/**",
     "**/_stubs/**",
-    # pyright checks SOURCE, not tests, repo-wide: the product `tests/` tree
-    # is out of scope simply by not being in `include`. The overseer's tests
-    # live BESIDE their source rather than in a separate tree, so applying the
-    # same rule to them takes an explicit exclude rather than an omission.
-    ".claude/skills/overseer/test_*.py",
-    ".claude/skills/overseer/conftest.py",
 ]
 extraPaths = [".claude-plugin/scripts", ".claude-plugin/scripts/_vendor"]
 stubPath = ".claude-plugin/scripts/_stubs"
@@ -559,16 +509,6 @@ omit = [
     # mutmut working directory — instrumented copies of source files;
     # measured during mutation testing but not first-party code.
     "mutants/*",
-    # The overseer's beside-tests. Coverage measures the code under test, not
-    # the test code — which is why the note above says `tests/` needs no entry:
-    # pytest-cov excludes test files by default when it discovers them under
-    # `tests/`. These live BESIDE their source and are reached by an explicit
-    # `--cov=.claude/skills/overseer`, so the same rule takes an explicit omit.
-    # Mirrors `[tool.pyright].exclude`, which scopes them out for the identical
-    # reason. Measuring them would also mean every defensive branch in a test
-    # DOUBLE had to be exercised, which is coverage theatre.
-    ".claude/skills/overseer/test_*.py",
-    ".claude/skills/overseer/conftest.py",
 ]
 
 [tool.coverage.report]
