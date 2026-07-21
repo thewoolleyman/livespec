@@ -215,6 +215,56 @@ in place on `dh9r`. **Reading what a system is SUPPOSED to do is not
 measurement** — the same failure this thread has now recorded three times in
 other people's work.
 
+### 🔴 THE SYSTEMIC FIX IS DESIGNED — and it has a HARD ordering constraint
+
+**Read this before implementing `livespec-dh9r`'s systemic half. Doing its
+obvious first step first would CAUSE the outage this thread was opened over.**
+
+**The headline inverts this thread's own framing: the fleet-level pin-currency
+check ALREADY EXISTS.** `check-fleet-conformance`'s `dev-tooling-pin` row
+(`_rows_files.py:223`) already compares every member's pin against the producer's
+latest release, centrally, with attribution — its staleness leg
+(`_freshness_outcome`, `:173`) is literally the assertion this thread asked for.
+It is **warning severity**, so it moves no exit code. It emitted the truth about
+the overseer during the v0.20.0 stall and nothing surfaced it. **The defect is
+not an absent metric; it is a correct metric wired to nothing.**
+
+So this thread's own recommendation — that `reusable-pin-freshness.yml` is "the
+natural home" — points at the wrong surface. The sweep is the actor that FIXES
+drift; conformance is the observer that REPORTS it, and an alarm belongs with the
+observer.
+
+**⚠ THE CONSTRAINT.** Promoting that staleness leg to error is a four-line chain
+to a fleet-wide outage:
+
+    persisting gap -> error finding -> check-fleet-conformance exits 4
+      -> fleet-preflight (BLOCKING) red
+      -> dispatch (needs: [discover-siblings, fleet-preflight]) SKIPPED
+      -> propagation halts to ALL members
+
+That is the v0.20.0 failure, same mechanism, different row. And it would fire on
+the FIRST run, because the triggering condition is **already true**:
+`livespec-overseer` pins v0.50.7 against latest v0.51.7 with bump PRs #7 and #6
+open and BLOCKED. An alarm built to DETECT a propagation stall would, wired to
+this gate, CREATE one immediately.
+
+**`livespec-f73t` (make the preflight a FILTER on the sibling set, not a GATE on
+the whole job) is therefore a HARD PREREQUISITE**, not a parallel improvement.
+
+**Safe ordering:** (a) extend currency coverage to the other pin formats at
+WARNING severity — no exit-code change, safe today; (b) land `f73t`; (c) THEN
+promote the persisting conjunction to error. Only (c)-first breaks the fleet.
+
+**Two design points worth keeping.** The qualifier should be *persisting*, not
+*existing* — a pin is legitimately stale for the minutes between a release and
+its bump PR merging, so promoting plain staleness reddens the fleet on every
+release and trains the operator to ignore it (the alarm-fatigue trap `bmf`
+already sprang). A stateless formulation works: **stale AND a bump PR for it is
+already open** — the open PR *is* the durable record that the mechanism fired and
+could not land. And coverage must span all **four** pin formats; only
+`pyproject [tool.uv.sources]` has a currency row today, while the overseer is
+behind in the three uncovered ones.
+
 ### Still open — none of it urgent, all maintainer-gated
 
 1. **`livespec-overseer` is substantially unwired**, and its CI can finally show
