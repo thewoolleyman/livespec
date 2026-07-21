@@ -567,14 +567,19 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: eight
+  A green-looking signal read off the wrong source is not evidence: twelve
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
   ledger listing that hides closed records during a dedup sweep, a directory
   listing that cannot tell "never existed" from "deleted", an archived plan
-  thread that moved every path it owned, and a squash-merged PR that did not
-  carry commits pushed after it merged.
+  thread that moved every path it owned, a squash-merged PR that did not
+  carry commits pushed after it merged, a job or run STATUS read as health
+  (open-PR count, a run conclusion reflecting its worst attempt, a job red
+  daily on a benign no-op), a log grep returning zero over a path that never
+  ran, `git merge-base --is-ancestor` against a pre-merge SHA on a
+  rebase-merging repo, and a conclusion about live fleet state that expired
+  three minutes after it was written down.
 
 ## Working with the maintainer
 

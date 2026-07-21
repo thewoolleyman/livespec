@@ -23,12 +23,15 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Eight instances — all observed on 2026-07-20, across three repos and two
-## independent operators
+## Twelve instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, across four
+## repos and three independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
-personal: it hit two operators working independently on the same day.
+personal: it hit two operators working independently on the same day, and struck
+again the following day during work whose EXPLICIT PURPOSE was diagnosing a
+signal that had misled everyone. Instances 9-12 come from that session; three of
+the four were the recorder's own errors, caught before they were acted on.
 
 ### 1. A passing suite is not evidence a PATH is exercised
 
@@ -147,11 +150,85 @@ content on the target branch rather than on your own. A squash merge in
 particular leaves your local branch looking healthy and fully-pushed while
 sharing no commit with the merged result.
 
+### 9. A job or run STATUS is not a health signal
+
+Three separate times in one fleet-propagation investigation, a status artifact
+was read as health and was wrong in BOTH directions:
+
+- **Open bump-PR count.** A thread drove it 43 → 0 and read zero as healthy.
+  Zero open bump PRs is indistinguishable from a DEAD FAN-OUT — the fleet looked
+  its best at the moment propagation had stopped.
+- **A run conclusion.** The v0.20.0 fan-out run reads `failure` to this day
+  because a run's conclusion reflects its WORST ATTEMPT; attempt 4 was wholly
+  green and dispatched to all eight siblings. "The run is red" and "the fan-out
+  is broken" became different statements.
+- **A scheduled job's colour.** The pin-freshness sweep failed on every member
+  every day on a benign no-op. Red became the normal state, so red carried no
+  information — and it concealed a second, real defect underneath it.
+
+**Counter-move:** assert on the OUTCOME the job exists to produce, never on the
+job. Here the outcome is PIN CURRENCY — each consumer's pin against the
+producer's latest release — which caught the stall immediately and which no
+status could have. When a status must be used, check WHICH attempt and WHICH job
+produced it.
+
+### 10. Absence in a log is not evidence when the path never ran
+
+To re-check whether a defect still reproduced, seven fresh scan jobs were grepped
+for its signature. Zero hits on all seven — and the result was worthless: the
+scan `continue`s on a current pin BEFORE reaching the code that emits that
+signature, and every member's pin was current. The grep proved only that healthy
+repos are healthy.
+
+This is instance 1's shape moved from tests to production logs, and it is easier
+to fall for: a test suite at least reports what it ran, while a log search
+silently returns nothing for "did not happen" and "could not have happened"
+alike.
+
+**Counter-move:** before reading absence as evidence, confirm the emitting code
+was REACHED — find a positive control in the same output (a log line only
+produced on that path), or identify the input that forces the path and check that
+it was present. Absence over an unexercised path is not a negative result.
+
+### 11. Ancestry against a pre-merge SHA is not a containment test
+
+To check which release carried a just-merged PR,
+`git merge-base --is-ancestor <local-sha> <tag>` was run and answered NO for both
+candidate tags — apparently proving the fix had not shipped. It had. The repo
+rebase-merges, so the merged commit is a DIFFERENT object than the local one; the
+local SHA is an ancestor of nothing on master.
+
+**Counter-move:** on a rebase- or squash-merging repo, test containment by
+CONTENT, not ancestry — `git show <tag>:<path> | grep <marker>` answers the
+question the SHA cannot. Reserve `--is-ancestor` for merge-commit workflows where
+the object survives.
+
+### 12. A conclusion about live fleet state expires in MINUTES
+
+Two claims, both correct when written, both false shortly after:
+
+- A sibling thread recorded "the fleet GitHub App still does not cover
+  `livespec-overseer`" at 04:39:03Z. At 04:42:25Z — three minutes later — the
+  fan-out preflight logged `fleet conformance passed` and dispatched to all
+  eight siblings.
+- This file's own recorder wrote that a fix was "NOT yet live for consumers",
+  then measured an hour later and found consumers had already bumped past it.
+
+Neither was careless; both were written from a real earlier reading and simply
+not re-measured before being recorded as current.
+
+**Counter-move:** date every claim about live state and re-measure before
+repeating it, INCLUDING one you wrote yourself an hour ago. When a fleet is
+actively moving — releases cutting, fan-outs dispatching, other sessions
+landing — treat any state assertion older than the current turn as a hypothesis.
+Prefer writing the INVARIANT ("gap zero") over the reading ("both at v0.20.0"),
+because the invariant survives the next release and the reading does not.
+
 ## Why this file exists in livespec CORE
 
-The eight instances span THREE repositories — `livespec`,
-`livespec-orchestrator-beads-fabro`, and `livespec-console-beads-fabro` — and
-core owns fleet-level facts. A lesson filed only in one tenant would not be read
+The twelve instances span FOUR repositories — `livespec`,
+`livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`, and
+`livespec-console-beads-fabro` — and core owns fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.
 
 ## Related standing rules
