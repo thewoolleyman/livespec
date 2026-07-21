@@ -52,6 +52,37 @@ the Driver defects). The thread's own subject is done.
 
 ---
 
+## ⚠ `resolution: None` IS NOISE — do not read it as a signal
+
+Measured 2026-07-21. This corrects a suspicion recorded in the loose-ends table
+below, and it matters because chasing it costs real time.
+
+**Every one of the 50 closed items in the `livespec-console-beads-fabro` tenant
+has `resolution: None`. Not one carries a value.** The cause is mechanical:
+**the `bd` CLI cannot set that field at all** — neither `bd close` nor
+`bd update` exposes a `--resolution` flag. Anything closed through the CLI is
+`resolution: None` by construction. Values like `no-longer-applicable` seen
+elsewhere in this thread are written by the livespec/orchestrator layer (the
+`drive` valve's disposition paths), not by `bd`.
+
+So the earlier read of `livespec-console-beads-fabro-5kd56a` — "closed with
+`resolution: None` + empty reason ... which is exactly what made it read as an
+accident" — was **half wrong**. The `resolution: None` half carries NO
+information. Only the EMPTY CLOSE REASON was ever the real signal, and even that
+is not unique: **7 of those 50 closed items have an empty `close_reason`**, so it
+is a ~14% pattern rather than a one-off anomaly.
+
+**Practical rule:** when triaging a closed item in a beads tenant, judge it by
+its `close_reason` and by whether the work actually landed in git — never by
+`resolution`. And when closing an item yourself, put everything load-bearing in
+the reason, because the resolution field will not carry it.
+
+**`livespec-console-beads-fabro-1s1` is CLOSED** on that basis: fixed by console
+PR #345 (`e4afef40`), master CI flipped `failure` → `success` after four
+consecutive failures, verified on `origin/master`. Its close reason carries the
+full account INCLUDING a warning that its own middle comment states a wrong
+mechanism — the comments disagree, and the reason says which one to trust.
+
 ## 🟢 START HERE — definitive resume state, 2026-07-20 (second session close)
 
 Everything below this section is history and reasoning. This section is the
@@ -653,7 +684,7 @@ publishes.
 | Item | State |
 |---|---|
 | `livespec-u7x5zn` | ~~Cause **unconfirmed**~~ — **ROOT-CAUSED 2026-07-21**, and it was not the recorded hypothesis: the item declares its own parent epic (`livespec-n4ptl2`, `backlog`) as a dependency. See §"ROOT CAUSE CONFIRMED" above; detail journaled on the item |
-| `livespec-console-beads-fabro-5kd56a` | Closed with `resolution: None` + empty reason. **The work DID land** (`f5fa99f`) — do NOT reopen; may warrant a backfilled reason |
+| `livespec-console-beads-fabro-5kd56a` | Closed with `resolution: None` + empty reason. **The work DID land** (`f5fa99f`) — do NOT reopen. ⚠ **Half of that suspicion is now FALSIFIED — see §"`resolution: None` is NOISE" below.** Only the empty reason was ever a real signal |
 | `livespec-console-beads-fabro-ogpok4` | STATE section **stale** (claims 13 open bump PRs / #320; reality is 1 / #328 → v0.18.4, re-confirmed 2026-07-21). Correction journaled on the item; its body already self-flags "counts drift — re-read live", so it was deliberately NOT rewritten. **Its gate is FIXED** — remaining work is likely a branch refresh; see §"CENTRAL BLOCKAGE IS RESOLVED" |
 | `livespec-dev-tooling-2kt` | The **propagation blind spot**: release-park leg (b) unimplemented — the only detector for a release train that NEVER DEPARTS, i.e. a silent fleet-wide propagation stall |
 | `reusable-release-park-parity.md` | Pending ~16 days in dev-tooling; **verified still ratifiable** — all three `FIND (verbatim)` targets resolve exactly once |
