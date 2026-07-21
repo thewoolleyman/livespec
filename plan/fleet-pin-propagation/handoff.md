@@ -5,7 +5,144 @@
 
 ---
 
-## 🎯 THE THREAD'S FOUNDING PROBLEM IS SOLVED — measured 2026-07-21
+## 🔴 START HERE — 2026-07-21 (third session close). READ THIS FIRST.
+
+**Everything below this section is history. This section is the current truth.
+Nothing of mine is in flight; every primary checkout is clean on `master`; no PR
+of mine is unmerged.**
+
+### THE ONE URGENT THING: fleet propagation is STALLED right now
+
+**`livespec-dh9r` (P0, livespec core tenant) — filed 2026-07-21T02:15Z, and it
+was still live at session close.** Do this before anything else in this file.
+
+The **v0.20.0 release fan-out FAILED**, so no sibling received a bump PR:
+
+    Release dispatch (fan-out to siblings)   00:35:58Z   FAILURE
+      dispatch / discover-siblings                       success
+      dispatch / fleet-conformance preflight (BLOCKING)  FAILURE
+      dispatch / dispatch <sibling>                      SKIPPED
+    run: https://github.com/thewoolleyman/livespec/actions/runs/29790751188
+
+Measured consequence: latest release **v0.20.0**, every one of the seven
+consumers still pinned at **v0.19.0**, and **zero** open bump PRs fleet-wide.
+
+**Cause — a 9th fleet member registered ten minutes before the release:**
+
+    00:09:39Z  livespec-overseer repo created
+    00:25:35Z  f9664481 registers it as the 9th member in the fleet manifest
+    00:35:58Z  v0.20.0 released -> BLOCKING preflight fails -> dispatch skipped
+    (23:06:27Z the previous fan-out, with 8 members, SUCCEEDED)
+
+The preflight runs `just check-fleet-conformance` across EVERY manifest member,
+and `dispatch` declares `needs: [discover-siblings, fleet-preflight]`, so ONE
+unwired member blocks the fan-out to ALL of them.
+
+**To unblock:** finish wiring `livespec-overseer` — most likely installing the
+fleet GitHub App on it, plus its stale dev-tooling pin (v0.51.0 vs latest
+v0.51.3) and its missing impl-plugin connection block — then re-run the failed
+fan-out or let the next release carry it.
+
+**⚠ VERIFY BY RE-RUNNING THE WORKFLOW, NOT LOCALLY.** A local
+`check-fleet-conformance` run PASSES, because without an App token the
+`app-installation` row is unevaluable and skipped for every member (it logs
+"obligation row enforced NOTHING this run"). CI is strictly STRONGER. A green
+local run is NOT evidence the fleet is conformant, and that is why the most
+probable failing row — `app-installation` against the brand-new repo — could not
+be confirmed from here.
+
+**The gate is behaving as designed; that is NOT the defect.** Blocking is
+correct and no-circular-gating holds. The defect is that it is not LOUD: it is
+loud only in a CI run nobody watched, and silent in every signal an operator
+reads. Cross-referenced on `livespec-b1uo.1` (the relocation whose landing
+registered the member) as an ORDERING problem, not a criticism — the
+recommendation there is wire-first-register-last for future member additions.
+
+### ⚠ THE METRIC THIS THREAD USED IS NOT A HEALTH SIGNAL — correct this belief
+
+This thread measured propagation health as **open bump PR count**, and drove it
+43 → 13 → 2 → 0. **Zero open bump PRs is indistinguishable from a dead fan-out.**
+Both show zero. The fleet looked its healthiest — 0 open PRs, all nine masters
+green — at the exact moment propagation had stopped.
+
+**Use PIN CURRENCY instead:** compare each consumer's pinned version against the
+producer's latest release. That comparison caught this stall immediately; the PR
+count could not have. `reusable-pin-freshness.yml` already exists and is the
+natural home for a persisting-gap assertion. This is recorded as the systemic
+half of `livespec-dh9r`.
+
+### The founding problem IS solved — that part still stands
+
+Original stall: 43 open bump PRs, one repo (`livespec-console-beads-fabro`)
+genuinely blocked 12 releases behind. **Resolved.** The console reached
+`v0.19.0`, fully current at the time, via supersession rather than a refresh
+(PR #328 was CLOSED, not merged — supersession category 2 working in
+production). Detail in §"THE THREAD'S FOUNDING PROBLEM IS SOLVED" below, which
+remains accurate for the ORIGINAL stall. The v0.20.0 stall above is a NEW,
+different failure that opened during this session.
+
+### What this session landed (all merged, all verified independently)
+
+| what | where |
+|---|---|
+| The owed constraint FILED and RATIFIED as **v045** | orchestrator PR #844, #852 (`e9a7507`) |
+| `reusable-release-park-parity` RATIFIED as **v029** | dev-tooling PR #517 (`bcdf175`) |
+| Its blocker fixed (unswept `spec.md` drift) | dev-tooling PR #510 |
+| Its stale narration fixed (sweep count + dead design-record path) | dev-tooling PR #513 |
+| Console master red FIXED — CI flipped `failure` → `success` | console PR #345 (`e4afef40`) |
+| `bd-ib-nga9` description rewritten (rejected option removed) | ledger |
+
+Both 2026-07-04 filed-but-never-ratified proposals are now live spec. v029's
+deliverable is verified falsifiably: `grep -c 'reusable-release-park' --
+SPECIFICATION/contracts.md` was **0**, now **2** — a shipped workflow finally
+has contract coverage.
+
+### Still open — ALL maintainer-gated, none of them mine to decide
+
+1. **`owned-heading-coverage-todos`** (core, pending). Ratifiable, but it arms
+   per-commit rejection of TODOs missing `work_item`. Core has **0** such
+   entries; the seven siblings have **233**, none carrying the field. Ratifying
+   before the backfill leaves the authoring repo green while every consumer
+   fails per-commit on unrelated work. **A sequencing call.** Measured on
+   `livespec-915y`.
+2. **`livespec-u7x5zn`** — root-caused: it declares its own parent epic as a
+   dependency, so the child waits on the epic while the epic waits on the child.
+   All three slices of that one groom carry the shape. The fix is removing one
+   edge, but whether it was intentional is a grooming judgment.
+3. **Driver defects `livespec-driver-claude-tun` + `6lc`** — `tun` is the
+   core-root probe testing the prose DIRECTORY rather than the operation's prose
+   FILE, in all EIGHT skills; `6lc` is the `entries[0]` fallback. **Sequence
+   them together: `tun` currently MASKS `6lc`, so fixing `tun` alone makes `6lc`
+   surface MORE often.** Both snippets are untested prose.
+4. **`reconcile-merged-dispatch-lock`** (orchestrator, pending, UNREVIEWED) —
+   outside this thread; deliberately left untouched.
+
+### Method lessons from this session — each cost real time
+
+- **I stated a wrong diagnosis with high confidence and it cost a dispatch
+  cycle.** I declared the console failure "conclusive" from a plausible code
+  path while the disproof — `Repo: $LIVESPEC_CONSOLE_REPO`, an unexpanded shell
+  variable — sat in output I had already pasted into the ticket. Corrected in
+  both places it was recorded. **Confidence language is not verification.**
+- **The instruction that saved it: brief every dispatched agent to HALT if its
+  analysis contradicts the brief.** It did exactly that, turning a wrong
+  prescription into a verified one-hunk fix. Keep that clause in every brief.
+- **`resolution: None` is NOISE.** All 50 closed items in the console tenant
+  carry it, because the `bd` CLI cannot set the field at all. Judge a closed item
+  by its `close_reason` and by whether the work landed in git.
+- **A stale `.coverage` file lies** — `just check-coverage` reuses it rather than
+  re-running. It implicated four innocent modules. `rm -f .coverage` before
+  believing any coverage failure.
+- **Test-only fix + Red-Green-Replay:** a tests-only staged tree that PASSES is
+  rejected under `feat:`/`fix:` as `test-passed-at-red`; any other prefix takes
+  the green-verified leg. `chore(test):` is the designed path, not a bypass.
+- **Filing is not ratifying.** That confusion stalled two proposals 17 days,
+  left a shipped workflow uncontracted, and misled a work-item into citing a
+  contract section that was never written.
+
+---
+
+## 🎯 THE THREAD'S FOUNDING PROBLEM IS SOLVED — measured 2026-07-21 (the ORIGINAL stall; superseded by the P0 above)
 
 **The propagation stall this thread was opened to diagnose is cleared.** Both
 halves — the noise and the one genuine blockage — are resolved, and the fleet is
