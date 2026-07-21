@@ -287,6 +287,50 @@ throttled or the App token is missing.
 only `.livespec.jsonc compat.pinned`, so a consumer could be current on this pin
 and adrift on another. Widen it before treating it as a complete propagation gate.
 
+### 🔴 THE ARBITER HAS A SECOND, WORSE GAP — it misses a whole MEMBER
+
+**Found 2026-07-21 by running it against the fleet after `livespec-overseer` was
+registered as the 9th member.** The version above hardcodes SEVEN consumer repos.
+The fleet now has EIGHT non-core members, so **the arbiter reports "propagation
+healthy" while a member is two bumps behind.** A propagation check that cannot see
+a new member is worse than none, because it actively asserts health.
+
+**The fix is to DERIVE the member list, never hardcode it** — the same
+drifting-allowlist antipattern avoided in the CI uid matrix and named in
+`bd-ib-d9gf`. Read it from `.livespec-fleet-manifest.jsonc`:
+
+```bash
+git show origin/master:.livespec-fleet-manifest.jsonc \
+  | sed -n '/"fleet"/,/"adopters"/p' \
+  | grep -oE '"repo": *"[^"]+"' | sed 's/.*"repo": *"//;s/"//' | grep -v '^livespec$'
+```
+
+**Note the key is `fleet`, not `members`** — and the file is JSONC, so a naive
+`sed 's|//.*||'` comment strip CORRUPTS it by eating `https://`. That mistake was
+made twice while deriving this; use the range-extract above or a real JSONC parser.
+
+### What the widened arbiter found — `livespec-overseer` is ADRIFT and STUCK
+
+| Signal | Observed |
+|---|---|
+| core pin | **`"master"`** — still the bootstrap placeholder, never rewritten |
+| bump PRs | **#6** `bump livespec pin to v0.20.1`, **#5** `bump livespec-dev-tooling pin to v0.51.6` — both OPEN, `mergeState=BLOCKED`, auto-merge ON |
+| its own CI | fails on `check-doctor-static` and `check-source-trees-scoped-to-consumer` → `ci-green` fails → auto-merge cannot complete |
+| its master CI | **`queued` since 00:09/00:19Z and never completed** (8+ hours) |
+
+**This is a THIRD distinct stall shape, and the fan-out fix does not address it.**
+v0.20.0 stalled at DISPATCH (preflight blocked the send). This stalls at MERGE: the
+dispatch arrives, the bump workflow runs and reports `success` — it did its job, it
+opened a PR — but the PR can never merge because the receiving repo's own checks are
+red. Propagation is stuck one stage later, and **the bump workflow's green is
+honest about its own scope while being useless as a propagation signal.** Exactly
+why `livespec-bmxs` argues for reading the outcome rather than any intent.
+
+**Not filed in the ledger** — the 1Password quota was exhausted. Recorded here so it
+is not lost; **file it when quota returns.** Two candidate items: overseer's failing
+checks (the actionable blocker) and the arbiter's member-coverage gap (which belongs
+on `livespec-bmxs` as a constraint on its fix).
+
 **⚠ CORRECTION — the "four pin formats" figure above was WRONG, and it came from
 a comment that is wrong fleet-wide.** The authoritative list is in
 `livespec-dev-tooling`'s `cross_repo/` and has **SIX**:
