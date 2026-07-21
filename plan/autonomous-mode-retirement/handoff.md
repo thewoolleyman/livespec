@@ -12,7 +12,7 @@ it points you at.**
 | **P0 fleet propagation** (`livespec-dh9r`) | ✅ Dispatch-stage failure **RESOLVED** — v0.20.1 fan-out green, 8/8 siblings dispatched (re-verified 2026-07-21). **But do NOT close `dh9r` or `livespec-cbmw` — see the ⛔ below; that instruction was stale and destructive** |
 | **`bd-ib-sfa2`** (non-root CI matrix) | ✅ CLOSED. Shipped, released 0.45.17→0.45.19. Follow-up `bd-ib-phsu` (P3) filed |
 | **`bd-ib-9yi`** (containerized janitor / cargo) | ✅ CONFIRMED LIVE with reproduction. Do NOT close as stale |
-| **`livespec-4rq4`** (review requirement) | GROOMED into 3 slices, **none dispatched, none dispatchable** — see below |
+| **`livespec-4rq4`** (review requirement) | GROOMED into 3 slices. **Slice 1 ROUTED to `ready` and dispatchable**; slice 2 held (its ordering edge does not gate); slice 3 needs a split — see below |
 | **`livespec-overseer`** | 🔴 **LIVE BLOCKER, root cause now DIAGNOSED** — no `SPECIFICATION/` tree. **Owned by `plan/overseer-productization/`, gated on one maintainer decision. Not this thread's to execute** |
 | **1Password ledger quota** | ✅ **RESET** as of 2026-07-21 ~11:30Z — wrapper probed clean, ledger reads and writes working |
 
@@ -34,12 +34,15 @@ it points you at.**
      text form (`bd show <id>`) carried pages of journaled corrections. A field that
      is not the carrier is not evidence of absence. This is the thread's own
      wrong-source lesson, hit while checking for exactly that.
-2. **THE 4rq4 SLICES CANNOT BE DISPATCHED AS-IS.** All three are `status: backlog`
-   and a backlog item is never a dispatch candidate. They were filed with raw
-   `bd create`, which bypasses the intake Definition-of-Ready. Only slice 1
-   (`livespec-runtime-jo9`) would clear the gates; slice 2 needs its cross-tenant
-   dependency edge, slice 3 should be split. **Do NOT hand-promote to `ready`** —
-   that bypasses a correct gate. Full detail in §"NEXT CLEAN ACTION".
+2. **SLICE 2's ORDERING GUARANTEE DOES NOT EXIST.** A `sibling_work_item`
+   dependency edge persists and holds an item at `pending-approval` at INTAKE, but
+   is **not consulted when ranking readiness** — `lifecycle.py:156` hardcodes
+   `sibling_status_lookup=None`, so the ref resolves `UNKNOWN` and does not block.
+   **Approving slice 2 onward makes it dispatchable while slice 1 is still open,
+   silently.** Sequence by observation instead. Known, closed, and **REOPENED**
+   as `bd-ib-qiqz6b` (P1). Full detail in §"NEXT CLEAN ACTION".
+   *(Slice 1 itself is now ROUTED and dispatchable — see the same section. Do NOT
+   hand-promote the others; route them through `apply_intake_dor`.)*
 3. **`livespec-overseer` IS NOT THIS THREAD'S TO FIX.** Root cause is diagnosed
    (below) but the repair is owned elsewhere and is gated on a maintainer decision
    deliberately routed to a Fable-model session. Surface it; do not seed it, and do
@@ -53,11 +56,20 @@ it points you at.**
    has already drafted three framings and recommends one, and the maintainer routed
    the authoring to a Fable session reading that source directly. **Re-asking it
    from a digest is the one thing that thread explicitly forbids.**
-2. **The 4rq4 slices** — resolve the intake-gate precondition (`livespec-h95t`)
-   first.
-3. `bd-ib-phsu`, `livespec-f73t`, `livespec-h95t`, `livespec-dev-tooling-6ge` —
+2. **DISPATCH `livespec-runtime-jo9` (4rq4 slice 1)** — it is `ready` and is the
+   `livespec-runtime` tenant's only candidate. Read `.ai/dispatcher-drain-operations.md`
+   first: `--fabro-bin` is mandatory, dispatch is strictly `--budget 1 --parallel 1`.
+   Then confirm it merged and is pinned BEFORE approving slice 2 — that ordering is
+   now operator-enforced, not edge-enforced.
+3. **`bd-ib-qiqz6b` (P1, REOPENED)** — make a cross-tenant dependency actually gate
+   readiness. Smallest safe fix is to fail CLOSED on an unresolvable sibling ref
+   (consistent with how the same function already treats malformed entries); the
+   real fix is to supply a `sibling_status_lookup` from the orchestrator, which
+   holds both the beads client and the manifest. Retire the consumer test that pins
+   the fail-open scenario, or it re-locks.
+4. `bd-ib-phsu`, `livespec-f73t`, `livespec-h95t`, `livespec-dev-tooling-6ge` —
    all filed, none started.
-4. `livespec-bmxs` — still open, and its fix now carries **three verified
+5. `livespec-bmxs` — still open, and its fix now carries **three verified
    constraints** (derive the member list, read the authoritative ref, stay
    credential-free) plus a demonstrated second blind spot. Recorded on the item
    2026-07-21; see §"THE COUNTER-MOVE".
@@ -959,20 +971,53 @@ GROOMED; **none is dispatched**. The dispatch launch was deliberately left as th
 first action of a fresh session, because the session that groomed them was
 running a loaded context and stopped before degrading rather than after failing.
 
-| Slice | Tenant | Id | Dispatchable? |
+| Slice | Tenant | Id | State as of 2026-07-21 |
 |---|---|---|---|
-| 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | YES |
-| 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | YES |
-| 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | YES |
+| 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | ✅ **ROUTED TO `ready` — DISPATCHABLE NOW** |
+| 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | ⛔ hold — sequence AFTER slice 1 **by observation**; its ordering edge does not gate (below) |
+| 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | ⬜ `backlog`; NEEDS-HUMAN in part — split recommended |
 
-### ⛔ CORRECTION — THE DISPATCHES CANNOT BE LAUNCHED AS WRITTEN. Read this first.
+### ✅ SLICE 1 IS UNBLOCKED — routed THROUGH the gate, not hand-promoted
+
+**2026-07-21.** The blocker below is resolved for slice 1. `apply_intake_dor` is
+callable non-interactively, which is the sanctioned route this file already named
+("Route through `apply_intake_dor`"), so slice 1 was routed using the six gate
+answers a prior session had already evaluated and recorded on the item:
+
+    pure evaluate() verdict : pending-approval
+    ROUTED -> ready
+
+    livespec-runtime tenant, next --json:
+      BEFORE:  {"candidates": [], "total": 0}     <- as measured below
+      AFTER:   total 1 -> livespec-runtime-jo9 (implement)
+
+Nothing was hand-promoted. **The recipe is reusable for any of the 215 backlog
+items whose gate answers are known:** call `apply_intake_dor(path=<StoreConfig>,
+item_id=..., checklist=DefinitionOfReadyChecklist(...six booleans...))`.
+
+**⚠ A trap found doing it — a recorded gate answer is NOT a supplied one.** A prior
+session closed slice 1's missing `autonomy_tiered` gate by adding a COMMENT reading
+`Autonomy: FACTORY`. The analysis was correct and the item still did not move,
+because `DefinitionOfReadyChecklist` is six booleans supplied by the CALLER —
+nothing reads them off the item, and nothing re-evaluates an item after filing.
+`labels` is `None` on both read paths; the tier existed only as prose. **Writing a
+gate answer down where a human can read it changes nothing mechanically.** Recorded
+on `livespec-h95t` as design input for its live scope (persist gate answers as label
+prefixes, so a wrapper can read them back).
+
+### ⛔ THE ORIGINAL CORRECTION — still true for slices 2 and 3
 
 **This block's own instruction was incomplete, and the session that wrote it
-found out by trying.** All three slices are `status: backlog`, and a `backlog`
+found out by trying.** All three slices were `status: backlog`, and a `backlog`
 item is NEVER a dispatch candidate — `_dispatcher_loop_selection.is_dispatch_candidate`
 admits only `ready` (or `pending-approval`, evaluated as a ready projection).
-Measured: `next --json` on the `livespec-runtime` tenant returns
+Measured: `next --json` on the `livespec-runtime` tenant returned
 `{"candidates": [], "total": 0}`.
+
+**The invisibility half of this is now FIXED** — `needs-attention` surfaces
+un-triaged backlog items (`livespec-orchestrator-beads-fabro` PR #865, live-verified).
+The root cause is not: raw `bd create` still bypasses the gate. See `livespec-h95t`,
+re-scoped to exactly that.
 
 **Why they are in backlog.** The intake Definition-of-Ready checklist
 (`intake_dor.py`) is what routes a newly filed item into its lifecycle state,
@@ -1033,21 +1078,45 @@ resolved.** The shape already exists and is produced by the groom path
     {"kind": "sibling_work_item", "repo": "livespec-runtime", "work_item_id": "livespec-runtime-jo9"}
 
 `DependsOnRaw = str | dict[str, Any]`, so the dict is open and `kind` is the
-discriminator. Record that edge on `bd-ib-qrth` and it clears all six gates —
-routing to `pending-approval`, NOT `ready`, because the intake primitive
-deliberately keeps an item with dependency edges out of direct ready routing.
-That is precisely the wanted behaviour: it must not dispatch before the runtime
-field exists and is pinned.
+discriminator.
 
-**Caveat before relying on it:** `_store_mutations.py:322` branches on
-`raw.get("kind") != "local"`, and `dev-tooling/checks/work_item_merge_evidence.py:163`
-notes non-local kinds are handled differently. Confirm how a `sibling_work_item`
-edge PERSISTS through the beads label round-trip and whether the dependency lane
-consults it — the shape existing in `groom.py` proves expressibility, not that
-every consumer honours it.
+### 🔴 THE CAVEAT WAS RIGHT AND THE ANSWER IS BAD — the edge does NOT gate dispatch
 
-**Order: 2 depends on 1** — land slice 1, tag a `livespec-runtime` release, pin it,
-then slice 2. Slice 3 is independent and can go in parallel.
+**The caveat above asked the right question and it has now been ANSWERED, 2026-07-21:
+a `sibling_work_item` edge PERSISTS but is NOT CONSULTED when ranking readiness.**
+The previous text here said recording the edge is "precisely the wanted behaviour:
+it must not dispatch before the runtime field exists and is pinned." **That is only
+half true, and the false half is the load-bearing one.**
+
+| Stage | Does the edge hold? |
+|---|---|
+| **Persistence** | ✅ yes — non-local entries survive via `metadata[_META_NON_LOCAL_DEPENDS_ON]` (beads `blocks` edges are intra-tenant, so they never could); `store.py:194-207` reconstructs them |
+| **Intake routing** | ✅ yes — `apply_intake_dor` sends any item with `depends_on` to `pending-approval`, not `ready`. **Real protection** |
+| **Ranking / dispatch** | 🔴 **NO** — `livespec_runtime/work_items/lifecycle.py:156` hardcodes `sibling_status_lookup=None`, so the ref resolves `UNKNOWN`, and `_entry_blocks` returns `status == RefStatus.OPEN` → **False**. It does not block |
+
+**So the protection lasts exactly until someone approves the item onward — the
+routine act — and then evaporates with no warning.** Verified on `livespec-runtime`
+`origin/master`, not a working tree. `git grep sibling_status_lookup` across the
+fleet finds exactly ONE non-`None` supply site and it is a **unit test**; a consumer
+test (`tests/consumer/test_cross_repo_resolution.py:329`) additionally **pins the
+fail-open scenario as expected behaviour**, so it will re-lock if not retired.
+
+**Worth keeping for the shape:** `_entry_blocks` deliberately fails **closed** on a
+MALFORMED entry ("must not let a candidate slip through as ready") and fails **open**
+on a well-formed cross-tenant one. **A typo in a dependency protects you better than
+getting it right.**
+
+**This was already a known, CLOSED defect — `bd-ib-qiqz6b` (P1), whose acceptance is
+verbatim this behaviour.** It was closed `resolution:completed` while its own close
+reason recorded that the post-merge janitor **never ran** (`claude: not found`,
+bootstrap exit 127) on a promise of later hand-verification that never happened.
+**REOPENED 2026-07-21** with the full evidence. A deferred gate is not a passed gate.
+
+**Order: 2 depends on 1 — and that ordering must now be SEQUENCED BY OBSERVATION,
+not delegated to the edge.** Land slice 1, confirm it merged and is pinned, and only
+then approve slice 2. Record the edge anyway — it is correct, it persists, and it
+holds slice 2 at `pending-approval` at intake — but do NOT treat it as a
+dispatch-time gate. Slice 3 is independent and can go in parallel.
 
 Before driving any of these through the factory, read
 `.ai/dispatcher-drain-operations.md`: `--fabro-bin` is mandatory (the credential
