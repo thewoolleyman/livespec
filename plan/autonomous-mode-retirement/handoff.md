@@ -563,8 +563,54 @@ only as root is unreachable in the non-root run, which then misses 100% and
 fails, and symmetrically. Two independently-gated runs make divergence
 unsurvivable with no comparison step and no new tooling. **This holds ONLY while
 fail-under is 100%**; lower it and explicit divergence detection becomes
-necessary. Real cost is the IMAGE (hardcoded root `MISE_DATA_DIR`), not the
-second job.
+necessary.
+
+#### ✅ THAT ASSESSMENT IS NO LONGER AN ARGUMENT — it was MEASURED
+
+Spike run 2026-07-20/21; full evidence on `bd-ib-sfa2`. At the TRUE pre-fix
+baseline `bf2d859`, same container, same image, same tests, **only the uid
+differing**:
+
+    ROOT     (uid 0)     78 stmts   0 miss   22 branch   0 partial   100%
+    NON-ROOT (uid 1000)  78 stmts   1 miss   22 branch   1 partial    98%   missing: 133
+
+Line 133 is `return True` in `_pid_is_alive` — the exact line `bd-ib-yqfw` named.
+Root green, non-root red. **`1303 passed` in BOTH runs** — no test failed either
+way, so the divergence is invisible to the suite and surfaces ONLY through
+coverage. The "no divergence-detection machinery needed" claim is now empirical.
+
+#### The image is NOT the real cost — that was wrong
+
+The line above ("Real cost is the IMAGE") was superseded. A non-root matrix needs
+**no image change at all**. The only blocker is that `/root` is mode **0700**
+while the whole toolchain lives beneath it (`mise` itself is at
+`/root/.local/bin/mise`; there is NO copy anywhere else on the filesystem). Env
+overrides alone CANNOT fix that — they change where mise WRITES, not where it IS.
+A root-privileged `chmod 0755 /root` at job start, then `setpriv` to uid 1000
+reusing the BAKED toolchain read-only, works: full `check-coverage` on master ran
+**1950 passed, 0 missed, 100%** as uid 1000 in ~49s, with no toolchain install
+(the baked mise dir's mtime stays at image-build time).
+
+**Limitation, which must travel WITH the capability, never separately:** this is
+a PARTIAL replica — "uid 1000 with access to root's toolchain", not "uid 1000 as
+the janitor sees the world". Any divergence depending on `/root` genuinely being
+0700 stays invisible to it. The faithful alternative relocates the toolchain to a
+world-readable path in `livespec-dev-tooling`'s `docker/fabro-sandbox/base`
+layer, costing a fleet-wide rebuild + republish + pin bump. **Bounded tradeoff,
+maintainer's call, NOT decided here.**
+
+Three traps recorded on the item for anyone re-deriving this: `HOME` must not be
+under `/tmp` (it puts the janitor venue inside the `/tmp/*` coverage omit glob and
+trips `livespec-impl-beads-1l6`'s regression guard); the two jobs must not share
+`UV_CACHE_DIR` (root-owned cache files break the non-root run, intermittently);
+and **`ff97ad8~1` is NOT the pre-fix baseline** — it resolves to `abdc50c`, which
+already carries the coverage fix, so measuring there shows no divergence and
+reads as "the route is decorative". Start from `bf2d859`.
+
+Still owed: the demonstration above is SCOPED to the janitor-lock module (a local
+full-gate run carries container-only noise from integration tests needing
+docker/network). A full-matrix demonstration in real CI, plus criteria 3 and 4,
+remain. `ci.yml` is UNTOUCHED.
 
 ### Other work closed this session
 
