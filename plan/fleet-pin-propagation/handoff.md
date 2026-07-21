@@ -97,6 +97,66 @@ minutes.** Re-measure before acting on any P0 text, including this section.
 | Fan-out re-run to attempt 4 — preflight green, 8/8 dispatches | livespec run 29790751188 |
 | Corrected diagnosis + stale-claim correction | `livespec-dh9r`, `livespec-cbmw`, `livespec-dev-tooling-6ge` |
 | Two P1 defects found in the propagation SAFETY NET (below) | `livespec-oq9w`, `livespec-dev-tooling-bmf` |
+| Both safety-net defects FIXED, merged, and live-verified | dev-tooling PRs #526, #529, #533 |
+
+### ✅ THE SAFETY NET IS NOW REPAIRED — supersedes the 🔴 section below
+
+**The section immediately below diagnosed the sweep as degraded. Two of its three
+defects are now FIXED, merged, and verified against real sweeps — not merely
+green CI.** Read that section for the diagnosis and the method lesson; read this
+for the current state.
+
+| defect | state |
+|---|---|
+| `livespec-dev-tooling-bmf` — empty diff exits 1 | **FIXED** — PR #526, live-verified |
+| `livespec-dev-tooling-clrk` — false staleness (the ROOT cause) | **FIXED** — PR #533, live-verified |
+| `livespec-oq9w` — console has no shim at all | **OPEN**, maintainer-gated |
+
+**`clrk` was the root cause, and it was not what `bmf` first claimed.** `bmf`
+was filed blaming a race; measuring the scan's own output instead showed a
+deterministic TAG-FORMAT MISMATCH — `current=python-v0.50.8` compared against
+`latest=v0.50.8`, the same version in different forms, so the Fabro image pin
+was stale BY CONSTRUCTION forever. The rewrite half already knew that grammar
+(`fabro_image_pin_rewrite` is prefix-preserving by design); only the comparison
+half did not. `bmf`'s recorded mechanism is corrected on the item.
+
+**The live proof, and why a green run could not have faked it.** Before: the
+scan emitted `livespec-dev-tooling stale: current=python-v0.50.8 latest=v0.50.8
+distance=1` and the bump job RAN and failed. After (sweep 29820693692):
+
+    ##[notice]livespec-dev-tooling pinned at python-v0.51.7, already current
+    freshness / open-bump-pr <matrix>   SKIPPED
+
+The distinguishing observable is the bump job being **SKIPPED**, not the run
+being green — the intermediate sweep (after `bmf`, before `clrk`) was ALSO green
+while still attempting a pointless bump daily. That criterion was written down
+BEFORE the fix existed, precisely so it could not be satisfied vacuously.
+
+**A second defect fell out of `clrk`:** `ordinal_distance` matched a prefixed
+tag against bare release tags, matched nothing, and took the `fallback` — which
+the caller passes as the staleness threshold itself, so every prefixed pin
+reported MAXIMALLY stale. **At the default threshold of 1 the wrong answer
+coincides with the right one**, which is exactly why it hid behind the currency
+bug instead of surfacing on its own. Fixed in the same change.
+
+**PR #529 exists because #526 created the problem it solves.** Making the
+composite SUCCEED on the no-op path made the codex-acp gate steps reachable
+there for the first time, where `gh pr view "$BRANCH"` would fail on a branch
+that was never pushed. A fix that relocates a failure is not finished.
+
+**⚠ ONE PROPAGATION BLOCKAGE IS STILL LIVE, and it GROWS on its own.**
+`livespec-overseer` pins `v0.50.7` while every other member is at `v0.51.7` —
+~10 releases behind, the largest pin debt in the fleet. The fan-out IS
+delivering to it (PRs #7 and #6 are open bump PRs); they are **BLOCKED** by
+`check-doctor-static` and `check-source-trees-scoped-to-consumer`, i.e. by the
+scaffolding gaps, not by anything about pins. Every release widens the gap with
+no further mistake required, and PR #1 — the change that would clear its stale
+pin — is gated behind the same red. Recorded on `livespec-cbmw`; the seed itself
+is owned by `plan/overseer-productization/`, not by this thread.
+
+That is the third shape of this thread's one recurring lesson, and the only one
+still open: **a propagation stall's last mile is usually a gate that has nothing
+to do with pins.**
 
 ### 🔴 THE SAFETY NET IS DEGRADED — found by checking, not by reading
 
