@@ -60,9 +60,10 @@ it points you at.**
    has already drafted three framings and recommends one, and the maintainer routed
    the authoring to a Fable session reading that source directly. **Re-asking it
    from a digest is the one thing that thread explicitly forbids.**
-2. **`livespec-runtime-jo9` (4rq4 slice 1) — DISPATCHED 2026-07-21**, via
-   `drive --action impl:livespec-runtime-jo9`. Confirm the outcome by OBSERVATION
-   (merge SHA on `livespec-runtime` master, release tagged, pin bumped) BEFORE
+2. **`livespec-runtime-jo9` (4rq4 slice 1) — ✅ DONE.** Dispatched, merged as PR
+   #294 (`bbf4980`), and CLOSED UNATTENDED by the factory 2026-07-21. **Slice 2 is
+   still blocked on the PIN half:** `livespec-runtime` PR #295 (release 0.12.0) was
+   still open. Confirm the release cuts and consumers repin by OBSERVATION before
    touching slice 2 — that ordering is operator-enforced, not edge-enforced.
    Read `.ai/dispatcher-drain-operations.md` first: dispatch is strictly
    `--budget 1 --parallel 1`, `--fabro-bin` is an OVERRIDE not a requirement, and a
@@ -979,9 +980,55 @@ running a loaded context and stopped before degrading rather than after failing.
 
 | Slice | Tenant | Id | State as of 2026-07-21 |
 |---|---|---|---|
-| 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | ✅ **ROUTED TO `ready` — DISPATCHABLE NOW** |
+| 1. review-requirement field on the `WorkItem` schema | `livespec-runtime` | `livespec-runtime-jo9` (P1) | ✅✅ **DONE — dispatched, merged (PR #294), CLOSED UNATTENDED** |
 | 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | ⛔ hold — sequence AFTER slice 1 **by observation**; its ordering edge does not gate (below) |
 | 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | ✅ ROUTED to `blocked` / `needs-human` — its correct lane; split still recommended |
+
+### ✅✅ SLICE 1 IS DONE — CLOSED UNATTENDED BY THE FACTORY, 2026-07-21
+
+**`livespec-runtime-jo9` shipped and closed itself. No human step between dispatch
+and close.** This is the factory's FIRST unattended close in `livespec-runtime` — a
+third repo, after the orchestrator (Python) and the console (Rust).
+
+    16:13:13Z  fabro-run            exit 0
+    16:15:56Z  janitor-post-merge   GREEN     <- the stage that stranded D1
+    16:15:58Z  ledger-complete
+    16:15:58Z  acceptance-ai-pass   diff observed, 7608 bytes, "merged diff read"
+    16:16:03Z  ledger-accept / auto-disposition  ai-auto-accept
+    16:16:03Z  outcome              "merged, post-merge janitor green"
+    16:16:04Z  review-gate-telemetry  verdict "approve", fix_rounds 0, hit_cap false
+    16:16:05Z  cost-gate            423967 usd_micros (~$0.42), report-only
+    16:16:05Z  reflection           blocked 0, failed 0   |  converged: true
+
+**Cross-checked against three independent sources, never the dispatcher's summary:**
+
+| Source | Evidence |
+|---|---|
+| Journal | terminal `outcome` above; PR 294, merge `bbf4980` |
+| GitHub | PR #294 MERGED 16:14:17Z; `bbf4980` on `origin/master` |
+| Ledger | `status: closed`, `assignee: fabro`, audit `merge_sha=bbf4980, pr_number=294` |
+
+**The substance landed, not just the PR** — verified in the source, not the title:
+`livespec_runtime/work_items/types.py` on `origin/master` now carries
+`ReviewRequirement = Literal["human-before-merge"]` and
+`review_requirement: ReviewRequirement | None = None`, optional-on-read with legacy
+records round-tripping to `None` — exactly the acceptance as written.
+
+The `livespec-runtime` ready queue is back to `total: 0`.
+
+**⚠ ONE TRAP THIS DISPATCH EXPOSED, now fixed in `.ai/dispatcher-drain-operations.md`:**
+the Fabro sandbox exits ~3 minutes BEFORE the dispatch finishes (the janitor,
+acceptance and ledger close all run host-side afterwards). A watcher armed on
+`docker ps` fires early, and the journal at that moment ends mid-janitor with no
+outcome — which reads exactly like a dispatch that died. Wait on the `drive.py` PID
+(`while kill -0 <pid>`), and treat the journal's `outcome` event as the terminal
+signal.
+
+**Slice 2 (`bd-ib-qrth`) is STILL NOT unblocked by this.** Its precondition is slice
+1 merged AND PINNED. The pin bump has not happened yet — `livespec-runtime` PR #295
+(`chore(master): release 0.12.0`) is still open at the time of writing. Confirm the
+release cuts and consumers repin BEFORE routing slice 2, and re-read the
+`pending-approval`-is-not-a-hold warning above first.
 
 ### ✅ SLICE 1 IS UNBLOCKED — routed THROUGH the gate, not hand-promoted
 
@@ -1683,13 +1730,23 @@ happened in the orchestrator repo: the day produced three correct merged fixes
 and three MANUAL closes (D1, D2, the git-jsonl retirement). **That bar is now
 met** — see the proof-dispatch section below.
 
-**⚠ SCOPE RESTRAINT — the correct claim is "fixed, and demonstrated in two
-ecosystems", NOT "working everywhere".** Overseer directive 2026-07-20, recorded
-here so this thread's record never overstates it. Unattended closes are proven in
-**exactly two repos**: `livespec-orchestrator-beads-fabro` (Python, `bd-ib-lmi5`)
-and `livespec-console-beads-fabro` (Rust, `-bgc`). **The other six fleet repos
-have NO post-fix unattended-close evidence.** A single green run per ecosystem is
-one observation, and the reflection record says so (`green_streak: 1`).
+**⚠ SCOPE RESTRAINT — the correct claim is "fixed, and demonstrated in THREE
+repos", NOT "working everywhere".** Overseer directive 2026-07-20, recorded here so
+this thread's record never overstates it. The restraint still binds; only the count
+has moved. Unattended closes are now proven in **exactly three repos**:
+
+| Repo | Item | Ecosystem | When |
+|---|---|---|---|
+| `livespec-orchestrator-beads-fabro` | `bd-ib-lmi5` | Python | 2026-07-20 |
+| `livespec-console-beads-fabro` | `-bgc` | Rust | 2026-07-20 |
+| **`livespec-runtime`** | **`livespec-runtime-jo9`** | Python | **2026-07-21** |
+
+**The other five fleet repos still have NO post-fix unattended-close evidence.** A
+single green run per repo is one observation.
+
+The third is the first dispatch into a repo the factory had never closed work in,
+and it went green end-to-end with no human step — full detail in §"SLICE 1 CLOSED
+UNATTENDED" below.
 
 Also carry forward: `bd-ib-9yi` (cargo-not-found / no Rust toolchain in the
 orchestrator image). The overseer's sharper read, which holds: that ticket
