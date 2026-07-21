@@ -1,5 +1,64 @@
 # autonomous-mode-retirement — RECLAIMED AND LIVE
 
+## 🚦 START HERE — session close 2026-07-21 (this block is the orientation)
+
+**Everything below this block is detail. Read this first, then jump to the section
+it points you at.**
+
+### State in one table
+
+| | State |
+|---|---|
+| **P0 fleet propagation** (`livespec-dh9r`) | ✅ **RESOLVED** — App install landed, v0.20.1 propagated to 7 consumers unattended, verified by arbiter. `dh9r` + `livespec-cbmw` are dischargeable but still OPEN in the ledger (quota, below) |
+| **`bd-ib-sfa2`** (non-root CI matrix) | ✅ CLOSED. Shipped, released 0.45.17→0.45.19. Follow-up `bd-ib-phsu` (P3) filed |
+| **`bd-ib-9yi`** (containerized janitor / cargo) | ✅ CONFIRMED LIVE with reproduction. Do NOT close as stale |
+| **`livespec-4rq4`** (review requirement) | GROOMED into 3 slices, **none dispatched, none dispatchable** — see below |
+| **`livespec-overseer`** | 🔴 **LIVE BLOCKER** — adrift, bump PRs #5/#6 blocked on its own failing checks |
+| **1Password ledger quota** | 🔴 **EXHAUSTED** — `op run` exit 9. No ledger reads/writes made since |
+
+### ⛔ TWO THINGS THAT WILL WASTE YOUR TIME IF YOU MISS THEM
+
+1. **THE LEDGER IS RATE-LIMITED.** The quota is account-wide, shared across every
+   tenant, and DAILY. Do **not** retry into exit 9, do not reach for the secret
+   another way. **Several findings are recorded in this file specifically because
+   they could not be filed** — search this file for *"file it when quota returns"*
+   and *"paste this when quota returns"*. **Filing those is a good first action if
+   you have quota.**
+2. **THE 4rq4 SLICES CANNOT BE DISPATCHED AS-IS.** All three are `status: backlog`
+   and a backlog item is never a dispatch candidate. They were filed with raw
+   `bd create`, which bypasses the intake Definition-of-Ready. Only slice 1
+   (`livespec-runtime-jo9`) would clear the gates; slice 2 needs its cross-tenant
+   dependency edge, slice 3 should be split. **Do NOT hand-promote to `ready`** —
+   that bypasses a correct gate. Full detail in §"NEXT CLEAN ACTION".
+
+### Ranked next actions
+
+1. **File the quota-blocked findings** (if you have quota) — they are written out
+   verbatim in this file, ready to paste.
+2. **`livespec-overseer` is the live blocker.** Its bump PRs cannot merge because
+   `check-doctor-static` + `check-source-trees-scoped-to-consumer` fail on the
+   bump branches. Its pin is still the `"master"` bootstrap placeholder. This is a
+   **stuck-at-merge** failure, distinct from the v0.20.0 stall (dispatch) that is
+   now fixed.
+3. **The 4rq4 slices** — resolve the intake-gate precondition first.
+4. `bd-ib-phsu`, `livespec-bmxs`, `livespec-f73t`, `livespec-h95t`,
+   `livespec-dev-tooling-6ge` — all filed, none started.
+
+### The one habit this thread most wants you to keep
+
+**Verify what you are told, including this file.** Fourteen signals came apart
+under checking in this thread, and four supervisor framing errors plus one false
+defect were caught the same way — by looking at what produced the number rather
+than the number. §"THE COUNTER-MOVE" carries the reusable form: attach an
+**executable arbiter** to every claim, and prefer one that needs no credential
+wrapper so a second party can check while the ledger is throttled.
+
+**Contradicting your supervisor must stay cheap.** It is a standing instruction,
+not an act of nerve; the moment it becomes expensive, every one of those errors
+ships.
+
+---
+
 > **RECLAIMED 2026-07-20 from `plan/archive/`.** This thread is ACTIVE again and
 > has been REPURPOSED. It no longer carries its original charter (executed and
 > closed 2026-07-19 under epic `livespec-33opqs`); it now carries the **close-out
