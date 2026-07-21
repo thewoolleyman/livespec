@@ -386,6 +386,43 @@ running a loaded context and stopped before degrading rather than after failing.
 | 2. dispatcher **REFUSES AT ADMISSION** | `livespec-orchestrator-beads-fabro` | `bd-ib-qrth` (P1) | YES |
 | 3. hand-built path names the real lever | `livespec` core | `livespec-rbpl` (P2) | YES |
 
+### ⛔ CORRECTION — THE DISPATCHES CANNOT BE LAUNCHED AS WRITTEN. Read this first.
+
+**This block's own instruction was incomplete, and the session that wrote it
+found out by trying.** All three slices are `status: backlog`, and a `backlog`
+item is NEVER a dispatch candidate — `_dispatcher_loop_selection.is_dispatch_candidate`
+admits only `ready` (or `pending-approval`, evaluated as a ready projection).
+Measured: `next --json` on the `livespec-runtime` tenant returns
+`{"candidates": [], "total": 0}`.
+
+**Why they are in backlog.** The intake Definition-of-Ready checklist
+(`intake_dor.py`) is what routes a newly filed item into its lifecycle state,
+and its docstring scopes it to the `capture-work-item` / `capture-impl-gaps`
+front-ends — which are INTERACTIVE SKILLS. There is no non-interactive capture
+wrapper in `.claude-plugin/scripts/bin/`, so these were filed with raw
+`bd create`, which never runs the gate.
+
+**And they are invisible.** A `backlog` item appears in NO attention surface —
+`needs-attention` on that tenant listed the three BLOCKED items, a host-only
+route and a stale worktree, and NEITHER backlog item. So the filing looked
+successful and the items are inert with nothing anywhere saying so. Filed as
+**`livespec-h95t` (P2)**, which lists all seven items currently in this state.
+
+**DO NOT fix this by hand-promoting items to `ready`.** That bypasses the intake
+gate rather than routing through it, and the gate is correct — it is the only
+thing stopping an epic or a non-autonomously-verifiable item reaching a sandbox.
+Route through `apply_intake_dor`, or run the capture front-end, or fix
+`livespec-h95t` first.
+
+**Two of the six gates are genuinely unmet on these slices**, so this is not
+merely a plumbing problem — the items need real edits before they would pass:
+`autonomy_tiered` (none of the three carries an explicit autonomy tier — compare
+`bd-ib-lmi5`, which self-declared "Autonomy: FACTORY"), and `dependency_linked`
+for slice 2, whose dependency on slice 1 exists only in PROSE and is not a linked
+edge. Note the two are in DIFFERENT TENANTS (`bd-ib-qrth` in the orchestrator,
+`livespec-runtime-jo9` in the runtime), so a `bd dep` edge may not span them —
+establish how cross-tenant dependency edges are expressed before assuming.
+
 **Order: 2 depends on 1** — land slice 1, tag a `livespec-runtime` release, pin it,
 then slice 2. Slice 3 is independent and can go in parallel.
 
