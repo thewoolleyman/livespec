@@ -52,6 +52,28 @@ it points you at.**
    deliberately routed to a Fable-model session. Surface it; do not seed it, and do
    not touch its PRs #1 / #6 / #7.
 
+### 🙋 THE HUMAN-DECISION QUEUE — what an agent cannot clear, as of 2026-07-21
+
+Assembled because these were scattered across four tenants and two plan threads, and
+because several were previously INVISIBLE (`backlog` items no surface reported). Each
+is now in a lane that reports it. **None of these is blocked on effort; each is blocked
+on a judgement or an authorization.**
+
+| # | What | Where | Why a human |
+|---|---|---|---|
+| 1 | **The overseer spec's intent statement** | `plan/overseer-productization/` | The single decision between the fleet and complete propagation. Three framings drafted, one recommended; the authoring is routed to a Fable session reading that thread directly. **Do not re-ask it from a digest** — that thread forbids it |
+| 2 | **Merge `livespec-runtime` PR #295** (release 0.12.0) | `livespec-runtime` | Not automated — the release PR's bot author is not in the `auto-enable-merge` allowlist. **Gates TWO things**: 4rq4 slice 2, and making the `bd-ib-qiqz6b` fix actually live. Historical latency in that repo: 1 minute to 8 days |
+| 3 | `livespec-rbpl` (slice 3) — how a review requirement should be WORDED | `livespec` | A phrasing/authoring-convention judgement a factory cannot verify. Splitting the mechanical half out is recommended |
+| 4 | `bd-ib-4m5f` — compose the candidate set, or document the divergence | orchestrator | A design choice between two coherent resolutions |
+| 5 | `livespec-runtime-0h8` — the falsified `contracts.md` sentence | `livespec-runtime` | Needs `/livespec:propose-change` → independent adversarial review → `/livespec:revise`. Not editable in place |
+| 6 | `bd-ib-sfa2`'s residual — a synthetic regression PR to close criterion 2 in real CI | orchestrator | Would require the Red-Green-Replay ritual for a throwaway demonstration; recorded as maintainer's call, not self-waived |
+
+Items 3–5 were routed through `apply_intake_dor` to `blocked` /
+`blocked-reason:needs-human` on 2026-07-21 — their honest lane. They were previously
+`backlog`, which no attention surface reported at all.
+
+**Item 2 is the cheapest and unblocks the most.** It is one merge.
+
 ### Ranked next actions
 
 1. **Surface the overseer intent-statement gate to the maintainer** — it is the
