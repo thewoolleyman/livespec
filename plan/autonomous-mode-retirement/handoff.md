@@ -187,7 +187,7 @@ against live source before filing, not taken from the memo.
 | Live-ledger hygiene backfill (62 console violations); console has no merge-evidence check | ⬜ REMAINS — console |
 | cont.20 flags 1–5: auto-merge vs review-gated manual PRs; impl→spec gate gap (`detect-impl-gaps` not gating); move source-breadth; `move:active` bypasses `wip_cap`; config-manifest self-version | ⬜ REMAINS — orchestrator / console. **Note flag 1 is now largely superseded:** the auto-merge half is filed and DECIDED as `livespec-4rq4` |
 | Console coverage-convention lesson — the 100%-line-coverage gate is incompatible with MULTI-LINE `assert!` carrying interpolated messages; use single-line bare asserts | ⬜ REMAINS — console guidance |
-| Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern; `mint_app_token.py` mints a REAL token (security) | ⬜ REMAINS — orchestrator guidance. The `mint_app_token.py` half is a SECURITY note and should not sit in a guidance backlog indefinitely |
+| Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern | ⬜ PARTLY REMAINS — orchestrator guidance. **The `mint_app_token.py` SECURITY half is SPLIT OUT and FILED as `bd-ib-9p4i` (P2, orchestrator)** — it no longer belongs in this row. The two remaining halves are ordinary guidance |
 
 ## The lesson this thread kept re-teaching
 
@@ -271,10 +271,23 @@ the START HERE for the next session.
    dispatch/PR-creation path must apply `do-not-merge` (or draft) when an item
    declares a review requirement, which means the item schema must carry that
    flag. **Fix belongs in the copier TEMPLATE**, then propagates by re-sync.
-3. **The `mint_app_token.py` security note** — currently buried in §B's
-   "orchestrator operational lessons" row. It mints a REAL token. **Pull it
-   forward and file it standalone rather than leaving it in a guidance
-   backlog** (operator judgment, overseer concurred 2026-07-21).
+3. **`bd-ib-9p4i` (P2, orchestrator) — the `mint_app_token.py` security item.**
+   ✅ FILED 2026-07-21, split out of §B's "orchestrator operational lessons"
+   row where it was buried. The hazard is that the mint path writes a LIVE
+   credential to stdout BY CONTRACT, so the danger is an agent running it as a
+   smoke test and landing the token in scrollback or a transcript. **What is
+   NOT the defect is recorded on the item** — the module's own hygiene is good
+   (token to stdout, diagnostics to stderr, inputs via env, nothing in argv) —
+   so nobody repairs the wrong thing. Fix directions: a non-minting check mode,
+   refusing to mint when stdout is a TTY, and a documented revocation
+   procedure.
+   **This is not theoretical.** A closed-record search found
+   `livespec-impl-beads-xh9`, a CLOSED P0 in another tenant: "SECURITY: rotate
+   Fabro GITHUB_TOKEN (transcript exposure)". **This exact hazard class has
+   already forced a real credential rotation in this fleet**; the mint path
+   reaches the same exposure by an easier route — one casual command instead of
+   a sandbox projection. That precedent is cited on the item and is a good
+   argument for raising it above P2.
 4. **Four §B findings remain** — see the §B table for each one's state.
 5. `bd-ib-lzau` (P2), `bd-ib-yf2m` (P2, widened), `bd-ib-d9gf` (P2),
    `livespec-console-beads-fabro-0w5` (P3), `livespec-runtime-6m4` (P3).
@@ -287,9 +300,19 @@ the START HERE for the next session.
   and the overseer walked into a bad baseline here, by different routes. A
   hand-mutation restoring the short-circuit ALSO fails to discriminate, because
   #845 added a test asserting the short-circuit's absence, so root reddens too.
-- **A 54-minute container capturing zero bytes is the mise auto-install hang,
-  NOT a slow non-root path.** Point `MISE_DATA_DIR` at the baked tree and set
-  `MISE_NOT_FOUND_AUTO_INSTALL=0`. The working non-root leg runs in ~49s.
+- **A container capturing ZERO BYTES is a HANG, not a slow non-root path.** Four
+  such failures across two operators, all harness. Two compounding causes:
+  `| tail -N` on the outer `docker run` emits nothing until EOF, so a hung
+  container yields an empty capture that *looks* like "no output"; and the hang
+  itself is usually mise auto-install, which fires whenever `MISE_DATA_DIR`
+  points at an empty writable dir — including implicitly, when `HOME` is set but
+  `MISE_DATA_DIR` is not, since mise then defaults it under `$HOME`.
+  **Discriminate in one command while it is stuck:**
+  `docker ps --filter ancestor=ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.51.1`
+  — `Up N minutes` means hang, full stop. A **hang-proof harness** with
+  timeout-bounded, self-announcing stages and a fail-fast preflight is recorded
+  on `bd-ib-sfa2`; it completes in **85 seconds**, so anything over a few
+  minutes is hung rather than slow.
 
 ### Worktrees — NOT reaped, deliberately
 
