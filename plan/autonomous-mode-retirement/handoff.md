@@ -170,23 +170,24 @@ freeform children, orchestrator `bd-ib-82a`, O0–O10, Stage-2 throwaways). Adop
 tenants (`openbrain`, `resume`, `homelab`) were UNREACHABLE — not proof they are
 clean. No dangling dependency edges and no wrong-tenant filings were found.
 
-### B. Disposition sweep — findings that would otherwise die (NONE YET FILED)
+### B. Disposition sweep — 4 of 8 now DISPOSITIONED, 4 remain
 
 Carried forward verbatim in substance from the original thread. Each is
 **VERIFY-THEN-FILE**: check the owning tenant first, since filing a duplicate is
 its own cruft — and per this thread's own lesson, that check must include CLOSED
-records, which the default listing hides.
+records, which the default listing hides. Every disposition below was verified
+against live source before filing, not taken from the memo.
 
-| Finding | Likely home |
+| Finding | Disposition |
 |---|---|
-| **Review-gate integrity hole** — a reviewer verdict lost to silence reads as a PASS; absence of an explicit verdict artifact must be a hard FAIL. Raised cont.15, reinforced cont.16, explicitly never filed ("maintainer's call"). **Highest value in this table.** | orchestrator |
-| Spec-proposal defect taxonomy — claims that expire at ratification; prefer positive assertions about sibling-owned surfaces; clause-lockstep-at-revise as a Fable criterion | standing Fable-review criteria (`.ai/` topic or CLAUDE.md) |
-| `list_work_items.py` drops `merge_sha` / `pr_number` from `--json` | orchestrator |
-| Live-ledger hygiene backfill (62 console violations); console has no merge-evidence check | console |
-| cont.20 flags 1–5: auto-merge vs review-gated manual PRs; impl→spec gate gap (`detect-impl-gaps` not gating); move source-breadth; `move:active` bypasses `wip_cap`; config-manifest self-version | orchestrator / console |
-| Heading-coverage tier keyword sets diverge (console Rust check vs dev-tooling Python check overlap only on `integration`) | dev-tooling or console |
-| Console coverage-convention lesson — the 100%-line-coverage gate is incompatible with MULTI-LINE `assert!` carrying interpolated messages; use single-line bare asserts | console guidance |
-| Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern; `mint_app_token.py` mints a REAL token (security) | orchestrator guidance |
+| **Review-gate integrity hole** — a reviewer verdict lost to silence reads as a PASS. **Highest value in this table.** | ✅ FILED — `bd-ib-hdd6` (P2, orchestrator) |
+| Spec-proposal defect taxonomy — claims that expire at ratification; positive assertions about sibling-owned surfaces; clause-lockstep-at-revise | ✅ AUTHORED — `.ai/spec-proposal-review.md` + `AGENTS.md` reference, livespec core PR #1588 |
+| `list_work_items.py` drops `merge_sha` / `pr_number` from `--json` | ✅ FILED — `bd-ib-d9gf` (P2, orchestrator). **Sharper than the memo:** `asdict(item)` emits them correctly, then an explicit hand-enumerated 3-key literal OVERWRITES `payload["audit"]` and drops them. A drift-prone allowlist, not a missing key |
+| Heading-coverage tier keyword sets diverge | ✅ FILED — `livespec-console-beads-fabro-0w5` (P3). **Memo understated it:** the divergence is asymmetric in BOTH directions (Rust accepts `acceptance`, which Python rejects; Python accepts `tier`/`e2e`/`consumer`, which Rust rejects), and `top of pyramid` unhyphenated passes Python but fails Rust. Filed console-side per the No-Circular-Dependency directive — dev-tooling is upstream and must not read into a consumer |
+| Live-ledger hygiene backfill (62 console violations); console has no merge-evidence check | ⬜ REMAINS — console |
+| cont.20 flags 1–5: auto-merge vs review-gated manual PRs; impl→spec gate gap (`detect-impl-gaps` not gating); move source-breadth; `move:active` bypasses `wip_cap`; config-manifest self-version | ⬜ REMAINS — orchestrator / console. **Note flag 1 is now largely superseded:** the auto-merge half is filed and DECIDED as `livespec-4rq4` |
+| Console coverage-convention lesson — the 100%-line-coverage gate is incompatible with MULTI-LINE `assert!` carrying interpolated messages; use single-line bare asserts | ⬜ REMAINS — console guidance |
+| Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern; `mint_app_token.py` mints a REAL token (security) | ⬜ REMAINS — orchestrator guidance. The `mint_app_token.py` half is a SECURITY note and should not sit in a guidance backlog indefinitely |
 
 ## The lesson this thread kept re-teaching
 
