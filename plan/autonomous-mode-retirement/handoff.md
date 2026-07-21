@@ -258,15 +258,32 @@ the START HERE for the next session.
 
 ### ⏭ START HERE — highest value first
 
-1. **`bd-ib-sfa2` (P1)** — the spike is DONE and recorded on the item with a
-   reproducible invocation. **The maintainer tradeoff is NOT decided:** a narrow
-   chmod route that provably catches the uid class but is a partial replica,
-   versus a faithful replica costing a fleet-wide image change in
-   `livespec-dev-tooling`. Criterion 2 is proven ONCE (by the operator); the
-   overseer's independent reproduction was INCONCLUSIVE — a broken harness, NOT
-   a contradiction. **Double-sourcing it is one run**; the exact command is on
-   the item. Still owed: a full-matrix CI demonstration, and criteria 3–4.
-   `ci.yml` is UNTOUCHED.
+1. **`bd-ib-sfa2` (P1) — THE ONLY OPEN DECISION. The evidence is finished; the
+   CHOICE is not.** ✅ Criterion 2 is **DOUBLE-SOURCED** — two operators, two
+   independent harnesses, same image, same `bf2d859` baseline, identical
+   numbers: root `78/0/22/0/100%`, non-root `78/1/22/1/98% missing 133`,
+   **`1303 passed` on BOTH legs**. The divergence is invisible to the test suite
+   and surfaces ONLY through coverage, which is exactly the design claim this
+   item was built on — now measured, not asserted.
+   **What the maintainer must decide, and nobody below them may self-resolve:**
+   a NARROW route (a root-privileged `chmod 0755 /root` at job start, then
+   `setpriv` to uid 1000 reusing the baked toolchain — no image change, zero
+   fleet blast radius, but a PARTIAL replica, so anything depending on `/root`
+   genuinely being `0700` stays invisible) versus a FAITHFUL replica (relocate
+   the toolchain to a world-readable path in `livespec-dev-tooling`'s
+   `docker/fabro-sandbox/base` layer — costing a fleet-wide rebuild, republish,
+   and pin bump, since every repo's CI and every Fabro sandbox builds on it).
+   **Carry the capability and the limitation together; never one alone.**
+   Still owed: a full-matrix CI demonstration, and criteria 3–4. `ci.yml` is
+   **UNTOUCHED** — no workflow change has been made.
+   **Harness v2 on the item is the one to use** (it supersedes two earlier
+   versions and is the first verified from a genuinely FRESH clone). Honest cost
+   **91 seconds**. Two gaps that each cost a run: `uv sync` is REQUIRED because
+   `.venv` is gitignored and both legs use `uv run --no-sync` — its absence
+   yields `No module named pytest` with no test output, reading as a broken
+   harness; and the two legs' SEPARATE `UV_CACHE_DIR`s are LOAD-BEARING, not
+   tidiness. **Re-run it rather than trusting this record** — that instruction is
+   the point, and it is what caught both gaps.
 2. **`livespec-4rq4` (P1, livespec core)** — DECIDED (mechanical option): the
    dispatch/PR-creation path must apply `do-not-merge` (or draft) when an item
    declares a review requirement, which means the item schema must carry that
@@ -300,6 +317,11 @@ the START HERE for the next session.
   and the overseer walked into a bad baseline here, by different routes. A
   hand-mutation restoring the short-circuit ALSO fails to discriminate, because
   #845 added a test asserting the short-circuit's absence, so root reddens too.
+- **BOTH causes are now CONFIRMED, not inferred** — the overseer's two failures
+  were diagnosed as exactly these: an empty writable `MISE_DATA_DIR` triggering
+  a full from-scratch toolchain build (so a 54-minute "run" was a BUILD, never a
+  slow test), and an outer shell pipe swallowing the capture. The preflight
+  stage in harness v2 catches the first in ~1 second.
 - **A container capturing ZERO BYTES is a HANG, not a slow non-root path.** Four
   such failures across two operators, all harness. Two compounding causes:
   `| tail -N` on the outer `docker run` emits nothing until EOF, so a hung
@@ -314,12 +336,28 @@ the START HERE for the next session.
   on `bd-ib-sfa2`; it completes in **85 seconds**, so anything over a few
   minutes is hung rather than slow.
 
-### Worktrees — NOT reaped, deliberately
+### Worktrees + checkout state at session close
 
-`verify-criterion2` (orchestrator, `abdc50c`) is the overseer's, and four
-`janitor-*` detached worktrees are leftovers from the pre-fix stranded
-dispatches. They are reapable now the janitor works, but they belong to other
-sessions — use `just reap-stale-worktrees`, never hand-delete unfamiliar state.
+This session's own worktrees are **all reaped** and its branches deleted. Both
+primary checkouts are clean **AND current** on master — those are two different
+claims, and only the second is what a next session can rely on; this session
+asserted the weaker one three times before being corrected. **Check `[behind N]`
+separately from dirty state.**
+
+Left alone deliberately: `verify-criterion2` (orchestrator, `abdc50c`) is the
+overseer's, and four `janitor-*` detached worktrees are leftovers from the
+pre-fix stranded dispatches. Reapable now the janitor works, but they belong to
+other sessions — use `just reap-stale-worktrees`, never hand-delete unfamiliar
+state.
+
+**⚠ When judging whether a worktree is reapable, ask the FORGE, not git
+ancestry.** Under this fleet's rebase-merge discipline a merged branch's local
+head is NEVER an ancestor of `origin/master`, so `git merge-base --is-ancestor`
+reports fully-merged branches as unmerged. Demonstrated live at session close:
+two branches whose PRs were MERGED (`livespec#1593`, `livespec#1563`) both
+tested as NOT ancestors — a 100% false-negative rate, and the reading actively
+argued for PRESERVING work that had already landed. Check the PR state instead.
+Filed as `livespec-runtime-6m4` (P3) with this instance recorded on it.
 
 ## RUNNING STATE — 2026-07-20 (cont. — clause 3 session)
 
