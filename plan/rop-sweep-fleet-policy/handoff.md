@@ -84,6 +84,93 @@ Remediation MUST ride in the same PR — the check is already wired into this re
 zero iterations — `cvz`'s defect sits in SERIES with `qm5`'s); both layered orchestrator repos stay
 at 0; core gains 0, which is what unblocks slice 1b.
 
+### 🚧 PR #516 IS BLOCKED BY A FLEET-WIDE CONFORMANCE RED IT DID NOT CAUSE
+
+`check-fleet-conformance` fails on the PR branch, taking `ci-green` — the required merge gate —
+with it. **Nothing in PR #516 causes this.** All 3 error findings are against a DIFFERENT repo,
+`livespec-overseer`: `app-installation` (fleet GitHub App does not cover it), `merge-settings`
+(not rebase-only), `delete-branch-on-merge`. Everything else on the PR is green (58 SUCCESS).
+
+Cause and timing, measured:
+
+```
+00:09:24Z  livespec-dev-tooling last GREEN master CI run
+00:32:49Z  livespec f9664481 registers livespec-overseer in .livespec-fleet-manifest.jsonc
+00:45:47Z  PR #516 check-fleet-conformance FAILS
+```
+
+The manifest is fetched from livespec core master AT RUN TIME, so the obligation went fleet-wide
+the instant the registration merged. **A fleet repo's green master is therefore STALE, not
+healthy** — dev-tooling's last run predates the registration by 23 minutes and will go red on its
+next run, as will every other member.
+
+**Filed as `livespec-cbmw` (P1)**, mirroring the CLOSED console precedent `livespec-inxg`; noted on
+`livespec-b1uo.1`, which owns the registration and is still `backlog`. **Step 2 — installing the
+fleet GitHub App — needs OWNER access**; a session token carrying only
+`gist, read:org, repo, workflow` cannot do it.
+
+**🚫 DO NOT "FIX" THE REGISTER-BEFORE-WIRE PATTERN. It is not a defect.** This session initially
+mis-framed it as a recurring bug and recommended gating registration on wiring; the maintainer
+approved that on the bad premise, and it was then RETRACTED on reading the source of truth.
+`.ai/adding-an-adopter.md` states it outright:
+
+> "**Register-first is deliberate**: a declared-but-unwired adopter should surface as a conformance
+> finding, not stay invisible."
+
+So the red IS the designed signal, and `livespec-inxg` was ordinary follow-through, not a bug fix.
+Two further reasons a preventive gate is wrong: the obvious implementation (core or dev-tooling
+verifying a member's live GitHub state) is an UPSTREAM repo reading INTO a DOWNSTREAM consumer,
+banned by `.ai/no-circular-dependency.md`; and suppressing the finding until wiring completes
+recreates exactly the invisibility register-first exists to prevent.
+
+**The one legitimately open question, deliberately NOT filed** (it is a maintainer judgment call
+about intended blast radius): register-first guarantees the finding SURFACES; it does not follow
+that an unwired member should HARD-FAIL every OTHER repo's `ci-green` and block unrelated merges.
+Surfacing and blocking are separable. If that blast radius is wrong the fix is how
+`check-fleet-conformance` GRADES a not-yet-wired member versus a DRIFTED one — a severity question
+inside `livespec-dev-tooling`, never a suppression, never a new upstream→downstream read.
+
+### RE-REVIEW ROUND 2 — Codex: NO-BLOCKERS (Fable outstanding)
+
+Codex verified by execution throughout: it mutated `_is_broad` and `_carries_sanctioned_marker` to
+undo each fix and confirmed the matching tests fail; reverted the `source_trees` guard and confirmed
+the two `qm5`/`cvz` tests fail; diffed `_SANCTIONED_MARKERS` character-for-character against
+`non-functional-requirements.md:781`; and independently reproduced the `BLE`-unselected/`RUF100`
+finding by swapping in the pre-PR `pyproject.toml`.
+
+**NEW ITEM `livespec-dev-tooling-ajo` (P2) — `contextlib.suppress(Exception)` evades BOTH halves of
+the enforcement split.** It is an `ast.With` node, not `ast.Try`, so neither the check nor ruff
+`BLE001` looks at it. Reproduced by the overseer against `3257f419`:
+
+```
+with contextlib.suppress(Exception):
+    _ = 1 / 0            # a bug-class ZeroDivisionError, silently swallowed
+no_except_outside_io  ->  offenses: 0        ruff --select BLE,E722  ->  All checks passed!
+```
+
+**Measured exposure: ZERO sites across all 7 fleet repos**, so it is a hole in the gate, not a live
+violation — and it is PRE-EXISTING (the old check walked only `ast.Try` too), so PR #516 neither
+introduces nor widens it. It is categorically worse than the gaps the PR discloses in-code
+(`Broad = Exception`, tuple-in-a-variable, and a third the reviewer demonstrated —
+`except (cond and Exception or ValueError):`): those need deliberate obfuscation and are ruff-parity
+blind spots, whereas `suppress` is idiomatic, unobfuscated, and ruff cannot backstop it because
+`BLE001` is a blind-EXCEPT rule that does not model it.
+
+Other non-blocking Codex findings: a custom class literally named `Exception` at a dotted path
+(`vendor.Exception`) is flagged BROAD where ruff passes it — so the final-dotted-component heuristic
+is STRICTER than ruff, mildly undercutting the PR's "parity" framing, and failing safe; `except*` /
+`ast.TryStar` invisible but not exploitable (Python 3.10 floor verified across all 5 repos);
+`async def main()` never registers as a boundary (over-strict, pre-existing); and a misleading
+"no token found (cold path)" log when the GIT BINARY rather than the token file is missing.
+
+**A SPEC AMBIGUITY FOR THE MAINTAINER, found by Codex and folded into the amendment already owed:**
+one sentence in §"ROP composition"'s `io_trees`-unset clause reads, in isolation, as if "narrow
+permitted anywhere" is scoped only to flat repos and to "an entry artifact's helper functions" —
+which would make PR #516's UNIFORM application an over-relaxation of core's own layered enforcement.
+Codex resolved it in the PR's favour against the repo-agnostic rule earlier in the same section, and
+the overseer agrees; but the text is genuinely ambiguous and should be disambiguated by the SAME
+core amendment `non-functional-requirements.md:649` already requires.
+
 ### STATUS 2026-07-21 (later) — BOTH BLOCKERS FIXED; RE-LANDED AS `3257f419`; FRESH REVIEW RUNNING
 
 Both blockers are closed and the branch was re-landed as ONE Red→Green pair (the canonical shape;
