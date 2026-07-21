@@ -1,7 +1,18 @@
 # Plan — overseer-productization
 
 **Owning session:** livespec core, "overseer-productization". **Status:** OPEN —
-**Phase 1 COMPLETE; Phase 2 committed and anchored to epic `livespec-b1uo`.**
+**Phase 1 COMPLETE. Phase 2's foundational item `b1uo.1` is COMPLETE: the
+overseer now lives at https://github.com/thewoolleyman/livespec-overseer and is
+gone from core.** `b1uo.3` is complete too. What remains is one coding task
+(seed that repo's `SPECIFICATION/`) plus two maintainer-only steps — see
+§"START HERE", and read its 🔴 first section before anything else, because the
+LIVE DAEMON is running from a path this relocation deleted.
+
+**⚠️ This file was heavily rewritten 2026-07-21.** Everything below
+§"URGENT … Dolt backup" is HISTORY retained for its reasoning and its lessons;
+it describes a world in which the overseer still lived in core. Do not act on
+it. If a statement below contradicts §"START HERE", START HERE wins.
+
 **Ledger anchor (Phase 2):** epic `livespec-b1uo` (livespec CORE tenant), five
 children. Status is READ from the ledger, never stored here.
 **Decision (maintainer 2026-07-18):** *Gate now, ship as Phase 2.* Bring the overseer
@@ -108,157 +119,116 @@ left is a role-key declaration that must wait on the rop-sweep thread's `cvz`.
 2026-07-19, it is anchored to epic `livespec-b1uo`, and it was then RESHAPED the
 same day by D7 (the overseer is Control Plane, not Spec Plane).
 
-# ✅ START HERE — the home question is RULED; here is what is left
+# ✅ START HERE — b1uo.1 IS DONE. The overseer now lives in its own repo.
 
-**`livespec-b1uo.1` — where does the overseer live? RULED 2026-07-20:** its own
-dedicated repo, registered under **`fleet`** in
-`.livespec-fleet-manifest.jsonc`, under a **NEW pin-consuming repo class**, as a
-full fleet member following the same development discipline as every other
-member (worktree → PR → merge, `just check`, factory-driven changes). Read
-§"D9 RULED" for the reasoning and the obligations that follow; read §"D8 — the
-home question" for the measured dependency analysis behind it, which you should
-NOT re-derive.
+**https://github.com/thewoolleyman/livespec-overseer** exists, is registered in
+the fleet manifest as `control-plane-tool`, is fully wired, and holds the code.
+Core no longer carries it. Everything below the next two sections is HISTORY —
+read it only if you need the reasoning behind a decision.
 
-**⚠️ §"THE 9th-FLEET-REPO PRICE WAS WRONG" is itself partly wrong** — two of its
-four clauses are mechanically right but framed as savings when they are
-exemptions the overseer should DECLINE (the beads tenant and pin-web
-participation are both things it WANTS). §"D9 RULED" carries the corrected
-table. Do not act on the earlier one alone.
+## 🔴 DO THIS FIRST — the live daemon points at a DELETED path
 
-**Both names are RULED (maintainer 2026-07-20):**
+**The running `overseerd` was launched from
+`/data/projects/livespec/.claude/skills/overseer/overseerd`, which the
+relocation removed.** It keeps running only because its code is already loaded
+in memory. It CANNOT be restarted from there, and the `/overseer` skill is gone
+from core sessions.
 
-- **Repo class: `control-plane-tool`.** Chosen over `operator-tool`,
-  `console-tool`, and `control-plane-daemon`. It anchors to the plane
-  vocabulary the spec and diagram conventions already require, reads as a PEER
-  of `console` rather than a component of it, and does not over-narrow the way
-  `control-plane-daemon` would (a future purely-interactive Control-Plane
-  member would not be a daemon).
-- **Repo name: `livespec-overseer`.** Chosen over `livespec-overseer-tmux`,
-  `livespec-control-plane-overseer`, and `livespec-session-overseer`. It keeps
-  the name every existing artifact already uses — `.claude/skills/overseer/`,
-  `overseerd`, `overseer-start`, `~/.livespec-overseer.jsonl`,
-  `~/.livespec-overseer-stamps.json` — so nothing needs renaming, and it
-  carries no shared suffix, so it can never be ambiguously abbreviated.
+This was NOT restarted deliberately: it is the maintainer's live supervision
+infrastructure, currently managing every track including this one, so killing it
+mid-flight is a maintainer call, not a session's.
 
-  **The bare name is deliberate — do NOT "fix" it by adding a `-tmux` suffix.**
-  The fleet's suffixes (`livespec-driver-claude` / `-codex`,
-  `livespec-orchestrator-beads-fabro` / `-git-jsonl`) mark places where
-  multiple interchangeable realizations genuinely coexist. D4 ruled Linux+tmux
-  a DECLARED REQUIREMENT and explicitly rejected abstracting the host boundary
-  as speculative generality, so a suffix would advertise a variance the ruling
-  says will not exist.
+Verified-working replacement launch:
 
-**✅ STEP 0 IS DONE — the class is RATIFIED in core as of 2026-07-20.** The
-proposal was accepted as **`SPECIFICATION/history/v171/`** (commit `421388ff`,
-full `just check` green across all 71 targets). Core's contract now carries
-`control-plane-tool`. Do NOT re-file or re-ratify it; the next actor starts at
-step 1 below.
+```bash
+cd /data/projects/livespec-overseer && ./.venv/bin/python3 overseer/overseerd
+```
 
-**The immediate next steps, in order:**
+Verified 2026-07-21: `overseer/supervisor.py list` from the new repo renders the
+full fleet (29 tracks). The proper fix is installing the new repo as a plugin so
+`/overseer` resolves again; the command above is the stopgap.
 
-1. ~~**Add the class value** in `livespec-dev-tooling`~~ — **✅ DONE 2026-07-20.**
-   Merged as `livespec-dev-tooling` PR
-   [#502](https://github.com/thewoolleyman/livespec-dev-tooling/pull/502) and
-   **RELEASED as `v0.51.0`** (verified: the tag carries `control-plane-tool`).
-   The fleet auto-bump web fired on its own immediately after.
+**Do not "fix" this by restoring the folder to core.** The move is correct and
+merged; what is missing is a launch path and a plugin install.
 
-   **⚠️ THIS STEP'S INSTRUCTION WAS WRONG, and following it literally would have
-   cost a full wasted ratification cycle.** It said the change was "a spec-backed
-   change, so it goes through that repo's propose-change → independent Fable
-   review → revise cycle, NOT a unilateral edit." **It is not spec-backed in
-   `livespec-dev-tooling`.** Verified against that repo's LIVE spec files (not
-   `history/`, which swamps a naive grep): its `SPECIFICATION/` does not
-   enumerate the repo classes ANYWHERE, and `console` appears in exactly one
-   live location — `contracts.md:340`, the non-pin-consuming-member carve-out,
-   which stays true unamended because `control-plane-tool` is pin-CONSUMING and
-   the carve-out names `console` specifically.
+## What is left, precisely
 
-   The ratified core proposal said this plainly all along — it calls the
-   dev-tooling half "**the paired implementation change**" and states that
-   dev-tooling's own SPECIFICATION "does not enumerate the classes at all". So
-   the spec backing is core's v171, already ratified; the dev-tooling half is a
-   plain TDD implementation change under Red-Green-Replay. **The lesson: when
-   this page and a ratified proposal disagree, the ratified proposal wins — and
-   check the LIVE spec files, since `history/` will drown the grep that would
-   have settled it.**
-2. **← YOU ARE HERE. Create and wire `livespec-overseer`.** Both gating
-   preconditions are satisfied, so this is the live critical path.
+| # | Item | Owner | Blocks |
+|---|---|---|---|
+| 1 | Seed `SPECIFICATION/` in `livespec-overseer` via `/livespec:seed` | a session | `check-doctor-static`, therefore `ci-green`, therefore PR #1 |
+| 2 | Install the `livespec-pr-bot` App on the new repo | **maintainer only** | Release Please (fails at "Mint App installation token") |
+| 3 | Relaunch the daemon + install the plugin | maintainer | the live overseer |
 
-   **Split this in two — the halves have DIFFERENT blocking status, and the
-   older one-line phrasing hid that.** Creating and wiring the repo is
-   UNBLOCKED. Moving the folder into it is NOT: it is gated on `b1uo.3`, a
-   maintainer decision. You can and should do the first half now.
+**Item 1 is the only coding work.** `livespec-overseer` CI is **56 pass / 1 real
+failure**; the single failure is `check-doctor-static`, which fails only because
+the repo has no `SPECIFICATION/` tree. Both sibling members
+(`livespec-runtime`, `livespec-console-beads-fabro`) carry one, so it is
+required rather than optional. It was deliberately NOT rushed at the end of a
+long session — a repo governs itself by that spec, and a hasty one is worse than
+none. PR
+[#1](https://github.com/thewoolleyman/livespec-overseer/pull/1) is open and
+merges as soon as this lands.
 
-   **2a — create + wire (unblocked).** The four sections below were each
-   verified or corrected on 2026-07-20; read them rather than improvising, and
-   note that three of them CORRECT advice this page previously gave:
+**Item 2 cannot be done by a session.** `gh` returns 403 on App-installation
+endpoints ("must authenticate with an access token authorized to a GitHub App").
+It is a UI step at github.com/settings/installations → `livespec-pr-bot` → add
+`livespec-overseer`.
 
-   | Read | For |
-   |---|---|
-   | §"COPY `livespec-runtime`, NOT THE CONSOLE" | the baseline model + the verified file checklist. **Corrects** the old "copy the console" advice, which yields a repo missing two of three required shim workflows |
-   | §"REGISTER-FIRST TRAP" | the ordering. Register-first is first *within* the birth procedure, not first overall |
-   | §"HOW TO ACTUALLY RUN `wire-fleet-member`" | the exact operator command. There is NO justfile target, so it cannot be guessed; it must run under the environment wrapper, and `ci.yml` must be right BEFORE it runs |
-   | §"`baseline-harnesses`" (same section) | the non-file obligation that a file-by-file copy misses |
+## What was completed 2026-07-20/21 — do NOT redo any of it
 
-   Two things this half needs that no document can grant: the repo itself is an
-   OUTWARD-FACING creation, and it needs its own beads tenant (Dolt DB, SQL
-   user + DB-scoped grant, a tenant password in the 1Password Environment).
-   Both are maintainer-authorization gates, not research questions.
+- **`b1uo.3`** — the watch-set moved from the fleet manifest to
+  `~/.livespec-overseer-repos.json` (livespec PR #1574). This removed the single
+  genuine relocation blocker, the positional `parents[3]` traversal. The
+  declaration file was seeded with exactly the 11 repos the manifest lookup was
+  yielding, so the change was behavior-preserving; verified live at 31 tracks.
+- **`b1uo.1`** — the relocation itself (livespec PR #1585). 24 files moved; all
+  seven core-side gate-config rows deleted; core's aggregate went 71 → 70. The
+  new repo reports **449 tests and coverage 1821 statements / 570 branches —
+  core's exact numbers**, which is the evidence the move is faithful.
+- **The beads tenant** — created on the shared dolt-server, grant copied from
+  `livespec-runtime`, cross-tenant isolation verified. It uses the SHARED fleet
+  `BEADS_DOLT_PASSWORD`; a distinct per-tenant password was generated first and
+  REVERTED, because fleet tenants share one password and isolation comes from
+  the per-tenant user + DB-scoped grant. There is nothing to import to 1Password.
+- **`wire-fleet-member`** — reported "member fully wired" (secrets, branch
+  protection from the ci.yml matrix, merge settings, topic). Its three
+  follow-ups (`delete_branch_on_merge`, a stale pin, the missing beads
+  connection block) are cleared on PR #1.
 
-   #### 🔑 Measured capability facts for 2a — do NOT re-probe these
+## Two UNDOCUMENTED birth-procedure steps, found the hard way
 
-   Established 2026-07-20 by direct probe; it took six of them, so they are
-   recorded rather than left to be rediscovered.
+Both belong in the repo-birth procedure; neither is written down anywhere else.
 
-   | Capability | Status |
-   |---|---|
-   | Create the GitHub repo | ✅ `gh` token carries `repo` + `workflow` |
-   | Run `wire-fleet-member` | ✅ under the wrapper: `GITHUB_APP_ID` (8B) and `GITHUB_PRIVATE_KEY` (1649B) both project |
-   | Reach fleet-conformance green **without a tenant** | ✅ `beads-tenant-connection-consistency` `RowSkip`s when `.beads/config.yaml` is absent — it checks CONSISTENCY if a tenant exists, not PRESENCE |
-   | Provision the beads tenant | ❌ **not from the livespec Environment** |
+1. **Set `CI_RUNNER_LABELS` to `["ubuntu-latest"]` on a new fleet repo.** The
+   shared `ci.yml` resolves
+   `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '"'"'["self-hosted","local-ci"]'"'"') }}`,
+   so with the variable unset a brand-new repo falls through to the fleet's
+   self-hosted pool, which does not serve it. **The first CI run failed 57/57 —
+   which was ONE problem, not fifty-seven.** The jobs were CANCELLED, not failed,
+   and GitHub surfaces that as failure, which reads like broken checks rather
+   than an unscheduled run. Every existing fleet repo sets this variable. One
+   variable took the run to 55 pass.
 
-   **The tenant blocker, precisely.** Under `with-livespec-env.sh` the ONLY
-   projected database credential is `BEADS_DOLT_PASSWORD`;
-   `DOLT_ADMIN_PASSWORD` / `DOLT_ROOT_PASSWORD` / `MYSQL_ROOT_PASSWORD` are all
-   **0 bytes — absent from that Environment entirely**. And the tenant user is
-   DB-scoped hard enough that `SHOW GRANTS FOR CURRENT_USER()` returns
-   `Access denied for user 'livespec'@'%' to database 'mysql'` — it cannot even
-   read its own grants, let alone `CREATE DATABASE` / `CREATE USER` / `GRANT`.
-   A tenant cannot mint another tenant; that is the isolation model working.
+2. **Declare `[tool.livespec_dev_tooling]` role trees explicitly EMPTY.**
+   Without the section the loader falls back to defaults naming CORE's layout
+   (`.claude-plugin/scripts/livespec` etc.), and
+   `check-source-trees-scoped-to-consumer` fails with six "not scoped to this
+   consumer" errors. Declare them EMPTY, not `["overseer"]`: declaring the tree
+   ACTIVATES the Result-railway checks, which is Gate E, whose entire hazard is
+   enforcement landing before adoption. Core itself holds all four keys empty.
 
-   **✅ WHERE THE ADMIN CREDENTIAL ACTUALLY LIVES (maintainer, 2026-07-20):**
-   the **1Password `homelab` Environment**, reachable **via the `vps-info`
-   repo**. That is the path a future session must use to create the Dolt DB, the
-   SQL user, and the DB-scoped grant. It is a DIFFERENT Environment from the
-   livespec one every fleet wrapper injects — which is exactly why the probes
-   above came back empty, and why "the credential is missing" would have been
-   the wrong conclusion.
+## Two REAL findings deferred on purpose — do not lose them
 
-   **⚠️ Do NOT hand the tenant password off through a `.env` file in `/tmp`.**
-   This was requested and deliberately not done. `/tmp` is `1777` and this
-   host's umask is `002`, so a file created there lands at mode **664 —
-   world-readable by every user and process on the box**, which is precisely
-   what the probe-only secret rule exists to prevent. If a file handoff is
-   needed at all, write it `umask 077` (mode 600) under `$HOME` and
-   `shred -u` it after import. But note it is usually unnecessary: whoever holds
-   the admin credential and creates the SQL user already knows the password, so
-   there is nothing to hand over. Generating a password for a user that does not
-   exist yet produces a credential that LOOKS real, imports cleanly, and then
-   fails `bd` with a confusing auth error — worse than no file at all.
-
-   **2b — move the folder (BLOCKED on `b1uo.3`).** The one genuine code blocker
-   is the positional path traversal in `_default_manifest` (`supervisor.py` —
-   cite the SYMBOL, not the line; re-measured at `:2688` on 2026-07-20 against
-   the `~:2686` written elsewhere on this page, which is why the symbol is the
-   citation and the number is not). See §"The ONE real coupling, and it is
-   shallow" for why it is shallow, and §"RELOCATION INVENTORY" for the 24
-   tracked entries that move and the seven core-side rows that must be DELETED
-   or core's `check-types` goes red.
-
-Do NOT start `b1uo.4` / `b1uo.5` (the Driver bindings) — they are BLOCKED and
-likely superseded by D7. An earlier version of this page told you to start at
-`b1uo.1` because "the two Driver bindings have nothing to bind to"; that framing
-predates D7 and is wrong.
+- **Two `reportPrivateUsage` errors** in the new repo (`overseer-start` reaching
+  `supervisor._build_supervisor`, and a cross-class `_do_launch`). They fire
+  there and NEVER in core on byte-identical code, because under core's dotted
+  `.claude/skills/overseer/` path pyright cannot resolve `import supervisor` and
+  so never learns the names are private. Demoted to warning with the reasoning
+  inline. Fixing them properly means a public entry-point surface for the two
+  executables — worth doing, as its own change with its own tests.
+- **Gate E is unchanged and still blocked** on the `rop-sweep-fleet-policy`
+  thread's `cvz`. Re-verified 2026-07-20: core's four role keys are still empty
+  tuples.
 
 # 🚨 URGENT, NOT OWNED BY THIS THREAD — the fleet Dolt backup has been DEAD for 11 days
 
@@ -352,48 +322,21 @@ noticed in the same log.
 Everything below is committed; the primary checkout was left clean on `master`
 with no worktrees outstanding. **Read this before re-deriving anything.**
 
-## What is ACTIONABLE right now (no decision required)
+## What is ACTIONABLE / BLOCKED — superseded, see §"START HERE"
 
-**UPDATED 2026-07-20 — this list is no longer empty.** The ratification that
-gated everything has landed (v171, commit `421388ff`), so the critical path is
-now open for the first time in this thread:
+**The tables that stood here described the pre-relocation world and are gone
+rather than left to mislead.** They said the critical path was "create
+livespec-overseer" and that `b1uo.3` was a pending maintainer decision. Both are
+DONE — see §"What was completed 2026-07-20/21".
 
-- ~~`livespec-dev-tooling`: add `control-plane-tool` to `REPO_CLASSES`~~ —
-  **✅ DONE 2026-07-20**, PR #502, released `v0.51.0`.
-- **CREATE THE `livespec-overseer` REPO** — both gating preconditions are now
-  satisfied, so this is the live critical path and it needs no further
-  maintainer decision. Read, in this order: §"WHERE THE NEW REPO'S BASELINE
-  COMES FROM" (copy `livespec-console-beads-fabro`; there is no copier
-  template), §"REGISTER-FIRST TRAP" (register-first is first *within* the birth
-  procedure), and §"RELOCATION INVENTORY" (the 26 entries that move and the
-  seven core-side rows that must be DELETED or core's `check-types` goes red).
+Current state in one line: **the only coding work left is seeding
+`SPECIFICATION/` in `livespec-overseer`**; everything else outstanding needs the
+maintainer (the GitHub App install, and relaunching the daemon from its new
+path).
 
-  **The one genuine code blocker is still `_default_manifest`'s positional
-  `parents[3]` traversal**, which is `b1uo.3`'s subject and the one piece gated
-  on a maintainer decision — so the repo can be created and wired BEFORE that
-  is settled, but the folder cannot fully move until it is.
-
-Still gated, unchanged: `b1uo.3` (a maintainer design call) and Gate E (another
-thread's `cvz`). Do NOT invent work beyond the item above.
-
-The pre-ratification text is kept for context: *"Honest answer: very little in
-this thread. The move is now specified end-to-end and the remaining steps are
-gated. Do NOT invent work — if this list is empty for you, say so and check
-§"Gate E" and the ledger instead. Nothing on the critical path; `b1uo.1`'s next
-step is the maintainer's ratification, and everything after it is ordered behind
-that (see §"REGISTER-FIRST TRAP")."*
-
-## What is BLOCKED, and on WHOM
-
-| Item | Blocked on | Note |
-|---|---|---|
-| ~~`control-plane-tool` proposal~~ | ~~maintainer~~ — **DISCHARGED 2026-07-20** | **RATIFIED as v171** (commit `421388ff`). Needed FOUR `resulting_files[]`, not the three promised — see §"Proposal RATIFIED as v171" for the fourth and why both reviews missed it |
-| ~~`livespec-dev-tooling` `REPO_CLASSES`~~ | **DISCHARGED 2026-07-20** | PR #502, released `v0.51.0`. Its "spec-backed, needs a propose-change cycle" instruction was WRONG — see §"START HERE" step 1 |
-| Create `livespec-overseer` | **nobody — this is the OPEN critical path** | Both preconditions met. Blocked only at the folder-move step, on `b1uo.3` |
-| `b1uo.3` (watch-set source) | **maintainer** — a design call | Recommendation recorded: a `$HOME` config beside the store/stamp sidecars. Do NOT add a `--watch-repos` CLI flag; that reverses a deliberate de-gold-plating |
-| `b1uo.2` close | **maintainer** — acceptance leg | Work is DONE and live-exercised; all three ACCEPTANCE clauses now met |
-| Gate E | **`rop-sweep-fleet-policy` thread** — its `cvz` | Re-verified 2026-07-20: all four role keys still empty tuples |
-| `b1uo.4` / `b1uo.5` | the home move | Likely superseded by D7 |
+`b1uo.2`'s ledger acceptance leg is still open — the work is done and
+live-exercised with all three ACCEPTANCE clauses met, so this is a status
+change, not work.
 
 ## Session-only state that would otherwise be LOST
 
