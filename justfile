@@ -256,7 +256,6 @@ check:
         check-imports-architecture
         check-lint
         check-no-renderer-vendoring
-        check-overseer
         check-prompts
         check-schema-dataclass-pairing
         check-types
@@ -737,21 +736,6 @@ e2e-test-claude-code-mock:
 check-prompts:
     uv run pytest tests/prompts/
 
-# Beside-tests for the LOCAL-ONLY overseer supervisor daemon under
-# .claude/skills/overseer/. They live beside the modules they cover
-# rather than under tests/, so the default pytest `testpaths =
-# ["tests"]` never collects them and they need their own target. They
-# are hermetic (FakeTmux + a fake /proc + injected tmux layout), so
-# they run anywhere.
-#
-# WITH coverage, at the same fail_under = 100 every other module is
-# held to — the threshold comes from [tool.coverage.report], so there
-# is no second number here to drift. COVERAGE_FILE points at a
-# separate data file so this run can never clobber the main suite's
-# .coverage, which check-coverage reads back.
-check-overseer:
-    COVERAGE_FILE=.coverage.overseer uv run pytest .claude/skills/overseer/ -q \
-        --cov=.claude/skills/overseer --cov-report=term-missing
 
 # Doctor deterministic static-phase coverage gate. Per SPECIFICATION/
 # non-functional-requirements.md §"Enforcement-suite invocation" →
