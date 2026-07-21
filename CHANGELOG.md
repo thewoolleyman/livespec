@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/thewoolleyman/livespec/compare/v0.19.0...v0.20.0) (2026-07-21)
+
+
+### Features
+
+* **overseer:** relocate the overseer to livespec-overseer (b1uo.1) ([f966448](https://github.com/thewoolleyman/livespec/commit/f96644817d733d688e3afbd2d072dec339f8227f))
+
 ## [0.19.0](https://github.com/thewoolleyman/livespec/compare/v0.18.4...v0.19.0) (2026-07-20)
 
 
