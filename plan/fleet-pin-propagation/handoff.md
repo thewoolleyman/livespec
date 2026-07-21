@@ -5,6 +5,53 @@
 
 ---
 
+## 🎯 THE THREAD'S FOUNDING PROBLEM IS SOLVED — measured 2026-07-21
+
+**The propagation stall this thread was opened to diagnose is cleared.** Both
+halves — the noise and the one genuine blockage — are resolved, and the fleet is
+propagating normally.
+
+| measure | at opening | now |
+|---|---|---|
+| fleet-wide open bump PRs | **43** | **1** |
+| repos carrying open bump PRs | 8 | **1** |
+| `livespec-console-beads-fabro` core pin | `v0.16.0`, ~12 releases behind | **`v0.19.0` — fully current** |
+| latest `livespec` release | — | `v0.19.0` |
+
+**The console — the one repo this thread identified as genuinely blocked, by a
+gate the fan-out structurally could not satisfy — is now current with zero gap.**
+Its pin moved `v0.16.0` → `v0.19.0` (landed `c858743`). PR #328 was CLOSED, not
+merged: superseded by a newer bump PR targeting the newer release. That is
+supersession category 2 working in production, i.e. `livespec-dev-tooling-5o6ssu`'s
+automation doing exactly what it was built for.
+
+**The one remaining open bump PR is normal operation, not residue:** livespec
+core #1581, opened 2026-07-21, bumping dev-tooling to `v0.51.3`. A fresh PR for a
+fresh release is what a healthy fan-out looks like.
+
+**Chain of unblocks, for the record.** The console's blockage had three layers,
+each hiding the next, and all three are now cleared:
+
+1. The captured-manifest completeness gate — fixed by the re-key `f5fa99f`.
+2. PR #328 was red anyway because its branch PREDATED that fix (stale-branch
+   trap). Resolved by supersession rather than by refreshing it.
+3. `check-e2e-tmux` was red on master — a REQUIRED check blocking every PR in the
+   repo regardless — fixed by `e4afef40`, which flipped master CI
+   `failure` → `success`. That fix came from correcting my own wrong diagnosis
+   (see §"THE CONSOLE MASTER RED" below); the real cause was an unexpanded shell
+   variable in a test fixture.
+
+Layer 3 is the one worth remembering: the pin bump could not have landed even
+after layers 1 and 2 cleared, because an unrelated red required-check gated the
+whole repo. **A propagation stall's last mile can be a gate that has nothing to
+do with pins.**
+
+Everything below remains accurate as history and as the record of what is still
+open (the maintainer-gated items, the 233-entry heading-coverage backfill, and
+the Driver defects). The thread's own subject is done.
+
+---
+
 ## 🟢 START HERE — definitive resume state, 2026-07-20 (second session close)
 
 Everything below this section is history and reasoning. This section is the
