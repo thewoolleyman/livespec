@@ -402,7 +402,16 @@ operator's corrections and not the supervisor's is not an honest record.
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
 
-## 🔴 P0 — `livespec-dh9r`: fleet propagation. RESTORED, but the fan-out is STILL BROKEN
+## ✅ P0 — `livespec-dh9r`: fleet propagation. RESOLVED AND VERIFIED END-TO-END
+
+> **Status as of 2026-07-21:** the fan-out is FIXED, not merely replayed. The
+> maintainer's App install on `livespec-overseer` landed and the next release
+> (v0.20.1) propagated to all seven consumers unattended — see
+> §"RESOLVED — the App install landed" below for the run and the arbiter output.
+> **`livespec-dh9r` and `livespec-cbmw` are both dischargeable and remain open in
+> the ledger only because the 1Password quota was exhausted; closing them is a
+> clean first action for whoever has quota next.** The narrative below is retained
+> because its diagnosis and its three follow-up defects are still live.
 
 **This is the newest block and outranks everything below it.** The fleet is
 current; the fault is not fixed.
@@ -441,21 +450,55 @@ Verified by the OUTCOME test, not by runs reporting success:
     BEFORE   all 7 consumers pinned v0.19.0, 0 open bump PRs
     AFTER    all 7 consumers pinned v0.20.0, 0 open pin PRs
 
-### 🔴 STILL OPEN — the next release stalls identically
+### ✅ RESOLVED — the App install landed and the fan-out is FIXED END-TO-END
 
-The fleet GitHub App still does not cover `livespec-overseer`. This was a MANUAL
-REPLAY of one release's fan-out, not a fix.
+**Superseded 2026-07-21. The block below previously read "STILL OPEN — the next
+release stalls identically". That is no longer true.** The maintainer completed
+the App installation on `livespec-overseer` (the escalated, maintainer-only step),
+and the very next release exercised the repaired path unattended.
 
-**The remaining step is MAINTAINER-ONLY and no tooling can close it:** adding a
-repo to a GitHub App installation requires a user-to-server token authorized to
-that App; an App token structurally cannot do it. `wire-fleet-member` now exits
-`0` with the repo "fully wired" — only the `app-installation` row remains.
-Tracked as `livespec-cbmw`; `livespec-dh9r` stays open behind it.
+**Proof, from the v0.20.1 fan-out (run `29814729538`):**
 
-Do NOT run `mint_app_token.py` to work around this. It writes a live credential
-to stdout by contract — the `bd-ib-9p4i` hazard, which has already forced one
-real rotation in this fleet — and it would not help anyway, since an App cannot
-add repos to its own installation.
+    success   dispatch / fleet-conformance preflight (blocking)   <- was RED at v0.20.0
+    success   dispatch / discover-siblings
+    success   dispatch × 8 siblings, INCLUDING livespec-overseer
+
+The preflight that skipped every dispatch at v0.20.0 now passes, and
+`livespec-overseer` appears in the sibling set as a full member rather than as the
+member that blocked everyone.
+
+**Confirmed by OUTCOME, not by the run's green** — the `livespec-bmxs` arbiter
+(above) run against a real release for the first time:
+
+    consumers adrift: 7/7 → 6/7 → 3/7 → 1/7 → 0/7
+    all seven consumers at v0.20.1
+
+This was NOT a manual replay. v0.20.0 was hand-replayed; v0.20.1 propagated on its
+own. **`livespec-cbmw` is complete and `livespec-dh9r`'s blocker is cleared.**
+Neither was closed in the ledger, because the 1Password quota was exhausted at the
+time (see the operational note above) — **closing both is a clean first action for
+whoever has quota next**, with this run and this arbiter output as the evidence.
+
+Still true, and worth keeping: **do NOT run `mint_app_token.py`** to work around an
+App-permissions gap. It writes a live credential to stdout by contract — the
+`bd-ib-9p4i` hazard, which has already forced one real rotation in this fleet — and
+it would not have helped anyway, since an App cannot add repos to its own
+installation.
+
+### ⚠ HOW THIS GOT EXERCISED — a commit-type mistake worth not repeating
+
+The v0.20.1 release existed only because a **comment-only** change was committed as
+`fix:`. `fix:`/`feat:` cut a release; `docs:`/`chore:` do not. So a documentation
+correction fanned out to the entire fleet.
+
+**Generalize this:** in a self-consuming fleet, the conventional-commit type is not
+cosmetic — it decides whether every sibling repo gets a bump PR. Pick `docs:` or
+`chore:` for comment/doc-only changes unless a release is actually wanted.
+
+The accident was benign here, and in fact useful: it produced the unattended
+end-to-end proof above. It would NOT have been benign a few hours earlier, when the
+preflight was still red — it would have re-stalled all seven consumers and required
+a second hand-replay.
 
 ### Follow-ups filed — independent of the App install
 
