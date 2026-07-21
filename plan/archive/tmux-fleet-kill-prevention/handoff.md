@@ -204,7 +204,7 @@ CLOSED, exactly as designed. The note was re-routed through a file.
 
 **Appended, not rewritten.** Everything above stands as the record of what was
 believed and done at the time. This addendum records what was learned afterwards.
-It was written by [`plan/tmux-fleet-visibility/`](../../tmux-fleet-visibility/handoff.md)
+It was written by [`plan/archive/tmux-fleet-visibility/`](../tmux-fleet-visibility/handoff.md)
 (ledger epic `livespec-l4g7wi`), which **supersedes the L1 environment-inversion
 layer of this epic** on evidence that post-dates it. The L2 command guards, L3's
 explicit per-invocation socket scoping, and the console AST check all STAND — L2 is
