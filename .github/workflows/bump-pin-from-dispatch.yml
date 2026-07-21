@@ -5,9 +5,15 @@
 #
 # On every `repository_dispatch` event of type `sibling-released`,
 # this shim delegates to the upstream reusable workflow which:
-#   - runs pin-autodiscovery for the source_repo against this repo's
-#     four pin formats (.livespec.jsonc compat.pinned, pyproject.toml
-#     [tool.uv.sources], .vendor.jsonc, .copier-answers.yml _commit),
+#   - runs pin-autodiscovery for the source_repo against every pin
+#     format this repo carries — livespec_jsonc_compat_pinned,
+#     pyproject_toml_uv_sources, vendor_jsonc, github_workflow_uses_ref,
+#     fabro_sandbox_docker_image, codex_acp_docker_arg,
+#   NOTE: `.copier-answers.yml` `_commit` is DELIBERATELY NOT a pin
+#     format. It is copier render-provenance, not a version pin, and
+#     rewriting it would desync the provenance marker and poison future
+#     `copier update`s. See pin_autodiscovery.py, which says so
+#     explicitly. Do not "fix" copier-answers drift by bumping it here.
 #   - rewrites every matching pin to the new tag,
 #   - runs `just check` to verify the consumer's checks still pass,
 #   - commits with the `chore(deps):` convention (excluded from

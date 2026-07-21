@@ -284,10 +284,40 @@ credential-free, so it can run in any context including one where the ledger is
 throttled or the App token is missing.
 
 **Known limitation, stated so nobody trusts it further than it goes:** it checks
-only `.livespec.jsonc compat.pinned`. The bump path rewrites FOUR pin formats
-(`compat.pinned`, `pyproject.toml [tool.uv.sources]`, `.vendor.jsonc`,
-`.copier-answers.yml _commit`), so a consumer could be current on this pin and
-adrift on another. Widen it before treating it as a complete propagation gate.
+only `.livespec.jsonc compat.pinned`, so a consumer could be current on this pin
+and adrift on another. Widen it before treating it as a complete propagation gate.
+
+**⚠ CORRECTION — the "four pin formats" figure above was WRONG, and it came from
+a comment that is wrong fleet-wide.** The authoritative list is in
+`livespec-dev-tooling`'s `cross_repo/` and has **SIX**:
+
+    livespec_jsonc_compat_pinned      pyproject_toml_uv_sources
+    vendor_jsonc                      github_workflow_uses_ref
+    fabro_sandbox_docker_image        codex_acp_docker_arg
+
+And **`.copier-answers.yml _commit` is DELIBERATELY NOT a pin format** —
+`pin_autodiscovery.py` says so in as many words: *"it is copier
+render-provenance, not a version pin, so rewriting it would desync the
+render-provenance marker and poison future `copier update`s."*
+
+The wrong figure was read off `bump-pin-from-dispatch.yml`'s own header comment,
+which lists four formats INCLUDING copier-answers — i.e. the generated workflow's
+documentation contradicts the implementation, and does so in the dangerous
+direction: it implies `_commit` SHOULD be rewritten, which the code warns poisons
+future updates. Because the comment is copier-templated it was wrong in **every**
+consumer carrying it (verified present in `livespec-orchestrator-beads-fabro`,
+`livespec-orchestrator-git-jsonl`, `livespec-driver-claude`, and `livespec` core
+itself).
+
+Fixed at the template (`templates/orchestrator-plugin/.github/workflows/bump-pin-from-dispatch.yml.jinja`)
+and in core's own generated copy. **The other three repos still carry the stale
+comment** and pick the fix up at their next copier re-sync — no root-workflow
+change is forced on them, so nothing here touches the `bd-ib-nga9` boundary.
+
+**This is lesson 14 again, one level up:** the figure was taken from a
+convenient nearby document rather than from the thing that produces the
+behaviour. The arbiter for "how many pin formats are there" is
+`grep -hE '^_PIN_FORMAT_[A-Z_]+ *= *' livespec_dev_tooling/cross_repo/*.py`.
 
 ### ⚠ OPERATIONAL — the 1Password service-account quota is SHARED and DAILY
 
