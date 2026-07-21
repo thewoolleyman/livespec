@@ -49,18 +49,44 @@ env var to having NO effect).
   livespec-dev-tooling) is the durable guard — prefer adding one when
   removing any rejected escape mechanism.
 
-## The fleet App's missing `workflows` permission is a deliberate boundary
+## The `workflows` grant withheld from the DISPATCH CREDENTIAL is a deliberate boundary
 
-The fleet GitHub App (`livespec-pr-bot`) deliberately does NOT hold the
-`workflows` permission, so GitHub refuses any App-token push whose
-branch history creates or updates a file under `.github/workflows/`.
+The boundary lives at the **dispatch credential**, NOT at the App
+installation. Get this distinction right before acting on a push
+rejection, because the two levels behave differently and only one of
+them is the boundary:
+
+- The **factory sandbox's dispatch credential** deliberately does NOT
+  carry the `workflows` read-write grant, so GitHub refuses a
+  sandbox-token push whose branch history creates or updates a file
+  under `.github/workflows/`. THIS is the boundary (maintainer
+  decision, 2026-07-04, when a factory run for `livespec-c1k9.3` was
+  push-rejected for exactly this).
+- The **fan-out** legitimately DOES push `.github/workflows/` changes
+  and is expected to. Its bump PRs rewrite `uses: …@<tag>` pin refs in
+  every consumer's workflow files — e.g. `livespec-runtime` PR #293
+  (author `app/livespec-pr-bot`) updated four files under
+  `.github/workflows/`. That is a deterministic pin-string rewrite, not
+  an open-ended agent, and it is why the two credentials are scoped
+  differently.
+
+So a `.github/workflows/` push succeeding is NOT evidence the boundary
+has been weakened — check WHICH credential pushed it.
+
 This is the same boundary as the gates above, one layer down: workflow
 files ARE the CI gate definitions, and an agent-pushed branch must
-never be able to modify them (maintainer decision, 2026-07-04, when a
-factory run for `livespec-c1k9.3` was push-rejected for exactly this).
+never be able to modify them.
 
-- NEVER request, grant, or work around the `workflows` permission for
-  the App; the rejection is the boundary working.
+**Do NOT restate this as an App-installation requirement.** The ratified
+contract is explicit that the grant must be surfaced as one withheld
+from the dispatch credential "never as an App-installation requirement
+to be granted" — see `livespec-orchestrator-beads-fabro`
+`SPECIFICATION/contracts.md` §"Self-contained plugin dispatch" (accepted
+v045) and `constraints.md` §"Factory sandbox credential constraints".
+An earlier revision of this section carried that retired framing.
+
+- NEVER request, grant, or work around the `workflows` grant for the
+  DISPATCH CREDENTIAL; the rejection is the boundary working.
 - Factory-dispatched work-items must not include `.github/workflows/`
   edits in their branch. When an implementation legitimately needs a
   workflow change, CARVE IT OUT: the agent branch restores the workflow
