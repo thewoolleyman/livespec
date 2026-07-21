@@ -98,6 +98,45 @@ minutes.** Re-measure before acting on any P0 text, including this section.
 | Corrected diagnosis + stale-claim correction | `livespec-dh9r`, `livespec-cbmw`, `livespec-dev-tooling-6ge` |
 | Two P1 defects found in the propagation SAFETY NET (below) | `livespec-oq9w`, `livespec-dev-tooling-bmf` |
 | Both safety-net defects FIXED, merged, and live-verified | dev-tooling PRs #526, #529, #533 |
+| A retired posture surviving in agent guidance, FIXED | livespec PR #1635 (`livespec-kkwy`) |
+
+### ⚠ A RATIFICATION'S DRIFT SWEEP DOES NOT REACH SIBLING AGENT GUIDANCE
+
+**Carry this into the drift-sweep step of any future cross-repo ratification.**
+
+`.ai/ci-gate-discipline.md` — a file agents are DIRECTED to read before touching
+any gate — asserted that the fleet App "deliberately does NOT hold the
+`workflows` permission, so GitHub refuses any App-token push" touching
+`.github/workflows/`.
+
+**Falsified by measurement:** `livespec-runtime` PR #293, author
+`app/livespec-pr-bot`, merged, modified FOUR files under `.github/workflows/`.
+That is the routine fan-out path — it is how every consumer's `uses@` refs moved
+to v0.51.7.
+
+**And it was worse than a stale fact: it used the framing the ratified contract
+forbids.** `livespec-orchestrator-beads-fabro` `contracts.md` (v045) requires the
+grant be surfaced as withheld from the DISPATCH CREDENTIAL, "never as an
+App-installation requirement to be granted". The boundary is per-credential; the
+doc attributed it to the App installation.
+
+**Why it survived, and this is the transferable part.** The v045 ratification
+removed THREE instances of that retired posture — from the orchestrator's own
+SPEC TREE. Agent-guidance files (`AGENTS.md`, `.ai/*.md`) in OTHER repos that
+restate the same posture were outside that sweep's scope, so a fourth copy one
+repo over rotted silently for 17 days. That is the latent defect class
+`.ai/spec-proposal-review.md` names: a negative assertion about a sibling-owned
+surface that rots without notice.
+
+**Blast radius bounded:** swept `AGENTS.md` + every `.ai/*.md` in livespec core
+and in dev-tooling, orchestrator-beads-fabro, driver-claude, runtime and
+console-beads-fabro. **No other copy exists.** A single stale instance, not a
+pattern — but only because nobody happened to copy it further.
+
+Fixed in livespec PR #1635; boundary substance unchanged. The corrected text adds
+the diagnostic rule this defect needed: **a `.github/workflows/` push succeeding
+is NOT evidence the boundary has been weakened — check WHICH credential pushed
+it.**
 
 ### ✅ THE SAFETY NET IS NOW REPAIRED — supersedes the 🔴 section below
 
