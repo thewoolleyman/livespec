@@ -451,6 +451,80 @@ locally — evaluates fine in CI. **No single vantage would have caught this**, 
 is precisely why the four defects behind `b02` stayed hidden. The exit code is
 deliberately unchanged; `blind_rows` is reported separately from `error_findings`.
 
+### 🚨 LIVE: `livespec-dev-tooling` master is RED — a cross-repo manifest change did it
+
+**Status at cont.14 close: awaiting a maintainer action.** Every PR in
+`livespec-dev-tooling` is unmergeable, including `ahg` step 3
+([PR #521](https://github.com/thewoolleyman/livespec-dev-tooling/pull/521), complete
+and auto-merge armed).
+
+**Cause — no code change in `livespec-dev-tooling` at all.** Another session's `b1uo`
+epic registered `livespec-overseer` in `thewoolleyman/livespec`'s
+`.livespec-fleet-manifest.jsonc` (commit `f966448`, 00:32 UTC) — 22 minutes after
+dev-tooling's last green run. **The manifest is fetched LIVE by the sweep**, so a
+commit in `livespec` reddened `livespec-dev-tooling` remotely. Proved by re-running
+master CI on the *identical* commit that was green at 00:10: it now fails with a
+byte-identical signature.
+
+**This is a standing hazard worth internalizing:** any manifest edit in `livespec`
+can redden every repo whose sweep reads it, with no commit in the affected repo. A
+green run does not stay green.
+
+**Only ONE of the three errors is real.** Read with an admin token,
+`livespec-overseer` is configured exactly as required — `allow_merge_commit:false`,
+`allow_squash_merge:false`, `allow_rebase_merge:true`, `allow_auto_merge:true`,
+`delete_branch_on_merge:true`, default branch `master`. The genuine finding is
+`app-installation`: the fleet GitHub App is not installed on it.
+
+**FIX (maintainer, ~1 min, decided 2026-07-21):** install the fleet App
+`livespec-pr-bot` on `thewoolleyman/livespec-overseer` via
+<https://github.com/settings/installations> → Configure → Repository access. That
+clears all three at once — the true one directly, the two false ones because they
+become readable and are already correct. Fix-forward was chosen over reverting the
+registration, which is otherwise entirely correct.
+
+### 🔁 `livespec-dev-tooling-6rs` (P1, NEW) — the same class, INVERTED
+
+The two false errors are a real defect. `assert_merge_settings` guards only a
+*total* API failure:
+
+```python
+if not isinstance(payload, dict):
+    return RowSkip(...)
+```
+
+An App token with partial access does **not** fail — GitHub returns a dict that
+**omits the admin-only keys**. `settings.get(key)` yields `None`, `None != want`, and
+the row emits a definitive `RowFinding`: *"allow_merge_commit is None, must be
+False"*. `assert_delete_branch_on_merge` has the same shape.
+
+**Unreadable misreported as definitely-wrong.** Same root confusion as `7vj`, `ahg`
+and `b02` — but inverted: those let unreadable state pass silently; this makes it
+fail loudly and falsely. `b02` fixed the aggregate reporting; **this is the same bug
+one level down, inside individual rows.** Fixing it does NOT clear the current red
+(`app-installation` is genuinely true), but it stops any un-installed repo
+manufacturing two phantom errors.
+
+### ✅ `ahg` step 3 — DONE, verified outcome-neutral, awaiting the red to clear
+
+Routed the branch-protection path through `canonical_ref` and fixed three
+user-facing strings that hardcoded "master". Verified by running the gate on
+unmodified `master` and on the branch: identical (exit 0, 0 error findings,
+`blind_rows: 1`). **No member's outcome changed**, as predicted.
+
+Worktree deliberately KEPT pending merge:
+`~/.worktrees/livespec-dev-tooling/fix-ahg-step3-canonical-ref-protection`.
+
+### 🔎 Three more sites of the hardcoded-`master` class (logged, unfiled)
+
+Found while fixing step 3, none covered by `n5s` or `453`:
+
+- `checks/branch_protection_alignment.py:217` — a READ path.
+- `fleet/_reconcile.py:245` and `:320` — the **WRITE** path
+  (`reconcile_branch_protection`, and the shim-PR base branch). **Sharper than a read
+  defect**: on a non-`master` repo this would write protection to a non-existent
+  branch, or open a PR against the wrong base.
+
 ### ▶ DO THIS NEXT — `ahg` step 2, which unlocks the escalation
 
 `ahg` step 2 is now the highest-value item, because it is the gate on a recorded
