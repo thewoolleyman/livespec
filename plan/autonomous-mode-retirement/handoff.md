@@ -414,14 +414,58 @@ thing stopping an epic or a non-autonomously-verifiable item reaching a sandbox.
 Route through `apply_intake_dor`, or run the capture front-end, or fix
 `livespec-h95t` first.
 
-**Two of the six gates are genuinely unmet on these slices**, so this is not
-merely a plumbing problem — the items need real edits before they would pass:
-`autonomy_tiered` (none of the three carries an explicit autonomy tier — compare
-`bd-ib-lmi5`, which self-declared "Autonomy: FACTORY"), and `dependency_linked`
-for slice 2, whose dependency on slice 1 exists only in PROSE and is not a linked
-edge. Note the two are in DIFFERENT TENANTS (`bd-ib-qrth` in the orchestrator,
-`livespec-runtime-jo9` in the runtime), so a `bd dep` edge may not span them —
-establish how cross-tenant dependency edges are expressed before assuming.
+**⚠ MEASURED SCALE — this is not a three-item problem.** Counted across six
+tenants: **215 backlog items against 6 ready**, a 36:1 ratio, and FOUR OF SIX
+TENANTS HAVE ZERO READY ITEMS. The dark factory currently has dispatchable work
+in `livespec` (3–4) and `livespec-dev-tooling` (2), and nowhere else.
+
+That does NOT mean 215 items were silently lost — `backlog` is also the intake
+gate's CORRECT routing for an epic awaiting decomposition. **The ambiguity is the
+finding:** a deliberately-parked epic and an item filed through the wrong door
+that will never move are indistinguishable — same status, same absence from every
+surface. At 215, that distinction cannot be recovered by reading. Surfacing
+un-triaged backlog in `needs-attention` therefore needs to be paired with a
+triage marker, or it produces noise and gets turned off.
+
+**The gate work has since been done — here is the per-slice verdict.** Autonomy
+tiers are now recorded on all three (they were the missing `autonomy_tiered`
+gate), and each slice was evaluated honestly against the six gates rather than
+tiered upward to make it dispatchable:
+
+| Slice | Tier | Intake verdict | Why |
+|---|---|---|---|
+| `livespec-runtime-jo9` | **FACTORY** | clears all six → dispatchable | acceptance is mechanical: the field exists and is tested, a legacy record round-trips to `None`, `just check` green |
+| `bd-ib-qrth` | **FACTORY** | needs its dep edge recorded first | see below — correctly must NOT dispatch before jo9 lands |
+| `livespec-rbpl` | **NEEDS-HUMAN (partial)** | routes to `blocked` | its convention half (how a review requirement should be *worded*) is a judgement call a factory cannot verify |
+
+**So only slice 1 is actually dispatchable today.** That is the corrected picture;
+the earlier "all three DISPATCHABLE" reading was wrong.
+
+**Recommended for `livespec-rbpl`: SPLIT IT.** The mechanical half (a check that
+flags an item asserting a review requirement while naming no real lever) is
+factory-safe on its own; the wording decision stays with a human. Same reasoning
+that produced slices 1–3, and it stops the mechanical half being held hostage to
+a phrasing call.
+
+**Cross-tenant dependency edges ARE expressible — an earlier hedge here is
+resolved.** The shape already exists and is produced by the groom path
+(`groom.py:263`):
+
+    {"kind": "sibling_work_item", "repo": "livespec-runtime", "work_item_id": "livespec-runtime-jo9"}
+
+`DependsOnRaw = str | dict[str, Any]`, so the dict is open and `kind` is the
+discriminator. Record that edge on `bd-ib-qrth` and it clears all six gates —
+routing to `pending-approval`, NOT `ready`, because the intake primitive
+deliberately keeps an item with dependency edges out of direct ready routing.
+That is precisely the wanted behaviour: it must not dispatch before the runtime
+field exists and is pinned.
+
+**Caveat before relying on it:** `_store_mutations.py:322` branches on
+`raw.get("kind") != "local"`, and `dev-tooling/checks/work_item_merge_evidence.py:163`
+notes non-local kinds are handled differently. Confirm how a `sibling_work_item`
+edge PERSISTS through the beads label round-trip and whether the dependency lane
+consults it — the shape existing in `groom.py` proves expressibility, not that
+every consumer honours it.
 
 **Order: 2 depends on 1** — land slice 1, tag a `livespec-runtime` release, pin it,
 then slice 2. Slice 3 is independent and can go in parallel.
