@@ -239,46 +239,78 @@ BRANCH REFRESH, not a gate fix.** Refresh #328 (or let the fan-out open a fresh
 bump PR) and re-read. Do not re-derive the completeness gate. **But it cannot
 merge yet** — see the console master red immediately below.
 
-### ⚠ THE CONSOLE MASTER RED IS DIAGNOSED — the behavior question is ANSWERED
+### ⚠ THE CONSOLE MASTER RED — CAUSE FOUND, and my first diagnosis was WRONG
 
-`livespec-console-beads-fabro-1s1` was filed with its behavior question
-deliberately left open ("resolve which semantics are correct before editing
-either side"). **It is now answered by reading the code: the TEST is stale, and
-the fix was deliberate.** Full mechanism journaled on the item; a fix is
-dispatched.
+**An earlier revision of this section gave a confident mechanism that was
+incorrect. It has been replaced. The correction is journaled on
+`livespec-console-beads-fabro-1s1`; read the LATEST comment there, not the one
+headed "BEHAVIOR QUESTION RESOLVED".**
 
-`3c0496d4` scoped `ingest_needs_attention`'s `prior` set to the ingesting repo.
-`prior` is what an incoming snapshot is diffed against — anything in it but
-absent from the snapshot gets resolved. Before, that set was EVERY attention item
-regardless of origin, so ingesting repo A silently retired items belonging to
-anything else.
+**The wrong claim:** that the persisting row was a journal-backed escalation
+(`valve:set-admission:...`) made immune by the product's
+`AttentionSourceRef::new("orchestrator-journal", ...)` sentinel. FALSE for this
+test — the tmux harness has NO journal or escalation source at all, and there is
+no `set-admission` row anywhere in it. I read the product escalation path and
+asserted it was the path this test exercises, without checking that it is.
 
-**The decisive detail:** `autonomous_escalation_attention_item` builds its source
-ref as `AttentionSourceRef::new("orchestrator-journal", ...)` — the repo field is
-a LITERAL SENTINEL STRING, not a repo name. So the filter never matches for any
-real repo, and a journal escalation can never be resolved by ANY needs-attention
-ingest. It clears only through its own valve. That is the intended invariant: an
-operator-owed decision must not be swept away by an unrelated repo's routine
-snapshot.
+The disproof was already inside the evidence quoted in this very file: the
+captured failure frame shows `Repo: $LIVESPEC_CONSOLE_REPO` — an UNEXPANDED
+SHELL VARIABLE — beside an `approve:` action, not `set-admission:`. Both were
+read past.
 
-So the walkthrough's `attention: 0` assertion was **passing for the wrong
-reason** — it depended on the collateral sweep that WAS the bug. The fix could
-not help but fail it. Corroboration: the same commit renamed `scenario_15`'s test
-from `..._leaves_escalations` to `..._surfaces_escalations`, so the author knew
-escalations now persist and updated ONE of the two tests encoding the old
-expectation. The tmux walkthrough was missed — which is why 7 of 8 tmux tests
-still pass.
+**The actual cause is a TEST-FIXTURE bug, not a product one.** In
+`crates/console-cli/tests/support/lifecycle.rs`, the needs-attention stub builds
+its JSON with a SINGLE-QUOTED `printf` format and places
+`\"repo\":\"$LIVESPEC_CONSOLE_REPO\"` inside it. Bash does not expand inside
+single quotes, so the emitted JSON carries the LITERAL string (the harness does
+export that variable — expansion was plainly intended). The same `printf` builds
+the id as `valve:%s:` from the verb, so the row is `valve:approve:`, never
+`set-admission:`. Ingest records the snapshot verbatim, so the item APPEARS
+(appearance is unfiltered) but its recorded repo matches no real repo — so after
+`3c0496d4` repo-scoped the RESOLUTION, it can never be resolved and the
+`attention: 0` wait times out.
 
-**Do NOT "fix" this by reverting the repo filter or special-casing
-`orchestrator-journal` back into `prior`** — either restores the cross-repo
-collateral sweep the commit exists to remove. And do not skip or `#[ignore]` the
-walkthrough: it is the only e2e covering the full approve lifecycle across two
-repos.
+**The prescribed fix was therefore unimplementable:** there is no
+`set-admission` row to drive, and driving one would not resolve the stuck
+`approve` row. Following it would have meant ADDING an escalation source to the
+fixture — a far larger change duplicating coverage `scenario_15` already owns —
+while leaving the real bug buried.
 
-**Residual logged, not fixed:** that source-ref repo field is overloaded —
-sometimes a repo name, sometimes an origin kind. It works here, but any future
-code comparing `source_ref().repo()` against a repo list inherits the same silent
-non-match. Worth a typed distinction; out of scope for that item.
+**What survives, and it is not nothing:**
+
+- `3c0496d4`'s repo-scoping of `prior` is correct and MUST NOT be reverted.
+- The walkthrough's `attention: 0` was passing for the WRONG REASON, via the
+  unscoped collateral sweep that was the bug.
+- Do not skip or `#[ignore]` the walkthrough.
+- **The SHAPE of the diagnosis was right and is now STRONGER.** A non-repo
+  literal in `source_ref.repo` is silently immune to repo-scoped resolution; the
+  error was attaching it to the wrong instance. The residual noted below now has
+  a SECOND independent instance, so the overloading is a real root cause that has
+  bitten twice — once in the product sentinel, once in the fixture.
+
+**The fix being landed** (test-side only, no `lib.rs` change): expand the
+variable via `%s` so `source_ref.repo` carries the real ingesting repo, plus a
+doc comment recording the repo-scoped-resolution invariant. Every existing
+assertion stays byte-identical, so the walkthrough proves the genuine
+repo-matched drain rather than the sweep. Verified before landing: red
+reproduced on `origin/master`, then `check-e2e-tmux` 8 passed / 0 failed and
+full `just check` exit 0.
+
+**Residual, unchanged and now better evidenced:** the `source_ref` repo field is
+overloaded — sometimes a repo name, sometimes an origin kind, sometimes (in the
+fixture) an unexpanded literal. Any future code comparing `source_ref().repo()`
+against a repo list inherits the same silent non-match. Worth a typed
+distinction.
+
+**METHOD LESSON, carried because it cost a dispatch cycle.** The prior section
+was marked "ANSWERED" and "decisive" on the strength of a plausible code path,
+without checking whether the failing test reaches that path — while the
+contradicting evidence sat in the frame already pasted into this file.
+Confidence language is not verification. It was caught only because the
+dispatched agent was briefed to HALT rather than proceed if its analysis
+contradicted the brief, and it did exactly that. **Keep that instruction in
+every dispatch brief**; here it converted a wrong prescription into a correct
+one-hunk fix instead of a large wrong test change.
 
 ### ⚠ ORIGINAL FILING: the console's master CI is RED — filed P1
 
