@@ -236,39 +236,85 @@ For the last two, an executable arbiter costs the very quota it is meant to make
 cheap. Attach one anyway if a credential-free formulation is found; do not force
 one that is not.
 
-### The `livespec-bmxs` arbiter, WRITTEN OUT AND VERIFIED
+### The `livespec-bmxs` arbiter — USE v2. v1 IS KNOWN-FALSE; DO NOT COPY IT.
 
-An arbiter that has not been run is exactly the narrative claim this section
-warns about, so here is the fleet-propagation one as an actual command, executed
-2026-07-21. It needs **no credential wrapper** — `gh` only — so it works while the
-ledger is rate-limited.
+> **⚠ An earlier revision of this file published a v1 that hardcoded SEVEN
+> consumer repos. It produced a FALSE HEALTHY VERDICT in front of two operators
+> and is deleted rather than kept for comparison, so nobody copy-pastes it.** The
+> A/B is preserved below because it is the evidence, not the tool.
+
+`gh` only — **no credential wrapper**, so it works while the ledger is
+rate-limited. **Member list DERIVED from the fleet manifest**, which is the whole
+correction: a hardcoded list cannot fail when a member is added.
 
 ```bash
+#!/bin/bash
+set -uo pipefail
 latest=$(gh release view --repo thewoolleyman/livespec --json tagName -q .tagName)
-drift=0
-for r in livespec-orchestrator-beads-fabro livespec-console-beads-fabro \
-         livespec-dev-tooling livespec-runtime livespec-driver-claude \
-         livespec-orchestrator-git-jsonl livespec-driver-codex; do
-  pin=$(gh api repos/thewoolleyman/$r/contents/.livespec.jsonc --jq '.content' \
-        | base64 -d | grep -oE '"pinned": *"v[0-9.]+"' | head -1 | grep -oE 'v[0-9.]+')
-  [ "$pin" = "$latest" ] && st=OK || { st=DRIFT; drift=$((drift+1)); }
-  printf '  %-36s %-9s %s\n' "$r" "$pin" "$st"
-done
-[ "$drift" -eq 0 ] && echo "propagation healthy" || echo "propagation STALLED"
+echo "core latest release: $latest"
+adrift=0; total=0
+while IFS= read -r r; do
+  [ -z "$r" ] && continue
+  total=$((total + 1))
+  pin=$(gh api "repos/thewoolleyman/$r/contents/.livespec.jsonc" --jq '.content' 2>/dev/null \
+        | base64 -d 2>/dev/null \
+        | grep -oE '"pinned"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 \
+        | sed 's/.*"pinned"[[:space:]]*:[[:space:]]*"//; s/"$//')
+  case "$pin" in
+    "$latest") st="OK" ;;
+    "")        st="ADRIFT (pin unreadable)"; adrift=$((adrift + 1)) ;;
+    master)    st="ADRIFT (bootstrap placeholder — first fan-out never landed)"
+               adrift=$((adrift + 1)) ;;
+    *)         st="ADRIFT (stale)"; adrift=$((adrift + 1)) ;;
+  esac
+  printf '  %-36s %-10s %s\n' "$r" "$pin" "$st"
+done < <(git -C /data/projects/livespec show origin/master:.livespec-fleet-manifest.jsonc \
+         | sed -n '/"fleet"/,/"adopters"/p' \
+         | grep -oE '"repo"[[:space:]]*:[[:space:]]*"[^"]+"' \
+         | sed 's/.*"repo"[[:space:]]*:[[:space:]]*"//; s/"$//' \
+         | grep -v '^livespec$')
+echo "adrift: $adrift/$total"
+[ "$adrift" -eq 0 ] && { echo "VERDICT: propagation healthy"; exit 0; }
+echo "VERDICT: propagation INCOMPLETE"; exit 1
 ```
 
-Verified output (all seven current at core's latest release):
+**Verified output, 2026-07-21 — it correctly catches the member v1 missed:**
 
-    core latest release: v0.20.0
-      livespec-orchestrator-beads-fabro    v0.20.0   OK
-      livespec-console-beads-fabro         v0.20.0   OK
-      livespec-dev-tooling                 v0.20.0   OK
-      livespec-runtime                     v0.20.0   OK
-      livespec-driver-claude               v0.20.0   OK
-      livespec-orchestrator-git-jsonl      v0.20.0   OK
-      livespec-driver-codex                v0.20.0   OK
-    consumers adrift: 0/7
-    ARBITER VERDICT: propagation healthy
+    core latest release: v0.20.1
+      livespec-dev-tooling                 v0.20.1    OK
+      livespec-driver-claude               v0.20.1    OK
+      livespec-driver-codex                v0.20.1    OK
+      livespec-orchestrator-beads-fabro    v0.20.1    OK
+      livespec-orchestrator-git-jsonl      v0.20.1    OK
+      livespec-runtime                     v0.20.1    OK
+      livespec-console-beads-fabro         v0.20.1    OK
+      livespec-overseer                    master     ADRIFT (bootstrap placeholder
+                                                       — first fan-out never landed)
+    adrift: 1/8
+    VERDICT: propagation INCOMPLETE          (exit 1)
+
+**THE A/B, run against the SAME fleet at the SAME moment:**
+
+| | Members enumerated | Verdict |
+|---|---|---|
+| v1 (hardcoded) | 7 | `adrift 0/7` — **propagation healthy** ❌ FALSE |
+| v2 (manifest-derived) | 8 | `adrift 1/8` — **propagation INCOMPLETE** ✅ correct |
+
+The single differing input is *where the member list came from*. That is the
+entire lesson, and it is the same structural reason CI running only as root could
+not exhibit a non-root divergence: **an enumeration that cannot grow cannot fail.**
+
+Three properties to preserve if it is promoted into CI (the `livespec-bmxs` fix):
+
+1. **Derive the member list** — never hardcode it.
+2. **Read the authoritative ref** via the API or `git show origin/master:`, never a
+   local working copy (lesson 14).
+3. **Credential-free**, so it runs when the ledger is throttled — which is exactly
+   when a second party most needs to verify without taking anyone's word.
+
+**Remaining limitation, unchanged:** it checks only `.livespec.jsonc` `compat.pinned`,
+one of six pin formats (see the correction below). A member could be current here
+and adrift on another. Widen before treating it as a complete gate.
 
 **This is the SEED of `livespec-bmxs`'s fix, not merely a diagnostic.** That item
 argues the outcome-reading check beats every intent-reading one because it does
