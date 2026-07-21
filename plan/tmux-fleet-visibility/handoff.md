@@ -3,9 +3,12 @@
 **Thread**: `plan/tmux-fleet-visibility/` (repo `livespec`).
 **Ledger epic anchor**: `livespec-l4g7wi` (livespec tenant; filed 2026-07-19,
 routed `backlog` — epic-shaped, driven from this plan track, not dispatched).
-**Status**: OPEN — Phases 0–1 complete 2026-07-19 (gate PASSED; inversion
-removed from both spawn paths; see the execution records at the end of this
-file). Next: Phase 2. Authored 2026-07-19.
+**Status**: OPEN — Phases 0–2 complete (0–1 on 2026-07-19, gate PASSED and the
+inversion removed from both spawn paths; 2 on 2026-07-21, zero live panes now
+carry `TMUX_TMPDIR`). See the execution records at the end of this file.
+Next: Phase 3 (remove the oh-my-zsh `tmux` plugin, repo `vps-info`) — now the
+only work standing between here and the thread's acceptance test, since a bare
+`tmux ls` in a Claude Code Bash call still dies at exit 127. Authored 2026-07-19.
 
 **Supersedes**: the **L1 environment-inversion layer** of
 [`plan/archive/tmux-fleet-kill-prevention/`](../archive/tmux-fleet-kill-prevention/handoff.md)
@@ -453,27 +456,37 @@ rewrite history):
 
 ## Definition of done
 
-- [x] Ledger epic anchored; id recorded at the top of this file.
-      (`livespec-l4g7wi`, 2026-07-19)
-- [x] All three guards verified loading, classifying, and **firing** in install
-      shape (payload-only), and the install-shaped test confirmed green in both
-      Driver repos. (2026-07-19 — see "Phase 0 execution record")
-- [x] No spawn path in `livespec` emits `unset TMUX` or `TMUX_TMPDIR`; a test
-      asserts their absence. (2026-07-19 — `_assert_no_tmux_scoping` at three
-      spawn-shape sites; see "Phase 1 execution record")
-- [x] `plan/plan-thread-integrity/design.md:120` dependency resolved, either way,
-      and the resolution recorded. (Resolved: NO dependency exists — see
-      "Phase 1 execution record")
-- [x] Sandbox-mirror decision made and recorded with reasoning. (LEFT in place;
-      the bind-mount residual is ANSWERED — see "Phase 1 execution record")
-- [ ] No live pane carries `TMUX_TMPDIR`.
-- [ ] `tmux` resolves to `/usr/bin/tmux` in a Claude Code Bash call on `vps`; the
-      change is codified in `vps-info/services/` with an idempotent installer.
-- [ ] `vps-info/CLAUDE.md` names the snapshot mechanism, not "non-interactive
-      shells".
-- [ ] Archive appended with findings 1 and 2 and the supersede pointer.
-- [ ] A bare `tmux ls` from a freshly spawned agent lists the maintainer's real
-      fleet. **This is the acceptance test for the whole thread.**
+**Status is NOT stored here.** Derive it from the ledger epic
+`livespec-l4g7wi` (read-only, per the two Planning-Lane seams) and from the
+per-phase execution records below, which carry the durable narrative of what
+was actually done and verified.
+
+This section previously held a ten-item `[ ]`/`[x]` checklist. That was a
+**shadow ledger** — durable acceptance criteria carrying persistent completion
+state in the artifact, which is exactly what
+`SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance" →
+"No shadow ledger" forbids: a handoff's checklist items must be session-local
+steps OR pointers to real ledger ids, never a parallel queue. It was removed
+2026-07-21 rather than ticked further. Do not reintroduce it in any form.
+
+**The acceptance test for the whole thread** — the one criterion worth stating
+in prose because it is the thread's reason for existing: a bare `tmux ls` from
+a freshly spawned agent lists the maintainer's real fleet. Not `/usr/bin/tmux
+ls`; not a wrapper an agent must know to invoke. Bare.
+
+**What remains** (both open as of 2026-07-21):
+
+- **Phase 3** — remove the oh-my-zsh `tmux` plugin (repo `vps-info`, host
+  `vps`), codify it as a `services/` entry with an idempotent installer, and
+  correct that repo's `CLAUDE.md` where it misattributes the breakage to
+  "non-interactive shells". This is the whole remaining critical path: until it
+  lands, bare `tmux` resolves to `_zsh_tmux_plugin_run` and dies at exit 127,
+  so the acceptance test above cannot pass.
+- **Phase 4** — append findings 1 and 2, and the supersede pointer, to
+  `plan/archive/tmux-fleet-kill-prevention/handoff.md`.
+
+Phases 0, 1, and 2 are complete; their execution records below state precisely
+what was verified, by what method, and what was left deliberately in place.
 
 ---
 
@@ -594,3 +607,85 @@ carrying the code, tests, AGENTS.md, and this record.
 Phase 2 may proceed once this PR lands and the overseer daemon is restarted
 (the running daemon keeps executing the OLD spawn code until relaunched — see
 `.claude/skills/overseer/AGENTS.md` §"`overseerd` keeps running the OLD code").
+
+---
+
+## Phase 2 execution record (2026-07-21)
+
+**Outcome: zero live panes carry `TMUX_TMPDIR`.** The daemon-restart
+precondition above was already satisfied on arrival — `bcc3c727` landed
+2026-07-19 12:41 and the running `overseerd` (pids 1570171/1570280) started
+2026-07-20 05:13, so it had been executing post-fix spawn code for ~20h.
+
+**Phase 1 confirmed working in the field.** This session (`tmux-fleet-visibility`,
+spawned 2026-07-21 01:17, i.e. post-fix) carries NO `TMUX_TMPDIR`, and its `TMUX`
+resolves to the shared `/tmp/tmux-1000/default` — a bare `/usr/bin/tmux ls` listed
+the maintainer's real 25-session fleet.
+
+### The blinded set had turned over more than expected
+
+Re-running the finding-3 probe found **four** blinded sessions, not the six named
+at authoring time. Three of the original six (`fabro-ci-image-factoring`,
+`overseer-productization`, `rop-sweep-fleet-policy`) had cycled naturally and were
+already clean; `impl-dispatch` was newly blind and not on the original list. Every
+one of the four was created 2026-07-19 08:03–09:40, i.e. before the 12:41 fix —
+exactly the predicted population. **The lesson for any future sweep: re-run the
+probe, never work from a recorded name list.** The phase text already said this;
+it was load-bearing.
+
+### The restart path did not apply to most of them
+
+The phase text says "restart each via the overseer's own restart path." Enumerating
+against the watch-set (`~/.livespec-overseer-repos.json`) and each repo's live
+`plan/` dir showed that path was reachable for **at most one** of the four:
+
+| Session | Repo | Plan thread | Declared | Attached |
+|---|---|---|---|---|
+| `tmux-fleet-kill-prevention` | `livespec` | archived | none | no |
+| `impl-dispatch` | `livespec-console-beads-fabro` | archived | stale `ready` | no |
+| `codex-yolo-sandbox` | `livespec-orchestrator-beads-fabro` | never a plan thread | none | no |
+| `cockpit-ux-docs-release` | `livespec-console-beads-fabro` | live, tracked | none | yes |
+
+Three had no live plan thread, so the daemon never discovers them and could never
+restart them regardless of declaration. The fourth was tracked but had declared
+nothing, and THE CARDINAL RULE (invariant 7) makes a session-written `ready` the
+sole respawn trigger — the daemon may not infer it, and neither may an agent
+acting on the daemon's behalf.
+
+All four were idle at an empty prompt with no work in flight (contexts 48–61%
+remaining), so nothing was interrupted.
+
+**Disposition: closed all four, on explicit maintainer authorization** given in
+response to a structured picker that recommended the narrower option (close the
+three untracked leftovers; leave the live tracked one to declare itself). The
+maintainer chose to close all four. Recording why that is not a cardinal-rule
+violation: the rule constrains the **daemon** from *inferring* readiness, because
+only the session knows whether it is safe to kill. It does not bind the maintainer,
+who owns the fleet and can authorize a kill directly. The distinction worth keeping
+is that the authorization was **explicit and per-instance**, not assumed.
+
+Mechanism: four separate targeted `kill-session -t <name>` calls, one Bash call
+each, by absolute path (`/usr/bin/tmux`, since the bare alias is still broken —
+see Phase 3). **No fleet-wide teardown at any point**, per the phase constraint and
+this lineage's founding hazard class. The L2 guards did not block a targeted
+single-session kill, which is the correct classification: it is not the
+fleet-destroying class.
+
+One honest uncertainty: `cockpit-ux-docs-release` had **already exited on its own**
+between the probe and its kill call (`can't find session`). It was the only
+attached one, so the likeliest explanation is the maintainer closing it, but this
+was not observed and is not claimed.
+
+The stale `ready` in
+`livespec-console-beads-fabro/tmp/overseer/impl-dispatch/.overseer-state` was
+neutralized to a `blocked: DONE+ARCHIVED` note rather than deleted, following the
+`cloud-local-memory-cleanup` precedent in the same tree (and because `tmp/` is
+maintainer-owned scratch). Inert today since the topic is no longer discovered;
+the note stops an unarchive from ever respawning on a dead declaration.
+
+**Verified after:** 21 live sessions, 0 carrying `TMUX_TMPDIR`.
+
+Phase 3 may proceed — and is now the whole remaining critical path. Re-verified
+in this session: a bare `tmux` in a Claude Code Bash call still resolves to
+`_zsh_tmux_plugin_run` and dies `command not found`, so finding 4 is live and
+the thread's acceptance test cannot pass until the plugin is gone.
