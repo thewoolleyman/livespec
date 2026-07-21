@@ -543,11 +543,14 @@ existing file):
   a beads issue upstream: the living catalogue of beads gaps and the
   workarounds the fleet carries, one upstream-liftable entry per gap.
 - **`.ai/dispatcher-drain-operations.md`** — read BEFORE driving the Beads/Dolt
-  + Fabro Dispatcher directly against a repo's ready work-item queue: the
-  mandatory explicit `--fabro-bin`, the strictly-sequential
-  `--budget 1 --parallel 1` rule and why `--network host` forbids parallelism,
-  the ban on hand-editing beads `admission:*` labels instead of using the
-  `set-admission` valve, and the re-enumerate-every-iteration rule.
+  + Fabro Dispatcher directly against a repo's ready work-item queue: why
+  `--fabro-bin` is an OVERRIDE rather than the once-mandatory flag (the
+  sanctioned `drive` path exposes none), why a backgrounded `drive` detaches so
+  its exit code and log carry no information about the dispatch, the
+  strictly-sequential `--budget 1 --parallel 1` rule and why `--network host`
+  forbids parallelism, the ban on hand-editing beads `admission:*` labels
+  instead of using the `set-admission` valve, and the
+  re-enumerate-every-iteration rule.
 - **`.ai/spec-proposal-review.md`** — read when performing or briefing the
   independent adversarial review required before every `/livespec:revise`
   accept, and when authoring a proposed change meant to survive it. Carries the
