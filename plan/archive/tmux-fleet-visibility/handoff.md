@@ -11,7 +11,7 @@ deliberately left open and one new finding was routed elsewhere; see
 "Residuals / open questions". Authored 2026-07-19.
 
 **Supersedes**: the **L1 environment-inversion layer** of
-[`plan/archive/tmux-fleet-kill-prevention/`](../archive/tmux-fleet-kill-prevention/handoff.md)
+[`plan/archive/tmux-fleet-kill-prevention/`](../tmux-fleet-kill-prevention/handoff.md)
 (ledger epic `livespec-yiycvd`, CLOSED 2026-07-19; L1 items `livespec-wa7ry3`
 and sandbox mirror `bd-ib-zaq3`).
 
