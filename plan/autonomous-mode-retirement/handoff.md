@@ -229,6 +229,13 @@ spanning three repos and two independent operators. Encountered here:
     **Read committed state with `git show origin/master:<path>`** — the standing
     rule exists precisely for this, and a working tree deliberately left unpulled
     is exactly when it bites.
+13. A workflow-only PR's **54 green check legs** were read as proof the new
+    check matrix worked. Every leg had **skipped its steps and passed without
+    running anything**, because the PR touched no `.py` and the `py_changed`
+    gate short-circuits the whole matrix. Master went red on the very next push.
+    **A skip that reports success is indistinguishable from a pass at the job
+    level — read the STEP TRACE, not the job conclusion.** Committed by this
+    thread's own operator while implementing the fix for this exact lesson.
 
 ## Corrections the overseer made to its own directives
 
@@ -240,6 +247,125 @@ operator's corrections and not the supervisor's is not an honest record.
 2. **"The retirement is essentially done."** Retracted on discovering
    `bd-gj-rb3`: a sibling's ratified spec still contracts the retired paradigm,
    so the retirement is not fleet-wide complete.
+
+## ✅ SESSION 2026-07-21 (cont.) — `bd-ib-sfa2` DECIDED AND SHIPPED
+
+**This is the newest block. Read it before the one below it.** The thread's only
+open decision is closed, implemented, and live on master.
+
+### The decision
+
+The maintainer chose the **NARROW route**. At CI job start root runs
+`chmod 0755 /root`, then the check drops to uid 1000 via `setpriv` and reuses
+the toolchain already baked into the image. No image change, no toolchain
+install, zero fleet blast radius. The **FAITHFUL replica** (relocating the
+toolchain into `livespec-dev-tooling`'s `docker/fabro-sandbox/base` layer) was
+weighed and declined: its only gain is over code depending on `/root` genuinely
+being `0700`, and it costs a fleet-wide rebuild, republish, and pin bump.
+
+**The limitation now travels with the capability in the workflow comment itself**,
+not only in a ledger note: this is a PARTIAL replica — "uid 1000 with access to
+root's toolchain", not "uid 1000 as the janitor sees the world". The faithful
+route remains the upgrade path if a `/root`-mode-dependent divergence surfaces.
+
+The premise was re-verified against the live image before deciding, not taken
+from this file: `/root` is mode `700`, mise exists only at
+`/root/.local/bin/mise`, and `find / -xdev -name mise -not -path '/root/*'`
+returns nothing.
+
+### What shipped — `livespec-orchestrator-beads-fabro`
+
+| PR | SHA | What |
+|---|---|---|
+| [#856](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/856) | `e97670cf` | the `uid: [root, nonroot]` matrix dimension + the fail-under condition |
+| [#857](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/857) | `fd98be21` | **repair of the master-red #856 caused** (below) |
+
+Two deliberate non-additions, both recorded in-file: **no divergence-detection
+machinery** (the 100% coverage gate already converts divergence into a failure,
+so two independently-gated legs make it unsurvivable), and **no curated
+"targets that can diverge" subset** (that would be a drift-prone allowlist —
+the `bd-ib-d9gf` class). Criterion 4's reciprocal condition sits **at the gate
+itself** in `pyproject.toml [tool.coverage.report]`, so whoever lowers the
+number reads it there. No branch-protection change was needed: only the
+aggregate `ci-green` context is required, and it already fails when any leg fails.
+
+### 🛑 THIS SESSION BROKE MASTER AND HAD TO CORRECT ITS OWN CLAIM
+
+Recorded because a thread that logs only other sessions' errors is not an honest
+record.
+
+**The claim:** #856's 54 green legs were reported as "criterion 1 demonstrated in
+the actual venue."
+
+**The truth:** they were **VACUOUS**. #856 changed only `ci.yml` and
+`pyproject.toml` — no `.py` — so the `setup` job computed `py_changed=false` and
+**every leg skipped its steps and reported success without running anything.**
+Master then went red at `e97670cf`: all 27 non-root legs failed, all 27 root legs
+passed.
+
+**The cause of the red:** the container job's default shell is `sh -e {0}` —
+**dash, not bash**. A `set -euo pipefail` line at the top of the prepare step is
+an illegal option there, so the step died at line 1 with exit 2 before doing any
+work. `-e` already supplies errexit, so the line was removed, not replaced.
+
+**⚠ THE DURABLE FINDING — A WORKFLOW-ONLY PR CANNOT VALIDATE THE CHECK MATRIX
+FROM ITS OWN RUN.** The `py_changed` gate makes every leg skip-and-pass when a PR
+touches no `.py`, so a defect in the matrix's own plumbing ships green and
+surfaces only on the push to master, which takes the `py_changed=true` fallback.
+Anyone changing `check-python` must verify on **master's push run**, or force a
+`.py` change — and must never read such a PR's checks as evidence.
+
+### Final evidence — non-vacuity established from the STEP TRACE
+
+Master run `29796735221` on `fd98be21`, conclusion success. The job conclusion
+alone would not have settled it; the step trace does:
+
+    check-coverage (nonroot):
+      skipped   Skip when no .py changes        <- py_changed WAS true
+      success   Prepare non-root leg            <- the step that had been failing
+      skipped   just check-coverage (root)      <- correct; this is the nonroot leg
+      success   just check-coverage (uid 1000)  <- ACTUALLY RAN as uid 1000, passed
+
+    nonroot legs 27/27 success   |   root legs 27/27 success
+
+**Criterion 2**, demonstrated through the real `just check-coverage` gate at the
+true pre-fix baseline `bf2d859` (= `abdc50c~1`), two separate containers:
+
+| Leg | rc | `_dispatcher_janitor_lock.py` | TOTAL | Verdict |
+|---|---|---|---|---|
+| root (uid 0) | 0 | `78 0 22 0 100%` | 100% | PASS |
+| non-root (uid 1000) | **1** | `78 1 22 1 98%  133` | 99% | **FAIL** |
+
+`1928 passed, 1 skipped` on BOTH legs — the divergence is invisible to the suite
+and surfaces only through coverage.
+
+### ⬜ The one residual on `bd-ib-sfa2`, stated rather than glossed
+
+Criterion 2's red demonstration was **local** — same image, same recipe, but not
+a red run inside GitHub CI. The two halves are each live-verified (the non-root
+leg genuinely runs in CI; the recipe genuinely reddens on divergence) and the
+conclusion composes them. A synthetic regression PR would close the last gap.
+
+**It was not done, and there is an obstacle worth knowing:** the faithful
+provocation is reverting `_dispatcher_janitor_lock.py` and its test to `bf2d859`,
+which is a **product `.py` change** and therefore demands the full
+Red-Green-Replay ritual — a ritual it would be dishonest to perform for a
+throwaway demonstration. A test-file-only provocation is possible (test files ARE
+measured in the coverage report) but is artificial. **Maintainer's call**, not
+self-waived.
+
+### Two corrections to the recorded harness — both CI-topology-specific
+
+Recorded so the next operator does not carry local-harness constraints into CI:
+
+- The harness's **"load-bearing" separate `UV_CACHE_DIR` per leg DOES NOT APPLY
+  in CI.** It existed because both legs shared one container; in CI the legs are
+  separate matrix jobs, hence separate containers with no shared filesystem.
+- The **`uv sync` gap cannot arise in CI** either — the workflow already has an
+  explicit `uv sync --all-groups` step.
+
+Also measured, so it is not mistaken for a hang: the `chown -R` over the
+workspace costs **~96s per non-root leg**.
 
 ## ✅ SESSION CLOSE 2026-07-21 — the factory mandate is COMPLETE
 
@@ -258,36 +384,46 @@ the START HERE for the next session.
 
 ### ⏭ START HERE — highest value first
 
-1. **`bd-ib-sfa2` (P1) — THE ONLY OPEN DECISION. The evidence is finished; the
-   CHOICE is not.** ✅ Criterion 2 is **DOUBLE-SOURCED** — two operators, two
-   independent harnesses, same image, same `bf2d859` baseline, identical
-   numbers: root `78/0/22/0/100%`, non-root `78/1/22/1/98% missing 133`,
-   **`1303 passed` on BOTH legs**. The divergence is invisible to the test suite
-   and surfaces ONLY through coverage, which is exactly the design claim this
-   item was built on — now measured, not asserted.
-   **What the maintainer must decide, and nobody below them may self-resolve:**
-   a NARROW route (a root-privileged `chmod 0755 /root` at job start, then
-   `setpriv` to uid 1000 reusing the baked toolchain — no image change, zero
-   fleet blast radius, but a PARTIAL replica, so anything depending on `/root`
-   genuinely being `0700` stays invisible) versus a FAITHFUL replica (relocate
-   the toolchain to a world-readable path in `livespec-dev-tooling`'s
-   `docker/fabro-sandbox/base` layer — costing a fleet-wide rebuild, republish,
-   and pin bump, since every repo's CI and every Fabro sandbox builds on it).
-   **Carry the capability and the limitation together; never one alone.**
-   Still owed: a full-matrix CI demonstration, and criteria 3–4. `ci.yml` is
-   **UNTOUCHED** — no workflow change has been made.
-   **Harness v2 on the item is the one to use** (it supersedes two earlier
-   versions and is the first verified from a genuinely FRESH clone). Honest cost
-   **91 seconds**. Two gaps that each cost a run: `uv sync` is REQUIRED because
-   `.venv` is gitignored and both legs use `uv run --no-sync` — its absence
-   yields `No module named pytest` with no test output, reading as a broken
-   harness; and the two legs' SEPARATE `UV_CACHE_DIR`s are LOAD-BEARING, not
-   tidiness. **Re-run it rather than trusting this record** — that instruction is
-   the point, and it is what caught both gaps.
-2. **`livespec-4rq4` (P1, livespec core)** — DECIDED (mechanical option): the
-   dispatch/PR-creation path must apply `do-not-merge` (or draft) when an item
-   declares a review requirement, which means the item schema must carry that
-   flag. **Fix belongs in the copier TEMPLATE**, then propagates by re-sync.
+1. ✅ **`bd-ib-sfa2` (P1) — DECIDED, IMPLEMENTED, AND LIVE ON MASTER.** See
+   §"SESSION 2026-07-21 (cont.)" below for the full record, including a
+   correction this session had to make to its own earlier claim. The decision
+   was the **NARROW route**, maintainer-chosen. `ci.yml` is no longer untouched:
+   the `check-python` matrix now carries a `uid: [root, nonroot]` dimension,
+   27 targets × 2 uids = 54 legs, both required. Criteria 1, 3 and 4 are met;
+   criterion 2 is met with one **stated residual** (its red demonstration was
+   local, not a red run inside GitHub CI). **Do not re-run the harness to
+   re-derive the decision** — it is made and shipped.
+2. **`livespec-4rq4` (P1, livespec core)** — the previously-recorded disposition
+   ("apply `do-not-merge` in the dispatch/PR-creation path; fix belongs in the
+   copier TEMPLATE") **rests on three factual errors, all now verified against
+   committed state and recorded on the item.** Re-open the option choice before
+   implementing:
+   - **There is a SECOND auto-merge lever this item misses entirely.** Fixing
+     the workflow alone does NOT close the hole. `livespec-orchestrator-beads-fabro`'s
+     `.claude-plugin/.fabro/workflows/implement-work-item/prompts/pr.md` has the
+     PR agent itself run `gh pr merge --rebase --auto --delete-branch` (step 4)
+     and **RETRY the arming if it did not take** (step 5). Both levers must change.
+   - **The PR-creation path is a PROMPT, not code.** There is no `gh pr create`
+     in any orchestrator Python. So a label-applying fix is only as reliable as
+     prompt adherence — which reproduces this very defect class ("reads as
+     governing but is structurally inert") in a new place. The durable lever is
+     the workflow gate reading item state, or a branch-protection
+     required-reviewers rule.
+   - **The schema is NOT in livespec core** — it is the `WorkItem` frozen
+     dataclass in a THIRD repo, `livespec-runtime`
+     (`livespec_runtime/work_items/types.py`), with no review/merge-constraint
+     field today. Good news: **not a backfill epic** — declare the field
+     optional-on-read (`... | None = None`) and persist it as a beads label
+     prefix (copy the `factory-safety:` precedent); distribution is a pinned git
+     dep, so the cost is a runtime tag plus a pin bump per consumer.
+   - Also stale: the item cites `templates/impl-plugin/...`; that directory no
+     longer exists. The live path is
+     `templates/orchestrator-plugin/.github/workflows/auto-enable-merge.yml.jinja`.
+     Six repos carry a generated copy and the gate block is byte-identical in
+     all six. **`livespec-dev-tooling`'s copy carries an in-file "DO NOT WIDEN
+     THE ALLOWLIST WITHOUT READING THIS"** — its codex-acp factory gate is
+     fail-closed precisely because nothing in the allowlist auto-merges the
+     freshness-bump PR. Preserve that property.
 3. **`bd-ib-9p4i` (P2, orchestrator) — the `mint_app_token.py` security item.**
    ✅ FILED 2026-07-21, split out of §B's "orchestrator operational lessons"
    row where it was buried. The hazard is that the mint path writes a LIVE
