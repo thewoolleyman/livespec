@@ -189,6 +189,68 @@ against live source before filing, not taken from the memo.
 | Console coverage-convention lesson — the 100%-line-coverage gate is incompatible with MULTI-LINE `assert!` carrying interpolated messages; use single-line bare asserts | ⬜ REMAINS — console guidance |
 | Orchestrator operational lessons — sequentially-coupled items need `depends_on`; research-item close-in-place pattern | ⬜ PARTLY REMAINS — orchestrator guidance. **The `mint_app_token.py` SECURITY half is SPLIT OUT and FILED as `bd-ib-9p4i` (P2, orchestrator)** — it no longer belongs in this row. The two remaining halves are ordinary guidance |
 
+## 🔬 THE COUNTER-MOVE — attach an EXECUTABLE ARBITER to every claim
+
+The list below catalogues fourteen signals that came apart under checking. Every
+one came apart the same way: **someone looked at what actually produced the
+number, instead of at the number.** This section is that principle made cheap and
+repeatable, which is strictly better than any individual being careful.
+
+**The rule.** A claim backed only by narrative is worth less than a claim backed
+by a command anyone can run. Attach the command, with its expected output, to the
+item itself. Then **if a report and the record ever disagree, the command is the
+arbiter — not either party.**
+
+**Why this is not theoretical.** It closed a real verification gap in this
+session. The supervisor could not read `bd-ib-9yi`'s detail (the ledger was
+rate-limited, below) and would otherwise have had to take the operator's word.
+Instead they ran the arbiter and reached the finding independently:
+
+    docker run --rm ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.51.3 \
+      sh -c 'command -v cargo || echo NOT-FOUND; command -v rustc || echo NOT-FOUND'
+    → cargo NOT-FOUND, rustc NOT-FOUND
+
+Same reason the `bd-ib-sfa2` coverage result survived **two** harness failures by
+two operators intact: it always shipped with a re-runnable reproduction, and the
+standing instruction on that item was *re-run this rather than trusting the
+record* — which is what caught both harness gaps.
+
+### The selection criterion: is the arbiter CREDENTIAL-FREE?
+
+The move is cheapest exactly where the arbiter needs no credential wrapper,
+because that is what lets a second party verify while the ledger is throttled or
+while they lack a tenant secret. Judged on that test, the open items split
+unevenly — recorded honestly rather than pretending it generalizes cleanly:
+
+| Item | Arbiter | Credential-free? |
+|---|---|---|
+| `livespec-bmxs` | compare each consumer's `.livespec.jsonc` pin against core's latest release tag — the outcome test that both diagnosed and verified the v0.20.0 stall | ✅ yes — strongest fit, and it IS the item's thesis |
+| `bd-ib-phsu` | `stat -c %a /root` + `find / -xdev -name mise -not -path '/root/*'` in the sandbox image | ✅ yes — it is the exact evidence the narrow-vs-faithful decision rests on |
+| `livespec-dev-tooling-6ge` | a user-token repo read showing correct settings beside the App-token read showing `None` — the arbiter IS the defect | ✅ on the half that matters |
+| `bd-ib-9yi` | already attached (above) | ✅ yes |
+| `bd-ib-sfa2` | already attached (the two-container baseline reproduction) | ✅ yes |
+| `livespec-h95t` | `next --json` returning zero beside a large backlog count | ⚠ NO — runs through the credential wrapper |
+| `livespec-f73t` | preflight red while every consumer is conformant | ⚠ NO — same |
+
+For the last two, an executable arbiter costs the very quota it is meant to make
+cheap. Attach one anyway if a credential-free formulation is found; do not force
+one that is not.
+
+### ⚠ OPERATIONAL — the 1Password service-account quota is SHARED and DAILY
+
+Hit in this session: `op run` exited **9**. The wrapper's own message is explicit
+that a short retry will NOT clear it, that the daily quota is **account-wide and
+shared across every tenant**, and that the correct response is to stop and cut
+frequency rather than retry.
+
+- **Do NOT retry into exit 9**, and do NOT reach for the secret another way.
+- **BATCH** ledger operations; prefer one wide read over several narrow ones.
+- **Do not re-read an item already in context** just to confirm formatting.
+- On exit 9 mid-task, **stop at a clean boundary and record position** rather than looping.
+
+A worked example of the waste: a fleet-wide status survey across six tenants was
+issued as six separate credential-wrapped calls when one would have done.
+
 ## The lesson this thread kept re-teaching
 
 **A green-looking signal read off the wrong source is not evidence.** Recorded as
