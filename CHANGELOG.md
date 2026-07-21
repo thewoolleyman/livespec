@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/thewoolleyman/livespec/compare/v0.20.0...v0.20.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* bump-pin workflow comment contradicts the implementation on copier-answers ([787b4f7](https://github.com/thewoolleyman/livespec/commit/787b4f755f512a73aeb6666cd228d6417c350312))
+
 ## [0.20.0](https://github.com/thewoolleyman/livespec/compare/v0.19.0...v0.20.0) (2026-07-21)
 
 
