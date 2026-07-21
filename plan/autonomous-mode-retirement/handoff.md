@@ -362,7 +362,51 @@ made twice while deriving this; use the range-extract above or a real JSONC pars
 | core pin | **`"master"`** — still the bootstrap placeholder, never rewritten |
 | bump PRs | **#6** `bump livespec pin to v0.20.1`, **#5** `bump livespec-dev-tooling pin to v0.51.6` — both OPEN, `mergeState=BLOCKED`, auto-merge ON |
 | its own CI | fails on `check-doctor-static` and `check-source-trees-scoped-to-consumer` → `ci-green` fails → auto-merge cannot complete |
-| its master CI | **`queued` since 00:09/00:19Z and never completed** (8+ hours) |
+| its master CI | ~~`queued` since 00:09/00:19Z, never completed~~ → **DIAGNOSED AND CANCELLED, see below** |
+
+#### ✅ The two permanently-queued master runs — cause verified, runs cancelled
+
+**They were STALE ARTIFACTS of the pre-wiring window, not a live defect.** Full
+evidence chain, each link checked rather than inferred:
+
+| Link | Evidence |
+|---|---|
+| the runs | `29789483091` (00:09:47Z), `29789970033` (00:19:55Z) |
+| the flip to hosted runners | `CI_RUNNER_LABELS=["ubuntu-latest"]`, **updated `03:20:15Z`** — AFTER both runs |
+| the default before it | `ci.yml`'s own comment: *"runs-on resolves from the repo variable `CI_RUNNER_LABELS`, **defaulting to the self-hosted label**"* |
+| what the jobs want | 1 job `['ubuntu-latest']` → **completed**; the other **29** `['self-hosted','local-ci']` → **queued** |
+| whether such a runner exists | `actions/runners` → **`total_count: 0`** |
+
+So 29 jobs were waiting on a runner that does not exist for this repo and never
+would. **GitHub queues indefinitely rather than failing**, so they would never
+clear on their own and would misreport that repo's health forever.
+
+**Cancelled** — both now `completed/cancelled`, verified after the fact rather
+than assumed (they pass briefly through `in_progress` while the cancellation is
+processed, which is easy to misread as "it started working").
+
+**This does NOT change overseer's real blocker.** Its bump PRs are still stuck on
+`check-doctor-static` failing on the bump branches — a live failure, distinct from
+these stale queued runs. Do not let the cleanup read as a fix.
+
+#### ⚠ A NEW INSTANCE OF "DEFAULT LISTINGS HIDE THINGS" — worth its own entry
+
+A branch-filtered check of overseer's master CI showed only *"Bump pin from
+sibling dispatch"* runs, all `completed/success`. **So a casual "is master CI
+green?" answered YES while two runs had sat queued for nine and a half hours.**
+The stuck runs surface only when queued status is queried explicitly.
+
+Both operators hit this independently. The counter-move is to query status
+explicitly rather than reading the top of a default listing:
+
+```bash
+gh run list --repo <repo> --workflow CI --branch master --limit 20 \
+  --json status,conclusion,createdAt | grep -i queued
+```
+
+**And the shape, once more:** a job that FAILS is loud; a job that QUEUES FOREVER
+is silent. That is the same class as the silent fan-out and the partial arbiter —
+now found in a third place, and this time in the health check itself.
 
 **This is a THIRD distinct stall shape, and the fan-out fix does not address it.**
 v0.20.0 stalled at DISPATCH (preflight blocked the send). This stalls at MERGE: the
