@@ -14,9 +14,11 @@ functions: the only injected status source is the in-memory `index`
 store-reading (`resolve_store_config` / the `read_work_items` free
 function / `StoreConfig`) does NOT move here — that would be a
 `runtime → beads` back-edge. Sibling work-item dependencies therefore
-resolve to `UNKNOWN` at this layer, and an unresolved sibling BLOCKS
-(fail-closed) so a still-open cross-repo blocker cannot be dispatched
-past; the orchestrator keeps its own beads-backed sibling reading. PR /
+resolve to `UNKNOWN` at this layer UNLESS the caller injects a
+`sibling_status_lookup` (the orchestrator's job — it holds the beads
+client): with the resolver a genuinely CLOSED sibling is satisfied and
+stops blocking, and without it an unresolved sibling BLOCKS (fail-closed)
+so a still-open cross-repo blocker cannot be dispatched past. PR /
 branch dependencies resolve through the existing
 `livespec_runtime.cross_repo` `gh` provider.
 
@@ -89,6 +91,7 @@ def lane_of(
     item: WorkItem,
     index: dict[str, WorkItem],
     manifest: CrossRepoManifest,
+    sibling_status_lookup: Callable[[str, str], RefStatus] | None = None,
 ) -> Lane:
     """Return the rendered lane for `item` — the single lane authority.
 
@@ -104,12 +107,19 @@ def lane_of(
     `CLOSED` never blocks, and `UNKNOWN` blocks for a `sibling_work_item`
     entry ONLY, so `lane_of` and `is_item_ready` agree by construction.
     Local dependencies resolve against `index`; sibling work-item
-    dependencies resolve to `UNKNOWN` (no `runtime → beads` back-edge);
+    dependencies resolve via the optional injected `sibling_status_lookup`
+    — or to `UNKNOWN` when none is supplied (there is no `runtime → beads`
+    back-edge at this layer, so the orchestrator injects the resolver);
     PR / branch dependencies resolve via the `cross_repo` `gh` provider.
     """
     if item.status == "blocked":
         return Lane(name="blocked", reason=item.blocked_reason)
-    if item.status == "ready" and _has_open_dependency(item=item, index=index, manifest=manifest):
+    if item.status == "ready" and _has_open_dependency(
+        item=item,
+        index=index,
+        manifest=manifest,
+        sibling_status_lookup=sibling_status_lookup,
+    ):
         return Lane(name="blocked", reason="dependency")
     return Lane(name=item.status, reason=None)
 
@@ -119,6 +129,7 @@ def is_item_ready(
     item: WorkItem,
     index: dict[str, WorkItem],
     manifest: CrossRepoManifest,
+    sibling_status_lookup: Callable[[str, str], RefStatus] | None = None,
 ) -> bool:
     """Return True iff the item renders in the `ready` lane.
 
@@ -126,7 +137,15 @@ def is_item_ready(
     diverge from the rendered board: a stored-`ready` item with an open
     dependency renders `blocked:dependency` and is therefore NOT ready.
     """
-    return lane_of(item=item, index=index, manifest=manifest).name == "ready"
+    return (
+        lane_of(
+            item=item,
+            index=index,
+            manifest=manifest,
+            sibling_status_lookup=sibling_status_lookup,
+        ).name
+        == "ready"
+    )
 
 
 def _has_open_dependency(
@@ -134,8 +153,17 @@ def _has_open_dependency(
     item: WorkItem,
     index: dict[str, WorkItem],
     manifest: CrossRepoManifest,
+    sibling_status_lookup: Callable[[str, str], RefStatus] | None = None,
 ) -> bool:
-    return any(_entry_blocks(raw=raw, index=index, manifest=manifest) for raw in item.depends_on)
+    return any(
+        _entry_blocks(
+            raw=raw,
+            index=index,
+            manifest=manifest,
+            sibling_status_lookup=sibling_status_lookup,
+        )
+        for raw in item.depends_on
+    )
 
 
 def _entry_blocks(
@@ -143,6 +171,7 @@ def _entry_blocks(
     raw: object,
     index: dict[str, WorkItem],
     manifest: CrossRepoManifest,
+    sibling_status_lookup: Callable[[str, str], RefStatus] | None = None,
 ) -> bool:
     """Return True iff the raw depends_on entry blocks readiness.
 
@@ -154,10 +183,14 @@ def _entry_blocks(
       ready (fail-closed);
     - the entry is a `sibling_work_item` that did NOT resolve to `CLOSED`.
       A cross-repo blocker resolves to `UNKNOWN` whenever the caller
-      supplies no `sibling_status_lookup` (which, at this layer, is
-      always), so treating that `UNKNOWN` as non-blocking would dispatch
-      candidates whose cross-repo blockers are still open — and would make
-      a WELL-FORMED cross-tenant entry less blocking than a malformed one.
+      supplies no `sibling_status_lookup`, so treating that `UNKNOWN` as
+      non-blocking would dispatch candidates whose cross-repo blockers are
+      still open — and would make a WELL-FORMED cross-tenant entry less
+      blocking than a malformed one. When a `sibling_status_lookup` IS
+      injected (the orchestrator's job — it holds the beads client and the
+      manifest), a genuinely CLOSED sibling resolves `CLOSED` and stops
+      blocking, an OPEN one blocks via the first case, and an unresolvable
+      one stays `UNKNOWN` and keeps failing closed.
 
     The narrow kind check is deliberate. An unresolved LOCAL reference
     (a missing id) still resolves `UNKNOWN` and still does NOT block:
@@ -173,7 +206,7 @@ def _entry_blocks(
         entry=entry,
         manifest=manifest,
         local_status_lookup=_local_status_lookup_for(index=index),
-        sibling_status_lookup=None,
+        sibling_status_lookup=sibling_status_lookup,
     )
     if status == RefStatus.OPEN:
         return True
