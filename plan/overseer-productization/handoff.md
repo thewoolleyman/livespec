@@ -8,11 +8,17 @@ gone from core.** `b1uo.3` is complete too. What remains is one coding task
 §"START HERE", and read its 🔴 first section before anything else, because the
 LIVE DAEMON is running from a path this relocation deleted.
 
-**The seed task is now fully SCOPED and gated on exactly one maintainer
-decision — the intent statement.** Read §"Item 1 — scoped 2026-07-21" before
-touching it; that section resolves two of the three pre-seed dialogue
-questions, records the seed CLI's verified `.livespec.jsonc` behavior, and
-carries three drafted intent framings. **Do not re-derive any of it.**
+**✅ THE INTENT GATE IS CLEARED (maintainer, 2026-07-22): framing A — the
+SUPERVISION CONTRACT framing.** The seed task is fully SCOPED and no longer
+gated on any maintainer decision. Read §"Item 1 — scoped 2026-07-21" before
+touching it; that section resolves the pre-seed dialogue questions, records the
+seed CLI's verified `.livespec.jsonc` behavior, and now carries the CHOSEN
+framing (A). **The next action is Fable-session seed authoring against framing
+A** — authoring is routed to a Fable session per this thread's own instruction,
+so do NOT author the six files yourself; realize framing A from the repo's own
+source material (`overseer/AGENTS.md`, `overseer/SKILL.md`,
+`overseer/marker-protocol.md`), never from a digest. **Do not re-derive any of
+the scoping below.**
 
 **⚠️ This file was heavily rewritten 2026-07-21.** Everything below
 §"URGENT … Dolt backup" is HISTORY retained for its reasoning and its lessons;
@@ -180,7 +186,7 @@ endpoints ("must authenticate with an access token authorized to a GitHub App").
 It is a UI step at github.com/settings/installations → `livespec-pr-bot` → add
 `livespec-overseer`.
 
-## Item 1 — scoped 2026-07-21. Gated on ONE maintainer decision.
+## Item 1 — scoped 2026-07-21. ✅ INTENT DECIDED 2026-07-22: framing A.
 
 A session scoped the seed and then STOPPED at the intent gate rather than
 authoring the spec, at the maintainer's instruction: the seed is to be driven
@@ -258,13 +264,32 @@ need the maintainer:
   `doctor-no-spec-section-citation-in-code` rejects the `§"…"` form, and it
   already bit the overseer folder once (Gate C).
 
-### The intent gate — three framings drafted, none chosen
+### The intent gate — ✅ DECIDED (maintainer, 2026-07-22): framing A (SUPERVISION CONTRACT)
 
-The intent is preserved verbatim in the auto-captured
-`history/v001/proposed_changes/seed.md` and shapes all six files, so it is a
-genuine design decision rather than a formality. The recommendation is **A**.
+**The maintainer chose framing A**, the prior session's recommendation and the
+one the repo's own "specify architecture, not mechanism" rule points to. The
+intent is preserved verbatim in the auto-captured
+`history/v001/proposed_changes/seed.md` and shapes all six files, so this is a
+genuine design decision rather than a formality — and it is now MADE. Framing
+A's text (below, unchanged) is the chosen intent the Fable seed authoring MUST
+realize.
 
-**A — supervision contract (RECOMMENDED).** Frames the spec around the
+**Two guard-rails the maintainer set explicitly with the decision, so the seed
+does not drift:**
+- **NOT B.** The operator-cockpit surface — the interactive pane's track table,
+  its columns, the operator commands — is deliberately OUT of the governed
+  contract. Do NOT let it creep back in as the seed is authored.
+- **NOT C.** Do NOT anchor any spec file to tmux, Claude, or Codex as the
+  subject; those are mechanism, and A holds the contract ABOVE them. The system
+  is specified by what the `overseerd` daemon and the thin interactive tmux pane
+  GUARANTEE, not by how they are built. What A governs, verbatim: the marker-file
+  handshake protocol between overseer and supervised session, the watch-set
+  declaration, session-name derivation, and the atomicity and fail-soft rules —
+  NOT the internal Python composition of the package.
+
+Framings B and C are retained below only as the rejected alternatives.
+
+**A — supervision contract (✅ CHOSEN).** Frames the spec around the
 externally-visible supervision contract and explicitly holds it above internal
 Python composition, which is what the repo's own "specify architecture, not
 mechanism" rule demands. Drafted text:
