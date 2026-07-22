@@ -28,10 +28,19 @@ fail-open scenario / will re-lock if not retired" is FALSE — that test asserts
 layer (`resolve_ref` → UNKNOWN), orthogonal to the *blocking* layer the fix changed; `8eff84b`
 never touched it and CI is green. Do not retire it.
 
-**The next substantive step for qiqz6b is clause 2** — a two-repo change (livespec-runtime must
-accept+thread a `sibling_status_lookup`; the orchestrator must supply it from its beads client +
-manifest) plus the clause's required closed-satisfied unit coverage. Not started; it is real code
-work under Red-Green-Replay, deliberately left un-begun rather than half-done.
+**qiqz6b clause 2 — RUNTIME HALF NOW SHIPPED (2026-07-22); Part B remains.** The runtime seam
+landed as `livespec-runtime` PR #298 (`c91bc1de`, Red→Green `e40b731`): `lane_of`/`is_item_ready`/
+the dependency predicate now accept an optional `sibling_status_lookup`, so an injected resolver
+makes a CLOSED sibling satisfied while OPEN/unresolved still block; `default None` keeps every live
+call site behaviour-identical, and the closed-satisfied/open-blocks unit coverage is in place. No
+signature propose-change was owed — `contracts.md` already documented the optional lookup and defers
+the precise signature to implementation (full reasoning journaled on qiqz6b). What REMAINS for
+clause 2: (a) release v0.13.0 — release PR #299 is deliberately LEFT open so it rides with Part B
+rather than fanning an unused param to 8 consumers; (b) **Part B**, the orchestrator-side lookup impl
++ wiring into `is_dispatch_candidate`/`ready_items`/`next`, whose cross-tenant read is
+feasibility-CONFIRMED (`load_items(repo=<sibling_clone>)` under the shared fleet credential — my
+`probe_fleet_overblock.py` already read 7 tenants that way). Part B is now a clean drop-in against a
+stable, unit-proven API — the highest-value fresh-session task, fully scoped on the qiqz6b item.
 
 ### State in one table
 
