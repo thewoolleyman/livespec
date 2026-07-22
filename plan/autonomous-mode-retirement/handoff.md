@@ -68,11 +68,12 @@ maintainer-gated sequence:
 **HARD STOP after Step 1** — do NOT cut v0.13.0 and do NOT begin the 7-site wiring
 until the supervisor↔supervisor release-timing coordination AND the maintainer GO.
 
-**Ledger item for the git-jsonl fix:** OWED. To be filed this session if the shared
-1Password quota is reachable (a beads write); if exhausted, a later session files it
-verbatim from this block — do NOT probe the quota repeatedly. Enough to file it verbatim
-is captured above (defect, exact code location, acceptance = accept + round-trip
-preserve, out-of-scope = dispatcher enforcement).
+**Ledger item for the git-jsonl fix:** FILED as `bd-ib-nap2` (P1 bug,
+`livespec-orchestrator-beads-fabro` tenant, `origin:freeform`) — the shared 1Password
+quota was reachable this session, so a beads write landed. It carries the same defect,
+exact code location, acceptance (accept + round-trip preserve), out-of-scope
+(dispatcher enforcement), and provenance as this block, so the ledger holds a second
+durable copy of the record.
 
 ### ⏭ SESSION CLOSE 2026-07-22 (cont.) — OVERSEER INTENT GATE DECIDED; clause-2 RUNTIME HALF shipped. PRIOR-newest block (superseded by the block above) — still trust it over everything below it, including the next §"SESSION 2026-07-22" block.
 
