@@ -1,23 +1,97 @@
-# rop-sweep-fleet-policy — PR #516 IS REVIEW-CLEARED (both reviewers NO-BLOCKERS). It is blocked ONLY by an unrelated fleet red needing ONE maintainer action
+# rop-sweep-fleet-policy — RULING 8 SHIPPED, SPEC RATIFIED (v172). The core mechanization loop is DONE; what remains is coverage + a check defect
 
-## 👤 WHAT NEEDS THE MAINTAINER — one action, one judgment, then three spec-side decisions
+## ✅ STATE AS OF 2026-07-22 (session close) — READ FIRST; the body below is HISTORY
 
-1. **`livespec-cbmw` (P1) — install the fleet GitHub App on `livespec-overseer`.** Needs OWNER
-   access; no session token can do it. This unblocks EVERY fleet repo's master, not just PR #516.
-   The other leg (`wire-fleet-member` reconcile for merge-settings + delete-branch-on-merge) can be
-   driven by anyone with admin scope.
-2. **A judgment call, deliberately NOT filed:** should a declared-but-unwired fleet member
-   HARD-FAIL every OTHER repo's `ci-green` and block their merges? Register-first guarantees the
-   finding SURFACES; surfacing and blocking are separable. If the blast radius is wrong, the fix is
-   how `check-fleet-conformance` GRADES a not-yet-wired member versus a DRIFTED one — a severity
-   question in `livespec-dev-tooling`, never a suppression, never a new upstream→downstream read.
-3. **Then, in order:** the core spec amendment (the `non-functional-requirements.md:649` staleness
-   AND the §"ROP composition" ambiguity, in ONE proposal, via `/livespec:propose-change` +
-   independent review, NOT ratified before #516 merges); the two structurally inert markers; and
-   `qm5`'s `needs-regroom`, whose scope ruling 8 settled.
+The whole ruling-7→ruling-8 arc is CLOSED. Do NOT re-open it. Verify each fact from the ledger /
+GitHub before acting — status is READ, never trusted from prose.
 
-**Release sequence for PR #516 once green:** mark ready FIRST, THEN remove `do-not-merge` —
-removing the label is itself what re-arms auto-merge (`unlabeled` is a workflow trigger).
+- **`livespec-dev-tooling` PR #516 is MERGED** (`2be20e19`). The breadth-aware `no_except_outside_io`
+  (+ `no_raise_outside_io` structural fixes + `BLE` added to dev-tooling's ruff select + 4 site
+  remediations) is LIVE on dev-tooling master. Both round-2 reviewers NO-BLOCKERS; 9-mutation
+  non-inertness proof.
+- **`livespec-dev-tooling-qm5` is CLOSED** — implemented by #516 (io_trees early return removed).
+- **The `livespec-overseer` fleet red is CLEARED.** The fleet GitHub App (`livespec-pr-bot`,
+  installation `131208965`) now covers `livespec-overseer` (repo access 8→9). DIAGNOSIS worth
+  keeping: 2 of the 3 conformance errors were READ failures, not misconfig — `wire-fleet-member`
+  had already wired it; `merge-settings`/`delete-branch-on-merge` read `None` only because the App
+  token couldn't SEE the repo. Confirmed green in CI under the App token. Recorded on `livespec-cbmw`
+  and `plan/overseer-productization/`.
+- **The core spec amendment is RATIFIED as v172.** `livespec` **PR #1658** cuts v172, aligning
+  `non-functional-requirements.md` §"ROP composition" + §"Supervisor discipline" with the shipped
+  check. Five byte-exact edits. Independent Fable review NO-BLOCKERS **after a redraft that fixed 3
+  real blockers** (see "PREMISE CORRECTION" below). **VERIFY #1658 MERGED** — it was auto-merging on
+  green at session close (`gh pr view 1658 --repo thewoolleyman/livespec --json state,mergedAt`).
+
+### 🔑 PREMISE CORRECTION — carry this; it inverts a claim earlier in this file
+
+The pre-ratification review established, verified against the merged check source: **the closed-set
+marker PRESENCE at a `main()` boundary IS mechanically enforced** (the check hard-codes
+`_SANCTIONED_MARKERS` and flags an unmarked broad boundary catch). So "marker wording remains
+review-enforced" — asserted repeatedly below — is WRONG. What ACTUALLY remains review-enforced:
+`sole` cardinality (the check counts nothing), marker-flavor pairing (any of the five legalizes any
+boundary), and exact wording beyond the check's substring match. v172 states this correctly; treat
+any older "marker wording is review-enforced" text in this file as superseded.
+
+### 👤 WHAT NEEDS THE MAINTAINER (nothing blocking; two are cleanup/decisions)
+
+1. **Delete an ORPHAN branch — your call, not mine to touch.** `spec/rop-loop-iteration-marker`
+   (local, no upstream, no worktree, 3 days stale) holds only the `rop-broad-except-boundary-rule.md`
+   proposal ALREADY ratified into v169. The revise stale-branch precondition surfaced it; I skipped
+   the precondition (safe — orphan of consumed work) to ratify v172. Safe to
+   `git -C /data/projects/livespec branch -D spec/rop-loop-iteration-marker`.
+2. **The `check-fleet-conformance` blast-radius decision** — RULED by the maintainer 2026-07-21:
+   a non-conforming member must fail ONLY its own CI, not every other member's `ci-green`. FILED as
+   **`livespec-dev-tooling-4er` (P1)** with the full ruling. Implementation pending.
+
+### NEXT WORK (all unblocked; pick up here)
+
+- **Slice 1b — declare core's `source_trees` + `io_trees`.** NOW UNBLOCKED: v172 is ratified and the
+  breadth-aware check ships, and core's three narrow catches
+  (`no_spec_section_citation_in_code.py:167,182`; `wiring_completeness_cross_repo.py:160`) PASS
+  under it (verified this session). This makes the check actually INSPECT core instead of no-opping.
+  Core's `pyproject.toml` comment still says the keys are "deliberately NOT declared here" — update
+  it when declaring. `e9j` is NOT discharged on its loudness axis (see below).
+- **The "two inert markers" are a CHECK DEFECT, not a spec gap.** v172 correctly PERMITS the
+  loop-iteration (supervision-loop body) and foreign-code (extension-surface) broad catches; the
+  merged check over-flags them because it exempts only `main()` positions. Fix belongs in
+  `livespec-dev-tooling` (sibling of `9ar`/`jjb`). Zero armed sites today; false-RED direction, so
+  not urgent. NOT YET FILED as its own item — file it or fold into `jjb`.
+- **`livespec-dev-tooling-cvz` (P1)** — declare `source_trees` in the Drivers for real coverage.
+  ⚠️ HARDEN THE CHECK FIRST (`cvz` ledger note): the merged marker matcher is substring-based and
+  `_is_broad` misses `builtins.Exception`/aliases — both false-ACCEPTS live in the Driver hook trees
+  the moment `source_trees` is declared there, because those trees are ruff-`extend-exclude`d so
+  `BLE001` cannot backstop. Sequence: harden → then declare Driver `source_trees`.
+- **`e9j` loudness half** — `check-no-except-outside-io` reports `files_inspected` now, but an
+  armed-but-inspecting-nothing check still EXITS 0 / shows GREEN in CI. `e9j`'s own remedy wants a
+  zero-inspection to be LOUD (exit non-zero); not delivered by #516. Open severity question on `e9j`.
+- Open follow-up items from #516's reviews: **`9ar`** (except*/TryStar invisible; arms at Py3.11),
+  **`ajo`** (contextlib.suppress evades both gates), **`39i`** (red_leg_scope coverage-floor gap),
+  **`bbl`/`jjb`** (marker mechanization + canonical body).
+
+### METHOD LESSONS THIS SESSION (do not re-learn)
+
+- **A "mechanism B backstops A" claim is about an INPUT, not config overlap.** I verified ruff `BLE`
+  covered the same trees and wrongly concluded the dotted-name bypass was backstopped — a `# noqa`
+  suppresses ruff on the exact blind line. Construct the adversarial input; run BOTH mechanisms.
+- **Re-read repo state at the moment you report a finding** — a `uv.lock` "defect" self-resolved
+  between two of my own probes.
+- **The repo auto-enables auto-merge** (`.github/workflows/auto-enable-merge.yml` + `livespec-pr-bot`)
+  within seconds of PR creation, on BOTH `livespec` and `livespec-dev-tooling`. A brief cannot stop
+  it; use `gh pr create --draft` + verify `autoMergeRequest == null` for anything that must survive
+  to review.
+- **Register-first is BY DESIGN** (`.ai/adding-an-adopter.md`) — do NOT build a gate to prevent
+  register-before-wire; the obvious one is also an upstream→downstream read banned by
+  `.ai/no-circular-dependency.md`.
+- **On a reviewer/agent going idle: inspect the artifact first, ask second.** ~7 idle-without-delivery
+  events this session; two reviewers were genuinely lost (idled twice without answering a direct
+  ask) — spawn a fresh one rather than wait. The blunt "budget to deliver; short verdict beats a lost
+  one" brief recovered the lost re-reviewer.
+
+---
+
+## 👤 (SUPERSEDED — kept for the reasoning) WHAT NEEDED THE MAINTAINER before #516 merged
+
+Everything in this block is now DONE (#516 merged, app installed, v172 ratified). Do not act on it.
 
 ## 🔴 2026-07-21 — RULING 7 COULD NOT BE IMPLEMENTED. RULING 8 SUPERSEDES IT.
 
