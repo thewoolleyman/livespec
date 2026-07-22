@@ -1,24 +1,31 @@
 # Plan — overseer-productization
 
 **Owning session:** livespec core, "overseer-productization". **Status:** OPEN —
-**Phase 1 COMPLETE. Phase 2's foundational item `b1uo.1` is COMPLETE: the
-overseer now lives at https://github.com/thewoolleyman/livespec-overseer and is
-gone from core.** `b1uo.3` is complete too. What remains is one coding task
-(seed that repo's `SPECIFICATION/`) plus two maintainer-only steps — see
-§"START HERE", and read its 🔴 first section before anything else, because the
-LIVE DAEMON is running from a path this relocation deleted.
+**Phase 1 COMPLETE. Phase 2's `b1uo.1` and `b1uo.3` are COMPLETE, and the SEED
+IS DONE (2026-07-22): `livespec-overseer` PR #12 merged the six-file
+`SPECIFICATION/` realizing framing A, and the repo's CI went green for the
+first time.** What remains is maintainer-only steps plus ledger bookkeeping —
+see §"START HERE", and read its 🔴 first section before anything else, because
+the LIVE DAEMON is still running from a path the relocation deleted.
 
-**✅ THE INTENT GATE IS CLEARED (maintainer, 2026-07-22): framing A — the
-SUPERVISION CONTRACT framing.** The seed task is fully SCOPED and no longer
-gated on any maintainer decision. Read §"Item 1 — scoped 2026-07-21" before
-touching it; that section resolves the pre-seed dialogue questions, records the
-seed CLI's verified `.livespec.jsonc` behavior, and now carries the CHOSEN
-framing (A). **The next action is Fable-session seed authoring against framing
-A** — authoring is routed to a Fable session per this thread's own instruction,
-so do NOT author the six files yourself; realize framing A from the repo's own
-source material (`overseer/AGENTS.md`, `overseer/SKILL.md`,
-`overseer/marker-protocol.md`), never from a digest. **Do not re-derive any of
-the scoping below.**
+**✅ THE SEED LANDED (Fable session, 2026-07-22).**
+https://github.com/thewoolleyman/livespec-overseer/pull/12 — authored per the
+routing below (directly from `overseer/AGENTS.md`, `overseer/SKILL.md`,
+`overseer/marker-protocol.md`, and the modules; no digests), framing A with the
+NOT-B / NOT-C guard-rails held, every load-bearing claim re-verified in code.
+Where the module docs and the code disagreed, the spec follows the CODE — e.g.
+`not-claude` is a DELETED status (`ATTENTION_STATUSES` is
+blocked:human/danger/session-gone) though SKILL.md's table still lists it, and
+marker-protocol.md still says "fleet manifest" where the watch-set declaration
+now lives in `$HOME`. Both stalenesses are filed in the NEW repo's own beads
+tenant (`overseer-zvo`; plus `overseer-y8o` for `overseer-start`'s stale
+`.claude/skills/overseer/` daemon path and `parents[3]` core-root traversal —
+the relocation moved the tree byte-identical, verified by diffing against
+`f9664481~1`). Riders on PR #12: `tests/heading-coverage.json` (53 TODO
+entries; scenario entries must ACKNOWLEDGE the integration-tier rule in their
+reason or `check-heading-coverage` rejects them) and a root `AGENTS.md` (the
+`.claude/CLAUDE.md → ../AGENTS.md` symlink had been dangling). **The
+§"Item 1 — scoped" section below is now HISTORY — do not re-run the seed.**
 
 **⚠️ This file was heavily rewritten 2026-07-21.** Everything below
 §"URGENT … Dolt backup" is HISTORY retained for its reasoning and its lessons;
@@ -131,12 +138,44 @@ left is a role-key declaration that must wait on the rop-sweep thread's `cvz`.
 2026-07-19, it is anchored to epic `livespec-b1uo`, and it was then RESHAPED the
 same day by D7 (the overseer is Control Plane, not Spec Plane).
 
-# ✅ START HERE — b1uo.1 IS DONE. The overseer now lives in its own repo.
+# ✅ START HERE — b1uo.1 AND THE SEED ARE DONE. The overseer lives in its own repo, spec'd and CI-green.
 
 **https://github.com/thewoolleyman/livespec-overseer** exists, is registered in
-the fleet manifest as `control-plane-tool`, is fully wired, and holds the code.
-Core no longer carries it. Everything below the next two sections is HISTORY —
-read it only if you need the reasoning behind a decision.
+the fleet manifest as `control-plane-tool`, is fully wired, holds the code, and
+now carries its `SPECIFICATION/` (PR #12, merged 2026-07-22). Core no longer
+carries it. Everything below the next two sections is HISTORY — read it only if
+you need the reasoning behind a decision.
+
+## Repo-readiness work landed alongside the seed (2026-07-22) — do NOT redo
+
+- **PR #12** (seed + heading-coverage + root AGENTS.md) was BASED ON PR #1's
+  branch — a branch cut from bare master fails
+  `check-source-trees-scoped-to-consumer` (master lacked the explicit-empty
+  `[tool.livespec_dev_tooling]` section PR #1 carried), so the two were
+  mutually blocking; the rebase-merge landed both and PR #1 was closed as
+  superseded. All 59 local `just check` targets and 58 CI checks passed.
+- **Commit-refuse hooks installed** on the primary checkout (they were missing;
+  `check-primary-checkout-commit-refuse-hook-installed` was failing there).
+- **The two cancelled never-executed master CI runs were DELETED** — after
+  auto-cancelling at ~11h queued they made the LOCAL `check-master-ci-green`
+  read master as red (the CI-side copy of the check tolerates them); with them
+  gone the check correctly reports no-runs-yet.
+- **The beads tenant was live-exercised and two defects fixed in the stroke:**
+  the scratch `bd init` had left a junk scratch-dir-derived issue prefix
+  (`bd-init2_jDa8sg-…`), renamed via `bd rename-prefix` to `overseer` (the
+  8-character cap makes the full repo name impossible); and
+  `.livespec.jsonc`'s `connection.prefix` — whose committed comment wrongly
+  claimed prefix==tenant==database==server_user — was aligned to `overseer`
+  (PR #13; the orchestrator plugin's `_config.py` documents `prefix` as bd's
+  server-stored issue-ID create-prefix, a SEPARATE identity from the tenant
+  triple). First two work-items: `overseer-y8o`, `overseer-zvo`.
+- **The first-ever master push run exposed a scaffold gap:** core's `ci.yml`
+  was copied with its `export-telemetry` job (master-push-only, so invisible
+  on every PR run) but WITHOUT `.github/scripts/export-ci-telemetry.sh`, and
+  the `HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC` repo secret was missing.
+  Script copied byte-identical from core and the secret provisioned from the
+  fleet credential environment (PR #14). Belongs in the repo-birth procedure
+  beside the two steps §"Two UNDOCUMENTED birth-procedure steps" records.
 
 ## 🔴 DO THIS FIRST — the live daemon points at a DELETED path
 
@@ -165,28 +204,27 @@ merged; what is missing is a launch path and a plugin install.
 
 ## What is left, precisely
 
-| # | Item | Owner | Blocks |
+| # | Item | Owner | Notes |
 |---|---|---|---|
-| 1 | Seed `SPECIFICATION/` in `livespec-overseer` via `/livespec:seed` | a session | `check-doctor-static`, therefore `ci-green`, therefore PR #1 |
-| 2 | Install the `livespec-pr-bot` App on the new repo | **maintainer only** | Release Please (fails at "Mint App installation token") |
-| 3 | Relaunch the daemon + install the plugin | maintainer | the live overseer |
+| 1 | ~~Seed `SPECIFICATION/`~~ | — | ✅ DONE 2026-07-22, livespec-overseer PR #12; PR #1 closed as superseded |
+| 2 | ~~Install the `livespec-pr-bot` App~~ | — | ✅ DONE 2026-07-21 (recorded further down) |
+| 3 | Relaunch the daemon from the new repo + install the plugin so `/overseer` resolves | **maintainer** | the live overseer; `overseer-y8o` (bootstrap re-point) is a prerequisite for the two-pane bootstrap working from the new repo — the DAEMON itself launches fine today via the stopgap command in the 🔴 section |
+| 4 | Ledger acceptance legs: close `b1uo.1`/`.2`/`.3` with journaled live-exercise evidence; disposition `b1uo.4`/`.5` (BLOCKED, "likely unnecessary" per D7/D9) | a session + maintainer | epic `livespec-b1uo` still reads BACKLOG throughout despite the work being done |
+| 5 | Gate E role-key declaration in `livespec-overseer`'s pyproject | blocked | still sequenced on the rop-sweep thread's `cvz` |
 
-**Item 1 is the only coding work.** `livespec-overseer` CI is **56 pass / 1 real
-failure**; the single failure is `check-doctor-static`, which fails only because
-the repo has no `SPECIFICATION/` tree. Both sibling members
-(`livespec-runtime`, `livespec-console-beads-fabro`) carry one, so it is
-required rather than optional. It was deliberately NOT rushed at the end of a
-long session — a repo governs itself by that spec, and a hasty one is worse than
-none. PR
-[#1](https://github.com/thewoolleyman/livespec-overseer/pull/1) is open and
-merges as soon as this lands.
+**WIND-DOWN RECOMMENDATION (2026-07-22).** Once item 3 is done and item 4's
+status legs are discharged, ARCHIVE this thread and open a successor plan
+thread INSIDE `livespec-overseer` (create its `plan/` dir, add
+`/data/projects/livespec-overseer` to `~/.livespec-overseer-repos.json` — it is
+absent, so the overseer cannot supervise work on its own repo today) carrying:
+the pin-bump PR queue cleanup (#6/#8 are duplicate livespec-v0.20.1 bumps, #10
+is the dev-tooling bump — all need regeneration now that master moved), the
+two filed work-items, the Gate E declaration when `cvz` lands, the deferred
+public-entry-point work for the two executables, and Phase 2's remaining
+adopter-family-shipping scope. The `livespec-b1uo` epic itself STAYS in the
+livespec core tenant per its own do-not-move ruling.
 
-**Item 2 cannot be done by a session.** `gh` returns 403 on App-installation
-endpoints ("must authenticate with an access token authorized to a GitHub App").
-It is a UI step at github.com/settings/installations → `livespec-pr-bot` → add
-`livespec-overseer`.
-
-## Item 1 — scoped 2026-07-21. ✅ INTENT DECIDED 2026-07-22: framing A.
+## Item 1 — scoped 2026-07-21; intent decided and ✅ EXECUTED 2026-07-22 (PR #12). HISTORY — do not re-run.
 
 A session scoped the seed and then STOPPED at the intent gate rather than
 authoring the spec, at the maintainer's instruction: the seed is to be driven
