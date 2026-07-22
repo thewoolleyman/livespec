@@ -27,10 +27,13 @@
 // `fleet` entries are { repo, class } where `class` is one of:
 // core / enforcement-suite / impl-plugin / driver-plugin / library / console /
 // control-plane-tool.
-// (`console` is the Control-Plane operator console — a non-pin-consuming
-// member: it carries a livespec-dev-tooling pin but ships none of the three
-// pin-and-bump shim workflows; see livespec-dev-tooling contracts.md
-// §"Bump-pin policy".)
+// (`console` is the Control-Plane operator console — a pin-CONSUMING
+// member (livespec-oq9w, Option B): it carries a livespec-dev-tooling
+// toolchain pin AND a livespec governance pin, and ships the RECEIVING
+// and FRESHNESS pin-and-bump shims (bump-pin-from-dispatch.yml +
+// pin-freshness.yml). It deliberately ships NO release-dispatch.yml,
+// because it produces no consumable release for a sibling to bump on.
+// See livespec-dev-tooling contracts.md §"Bump-pin policy".)
 //
 // `adopters` entries are { repo, profile, posture } — governed repos
 // (or families) that adopted the workflow but are NOT the livespec
