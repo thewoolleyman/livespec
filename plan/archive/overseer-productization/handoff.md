@@ -1,12 +1,18 @@
 # Plan — overseer-productization
 
-**Owning session:** livespec core, "overseer-productization". **Status:** OPEN —
-**Phase 1 COMPLETE. Phase 2's `b1uo.1` and `b1uo.3` are COMPLETE, and the SEED
-IS DONE (2026-07-22): `livespec-overseer` PR #12 merged the six-file
-`SPECIFICATION/` realizing framing A, and the repo's CI went green for the
-first time.** What remains is maintainer-only steps plus ledger bookkeeping —
-see §"START HERE", and read its 🔴 first section before anything else, because
-the LIVE DAEMON is still running from a path the relocation deleted.
+**Owning session:** livespec core, "overseer-productization". **Status:**
+**ARCHIVED 2026-07-23.** Phase 1 complete; Phase 2's `b1uo.1`/`b1uo.3`
+complete; the SPECIFICATION seed DONE (livespec-overseer PR #12, 2026-07-22,
+first green CI). **The SUCCESSOR is `plan/cutover-and-shipping/` in the
+`livespec-overseer` repo** (tenant epic `overseer-3wt`), which owns the staged
+daemon-cutover protocol and all remaining scope — this file is reference-only
+history; nothing below is actionable. Still pending in the CORE tenant at
+archive time, deliberately left for the maintainer: the `livespec-b1uo`
+`.1`/`.2`/`.3` closes (acceptance evidence journaled on each item 2026-07-23)
+and the `.4`/`.5` close-as-unnecessary disposition (recommendation journaled).
+The OLD daemon (pid 1570280, deleted-path code in memory) remains the ACTING
+supervisor until the successor thread's protocol completes — do NOT relaunch
+it from the new repo bare; see §"Daemon cutover — the staged protocol".
 
 **✅ THE SEED LANDED (Fable session, 2026-07-22).**
 https://github.com/thewoolleyman/livespec-overseer/pull/12 — authored per the
