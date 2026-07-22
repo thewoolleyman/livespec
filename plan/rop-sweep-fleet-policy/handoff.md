@@ -1,6 +1,69 @@
-# rop-sweep-fleet-policy — RULING 8 SHIPPED, SPEC RATIFIED (v172). The core mechanization loop is DONE; what remains is coverage + a check defect
+# rop-sweep-fleet-policy — SLICE 1B LANDED: core's ROP checks are ARMED and green. Remaining: Driver coverage (cvz), loudness, and the marker-position defects
 
-## ✅ STATE AS OF 2026-07-22 (session close) — READ FIRST; the body below is HISTORY
+## ✅ STATE AS OF 2026-07-23 (session close) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
+
+- **SLICE 1B IS LANDED.** livespec **PR #1663** MERGED (master `9fce9979`): core declares
+  `source_trees = [".claude-plugin/scripts/livespec"]` + `io_trees = [".claude-plugin/scripts/livespec/io"]`
+  under the v0.51.10 pin. Both ROP checks now genuinely inspect core — `no_except_outside_io`
+  89 files / 0 offenses, `no_raise_outside_io` 88 files / 0 offenses — verified by local execution
+  AND green in the PR's real CI. `.claude/skills/` deliberately excluded until overseer conformance
+  (Gate E); `pure_trees` still gated on `livespec-mutreal.1`. The fan-out's own bump PR (`2a231e25`)
+  merged in between and took the pin/lock hunks; `9fce9979` carries the declaration.
+- **v172 ratification CONFIRMED merged** (`livespec` PR #1658, 2026-07-22T21:55Z). The prior
+  session's handoff rewrite had ALSO already landed (`7bded4c2`); the dirty copy left on the primary
+  checkout was byte-identical and was restored per the #1426 precedent.
+- **NEW check defect found + fixed en route — `livespec-dev-tooling-0v8m` (CLOSED).** Arming the
+  keys surfaced that `source_trees_scoped_to_consumer` false-flagged core's OWN tree as
+  `foreign_package`: its directory census counted core's private helper dirs (`_currency/`,
+  `_stubs/`) as consumer packages. Fixed in `livespec-dev-tooling` **PR #545** (released
+  **v0.51.10**): classification is now by REPO IDENTITY — core-scope declarations are drift unless
+  `[project].name == "livespec"` — and the census is deleted. TWO rounds of unprimed dual review:
+  round 1 (an underscore-census relaxation) was REJECTED after BOTH reviewers independently
+  constructed the same adversary (an underscore-NAMED consumer package beside a retained
+  `livespec/` tree evades any census); they split only on severity (Codex BLOCKERS / Fable
+  NO-BLOCKERS), resolved by adopting the stricter fix rather than routing a waive. Round 2:
+  NO-BLOCKERS ×2, both by execution. Known, documented tradeoff: a repo LYING `name = "livespec"`
+  spoofs the gate (round 1 had no name defense either; fleet names are governed). Closed on
+  live-exercise evidence (PR #1663's CI running the fixed check green cross-repo).
+- **The fleet-wide `check-fleet-conformance` red is FIXED** — it was `livespec-overseer` `prefix`
+  drift (`.beads/config.yaml` said `livespec-overseer`; `.livespec.jsonc` + the live server say
+  `overseer` — `e04af4b` renamed the jsonc side and missed the yaml co-edit). Fixed by
+  **livespec-overseer PR #15** (MERGED). Every member's next conformance run reads the fixed
+  master; confirmed green by re-running PR #545's failed jobs. The blast-radius question remains
+  `livespec-dev-tooling-4er` (P1, ruled, implementation pending).
+- **`livespec-dev-tooling-x6t6` (P2) FILED** — the "two inert markers" defect this handoff asked to
+  file: the check's position exemption covers only `main()`-direct-children, over-flagging the
+  sanctioned loop-iteration and foreign-code marker positions v172 permits. Siblings 9ar/jjb/ajo
+  referenced from the item.
+- **Method notes this session:** (a) the reviewer-split playbook — when reviewers agree on the FACT
+  and split on SEVERITY, closing the gap is strictly better than adjudicating the split, when
+  affordable; (b) the 0v8m fix was hand-coded inline with dual review rather than
+  factory-dispatched — it gated the session's principal chain, but note the discipline default is
+  factory dispatch (`.ai/agent-disciplines.md` §"Factory-dispatch over inline implementation");
+  (c) a `codex:codex-rescue` review dispatch is a FORWARDER — poll its background task yourself
+  via the codex-companion `status`/`result` surface; the forwarder cannot.
+
+### 👤 WHAT NEEDS THE MAINTAINER (unchanged; nothing blocking)
+
+1. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (holds only the already-ratified
+   v169 proposal). Safe: `git -C /data/projects/livespec branch -D spec/rop-loop-iteration-marker`.
+2. **`livespec-dev-tooling-4er` (P1)** — the ruled conformance blast-radius fix; implementation
+   pending (a non-conforming member fails only its own CI).
+
+### NEXT WORK (all unblocked)
+
+- **`livespec-dev-tooling-cvz` (P1)** — Driver `source_trees` coverage. ⚠️ Unchanged sequencing:
+  HARDEN FIRST (substring marker matcher; `_is_broad` alias blind spots) — both false-ACCEPTS go
+  live in the ruff-`extend-exclude`d Driver hook trees the moment their `source_trees` land.
+- **`e9j` loudness half** — armed-but-inspecting-nothing still exits 0; open severity question on
+  the item (its own `check_mutation` reasoning argues ERROR).
+- **`x6t6`** (position exemption), **`9ar`** (except*/TryStar), **`ajo`** (contextlib.suppress),
+  **`39i`** (red_leg_scope floor), **`bbl`/`jjb`** (marker mechanization + canonical body).
+- **`pure_trees`** stays gated on `livespec-mutreal.1` (staging-tree productization).
+
+## (HISTORY) ✅ STATE AS OF 2026-07-22 (session close)
 
 The whole ruling-7→ruling-8 arc is CLOSED. Do NOT re-open it. Verify each fact from the ledger /
 GitHub before acting — status is READ, never trusted from prose.
