@@ -124,14 +124,26 @@ scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.cons
 # execution against this tree: the check runs and exits 0 with no offenses, so
 # this is a pure severity restoration with no remediation attached.
 #
-# `source_trees` / `io_trees` are deliberately NOT declared here. They arm
-# `no_except_outside_io`, which still bans ALL try/except outside io/ — narrow
-# included — because v169's ratified "narrow at the seam; broad only at the
-# boundary" rule is not yet implemented in the check. Declaring them today would
-# fail core on three legitimate foreign-code-isolation catches. They land once
-# the broad-only rule is implemented. `pure_trees` stays gated on the mutation
-# staging-tree construction and on the check_mutation rc>=2 regression.
+# e9j slice 1b — declare `source_trees` + `io_trees`, arming the two ROP
+# checks (`no_except_outside_io`, `no_raise_outside_io`) so they inspect
+# core instead of no-opping.
+#
+# Unblocked by spec v172 plus livespec-dev-tooling v0.51.9 (PR #516): the
+# shipped `no_except_outside_io` is breadth-aware per ruling 8 — a narrow
+# typed catch passes anywhere outside `io_trees`; a broad catch is an offense
+# unless it sits at a sanctioned `main()` boundary AND carries one of the
+# five closed-set markers. Core's three narrow foreign-code-isolation catches
+# (`no_spec_section_citation_in_code.py`, `wiring_completeness_cross_repo.py`)
+# pass under it, verified by execution against this tree.
+#
+# `.claude/skills/` is deliberately NOT in `source_trees` yet: enforcement
+# arrives after adoption (per .ai/ci-gate-discipline.md), so it enters only
+# once the overseer folder reaches conformance (overseer-productization
+# Gate E). `pure_trees` stays gated on the mutation staging-tree
+# construction (livespec-mutreal.1).
 dataclasses_tree = ".claude-plugin/scripts/livespec/schemas/dataclasses"
+source_trees = [".claude-plugin/scripts/livespec"]
+io_trees = [".claude-plugin/scripts/livespec/io"]
 
 destructive_cli_allowlist = []
 # Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
