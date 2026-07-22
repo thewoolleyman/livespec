@@ -5,6 +5,48 @@
 **Everything below this block is detail. Read this first, then jump to the section
 it points you at.**
 
+### ⏭ SESSION CLOSE 2026-07-22 (cont.) — OVERSEER INTENT GATE DECIDED; clause-2 RUNTIME HALF shipped. NEWEST block — trust it over everything below, including the next §"SESSION 2026-07-22" block.
+
+**Biggest change: human-decision-queue item 1 / ranked-action 1 (the overseer spec
+intent statement) is CLEARED.** The maintainer chose **framing A (SUPERVISION
+CONTRACT)** on 2026-07-22. Recorded in `plan/overseer-productization/` (livespec
+PR #1645, merged) and on its anchor epic `livespec-b1uo`; that thread no longer reads
+"gated"/"three framings, none chosen". **The overseer's next step is Fable-session seed
+authoring against framing A — NOT this thread's to execute:** do not author the six
+spec files, do not touch the App-install or the blocked bump PR. (Verified nuance: there
+is NO distinct "livespec-overseer tracking item" — that beads tenant is EMPTY; the gate
+lives as "Item 1" in the plan thread + the anchor epic note.) So ranked-action 1 below is DONE.
+
+**qiqz6b — clause 2 RUNTIME HALF SHIPPED (PR #298, `c91bc1de`), and Part B EXHAUSTIVELY
+scoped.** `lane_of`/`is_item_ready`/the predicate now accept an optional
+`sibling_status_lookup`; `default None` is behaviour-identical; unit-covered. **The full
+Part B execution brief is on `bd-ib-qiqz6b` (several comments) — read them, do not
+re-derive:**
+- Cross-tenant read CONFIRMED (`load_items(repo=<sibling_clone>)`); all 8 fleet members
+  have a host clone + `.beads/`, so fail-closed-on-unreachable is defensive-only.
+- **Complete wiring inventory: SEVEN call sites**, not 3 — the 2 dispatch sites PLUS
+  `next.py:126`, `_needs_attention_work_items.py:67`, `list_work_items.py:139/141/186`.
+  Wiring only the dispatch path leaves the render surfaces showing stale `blocked` lanes.
+- Co-design with `bd-ib-4m5f` (same divergence class; the shared lookup must reach all
+  lane-rendering surfaces). 4m5f recommendation recorded: direction 1, layer-2 shared
+  candidate primitive.
+- Sequence: release v0.13.0 (PR #299, CLEAN/mergeable, PARKED) → build the lookup → wire
+  the 7 sites → test. This is a two-repo Red-Green-Replay epic — a FRESH-session task.
+
+**`bd-ib-hdd6` (review-gate "silence = PASS") — REFUTED at all four layers**, at the
+threshold of closing under criterion 3: no label-free edge reaches `pr`; the unconditional
+`unmatched review outcome` → `escalate` edge exists and is test-pinned
+(`test_scenario20_review_has_unconditional_fallback_to_human_gate`); Fabro requires+uses
+that fallback. Remaining: close as refuted-with-evidence, or one confirming Fabro run.
+
+**Fleet health at close:** 8/9 repos master-CI green; only `livespec-overseer` non-green
+(its known no-`SPECIFICATION/` blocker — now cleared-to-author via the A decision). This
+session's 2 release fan-outs + 6 PR merges red-ed no consumer. All primaries clean on master.
+
+**HIGHEST-VALUE next task for THIS thread: qiqz6b Part B.** Everything else remaining is
+maintainer-gated (v0.13.0 release timing; hdd6 close-vs-run; `livespec-rbpl` / 4m5f / f73t /
+h95t design choices) or a separate epic.
+
 ### ⏭ SESSION 2026-07-22 — THE RELEASE LANDED; qiqz6b CLAUSE 1 IS LIVE. This block supersedes the stale claims named in it.
 
 Human-decision-queue **item 2 (merge `livespec-runtime` PR #295) is DONE**, and driving
