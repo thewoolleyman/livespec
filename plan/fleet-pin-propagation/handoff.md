@@ -5,6 +5,75 @@
 
 ---
 
+## 🟢 START HERE — 2026-07-22 (FIFTH session close). READ THIS FIRST.
+
+**Everything below is history. This section is the current truth. Every primary
+checkout is clean on `master`; nothing of mine is in flight; no PR of mine is
+unmerged.**
+
+### ⚠ A SUPERVISOR IS COORDINATING THIS TRACK VIA RELAYS
+A separate **fleet-pin-propagation-supervisor** session drives this track: it
+sends decisions/tasks as relays through the prompt channel and MONITORS
+`/data/projects/livespec/tmp/overseer/fleet-pin-propagation/` +
+`/data/projects/livespec/tmp/fleet-pin-propagation-supervisor/status.log`.
+**On resume: append a one-line status event to that `status.log` per work block,
+and expect supervisor relays.** Decision-prep + evidence artifacts (durable, on
+disk) live in `tmp/fleet-pin-propagation-supervisor/`:
+`acceptance-evidence.md`, `oq9w-decision-memo.md`, `f73t-groom-draft.md`,
+`oq9w-evidence-chain.md`, `oq9w-piece3a-plan.md`, and the log.
+
+### THE FLEET-PIN-PROPAGATION WORK IS SUBSTANTIVELY DONE
+The original P0 (`livespec-dh9r` v0.20.0 fan-out stall) was resolved long ago —
+fan-out green, all consumers current across all pin formats. Since then:
+
+- **CLOSED (maintainer-authorized, all live-verified):**
+  `livespec-dev-tooling-bmf`, `-clrk`, `-ews`, `livespec-kkwy` (safety-net +
+  guidance fixes; dev-tooling PRs #526/#529/#533, livespec #1635).
+- **`livespec-oq9w` EPIC COMPLETE** (console = receiving-only pin consumer,
+  Option B/Option 3): pieces all landed + verified — console `pin-freshness.yml`
+  (console #380), manifest (livespec #1650), bespoke conformance obligation
+  (dev-tooling #536, conformance GREEN), contracts prose **v030** (dev-tooling
+  #543, independent NO-BLOCKERS review). Backstop exercised LIVE (sweep
+  29949469149) — closed the clrk residual (python-rust- + python-rust-agent-
+  both current). **⏳ AWAITING SUPERVISOR CLOSE AUTHORIZATION — do NOT self-close
+  oq9w.** Recommended close reason in `oq9w-evidence-chain.md`.
+
+### OPEN / PENDING (all maintainer-or-supervisor-gated — none is "just do it")
+1. **`livespec-oq9w`** — await supervisor close authorization (evidence chain
+   ready; do not self-close).
+2. **`livespec-dh9r` systemic alarm** — the remaining substantive design work,
+   cut into slices (maintainer-approved), ALL gated on dispatch sequencing that
+   returns through the supervisor:
+   - `livespec-591t` (Slice 1: four-format pin-currency at WARNING) — ready.
+   - `livespec-f73t` (Slices 2a+2b: make the fan-out preflight a FILTER not a
+     GATE) — 2a ready, 2b attended-only. **HARD PREREQUISITE for Slice 3.**
+   - Slice 3 (persisting-gap → ERROR) = `dh9r`'s payload; `dh9r` depends_on 591t
+     + f73t. **Landing Slice 3 before f73t recreates the v0.20.0 stall** —
+     codified in `.ai/ci-gate-discipline.md`. Do NOT self-dispatch any slice.
+3. **`livespec-dev-tooling-vod6`** (P3, design Q) — is control-plane-tool
+   (overseer) a release producer or a receiving-only consumer like the console?
+   Maintainer call; may route to `plan/overseer-productization/`.
+4. **`livespec-eerz`** (P3, core tenant) — nfr.md:1051 "unlike console…" is stale
+   post-oq9w; cross-linked to vod6 (wording may depend on vod6). File-only.
+5. **Driver defects `livespec-driver-claude-tun` + `-6lc`** — 6lc got a fresh
+   LIVE recurrence 2026-07-22 (revise agent's plugin-resolution entries[0] picked
+   the WRONG project's core = resume's install). Sequence tun+6lc together.
+6. **`livespec-cbmw`** — overseer scaffolding (owned by
+   `plan/overseer-productization/`); its bump PRs still can't merge (growing pin
+   debt, bounded-and-rotating). NOT this thread's to fix.
+7. **FYI, hands-off:** `livespec-orchestrator-git-jsonl` #369/#370 blocked by a
+   `review_requirement` key mismatch — owned by autonomous-mode-retirement track;
+   cite-only as a live persisting-gap example for f73t/dh9r, do NOT touch/fix.
+
+### RESUME POSTURE
+There is **no unattended "just do it" work left** — every open item needs a
+supervisor/maintainer decision or dispatch-sequencing call. On resume: read
+`status.log`, await/execute supervisor relays, and keep `oq9w` unclosed until
+authorized. If the supervisor is silent and you are genuinely blocked on a
+human decision, write `blocked: <reason>` to the overseer state file.
+
+---
+
 ## 🟢 START HERE — 2026-07-21 (FOURTH session close). READ THIS FIRST.
 
 **Everything below this section is history. This section is the current truth.
