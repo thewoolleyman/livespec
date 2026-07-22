@@ -1,4 +1,62 @@
-# autonomous-mode-retirement — RECLAIMED AND LIVE
+# autonomous-mode-retirement — CLOSED (sequence complete; archived)
+
+## 🏁 THREAD CLOSED 2026-07-22 — the whole Part B release path shipped, was exercised live, and is ACCEPTED. This block is the FINAL record; everything below is prior detail.
+
+**qiqz6b clause 2 (Part B) is DONE end-to-end, so this thread ARCHIVES.** The maintainer
+accepted Part B after independent forge verification and closed the ledger acceptance
+legs; with the human-decision queue empty, the plan moves to `plan/archive/`. Provenance
+throughout: cross-supervisor coordination with `plan/fleet-pin-propagation/`, every claim
+verified by observation before acceptance.
+
+### The whole sequence, by observation
+
+| Step | What | Evidence |
+|---|---|---|
+| **1** | git-jsonl accepts the shared `review_requirement` field (un-stick its `livespec-runtime` v0.12.0 bump) | `livespec-orchestrator-git-jsonl` PR #371 merged (`5ec65248`); pin moved v0.11.0→v0.12.0; master CI green. Ledger `bd-ib-nap2` (CLOSED by maintainer) |
+| **A** | Cut `livespec-runtime` v0.13.0 (the clause-2 runtime seam) | release PR #299 merged (`f2584bf3`); **v0.13.0 published** 2026-07-22T20:25Z; adds no new `WorkItem` schema field (git-jsonl-safe) |
+| **B** | Fan-out — repin the runtime consumers | 3 consumers moved to v0.13.0 by observation: livespec #1653 (`91d8206f`), `livespec-orchestrator-beads-fabro` #869 (`ce31eb0a`), `livespec-orchestrator-git-jsonl` #374 (`c63264db`) |
+| **C** | Part B — thread `sibling_status_lookup` through the 7 readiness/lane sites | `livespec-orchestrator-beads-fabro` PR #871 merged (`b4e926d3`), master CI green; exercised live |
+
+### ⚠ Correction folded in (B): THREE runtime consumers, not eight
+
+The fan-out dispatches `sibling-released` to all 8 fleet siblings, but only **3 carry a
+`livespec-runtime` pin** (livespec core, `livespec-orchestrator-beads-fabro`,
+`livespec-orchestrator-git-jsonl`). `livespec-dev-tooling`, both drivers,
+`livespec-console-beads-fabro`, and `livespec-overseer` have **no runtime pin**
+(overseer's apparent match is a comment; dev-tooling's vendor entries are third-party
+libs) — each got a **no-op dispatch, 0 runtime bump PRs**. The "overseer blocked / console
+pin-freshness backstop" expectations belong to the *core* livespec fan-out, not the
+runtime one. Everything that could move, moved, green.
+
+### Part B live-exercise (real fleet tenants, under the credential wrapper)
+
+The "done means exercised live end-to-end" discharge (`scratchpad/probe_partb_live.py`,
+one credential-wrapped invocation):
+
+| Check | Result |
+|---|---|
+| `lookup(dev-tooling, OPEN id)` | `open` (real read of the 185-item tenant) |
+| `lookup(dev-tooling, DONE id)` | **`closed`** — the new clause-2 behavior |
+| `lookup(absent id)` / `lookup(non-member repo)` | `unknown` (fail-closed) |
+| `is_dispatch_candidate(livespec-qhxcsp)` | **False** — its real open dep still blocks (`livespec-dev-tooling` ∈ `cross_repo_targets`, so the lookup was genuinely exercised, not the not-in-targets fail-closed path) |
+| `is_item_ready(dep on DONE sibling `livespec-giq7`)` | **True** — closed satisfied, end-to-end |
+| `is_item_ready(dep on OPEN sibling `livespec-dh9r`)` | **False** — open still blocks |
+
+### Ledger + residuals at close
+
+- `bd-ib-qiqz6b` (clause 2) and `bd-ib-nap2` (git-jsonl) are CLOSED by the maintainer with
+  independent-review records. The review-gate "silence = PASS" item (`bd-ib-hdd6`) closed
+  as refuted-with-evidence.
+- Residual open items this thread's close-out sweep created (e.g. `bd-ib-24j5uy` D1/D2,
+  `bd-ib-4m5f`, `livespec-runtime-0h8`, `livespec-bmxs`) live in their own tenants and are
+  NOT dropped by archiving — this archived handoff retains their record and dispositions
+  below (relocate-never-drop).
+- This thread carried NO distinct reclaim-anchor epic (the original `livespec-33opqs` closed
+  2026-07-19; the reclaimed work was tracked as `bd-ib-qiqz6b` / `bd-ib-nap2`, now closed),
+  so archiving is consistent with the `archived ⟺ epic-closed` parity discipline.
+
+**Archived to `plan/archive/autonomous-mode-retirement/` per the plan-thread archive
+discipline (orchestrator `prose/plan.md` §"Step 5 — Archive on epic close").**
 
 ## 🚦 START HERE — session close 2026-07-21 (this block is the orientation)
 
