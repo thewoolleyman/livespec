@@ -11,6 +11,18 @@
 Nothing of mine is in flight; every primary checkout is clean on `master`; no PR
 of mine is unmerged.**
 
+> **CLOSURE UPDATE (2026-07-22, maintainer-authorized via supervisor):** the four
+> safety-net / guidance items are CLOSED — `livespec-dev-tooling-bmf`,
+> `livespec-dev-tooling-clrk`, `livespec-dev-tooling-ews` (verify-and-close), and
+> `livespec-kkwy` (fixed by dev-tooling PRs #526/#529/#533 and livespec PR #1635;
+> all live-verified, evidence journaled per item). `livespec-oq9w` is DECIDED
+> **Option B** (the console `livespec-console-beads-fabro` is a full pin consumer);
+> its epic — add the `pin-freshness.yml` backstop, amend the manifest comment, and
+> amend `livespec-dev-tooling/contracts.md` via the full spec path — is in flight.
+> `livespec-f73t` remains the hard prerequisite for `livespec-dh9r`'s systemic
+> alarm (groom draft prepared). Decision-prep artifacts live under
+> `tmp/fleet-pin-propagation-supervisor/`.
+
 ### THE P0 IS RESOLVED — propagation restored AND the fan-out itself verified
 
 **`livespec-dh9r` (P0) no longer needs emergency action.** The third session
