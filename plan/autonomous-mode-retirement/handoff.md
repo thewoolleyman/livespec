@@ -5,7 +5,76 @@
 **Everything below this block is detail. Read this first, then jump to the section
 it points you at.**
 
-### ⏭ SESSION CLOSE 2026-07-22 (cont.) — OVERSEER INTENT GATE DECIDED; clause-2 RUNTIME HALF shipped. NEWEST block — trust it over everything below, including the next §"SESSION 2026-07-22" block.
+### ⏭ SESSION 2026-07-22 (Part B release path) — git-jsonl v0.12.0 BUMP UN-STICK is now STEP 1, before v0.13.0. NEWEST block — trust it over everything below, including the "OVERSEER INTENT GATE DECIDED" block that was newest until this one.
+
+**Part B is UNHELD and approved to finish under this thread** (maintainer-directed,
+2026-07-22). But the release path carries ONE verified precondition that must land
+FIRST, and it is a NEW, previously-SILENT fleet stall OUTSIDE the original `qiqz6b`
+scope: a shared-schema field the OTHER orchestrator cannot yet store.
+
+**THE DEFECT — verified, do NOT re-derive.** `livespec-runtime` v0.12.0 added
+`review_requirement` to the SHARED work-item schema (it shipped alongside the
+`livespec-4rq4` review-requirement work). `livespec-orchestrator-git-jsonl`
+reimplements the work-item schema in its OWN strict JSONL store validator, which
+enumerates allowed keys and rejects any it does not recognize:
+`.claude-plugin/scripts/livespec_orchestrator_git_jsonl/store_schema.py`
+`_WORK_ITEM_ALLOWED_KEYS` (the union of its required and optional key sets) has NO
+`review_requirement`, so `_check_required_keys` (lines 214-219) raises
+`SchemaViolationError: unexpected extra keys: ['review_requirement']`. This is
+schema-LOCKSTEP drift — a field added upstream and not mirrored in a downstream
+reimplementation. That repo's `master` CI is GREEN, so it is the BUMP that breaks,
+NOT the repo. Its two `livespec-runtime` v0.12.0 bump PRs are BLOCKED — **#369**
+(2026-07-21) and **#370** (2026-07-22) — and git-jsonl has sat one runtime release
+behind since 2026-07-21 with NOTHING surfacing it: a pre-existing SILENT stall
+(git-jsonl ships no pin-freshness backstop).
+
+**EVIDENCE — an arbiter named per claim (this thread's counter-move).**
+
+| Claim | Arbiter | Verified by |
+|---|---|---|
+| `review_requirement` rejected verbatim in CI | PR #370 `check-per-file-coverage` log read `87 failed, 300 passed`, verbatim `SchemaViolationError: unexpected extra keys: ['review_requirement']` | `plan/fleet-pin-propagation/` supervisor (live CI log) |
+| that verbatim string is produced by that exact code path | `store_schema.py:214-219` emits `unexpected extra keys: {sorted(extra)}`; `sorted({'review_requirement'})` → `['review_requirement']` | this session (code-level, credential-free) |
+| git-jsonl master green → the BUMP breaks, not the repo | `gh run list --repo thewoolleyman/livespec-orchestrator-git-jsonl --workflow CI --branch master` → completed/success | this session |
+| both bumps blocked | `gh pr list --repo thewoolleyman/livespec-orchestrator-git-jsonl --state open` → #369, #370 `BLOCKED` | this session |
+
+The GitHub CI log itself has since aged out of retention; the code-level arbiter above
+reproduces the exact string credential-free and is the durable one.
+
+**PROVENANCE.** Surfaced by cross-supervisor coordination with the
+`plan/fleet-pin-propagation/` supervisor; independently verified against the live CI
+log (their read) AND against git-jsonl's own validator code (this session) before
+acceptance.
+
+**RETIREMENT NOW OWNS THE FIX as Step 1 of the Part B release path.** The full,
+maintainer-gated sequence:
+
+1. **Fix git-jsonl schema acceptance** — teach its store schema to ACCEPT and
+   losslessly PRESERVE `review_requirement` (acceptance + round-trip ONLY; whether
+   git-jsonl's dispatcher ENFORCES a review requirement is a SEPARATE feature,
+   deliberately OUT OF SCOPE here). The beads orchestrator
+   (`livespec-orchestrator-beads-fabro`) references the field NOWHERE by name — its
+   store accepts shared-schema fields transparently — so git-jsonl needs the explicit
+   teach precisely BECAUSE it reimplements the schema rather than delegating to runtime.
+2. **Verify v0.12.0 un-stuck BY OBSERVATION** — #369/#370 (or a fresh bump PR) go
+   GREEN and MERGE, or the pin actually moves. NOT a green dispatch job — git-jsonl has
+   no pin-freshness backstop.
+3. **v0.13.0 release timing** — the supervisor coordinates with the
+   `plan/fleet-pin-propagation/` supervisor, then the maintainer gives the final GO.
+   v0.13.0 release timing is MAINTAINER-GATED (per the human-decision queue below).
+4. **Cut `livespec-runtime` v0.13.0** (release PR #299, CLEAN/mergeable, PARKED).
+5. **Wire the 7 orchestrator sites** with `sibling_status_lookup` (qiqz6b Part B
+   proper; the full call-site inventory is on `bd-ib-qiqz6b`).
+
+**HARD STOP after Step 1** — do NOT cut v0.13.0 and do NOT begin the 7-site wiring
+until the supervisor↔supervisor release-timing coordination AND the maintainer GO.
+
+**Ledger item for the git-jsonl fix:** OWED. To be filed this session if the shared
+1Password quota is reachable (a beads write); if exhausted, a later session files it
+verbatim from this block — do NOT probe the quota repeatedly. Enough to file it verbatim
+is captured above (defect, exact code location, acceptance = accept + round-trip
+preserve, out-of-scope = dispatcher enforcement).
+
+### ⏭ SESSION CLOSE 2026-07-22 (cont.) — OVERSEER INTENT GATE DECIDED; clause-2 RUNTIME HALF shipped. PRIOR-newest block (superseded by the block above) — still trust it over everything below it, including the next §"SESSION 2026-07-22" block.
 
 **Biggest change: human-decision-queue item 1 / ranked-action 1 (the overseer spec
 intent statement) is CLEARED.** The maintainer chose **framing A (SUPERVISION
