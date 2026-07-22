@@ -177,30 +177,82 @@ you need the reasoning behind a decision.
   fleet credential environment (PR #14). Belongs in the repo-birth procedure
   beside the two steps §"Two UNDOCUMENTED birth-procedure steps" records.
 
-## 🔴 DO THIS FIRST — the live daemon points at a DELETED path
+## 🔴 READ FIRST — the live daemon runs deleted-path code; do NOT relaunch it from the new repo until the staged cutover passes
 
-**The running `overseerd` was launched from
-`/data/projects/livespec/.claude/skills/overseer/overseerd`, which the
-relocation removed.** It keeps running only because its code is already loaded
-in memory. It CANNOT be restarted from there, and the `/overseer` skill is gone
-from core sessions.
+**The running `overseerd` (pid 1570280, started 2026-07-20 05:13:03 UTC) was
+launched from `/data/projects/livespec/.claude/skills/overseer/overseerd`,
+which the relocation removed.** It keeps running only because its code is
+already loaded in memory, and it remains the ACTING supervisor for the whole
+fleet. Leave it running.
 
-This was NOT restarted deliberately: it is the maintainer's live supervision
-infrastructure, currently managing every track including this one, so killing it
-mid-flight is a maintainer call, not a session's.
+**An earlier version of this section presented the new-repo launch command as
+the replacement. That framing is SUPERSEDED (maintainer-declared 2026-07-23):
+do not cut the daemon over to the new repo until the staged cutover protocol
+below has been walked and passed.** Two facts make the eager relaunch wrong:
 
-Verified-working replacement launch:
+1. **The running daemon is NOT equivalent to the new repo's code.** It started
+   ~18 hours BEFORE `b1uo.3` landed (`d1b4428c`, 2026-07-20 23:03 UTC), so the
+   in-memory supervisor still derives its watch-set from the FLEET MANIFEST
+   (the ancestor directories of its deleted module path still exist, so the
+   walk-up resolution still works), while the relocated code reads
+   `~/.livespec-overseer-repos.json`. Byte-identical relocation does not make
+   the running PROCESS byte-identical to the new code, and the new code has
+   never run as a long-lived daemon.
+2. **The new repo's two-pane bootstrap is broken** (`overseer-y8o` in the
+   `livespec-overseer` tenant: stale `.claude/skills/overseer/` daemon path +
+   `parents[3]` core-root traversal), so the sanctioned launch path does not
+   exist there yet — only the bare `overseerd` command works.
 
-```bash
-cd /data/projects/livespec-overseer && ./.venv/bin/python3 overseer/overseerd
-```
+**Rollback exists in BOTH directions — "the old path is deleted" is not "no
+way back":** the pre-relocation tree is recoverable byte-identically from core
+git history (`git -C /data/projects/livespec archive f9664481~1
+.claude/skills/overseer | tar -x -C <rescue-dir>`), and the new repo's
+pre-seed state (`6425828` and earlier) pins the same bytes. If the running
+daemon dies before the protocol completes, EITHER copy is a legitimate
+emergency relaunch — the code is identical; the protocol below exists to prove
+the RUNTIME equivalence, not the bytes.
 
-Verified 2026-07-21: `overseer/supervisor.py list` from the new repo renders the
-full fleet (29 tracks). The proper fix is installing the new repo as a plugin so
-`/overseer` resolves again; the command above is the stopgap.
+**Do not "fix" any of this by restoring the folder to core.** The move is
+correct and merged.
 
-**Do not "fix" this by restoring the folder to core.** The move is correct and
-merged; what is missing is a launch path and a plugin install.
+## Daemon cutover — the staged protocol (maintainer-declared 2026-07-23)
+
+No cutover until everything is proven stable; prove it in parallel and compare
+the new behavior against the old before switching. Literal dual-ACTING
+operation on the real fleet is designed out (the singleton lock refuses a
+second daemon on the same mapping store, and all durable state — mapping,
+round stamps, per-track state files — is shared, so two actors would
+double-inject wrap-ups and race restarts), so the parallel stage is split into
+a read-only fleet soak plus an isolated acting proof:
+
+0. **Precondition — land `overseer-y8o`** (bootstrap re-point) in
+   `livespec-overseer`, under the now-ratified spec, so the sanctioned launch
+   path exists in the new repo.
+1. **Read-only parallel soak.** Run the new code's `supervisor.py list`
+   (`act=False`) beside the live daemon against the real fleet and diff its
+   table against the old daemon's render, repeatedly, across a soak window.
+   Same discovery, same stores, zero mutation risk. PASSING = zero
+   unexplained row deltas; the ONE expected delta class is the watch-set
+   source (manifest-derived vs `$HOME`-declared — see fact 1 above), and every
+   observed delta must be explained to that or ruled a defect.
+2. **Isolated acting proof.** Using the scratch-`HOME` isolation recipe in
+   `overseer/AGENTS.md` §"How to exercise it live", run a full second daemon
+   against a disposable demo repo + demo session and drive the complete
+   inject → declare → restart cycle on the NEW code. The real fleet is never
+   touched.
+3. **Cutover, maintainer-executed, at a quiet window.** Stop the old daemon,
+   launch the new one. The durable round state (injection stamps, notified
+   bands, mapping rows) carries over by design; the only in-memory loss is
+   the continuous-idle clocks, which merely DELAYS nudges — the safe
+   direction. Immediately compare the first new ticks' table and `NEEDS YOU`
+   block against the old daemon's last render, and watch `daemon.log` for
+   anomalies.
+4. **Rollback stays pinned until the new daemon has supervised a full
+   wrap-up → `ready` → restart round on a real track.** Rollback = kill the
+   new daemon and relaunch from the byte-identical pre-seed state (either
+   recovery command in the section above). Only after a real round completes
+   under the new daemon is the cutover "proven", and only then does the
+   wind-down question open.
 
 ## What is left, precisely
 
@@ -208,13 +260,16 @@ merged; what is missing is a launch path and a plugin install.
 |---|---|---|---|
 | 1 | ~~Seed `SPECIFICATION/`~~ | — | ✅ DONE 2026-07-22, livespec-overseer PR #12; PR #1 closed as superseded |
 | 2 | ~~Install the `livespec-pr-bot` App~~ | — | ✅ DONE 2026-07-21 (recorded further down) |
-| 3 | Relaunch the daemon from the new repo + install the plugin so `/overseer` resolves | **maintainer** | the live overseer; `overseer-y8o` (bootstrap re-point) is a prerequisite for the two-pane bootstrap working from the new repo — the DAEMON itself launches fine today via the stopgap command in the 🔴 section |
+| 3 | Walk the staged daemon-cutover protocol (soak → isolated acting proof → compared cutover), then install the plugin so `/overseer` resolves | **maintainer-gated** | see §"Daemon cutover — the staged protocol"; `overseer-y8o` is stage 0. Do NOT bare-relaunch from the new repo — that earlier framing is superseded |
 | 4 | Ledger acceptance legs: close `b1uo.1`/`.2`/`.3` with journaled live-exercise evidence; disposition `b1uo.4`/`.5` (BLOCKED, "likely unnecessary" per D7/D9) | a session + maintainer | epic `livespec-b1uo` still reads BACKLOG throughout despite the work being done |
 | 5 | Gate E role-key declaration in `livespec-overseer`'s pyproject | blocked | still sequenced on the rop-sweep thread's `cvz` |
 
-**WIND-DOWN RECOMMENDATION (2026-07-22).** Once item 3 is done and item 4's
-status legs are discharged, ARCHIVE this thread and open a successor plan
-thread INSIDE `livespec-overseer` (create its `plan/` dir, add
+**WIND-DOWN RECOMMENDATION (2026-07-22; RE-SEQUENCED 2026-07-23).** Wind-down
+opens ONLY after the staged cutover protocol completes through stage 4 — a
+proven, compared cutover with a real supervised round on the new daemon — not
+merely after a relaunch. Once that AND item 4's status legs are discharged,
+ARCHIVE this thread and open a successor plan thread INSIDE
+`livespec-overseer` (create its `plan/` dir, add
 `/data/projects/livespec-overseer` to `~/.livespec-overseer-repos.json` — it is
 absent, so the overseer cannot supervise work on its own repo today) carrying:
 the pin-bump PR queue cleanup (#6/#8 are duplicate livespec-v0.20.1 bumps, #10
