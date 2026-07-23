@@ -4,6 +4,30 @@
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
 
+### ⚡ ADDENDUM 2 ~08:40Z — SLICE B LANDED VIA THE FACTORY; ng5o discharged; cvz is the front
+
+- **`q4cs` (slice B) went GREEN through the FULL factory pipeline** — the queue's release order was
+  honored (position 2 claimed 07:19Z, done posted 08:39Z, position 3 released): `livespec-dev-tooling`
+  **PR #581** merged `7c6b8346d`, janitor post-merge green, acceptance-ai, auto-accepted, **q4cs
+  CLOSED**. First fully-clean dev-tooling dispatch post-`1e85cd1` — the yi6l fix is proven in anger.
+  `no_except_outside_io` now ERRORS (named file, exit 1) when any inspected file lacks the ruff-BLE
+  backstop; live-exercised via fixture, and the prefix-containment ride-along test shipped.
+- **Fleet-wide closure survey run and journaled on `ng5o`** (all 7 members green: core 89/0,
+  livespec-orchestrator-git-jsonl 30/0, livespec-orchestrator-beads-fabro 143/0; both Drivers +
+  livespec-runtime + livespec-overseer sanctioned no-op — that loudness question stays on `e9j`).
+  **`ng5o` is DISCHARGED; its `bd close` is correctly refused until `5oou`'s human accept** — it
+  closes the moment the maintainer runs `drive --action accept:livespec-dev-tooling-5oou`.
+- **`cvz` is now the front** (its harden-first precondition is fully met): declare Driver
+  `source_trees`, un-exclude their hook trees from ruff (slice B's precondition FORCES this),
+  canonicalize ALL non-conforming Driver markers (the list is bigger than the old 6-of-8 survey —
+  see the corrections journaled on cvz), and route the shared canonical string through `bbl`.
+  Groom before dispatch: cvz spans three repos and its journal explicitly defers the
+  orchestrator-hooks-tree question to grooming.
+- **Push-leg defect re-attributed:** `bd-ib-qq7f` (livespec-orchestrator-beads-fabro) is likely the
+  same class as the command-queue track's `bd-ib-pums` (hook-refused pre-clone push → silent
+  synthetic-snapshot base → disjoint-history publish → misleading workflow-file rejection); qq7f
+  cross-linked and marked secondary.
+
 ### ⚡ ADDENDUM ~05:05Z — the factory hold is LIFTED; serialization protocol is in force
 
 - **`yi6l` is FIXED and CLOSED.** The 29qo/b02 track landed `1e85cd1` (livespec-dev-tooling,
