@@ -1,6 +1,91 @@
-# rop-sweep-fleet-policy — SLICE 1B LANDED: core's ROP checks are ARMED and green. Remaining: Driver coverage (cvz), loudness, and the marker-position defects
+# rop-sweep-fleet-policy — HARDEN SLICE A LANDED: exact closed-set marker matching is live. Remaining: slice B (ruff-BLE precondition), then cvz Driver coverage; the FACTORY IS HELD for dev-tooling (yi6l)
 
-## ✅ STATE AS OF 2026-07-23 (session close) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-23 (SECOND session close, ~04:45Z) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
+
+- **The cvz harden-first prerequisite is HALF DISCHARGED — slice A is MERGED.**
+  `livespec-dev-tooling` **PR #567** (merge `8dd0e698`): `no_except_outside_io` now matches the
+  closed marker set EXACTLY — the four fixed wordings must run to the comment's end, and the
+  templated foreign-code wording must fill `<surface>` (free text, no angle brackets) and
+  `<ErrorType>` (possibly-dotted identifier), ending at the literal `, reported`. The
+  substring-tolerance false-ACCEPT class is closed, including literal unfilled placeholders and
+  prose ErrorType fills. Dual UNPRIMED review: round 1 SPLIT (Fable NO-BLOCKERS / Codex BLOCKERS —
+  Codex's template-slot find was REAL and fixed via a rebuilt Red→Green pair; its pyright blocker
+  was wrong-source verification, dismissed with line-by-line pre-existing evidence); round 2 on the
+  rebuilt head `aa5993f`: **NO-BLOCKERS ×2**. Live-exercised on merged master (self-run 127/0; the
+  motivating exploit fixture reports offenses 1). Ledger: **`5oou` is in ACCEPTANCE** — the human
+  accept valve remains (`drive --action accept:livespec-dev-tooling-5oou`).
+- **New ledger structure for the hardening:** `livespec-dev-tooling-ng5o` (P1) is the UMBRELLA
+  (blocked-by both slices; cvz is blocked-by ng5o). Slice A = `5oou` (acceptance). Slice B =
+  **`q4cs` (P1, open)** — the check must ERROR unless every file it inspects is ruff-`BLE`-covered
+  (the mechanical backstop that closes `_is_broad`'s alias blind spots in the Drivers'
+  ruff-excluded hook trees). q4cs carries a Red ride-along from round-2 Codex: a rejection test for
+  a comment CONTAINING the full directive+wording mid-prose (the startswith→containment mutant
+  survives the suite today; master behavior is correct).
+- **🔴 THE FACTORY IS HELD for livespec-dev-tooling — `yi6l` (P1).** THREE consecutive dispatches
+  died on ENVIRONMENT, never on the work: (1) `ng5o` as one item exceeded the unattended-turn cap
+  mid-publish (the dispatcher's own sizing-warn predicted it: keep dispatch descriptions <1500
+  chars); (2) `5oou` attempt 1 died at the janitor on `check-fleet-conformance-admin` (passed at
+  the Green amend, failed 15 min later in the SAME sandbox; passes on the host); (3) attempt 2 died
+  at the Red commit on `check-master-ci-green` reporting a red/unprovable master while GitHub
+  showed green all night. WORSE, post-#564 (`de2d50f`, the maintainer's live 29qo/b02 thread:
+  blind rows now ERROR/exit 4, no lever) the sandbox janitor is likely DETERMINISTICALLY red — the
+  sandbox holds the App installation token, which deliberately lacks admin scope, so the admin
+  lane's two rows go blind → exit 4. 29qo's verification matrix covered operator-local and CI
+  contexts but NOT the sandbox-janitor context. The coherent fix candidate is #564's OWN mechanism
+  extended symmetrically (vantage-by-credential-class for the admin lane: a `ghs_` token context
+  reports the two admin rows out-of-vantage, exactly as the central lane already treats them) —
+  a DESIGN CALL for the maintainer inside the 29qo/b02 thread, never a lever. Evidence journaled
+  on `yi6l`. Also filed: **`bd-ib-qq7f` (P2, livespec-orchestrator-beads-fabro tenant)** — attempt
+  3's push died because the sandbox's stale-based branch raced a workflow-touching master commit
+  (`de2d50f` touches ci.yml) into GitHub's App workflows-permission protection; fix direction is
+  fetch+rebase before the push leg. Attempt 3's implementation was COMPLETE and review-approved
+  in-sandbox when it died — the failure class wastes real work.
+- **cvz journal corrections (from round-1 Fable's fleet-wide execution sweep):** the old "6 of the
+  Drivers' 8 broad catches carry exact wording" survey is WRONG/stale — several non-canonical armed
+  markers exist in Driver hook trees (`— fail-open by contract` ×3, two `captured on IO rail`
+  wordings in livespec-driver-claude, `— deliberate fail-open bulkhead`); re-derive the full list
+  during cvz remediation. ADJACENT GAP: livespec-orchestrator-beads-fabro's
+  `.claude-plugin/hooks/codex_yolo_reapply.py:204` carries a non-canonical armed marker in a tree
+  outside its declared `source_trees` — decide in grooming whether cvz covers orchestrator hook
+  trees or a sibling item is filed.
+- **Method notes this session:** (a) the codex:codex-rescue forwarder CANNOT poll — confirmed
+  twice more; poll `codex-companion.mjs status/result <task-id>` from the main session and arm a
+  Monitor on explicit terminal phases only (`verifying` is intermediate); (b) both idle-without-
+  delivery reviewers this session were recovered by ONE blunt deliver-now nudge — inspect the
+  artifact first, ask once, THEN respawn; (c) a reviewer's "pyright fails" style blocker must be
+  re-derived against the repo's OWN task-runner gate before acting — bare tool invocations carry
+  different settings (the round-1 Codex pyright blocker was exactly this); (d) dev-tooling master
+  churned v0.52.5→v0.52.7 DURING the work — sync the worktree tree to current origin/master before
+  every fresh Red, and expect `git reset` against a moved master to leave stale-looking unstaged
+  diffs for files you never touched.
+
+### 👤 WHAT NEEDS THE MAINTAINER
+
+1. **Accept `5oou`** (in acceptance; dual review + live exercise journaled):
+   `drive --action accept:livespec-dev-tooling-5oou`.
+2. **The `yi6l` design call** — how the fleet-conformance ADMIN lane classifies the Fabro-sandbox
+   context post-#564 (recommended: vantage-by-credential-class, symmetric with #564's central-lane
+   treatment). Until ruled, dev-tooling factory dispatches stay held.
+3. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged from last session).
+4. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; implementation pending
+   (unchanged).
+
+### NEXT WORK
+
+- **`q4cs` (slice B, P1)** — the ruff-BLE coverage precondition + the ride-along prefix test.
+  Factory is held: either land `yi6l` first, or go inline with unprimed dual review (the slice-A
+  playbook, proven this session).
+- **Then `cvz`** — declare Driver `source_trees`, un-exclude their hook trees from ruff (q4cs's
+  precondition forces it), canonicalize ALL non-conforming Driver markers (list is bigger than the
+  old survey; see corrections above), fix the shared canonical string via `bbl`.
+- **`e9j` loudness half, `x6t6`, `9ar`, `ajo`, `39i`, `bbl`/`jjb`** — unchanged. jjb's
+  wording-EXACTNESS half is now DISCHARGED by PR #567; cardinality, non-uniform `sole` semantics,
+  contract-discharge, and `.claude/skills` scope remain.
+- **`pure_trees`** stays gated on `livespec-mutreal.1`.
+
+## (HISTORY) ✅ STATE AS OF 2026-07-23 (first session close) — everything below is HISTORY
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
 
