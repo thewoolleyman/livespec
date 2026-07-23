@@ -19,7 +19,11 @@ makes it easier.* This SUPERSEDES the generate-on-request recommendation in §8.
 which was built on the wrong premise (that the low supervision rate reflected low
 demand rather than friction).
 
-> ## ⚠ §0 — READ FIRST: the recommendation in §3 is SUPERSEDED by §10
+> ## ⚠ §0 — READ FIRST: §3 is superseded by §10; **§11 carries the chosen shape**
+>
+> Read §11 FIRST — it is the maintainer's `supervise-plan` proposal, it
+> dominates every option in §10.6, and it is what should be built. §10 remains
+> the reasoning that rules the alternatives out.
 >
 > The original note found a **filename-level** collision (one handoff per topic)
 > and proposed typing the file as a "supervision-lane facet". That resolution is
@@ -321,6 +325,136 @@ one-resumption-point collision. It does not address plane assignment, and naming
 is that every artifact belongs to exactly one plane — making the change larger than
 §3 represented, not smaller. The two-actors *argument* remains useful for the
 narrow amendment in path 1; the *framing* as a new lane should be dropped.
+
+## 11. THE CHOSEN SHAPE — a Control-Plane `supervise-plan` skill
+
+*Maintainer proposal, 2026-07-23, audited and ADOPTED. Dominates every option in
+§10.6; those remain only as the record of why the alternatives fail.*
+
+**The shape.** A new `supervise-plan` skill in the overseer's own plugin
+namespace (Control Plane) creates `plan/<topic>/supervisor-handoff.md`, under a
+single named carve-out, writing it through the target repo's **own documented
+commit discipline** — worktree → PR → review → merge, driven by prose that reads
+the repo's conventions rather than hard-coding them. Nothing is added to
+`livespec` core, the orchestrator, or any Driver.
+
+### 11.1 Why this dominates §10.6
+
+- **The dependency-direction break disappears entirely.** §10.3's third seam and
+  the `NFR:199` violation existed because an *upstream* plane would have had to
+  learn tmux. Here the generator is Control-Plane, where that knowledge already
+  legitimately lives. Core and orchestrator specs keep their **0** mentions of
+  `overseer`/`tmux` (§10.1). The `plan` operation is not modified, so its
+  "a second handoff… this operation refuses to create it" clause is never even
+  reached — that refusal is scoped to *that operation*.
+- **It reuses ratified spec instead of duplicating it.** §10.5's session-naming
+  rule (`livespec-overseer/SPECIFICATION/spec.md:188-193`) and the live-process
+  identity rule (`:225-226`) are already the Control Plane's; a Control-Plane
+  skill simply invokes them. The §6 fail-fast gate stops being a duplication.
+- **The plugin home is real and imminent, not hypothetical.** The operator
+  surface is DECIDED as a fleet-standard plugin with a thin skill binding over
+  repo-owned prose (`research/operator-surface.md`), and the entry-points slice
+  `overseer-m5dtmj` is in the factory as this is written. `supervise-plan` is a
+  natural sibling slice under epic `overseer-3wt`, not a new effort.
+
+### 11.2 Why the non-interference objection does NOT survive — the key move
+
+§10.6 path 3 was rejected because a carve-out "weakens a safety property enforced
+by a startup refusal". **The worktree discipline defeats that objection**, and
+this is the load-bearing insight of the proposal.
+
+The property the rule protects is stated in its own words: *"supervision can
+**never dirty a tracked working tree**"*
+(`livespec-overseer/SPECIFICATION/spec.md:241`). A worktree → PR → merge flow
+**never writes to the primary checkout at all**. The file reaches the repo by
+merge commit, exactly like every other tracked file. So the invariant is
+**preserved literally**, not traded away.
+
+Be precise about what still changes, though — do not oversell this as a no-op:
+
+- The rule as WRITTEN binds the whole tool: *"The **overseer** NEVER touches
+  files under any repository's plan tree"* (`spec.md:230`). So a real amendment
+  is required; it is not merely a clarification.
+- The rule's RATIONALE, however, is entirely daemon-shaped: the plan tree is
+  *"the supervised session's own workflow"*, and *"the restart interlock
+  deliberately inspects nothing beyond the state-file token for the same
+  reason"*. Both concerns are about an **unattended tick loop racing a live
+  session** — neither applies to an attended, reviewed, worktree-based write.
+- The correct amendment therefore SCOPES the prohibition rather than punching a
+  hole in it: the **daemon's observation and restart loop** never touches the
+  plan tree (unchanged, safety-critical, still enforced by the startup refusal);
+  an **attended operator skill** may create exactly one named artifact through
+  the repo's normal commit discipline.
+- The *"state lives in exactly two places"* sentence (`spec.md:237`) needs one
+  distinction, not a third entry: `supervisor-handoff.md` is an artifact the
+  Control Plane **authors for a human or agent to read**, never runtime state the
+  daemon reads back. The daemon must still never open it. Keeping "state" and
+  "authored artifact" distinct preserves that sentence intact.
+
+### 11.3 What still needs amending — and why it is not coupling
+
+Two one-line amendments remain, because both upstream specs **enumerate** the
+planning thread's contents, so a third file contradicts them no matter who wrote
+it:
+
+- `livespec` core `non-functional-requirements.md:175` — *"carrying two
+  facets"*.
+- `livespec-orchestrator-beads-fabro` `contracts.md` §"The `plan/<topic>/` thread
+  store" — *"holding two facets"*.
+
+Both amendments are **realization-agnostic declarations of non-ownership**, which
+is the opposite of coupling: core says a planning-thread directory MAY host one
+Control-Plane artifact that the Spec and Orchestrator planes MUST ignore; the
+orchestrator says the `plan` operation neither creates, reads, nor validates it.
+Neither names tmux, the overseer, or any tool — core already carries the
+Control-Plane concept generically (`spec.md:287`), so this adds no new vocabulary
+and no new dependency.
+
+The honest answer to "no coupling anywhere upstream" is therefore: **no coupling,
+but not literal silence.** Silence would leave `NFR:175`'s enumeration
+contradicted in fact — precisely the unstated drift the fleet's doctor checks
+exist to catch. Declaring the artifact ignored is what keeps the specs true.
+
+### 11.4 The one genuine snag — "everywhere by default" vs. an invoked skill
+
+The maintainer's `by default = everywhere` decision was motivated by removing
+friction. A skill someone must invoke per topic **reintroduces exactly that
+friction**, so the decision and this shape need reconciling. Three ways, in
+recommended order:
+
+1. **Automatic nudge, attended write (RECOMMENDED).** The Control Plane detects a
+   plan thread with no supervisor handoff and SURFACES it — the daemon already
+   emits SURFACE lines, and surfacing is not touching. The operator runs
+   `supervise-plan`; the skill does the worktree → PR write. "Everywhere" is
+   delivered by the automatic *nudge*, while the *write* stays attended and
+   reviewed. **Snag inside the snag:** detecting absence is a `stat`, and
+   `spec.md:174-175` forbids the daemon to *"read, stat, or hash any file inside
+   a plan directory"*. So this needs either a narrowly-scoped allowance for a
+   single existence check, or the check relocated to the console / the skill
+   itself. Decide this explicitly; do not let it land by accident.
+2. **Batch mode.** `supervise-plan --all` walks every watched repo's unarchived
+   threads and opens ONE PR. One invocation genuinely covers everywhere, and
+   nothing needs to stat on a tick.
+3. **On supervision start only.** The file is created when supervision actually
+   begins. Cleanest conceptually, but it is the generate-on-request shape the
+   maintainer already rejected as too manual.
+
+### 11.5 Net effect
+
+| objection | status under §11 |
+|---|---|
+| §10.1 no upstream authorization | **Gone** — nothing tmux/overseer-shaped goes upstream |
+| §10.2 artifact in two planes | **Survives**, resolved by one realization-agnostic core line |
+| §10.3 third seam, inverted direction | **Gone** — generator is Control-Plane |
+| §10.4 overseer non-interference | **Defused** — worktree→PR preserves the actual invariant; amendment scopes the daemon rule |
+| §10.5 duplicating ratified spec | **Gone** — the skill invokes the overseer's own rules |
+| "everywhere by default" | **Open** — see §11.4; the nudge/stat question needs a decision |
+
+**Next action:** file `supervise-plan` as a groomed slice under epic
+`overseer-3wt` in `livespec-overseer`, sequenced after the plugin and
+entry-points slices land, and route the two upstream one-liners through
+`/livespec:propose-change` at that time — not before, so the amendments describe
+something that exists.
 
 ## 7. What the generated template should carry
 
