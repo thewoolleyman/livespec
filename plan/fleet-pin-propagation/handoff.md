@@ -5,6 +5,78 @@
 
 ---
 
+## 🟢 START HERE — 2026-07-23 (SIXTH session, mid-flight checkpoint). READ THIS FIRST.
+
+**Everything below is history. This section is the current truth. This is a
+MID-SESSION checkpoint (fallback hygiene while awaiting an external trigger),
+not a session close — one worktree is DELIBERATELY live (see Slice 3).**
+
+### ⚠ OVERSEER-STATE PROTOCOL (cross-track complaint, corrected 2026-07-23)
+`tmp/overseer/fleet-pin-propagation/.overseer-state` accepts ONLY protocol
+tokens: `blocked: <one-line reason>`, `ready`, or `winding-down`. Free-form
+prose ("working: …") is MALFORMED and alert-spams the daemon every tick. While
+actively working, write NOTHING there — the daemon detects activity itself.
+ALL status prose goes to `tmp/fleet-pin-propagation-supervisor/status.log`
+(one line per work block; the supervisor and sibling tracks coordinate there).
+
+### WHAT THIS SESSION LANDED (all verified; the epic's execution is nearly done)
+- **`livespec-oq9w` CLOSED** (supervisor-authorized; verbatim evidence-chain
+  reason). The safety-net cluster is fully retired.
+- **Slice 2a LANDED + LIVE-VERIFIED** — per-member conformance verdict surface
+  (`--emit-member-verdicts`): livespec-dev-tooling PR #544 (`886c76b6`).
+  Ledger: execution item `livespec-dev-tooling-72r5` closed; core anchor
+  `livespec-bhqt` closed. (First dispatch attempt taught the
+  EXECUTION-MIRROR convention — see `bd-ib-w2ah` below.)
+- **Slice 1 LANDED + LIVE-VERIFIED** — four-format pin-currency at WARNING:
+  livespec-dev-tooling PR #577 (`e105cec0`), all 5 criteria exercised against
+  the live fleet (overseer's `compat.pinned: master` caught live). Ledger:
+  `livespec-dev-tooling-34t2` closed (4 attempts, 3 distinct non-work
+  failures — journaled), core anchor `livespec-591t` closed.
+- **Slice 2b MERGED** — preflight = per-member FILTER: livespec-dev-tooling
+  PR #580 (`4f6b00b9`). `dispatch_matrix_filter.py` (100% cov) + workflow
+  rewiring + loud exclusions. **NOT yet exercised live** — the shim runs the
+  reusable workflow at its pinned `uses@` tag, one release behind by
+  construction; the v0.53.1 fan-out (run 29991974284, success, 8/8) still ran
+  the OLD preflight. First new-version run arrives after dev-tooling's own
+  `uses@` self-pin advances (13:00 UTC pin-freshness sweep) + the next release.
+- **Slice 3 STAGED LOCALLY, NOT LANDED** (supervisor ruling: prep now, land
+  later): worktree `~/.worktrees/livespec-dev-tooling/dh9r-persisting-gap-error`
+  holds ONE unpushed Red-Green commit (both TDD trailer blocks): persisting-gap
+  conjunction (stale AND open bump PR for latest → ERROR) in all four currency
+  legs, 9 tests, 100% cov, `just check` 61/61. Draft contracts prose (NOT
+  filed) in this session's scratchpad
+  (`dh9r-severity-policy-proposal-draft.md`). **Red test caught a REAL bug:**
+  `parse_open_bump_prs` reads gh-pr-list shape (`headRefName`); the REST read
+  returns `head.ref`; without the added normalizer the promotion would NEVER
+  fire in production. DO NOT push/PR/file until the maintainer's combined
+  gate (below).
+- **Orchestrator items filed:** `bd-ib-w2ah` (execution-mirror convention for
+  tenant-repo ≠ implementation-repo dispatch), `bd-ib-6yll` (host concurrency
+  doctrine split, evidence), `bd-ib-sd8o` (P2 actionable: diagnose/fix/interim
+  admission mutex for concurrent dispatch) — all in the
+  `livespec-orchestrator-beads-fabro` tenant.
+
+### THE ONE PENDING TRIGGER, AND THE COMBINED GATE BEHIND IT
+Waiting on the FIRST fan-out run that executes the NEW (filtered) preflight.
+When it completes: READ the run (not its conclusion) — expect the benign
+all-conformant path (verdict artifact consumed, full matrix, zero
+exclusions) — then route TOGETHER to the supervisor/maintainer:
+(1) the `livespec-f73t` close packet (2a+2b evidence + that run), and
+(2) the Slice-3 landing-readiness summary (staged commit + draft prose +
+ordering constraint). Slice 3 lands ONLY on that combined decision — the
+error promotion must never arm before the filter's production glue is proven
+(`.ai/ci-gate-discipline.md`; an early Slice 3 recreates the v0.20.0 stall).
+
+### RESUME POSTURE
+Supervisor coordinates via relays + `status.log` (factory release protocol:
+serialized token-passing, container-check before any dispatch; drain doc
+rules hold). `livespec-f73t` stays OPEN pending the combined gate. `dh9r`
+depends_on 591t (closed) + f73t. If the Slice-3 worktree must be abandoned,
+its content is recoverable from this section + the scratchpad draft; the
+commit is unpushed by design.
+
+---
+
 ## 🟢 START HERE — 2026-07-22 (FIFTH session close). READ THIS FIRST.
 
 **Everything below is history. This section is the current truth. Every primary
