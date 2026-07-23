@@ -526,9 +526,21 @@ on a tick. Weaker ergonomics, zero spec cost. Keep as the fallback.
 ### 11.6 THE CUT — ready to work
 
 Slices, dependency-ordered. All land in `livespec-overseer` under epic
-`overseer-3wt` unless stated. Slice 1 is unblocked NOW: the entry-points slice
-`overseer-m5dtmj` merged 2026-07-23 (PR #42, `5ddcfee`), so the plugin vehicle
-this binds to exists.
+`overseer-3wt` unless stated.
+
+> **⚠ Correction, 2026-07-23 — an earlier revision of this section claimed
+> "Slice 1 is unblocked NOW" because the entry-points slice `overseer-m5dtmj`
+> merged (PR #42, `5ddcfee`). THAT WAS WRONG.** It conflated the two halves of
+> the operator-surface decision: `research/operator-surface.md` decides BOTH (1)
+> a fleet-standard **plugin**, with `/overseer` as a thin skill binding, AND (2)
+> public **entry points**. `m5dtmj` shipped **(2) only**. A `supervise-plan`
+> SKILL must live inside a plugin, so slice 1's real dependency is the plugin
+> **scaffold** slice (`overseer-tn3hmi`), which has NOT landed. The
+> `livespec-overseer` ledger already models this correctly — slice 1 is filed as
+> `overseer-myjovi` held behind `tn3hmi` — and **the ledger edge is
+> authoritative over this note; do not regroom it to match a claim made here.**
+> Caught by the supervised session flagging the divergence rather than deferring
+> to this document.
 
 1. **`supervise-plan` skill + template.** Thin binding over repo-owned prose (the
    pattern `research/operator-surface.md` already chose). Creates
