@@ -42,23 +42,34 @@ up (`fabro-run-…`, image `livespec-fabro-sandbox:python-agent-v0.51.7`).
 Pass the flag when you deliberately want a non-default engine. Otherwise let the
 resolver do its job.
 
-## A backgrounded `drive` DETACHES — its exit code and log tell you nothing
+## A backgrounded `drive` no longer detaches — corrected 2026-07-23
 
-`drive.py` re-invokes itself under the credential wrapper when the required
-credential env is absent (`sudo` → `with-livespec-env.sh` → `op run` → python).
-Run it in the background and **the parent returns almost immediately with exit 0
-and a log containing one line**:
+> **This section previously said the parent "returns almost immediately with
+> exit 0 and a one-line log" while the real dispatch continued in a detached
+> child. That did not reproduce on the current orchestrator (plugin cache
+> `ec529fe14afa`): observed on FOUR consecutive dispatches in one session
+> (two ~1 h failures, one 7-minute failure, one ~76-minute green run), the
+> parent WAITED for the full dispatch and its output file ended with the
+> drive result block (`status`/`dispatcher exit code`/summary). The
+> background-task completion notification now fires at the real end and its
+> exit code matches the dispatch verdict.**
+
+`drive.py` still re-invokes itself under the credential wrapper when the
+required credential env is absent (`sudo` → `with-livespec-env.sh` → `op run`
+→ python) — the log's first line is still
 
     livespec: required credential env absent; re-invoking under credential_wrapper
 
-The real dispatch continues in the detached child. So a background-task
-"completed, exit code 0" notification fires on the PARENT, minutes before the
-dispatch is anywhere near done, and the tiny log looks exactly like a run that
-died on startup. **Neither signal carries information about the dispatch.**
+but the parent now waits on that chain. Treat the completion notification as
+the dispatch ending; then verify the OUTCOME from the journal, GitHub, and the
+ledger as below — the drive summary line alone is still not evidence. If an
+older orchestrator build resurfaces the detach behavior (near-instant exit 0,
+one-line log), fall back to the authoritative signals below and wait on the
+journal's `outcome` event.
 
-This is the same family as the recorded trap where a dispatch reported `exit 0`
-while its status was `failed` — but pointed the other way: here exit 0 plus an
-empty-looking log accompanies a dispatch that is running perfectly.
+This correction is the same family as the recorded trap where a dispatch
+reported `exit 0` while its status was `failed`: read the run's artifacts,
+never the process exit alone.
 
 **Query the authoritative signals instead** — to confirm a dispatch is RUNNING,
 all three agree or you do not have an answer:
@@ -100,6 +111,37 @@ while kill -0 <drive-pid> 2>/dev/null; do sleep 60; done
 trust the dispatcher's own summary alone. And filter every journal read on the `at`
 field against an explicit cutoff: the file is re-opened and rewritten, so a
 follow-by-name tail replays its entire history as if live.
+
+## Size the item BEFORE loop-feeding — the sizing-warn is not advisory
+
+The dispatcher emits `sizing-warn` when a work-item's description exceeds
+~1500 chars: "heavy items have exceeded one unattended ACP turn; consider
+splitting before loop-feeding". Measured 2026-07-23: a 7196-char item
+(`livespec-dev-tooling-ng5o`) IMPLEMENTED its whole change in-sandbox (green
+tests, in-run review approve, commits staged) and then hit the unattended-turn
+cap mid-publish — outcome `failed:fabro-run`, nothing reached origin, a full
+hour of factory work lost. The same content split into two ~1500-char slices
+each ran to completion. So: keep the dispatchable DESCRIPTION under ~1500
+chars — defect, fix shape, acceptance — and park depth (evidence, history,
+surveys) in journal notes or an umbrella item the description points at. One
+caveat the other way: the dispatch context carries the DESCRIPTION, so any
+instruction the sandbox agent MUST see (a ride-along test, an excluded file)
+belongs in the description, not only in notes.
+
+## Restore tracked churn on the primary BEFORE dispatching
+
+The engine pushes the SOURCE CHECKOUT's state into the sandbox. If the primary
+carries tracked modifications (the classic: `uv.lock` self-version churn from
+any `uv run` after a release bump), the pre-clone push can be refused by the
+commit-refuse hook and the engine SILENTLY falls back to a synthetic snapshot
+base that exists nowhere on origin — the publish then presents disjoint
+history and dies with a misleading GitHub rejection about "creating"
+`.github/workflows/*` without `workflows` permission
+(`bd-ib-pums`, livespec-orchestrator-beads-fabro tenant; observed twice
+2026-07-23 as run `01KY6HC0CJ` and, in retrospect, run `01KY6DKK…`). The
+`dirty_worktree` warning in the fabro run header is the tell. Preflight every
+dispatch: `git status --short` on the primary, restore tracked churn
+(`git checkout -- uv.lock`), ff-refresh to origin/master, THEN drive.
 
 ## Factory dispatch is strictly sequential — one Fabro run at a time
 
