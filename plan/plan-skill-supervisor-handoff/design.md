@@ -12,6 +12,23 @@ session. It must **fail loudly and fast** when the tmux session and the
 claude/codex session it names do not currently exist, with names matching the
 plan's topic exactly. livespec must not acquire a tmux dependency.
 
+**Decision (maintainer, 2026-07-23):** `by default` means **everywhere** —
+unconditional generation for every plan thread. Rationale, verbatim in
+substance: *most threads are unsupervised because supervision is manual; this
+makes it easier.* This SUPERSEDES the generate-on-request recommendation in §8.1,
+which was built on the wrong premise (that the low supervision rate reflected low
+demand rather than friction).
+
+> ## ⚠ §0 — READ FIRST: the recommendation in §3 is SUPERSEDED by §10
+>
+> The original note found a **filename-level** collision (one handoff per topic)
+> and proposed typing the file as a "supervision-lane facet". That resolution is
+> **under-powered and partly wrong**, and §10 replaces it. The real obstacle is
+> not the filename: it is **plane assignment and dependency direction**, and the
+> feature as literally specified is blocked by written specification in BOTH
+> repos that could plausibly generate the file. §10 carries the citations and the
+> viable paths. Do not implement §3 as written.
+
 ---
 
 ## 1. Why this is worth doing — the durability evidence
@@ -174,6 +191,136 @@ give.
 driver-detection-from-a-pane robustly. Read them for the technique when writing
 the template's check; do **not** make livespec or the orchestrator depend on
 that package — the Control-Plane tool is a peer, never a component.
+
+## 10. THE REAL OBSTACLE — plane assignment and dependency direction
+
+*Added 2026-07-23 after auditing the actual specifications across all three
+repos. This supersedes §3's recommendation.*
+
+### 10.1 The absence proof
+
+Grepped across every spec file in both upstream repos:
+
+| repo | spec files | mentions of `overseer` or `tmux` |
+|---|---|---|
+| `livespec` (core) | `spec.md`, `contracts.md`, `constraints.md`, `non-functional-requirements.md` | **0, 0, 0, 0** |
+| `livespec-orchestrator-beads-fabro` | `spec.md`, `contracts.md`, `constraints.md`, `scenarios.md`, `README.md` | **0, 0, 0, 0, 0** |
+
+There is **no specification anywhere upstream** that authorizes a supervision
+artifact. Building one into the `plan` operation does not fill a gap — it
+introduces Control-Plane vocabulary into two planes that deliberately contain
+none.
+
+### 10.2 The three planes, and the rule that every artifact belongs to exactly one
+
+`livespec/SPECIFICATION/spec.md:283` — *"LiveSpec's blessed workflow spans three
+planes; conflating them is the recurring design error. Each plane owns a distinct
+concern, and **every artifact and skill belongs to exactly one**"*:
+
+- **Spec Plane** (core) — *"owns `SPECIFICATION/`, **the durable planning threads
+  under `plan/<topic>/`**, and the `/livespec:*` lifecycle"* (`spec.md:285`).
+- **Orchestrator Plane** — ledger, Dispatcher, Loop (`spec.md:286`).
+- **Control Plane** — *"the operator experience: observe every plane's state,
+  surface what needs attention, and **coordinate the human through multi-session
+  work**"* (`spec.md:287`).
+
+A supervisor prompt is, word for word, the Control Plane's charter. And
+`plan/<topic>/` is, word for word, a Spec-Plane store. So placing one inside the
+other assigns a single artifact to two planes — the specific error `spec.md:283`
+names as *the recurring design error*.
+
+`livespec-overseer` is a Control-Plane member: repo class `control-plane-tool`,
+*"a Control-Plane member that ships an operator TOOL rather than the cockpit
+APPLICATION the `console` class carries; the two are PEERS"*
+(`non-functional-requirements.md:1051`).
+
+### 10.3 The seam count is closed, and the direction is backwards
+
+`spec.md:329` — *"The Planning Lane touches the Orchestrator Plane at **exactly
+two** explicit, **one-directional** seams: (1) a handoff cites ledger ids
+read-only … (2) routing ripe work into the ledger … through `capture-work-item`"*.
+
+Both sanctioned seams run **Spec → Orchestrator**. A supervision artifact creates
+a **third** seam, to a plane the sentence does not contemplate, running
+**Control → Spec** — inbound to the plane that is supposed to depend on nothing.
+
+The governing rule is `non-functional-requirements.md:199`: *"The console **MUST
+NOT** become a dependency of the workflow it observes: the spec lifecycle and the
+orchestrator skills MUST stay independently drivable without it. The Control Plane
+ENRICHES the operator experience rather than gating it … **no plane depends on the
+console.**"* If every plan thread carries a prompt encoding tmux session naming
+and claude/codex driver detection, the Planning Lane's own artifact store now
+hard-codes ONE Control-Plane realization — in a model where the console/tool is a
+pluggable reference realization, not a fixture.
+
+**Prose does not launder this.** §5's generation-time/use-time split correctly
+shows livespec acquires no *runtime* tmux dependency. But authoring the template
+still puts Control-Plane knowledge inside an Orchestrator-Plane skill. The
+dependency being violated is architectural, not packaging.
+
+### 10.4 …and the Control Plane cannot write it either
+
+The obvious fix — let the overseer generate the file, since it already enumerates
+every watched repo's `plan/*/` directories (`overseer/registry.py:503`) and
+already owns session naming — is blocked by the overseer's **own** specification.
+
+`livespec-overseer/SPECIFICATION/spec.md:228` §"Non-interference with tracked
+work": *"The overseer **NEVER** touches files under any repository's plan tree …
+it **never opens, writes, or hashes** those files"*. Discovery is pinned to
+directory existence only (`spec.md:172-177`), and its state lives in *"exactly
+two places: its home-directory stores, and a per-track temporary directory inside
+each watched repository's **gitignored** scratch area … the daemon verifies that
+every watched repository ignores that scratch path and **REFUSES to run** if any
+does not — so supervision can **never dirty a tracked working tree**"*
+(`spec.md:237-241`).
+
+That is not incidental prose: it is enforced by a startup refusal and exists to
+guarantee supervision cannot dirty tracked state.
+
+**So the feature as literally specified is blocked in both candidate homes.** The
+`plan` skill may write to `plan/` but must not know about tmux; the overseer
+knows about tmux but must not write to `plan/`.
+
+### 10.5 What is already specified, and therefore need not be rebuilt
+
+The maintainer's "names matching the plan's topic exactly" requirement **already
+exists as ratified spec, in the right plane**:
+`livespec-overseer/SPECIFICATION/spec.md:188-193` — a supervised session is named
+after its **bare plan topic**, qualified as `<repo-slug>-<topic>` only on a genuine
+cross-repository collision — and `spec.md:225-226` requires runtime identity to be
+established *"from exact live process evidence, never inferred from a topic name"*,
+which is precisely the claude/codex check §6 asks for. Re-specifying either inside
+a generated prompt would duplicate ratified spec into a plane that must not hold it.
+
+### 10.6 Viable paths, in recommended order
+
+1. **Split by plane (RECOMMENDED).** `plan` generates the file for every thread —
+   satisfying the "everywhere" decision — but its content is **plane-clean**: the
+   thread's topic, repo, ledger anchor, the supervisor-not-implementer role, the
+   decision-vetting rubric, the corrections discipline. **No tmux, no driver
+   names, no session names.** It points at the Control-Plane contract for
+   preconditions. The tmux fail-fast lives in the overseer's `/overseer` operator
+   surface — which is being built right now under `livespec-overseer`'s
+   `plan/cutover-and-shipping/` scope item 3, so there is a natural home landing
+   imminently. Cost: one narrow core amendment (admitting a second, non-resumable
+   planning-thread facet). No seam added, no direction inverted, no overseer write.
+2. **Control-Plane durable store outside the plan tree.** The overseer gains a
+   committed store for supervisor prompts. Keeps planes clean and needs no core
+   change, but requires amending the overseer's two-places state rule, and loses
+   co-location with the thread.
+3. **Amend both specs to allow it as asked.** Core admits a named Control-Plane
+   artifact inside `plan/<topic>/`, AND the overseer carves an exception into
+   non-interference. **Not recommended:** the carve-out weakens a safety property
+   enforced by a startup refusal, trading a real guarantee for file placement.
+
+### 10.7 Correction to §3
+
+§3's "supervision-lane facet resuming a different actor" resolves only the
+one-resumption-point collision. It does not address plane assignment, and naming a
+"supervision lane" would add a fourth lane to a three-plane model whose first rule
+is that every artifact belongs to exactly one plane — making the change larger than
+§3 represented, not smaller. The two-actors *argument* remains useful for the
+narrow amendment in path 1; the *framing* as a new lane should be dropped.
 
 ## 7. What the generated template should carry
 
