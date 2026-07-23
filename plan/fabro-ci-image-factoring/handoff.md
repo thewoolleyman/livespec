@@ -166,7 +166,111 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 16 (written 2026-07-23 at overseer wind-down; ONE armed action, TWO judgment items)
+## ▶▶ START HERE — cont. 17 (written 2026-07-23 late / 2026-07-24; the track's queue is EMPTY)
+
+**Read the STOP block above first** — local self-hosted runners remain DEFERRED.
+Everything under cont. 16 and lower is prior trail. This section supersedes it.
+
+### The one-line state
+
+**The armed action and BOTH maintainer-judgment items are DISCHARGED.** The
+`x9o` → `a46` → `oik` close chain is complete with live evidence; the
+`3lev.1` Honeycomb triggers are LIVE; `bg47fr`'s pending decision is resolved.
+Nothing on this track is dispatchable. Remaining: one P3 (`5eow`, unchanged)
+and the runner-lane-coupled leftovers on `3lev.1`, all deferred with the
+runner lane. **This thread is a wind-down/archive candidate (maintainer call).**
+
+### ✅ The armed action — COMPLETE (2026-07-23 ~23:17Z)
+
+`livespec-console-beads-fabro-x9o` dispatched through the factory and ran
+END TO END in **`python-rust-agent-v0.53.2`** — the exact shape it existed to
+prove. Console PR
+[#408](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/408)
+merged (`88f623e5`, verified ancestor of origin/master), janitor green,
+acceptance `ai-then-human` complete (AI PASS + human accept via the valve).
+Image observation + full evidence journaled on `x9o` (CLOSED). Then:
+**`livespec-dev-tooling-a46` CLOSED** (this was its last acceptance leg;
+orchestrator shape already proven by 34+ h of dispatches) and
+**`livespec-dev-tooling-oik` CLOSED** (dep-chain complete; both live
+measurements were already on the item). The image epic's ledger work is done.
+
+Operational notes from the dispatch, for any future factory driver:
+- **The sanctioned `drive impl:<id>` path returned a FALSE GREEN** (dispatched
+  nothing, exit 0, empty stdout_json): the console tenant holds 5 stale ACTIVE
+  items (dead/parked runs: 276inb, ipwtll, ogpok4, qwjfsw, sreeqc) that eat the
+  WIP cap, and a capacity-deferred `--item` selection is SILENT by design.
+  Evidence + mechanism folded into **`bd-ib-c4jfp6`** (orchestrator tenant;
+  my duplicate `bd-ib-47qp` closed into it). Workaround that worked: the
+  documented `dispatcher.py dispatch --repo <r> --item <id>` operator override
+  (no WIP-cap enforcement, single-item, sequential by construction).
+- **Attempt 1 (run `01KY8HY8G9`, same correct image) was killed at 22:44:49Z by
+  a cross-track mistaken-identity kill** (acknowledged by the
+  factory-success-rate-remediation track on the coordination log 22:53Z; they
+  targeted the only visible container by elimination). Ownership rule now on
+  the log: verify via the fabro pid argv (`fabro-run-config-<item>.toml`)
+  before killing anything. Attempt 2 ran exclusive and clean.
+- Coordination trail (slot lapse at 13:00Z, reclaim, two claim races, the
+  arbitrations) lives in
+  `tmp/fleet-pin-propagation-supervisor/status.log` (livespec repo), lines
+  18:09Z–23:20Z.
+
+### ✅ `livespec-3lev.1` — trigger half DONE (maintainer-approved 2026-07-23)
+
+- **Threshold decided via picker: CPU idle < 5% sustained 30 min.** Grounded in
+  the host's sysstat archive (10-min samples, Jul 15–23): that setting fires
+  exactly once in 9 days — the 2026-07-18 incident — with zero false positives,
+  while load-average thresholds fire on 4+ normal-heavy days. Full analysis
+  journaled on the item.
+- **Collector prerequisite landed**: `otel-collector` commit `325513b` enables
+  the opt-in `system.cpu.utilization` + `system.linux.memory.available` gauges
+  (defaults emit only counters Honeycomb metrics datasets cannot RATE over);
+  marker 0.9; service restarted clean; columns verified flowing.
+- **Triggers are LIVE on `livespec-host-metrics`** (agent-activity env),
+  verified by API read-back: `mMmMEEKb7ZR` CPU saturation
+  (AVG(system.cpu.utilization.idle) < 0.9 — the column is the SUM of per-core
+  idle fractions, so 0.9 = 5% × 18 cores; **re-derive 0.05 × core-count on
+  hardware change**), `bEVsU9BQw22` RAM-available < 8 GiB (pre-existing,
+  kept), `HheaBTJgKBz` disk < 20 GiB hard floor (pre-existing, kept),
+  `x9VLkZsHiGX` disk < 50 GB early warning (new). A duplicate RAM trigger and
+  the abandoned disabled test trigger were deleted.
+- **Creation credential**: configuration key `livespec-host-metrics-triggers`
+  (key id `hcalk_01ky8j6sx3rddpxmtk2z0aqwmx`, agent-activity, permissions
+  triggers+recipients+queries-and-columns only), minted via the maintainer's
+  logged-in Honeycomb UI session and handed over in `/tmp/.env` for import into
+  the **livespec 1Password Environment** as
+  `HONEYCOMB_CONFIG_KEY_AGENT_ACTIVITY`. If that import has not happened,
+  `/tmp/.env` (mode 600) is the only copy outside Honeycomb — confirm with the
+  maintainer before treating it as durable.
+- Remaining on `3lev.1` (both runner-lane-coupled, deferred): runner-liveness
+  alert; cache budget + prune automation. The `docker_stats` rootless-podman
+  blind spot gates only future un-deferral capacity decisions, not detection.
+
+### ✅ `bg47fr` — the pending judgment is resolved
+
+The item itself was already CLOSED (regroomed 2026-07-20). The real decision —
+approve the three replacement slices (`livespec-qhxcsp`,
+`livespec-dev-tooling-qrunmn`, `livespec-dev-tooling-z7wxbd`) — was put to the
+maintainer 2026-07-23 and **approved**. No valve action was needed or possible:
+all three carry `admission:auto`, so the dispatcher auto-advances
+pending-approval → ready itself (the approve valve refuses effective-auto items
+by design). The only real gate is the shared dependency
+**`livespec-dev-tooling-9j8.6`** (CI-logic extraction, BACKLOG — maintainer
+explicitly chose NOT to queue it that night). Disposition journaled on
+`livespec-qhxcsp`.
+
+### ▶ What actually remains on this track
+
+- **`livespec-dev-tooling-5eow`** (P3, unchanged): pairing-gate docs-only
+  carve-out + two self-contradicting docstrings.
+- `3lev.1` runner-coupled leftovers (above) — deferred with the runner lane.
+- The deferred local-runner lane itself (STOP block) — waits on new hardware.
+
+With those the thread has no dispatchable work; propose wind-down/archive to
+the maintainer at the next natural boundary.
+
+---
+
+## ▶▶ START HERE — cont. 16 (written 2026-07-23; superseded by cont. 17 above — armed action + both judgment items DISCHARGED)
 
 **Read the STOP block above first** — local self-hosted runners remain DEFERRED.
 Everything under cont. 15 and lower is prior trail. This section supersedes it.
