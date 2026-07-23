@@ -166,7 +166,115 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 15 (written 2026-07-23; the adopter/gate chain is COMPLETE)
+## ▶▶ START HERE — cont. 16 (written 2026-07-23 at overseer wind-down; ONE armed action, TWO judgment items)
+
+**Read the STOP block above first** — local self-hosted runners remain DEFERRED.
+Everything under cont. 15 and lower is prior trail. This section supersedes it.
+
+### The one-line state
+
+**Every buildable item on this track is CLOSED and live-verified** — including a
+same-day factory outage this track caused and fixed. What remains: (1) the armed
+console throwaway dispatch waiting on a coordination slot, then the `a46` → `oik`
+close chain; (2) two maintainer-judgment items (`bg47fr`, `3lev.1`); (3) one P3
+(`5eow`).
+
+### ✅ Closed since cont. 15 (all in `livespec-dev-tooling`, all independently verified)
+
+| Item | Outcome |
+|---|---|
+| `n5s` | Sweep protects each repo's REAL default branch (`merged_branch_sweep.py:136`). The hardcoded-`master` class is now FULLY retired: `7vj` → `ahg`step3 → `17o` → `n5s` |
+| `6cf` | Bounded parser convention stated once in `_ci_matrix_parse.py`; pinning test makes reverting it fail; old unbounded sentence gone (merged `50e6ff3f`) |
+| `29qo` | Blind = ERROR everywhere + vantage completion (`central-app` on `app-installation`) — **and see the outage below** |
+| OUTAGE fix | `1e85cd1` (PR #574): admin lane classifies **out-of-vantage under a `ghs_`-class dispatch credential** |
+
+### ⚠️ THE OUTAGE — read this even if nothing else (it corrects a closed item's claim)
+
+`29qo`'s "safe everywhere" enumeration missed the FIFTH context that runs
+`just check` under a non-admin credential: **the Fabro sandbox** (dispatch
+credential = `ghs_`-class App token, admin scope deliberately withheld per the
+v045 boundary). From `29qo`'s merge until the fix, NO sandbox could Red-commit in
+`livespec-dev-tooling` — a repo-wide factory outage, found by the
+fleet-pin-propagation supervisor (evidence journaled on `livespec-dev-tooling-34t2`,
+03:58 comment; correction journaled on `29qo`).
+
+The fix is vantage CLASSIFICATION, not a lever: `ghs_`-class → out-of-vantage
+(owner named, zero API reads, guard runs BEFORE the manifest fetch);
+user-class-without-scope → still exits 4. The prefix rule lives in ONE shared
+`holds_app_class_credential()` (both lanes delegate). Verified behaviorally in both
+classes by this session on merged master.
+
+**Transferable lesson (also on `29qo`):** "every context" claims must be
+enumerated from the WIRING — who invokes this aggregate, under what credential
+class — not from the author's mental list of audiences.
+
+### ▶ THE ONE ARMED ACTION — the `x9o` console dispatch, then close `a46`, then `oik`
+
+`livespec-console-beads-fabro-x9o` (throwaway factory-confirmation, admission
+deliberately MANUAL) proves the last `a46` acceptance shape: no dispatch has ever
+run in a `python-rust-agent-` image (orchestrator shape is proven by 34+ h of real
+dispatches; evidence on `a46`).
+
+**A SLOT REQUEST IS POSTED AND WAITING** in
+`/data/projects/livespec/tmp/fleet-pin-propagation-supervisor/status.log`
+(05:02Z line): tonight's factory tracks serialize dispatches through that log; our
+dispatch is queued AFTER the supervisor's "attempt 4" of their held item `34t2`.
+**Check that log first.** When the slot is granted (or the queue is visibly
+drained: zero RUNNING `fabro-run-*` containers — parked/`human_input_required`
+runs do NOT gate):
+
+1. Drive per `.ai/dispatcher-drain-operations.md`: admission via the
+   `set-admission` valve (never hand-edit labels), `--budget 1 --parallel 1`,
+   explicit `--fabro-bin /home/ubuntu/.fabro/bin/fabro`, one run at a time
+   host-wide.
+2. Journal the OBSERVED image tag on `x9o` — the observation is the deliverable.
+   If it ran in any other tag, that is a finding, not a pass.
+3. Close `x9o`, then close **`a46`** (all other evidence already journaled on it),
+   then close **`oik`** (dep-chained on `a46`; both live measurements already on
+   the item — registry sizes AND init-time distributions; nothing left to measure).
+
+### ▶ THE TWO MAINTAINER-JUDGMENT ITEMS (unchanged)
+
+- **`livespec-bg47fr`** — adopter pin fan-out; blocked on the maintainer since
+  cont. 12. Its evidence corrections and required ordering are on the item.
+- **`livespec-3lev.1`** — Honeycomb trigger on sustained CPU-idle≈0 duration
+  (`livespec-host-metrics`). Bring the maintainer a THRESHOLD RECOMMENDATION
+  before creating anything. Note the `docker_stats` blind spot (rootless podman
+  CI-runner containers invisible) matters less while local runners are deferred,
+  but say so explicitly when proposing.
+
+### ▶ P3 backlog
+
+- **`livespec-dev-tooling-5eow`** — pairing-gate docs-only carve-out (planned in
+  the gate's own docstring since May, never built; forced `6cf` to ride a
+  pinning test) + two self-contradicting docstrings.
+
+### Working disciplines that paid for themselves this arc (keep using)
+
+1. **Verify agent reports by re-running the real gates** — SHA ancestry, then the
+   gate. Never the report, CI-green, or a unit test alone.
+2. **Brief agents to STOP on wrong premises** — four stops this arc, each worth
+   more than the throughput it cost (`aa7`, `ql1`, `6cf`'s uncommittable scope,
+   plus the fresh-Red-over-bent-bytes call in the outage fix).
+3. **Check silent tool output** — a `bd close` that prints nothing may have
+   FAILED (dependency block); `| rg` filters ate two real errors this arc.
+4. **The five-instance defect class** (checks pointed at sources that cannot show
+   the failure) is CURED structurally: per-repo `canonical_ref`, the vantage model
+   with named owners, blind=error. New checks should be born into that model.
+
+### Fleet coordination state at wind-down
+
+- Supervisor's `status.log`: our 05:02Z confirmation + slot request is the last
+  line from us; their attempt 4 was holding for exclusivity behind console run
+  `01KY6HC0CJ`.
+- homelab: fully resolved cross-track (currency `RowPass`, coordination archived
+  both sides).
+- No background tasks of this track remain running (the factory-quiet watcher
+  timed out and was deliberately not re-armed — the status.log queue replaced it).
+
+---
+
+## ▶▶ START HERE — cont. 15 (written 2026-07-23; superseded by cont. 16 above — the adopter/gate chain is COMPLETE)
 
 **Read the STOP block above first** — local self-hosted runners remain DEFERRED.
 Everything under cont. 14 and lower is prior trail. This section supersedes it.
