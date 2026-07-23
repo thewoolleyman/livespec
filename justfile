@@ -204,6 +204,7 @@ check:
         check-no-lloc-soft-warnings
         check-no-raise-outside-io
         check-no-shadow-ledger-body-identical
+        check-no-shadow-ledger-body-typechecks
         check-no-todo-registry
         check-no-write-direct
         check-partition-completeness
@@ -1083,3 +1084,6 @@ check-plan-thread-anchor-declared:
 
 check-plan-thread-epic-parity:
     uv run python -m livespec_dev_tooling.checks.plan_thread_epic_parity
+
+check-no-shadow-ledger-body-typechecks:
+    uv run python -m livespec_dev_tooling.checks.no_shadow_ledger_body_typechecks
