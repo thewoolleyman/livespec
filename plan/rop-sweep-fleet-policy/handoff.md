@@ -1,8 +1,32 @@
-# rop-sweep-fleet-policy — HARDEN SLICE A LANDED: exact closed-set marker matching is live. Remaining: slice B (ruff-BLE precondition), then cvz Driver coverage; the FACTORY IS HELD for dev-tooling (yi6l)
+# rop-sweep-fleet-policy — HARDEN SLICE A LANDED: exact closed-set marker matching is live. Remaining: slice B (ruff-BLE precondition), then cvz Driver coverage; factory serialized host-wide, yi6l FIXED
 
 ## ✅ STATE AS OF 2026-07-23 (SECOND session close, ~04:45Z) — READ FIRST; everything below is HISTORY
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
+
+### ⚡ ADDENDUM ~05:05Z — the factory hold is LIFTED; serialization protocol is in force
+
+- **`yi6l` is FIXED and CLOSED.** The 29qo/b02 track landed `1e85cd1` (livespec-dev-tooling,
+  ~04:5xZ) — the exact fix yi6l recommended: `holds_app_class_credential` (`ghs_` prefix,
+  probe-only) classifies every admin-lane row OUT-OF-VANTAGE under a dispatch-class credential;
+  operator user-class blind→exit-4 unchanged. VERIFIED BY THIS SESSION'S EXECUTION on merged
+  master: a `GH_TOKEN=ghs_<placeholder>` run of `fleet_conformance_admin` → out_of_vantage_rows 3,
+  blind_rows 0, zero API reads, exit 0. The maintainer-needs item #2 below is RESOLVED.
+- **The uncovered remainder is `livespec-dev-tooling-gam8` (P2)** — check-master-ci-green rejected
+  a sandbox Red commit while GitHub showed master green (5oou attempt 2); mechanism knowable only
+  from the fabro run artifacts; fix shape mirrors 1e85cd1's vantage-by-credential-class precedent
+  (master health is the DISPATCHER'S host-side precondition).
+- **FACTORY SERIALIZATION (cross-track, maintainer-directed): one Fabro dispatch at a time
+  HOST-WIDE until `bd-ib-sd8o` (orchestrator tenant, host-wide exclusivity) lands** — concurrent
+  host-network runs collide (bwrap namespace denial, proven 01:50Z). Protocol: wait for the line
+  "34t2 delivered, factory yours" in
+  `/data/projects/livespec/tmp/fleet-pin-propagation-supervisor/status.log`, check for foreign
+  `fabro-run-*` containers before any `drive impl:`, and ANNOUNCE your own dispatches to the same
+  log (three tracks coordinate there: cutover-and-shipping, command-queue-semantics,
+  fleet-pin-propagation).
+- **`q4cs` is READY and dispatch-prepped** (ride-along prefix-containment test folded into the
+  description; based on slice A's merged master). This session dispatches it when the queue
+  clears; if the session ends first, q4cs is the first NEXT WORK below via the same protocol.
 
 - **The cvz harden-first prerequisite is HALF DISCHARGED — slice A is MERGED.**
   `livespec-dev-tooling` **PR #567** (merge `8dd0e698`): `no_except_outside_io` now matches the
