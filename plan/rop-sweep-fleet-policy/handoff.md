@@ -5,6 +5,75 @@
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
 
+### ⚡ SESSION-WRAP ADDENDUM — START HERE. THE SINGLE NEXT ACTION IS `y21`.
+
+**This session ended at a clean stop with NOTHING of its own in flight.** No worktrees of
+mine, no branches, no open PRs of mine, all four primaries clean on `master`, every
+background sub-agent stopped. Everything below in this section is still accurate; this
+addendum only records what changed after it was written.
+
+**THE ONE THING TO DO FIRST — `livespec-driver-claude-y21`:**
+
+1. It is `status: backlog` and **must be PROMOTED to `ready`** or nothing picks it up —
+   not `next`, not the Dispatcher. This is the single likeliest way to lose an hour: an
+   empty queue looks like a busy factory. Its only typed dep (`7u7`) is CLOSED and its
+   cross-tenant `bbl` prerequisite is DISCHARGED and verified
+   (`check-no-shadow-ledger-body-identical` EXIT=0 on livespec-driver-claude's merged
+   master). A supervisor session promotes under delegation — the maintainer is not needed.
+2. Its description is fully prepped: the leg-3 design choice is RESOLVED (narrow, not
+   `io_trees`), the third marker site `:270` and its 3a-before-3b ordering are folded in,
+   and it is double-brace clean. **Do not re-cut it and do not trim it to silence the
+   sizing warn** — the dispatcher renders BOTH description and notes into the goal while
+   the heuristic measures `len(description)` alone, so trimming lowers the warn without
+   changing what the agent reads. Expect two WARN lines; they never block.
+3. **`wxq` stays HELD** until a FRESH livespec-driver-codex master run concludes success.
+   `check-master-ci-green` reads the LATEST run, so the repair only counts once a green run
+   EXISTS. Dispatching sooner burns a scarce factory slot at the Red commit.
+
+**Also merged after the section below was written:** `livespec` PR #1694 — the Red-Green
+range-gate scope correction, in `AGENTS.md` AND `templates/orchestrator-plugin/AGENTS.md`.
+Execution-gotcha #2 had stated the pre-push range check unconditionally while
+`red_green_replay._commit_violates` conditions it on touching a product-impl path. That
+divergence is what made a dangling Red block look like a blocked push. Both copies now carry
+the scope clause plus "never hand-forge a `TDD-Green-*` trailer to satisfy a check that
+cannot fire."
+
+**CORRECTION — do not propagate the `MAX_ARG_STRLEN` story.** The livespec-driver-codex
+`export-telemetry` failure was first attributed to a single argv entry exceeding
+`MAX_ARG_STRLEN` (128 KiB). That mechanism was MEASURED AND FALSIFIED: the failing payload is
+~84 KB, green and red runs differ by ~1.4 KB, the old form reproduces SUCCESSFULLY against the
+exact failing payload on this host, and livespec-driver-claude runs a byte-identical script and
+is green. What remains established: the error is E2BIG at that exec, and the failing command is
+the `run_span` `jq` call carrying `--argjson run "$run_json"` — the only large,
+monotonically-growing argv entry. A runner-side factor is likely involved. The FIX (move
+unbounded-growth values off argv onto stdin) is still right because it removes the class
+regardless of threshold, but it **must be proven EMPIRICALLY by the PR's own CI run on the real
+runner — never by a merge alone.**
+
+**Ownership split — the codex fix is NOT this track's.** A supervisor session owns it
+(worktree `~/.worktrees/livespec-driver-codex/fix/ci-telemetry-argv-limit`, converting the
+run-span call and the `--argjson jobs "$job_spans"` accumulator to stdin; the fixed-shape
+`--argjson run "$run_span"` stays on argv deliberately). It also owns filing the fleet-wide
+sweep: that script is COPY-DRIFTED across five repos in four distinct versions by sha256, so
+the single-sourcing question is the real defect. Do not duplicate either filing.
+
+**Factory:** positions 5 and 6 are held for `y21` then `wxq`, serialized. Queue ahead as of
+wrap: `x9o` → overseer-`m5dtmj` → factory-success-rate-remediation drain a3–a8 UNINTERRUPTED →
+overseer-`vlu5cd`. Post the LAUNCHING line only AFTER your container is visible (a TOCTOU
+launch-gap cost two tracks a run), and post done-or-failed before starting the second.
+Coordination log: `/data/projects/livespec/tmp/fleet-pin-propagation-supervisor/status.log`.
+
+**On `bd-ib-60pp` (double-brace dispatch killer):** the blanket "grep every item body" advice
+is OVER-BROAD — the main goal-assembly path IS escaped (`escape_minijinja_literal` is applied
+to the whole assembled goal, on `origin/master` and in all three installed plugin build dirs).
+But 60pp was filed off an OBSERVED live death, so a narrower leak remains somewhere off that
+path. Keep grepping (it costs nothing) but treat **60pp's own journal** as the authority on
+which field actually leaks, not any summary of it.
+
+**NOT MINE, do not reap:** a worktree `~/.worktrees/livespec-driver-claude/carrier-body-v0540-bump`
+at `2b02c02` exists in livespec-driver-claude. This track did not create it (this track used
+`chore/bump-livespec-dev-tooling-v0.54.0`, since removed). Leave it alone.
+
 ### WHAT LANDED THIS SESSION
 
 - **The entire held-valve chain is DISCHARGED.** The maintainer ruled `bbl`'s wording (below),
