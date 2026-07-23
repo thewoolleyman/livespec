@@ -486,11 +486,20 @@ Three failure modes that cost dispatched agents real time:
    override is gone.)
 2. **Preserve the Red trailer block at Green.** On the Green `git commit
    --amend`, do NOT pass a fresh `-m` that overwrites the message — that wipes the
-   inline `TDD-Red-*` trailers the hook wrote at Red. The pre-push *range* replay
-   check greps the FINAL commit body for BOTH `TDD-Red-Test-File-Checksum:` AND
-   `TDD-Green-Verified-At:`; if the Red block is gone, the push is rejected. Use
-   `--amend --no-edit` (or re-include BOTH trailer blocks). The Red and Green
-   test-file bytes must stay byte-identical.
+   inline `TDD-Red-*` trailers the hook wrote at Red. For a commit that touches a
+   PRODUCT-IMPL path, the pre-push *range* replay check greps the FINAL commit body
+   for BOTH `TDD-Red-Test-File-Checksum:` AND `TDD-Green-Verified-At:`; if the Red
+   block is gone, the push is rejected. Use `--amend --no-edit` (or re-include BOTH
+   trailer blocks). The Red and Green test-file bytes must stay byte-identical.
+   **SCOPE — this clause was previously stated unconditionally, and the gap misled
+   agents:** `red_green_replay._commit_violates` derives `product_paths` from the
+   same `_IMPL_PREFIXES` tuple the commit-msg leg uses and returns early when that
+   list is empty, so a commit touching NO product-impl `.py` is EXEMPT from the
+   both-trailers requirement rather than passing it. A dangling Red block on such a
+   commit is harmless. NEVER hand-forge a `TDD-Green-*` trailer to satisfy a check
+   that cannot fire — read `_IMPL_PREFIXES` and confirm whether your paths are even
+   in scope before concluding you are blocked. (Note `_IMPL_PREFIXES` does not yet
+   enumerate every fleet repo's product tree — see `livespec-dev-tooling-rkdg`.)
 3. **Working-tree gate, not just staged.** lefthook's pre-commit runs the
    structural / dev-tooling checks over the WORKING TREE, not only the staged set.
    So "revert only the impl for Red" is INSUFFICIENT when the change also ADDS
