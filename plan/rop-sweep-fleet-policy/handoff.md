@@ -4,6 +4,31 @@
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
 
+### ⚡ ADDENDUM 4 ~17:25Z — 39i LANDED (stacked Reds possible again); FIFTH factory-defect class found+filed
+
+- **`39i` is CLOSED**: `livespec-dev-tooling` PR #584 (merge `9e003aa5c`) landed green through the
+  full factory pipeline — the red_leg_scope coverage floor now covers all coverage-family gates, so
+  a STACKED Red (second Red→Green pair on a reviewed branch) is structurally possible again. Its
+  `fix:` merge cut the release whose v0.53.2 fan-out (PR #586) doubles as the fleet-pin track's
+  filtered-preflight live run. Dispatched under the supervisor's position-4 grant after the
+  liveness clause fired; claim/done posted in the coordination log; factory released.
+- **FIFTH factory-defect class, found when 39i attempt 1 died in 30s and filed as `bd-ib-60pp`
+  (P1, livespec-orchestrator-beads-fabro tenant): dispatcher goal content is fabro-TEMPLATE-RENDERED
+  UNESCAPED.** Any work-item quoting justfile `{{args}}`-style syntax in its fields kills its own
+  dispatch at workflow validation, with an error citing a file:line that contains no such token
+  (proven by field inspection; same engine+workflow ran green hours earlier on token-free items).
+  Workaround applied to 39i: notes defused in-place, content preserved. Every track's evidence
+  journals quote recipes verbatim — check queued items for double-brace tokens until 60pp lands.
+- **Also this stretch:** `.ai/dispatcher-drain-operations.md` corrected + extended (livespec PR
+  #1685: stale detach claim fixed; sizing and dirty-checkout preflight sections added); `4er`
+  re-derived post-vantage-model on its journal (four deltas + the fleet-view-context design point +
+  gate-owner coordination note); `x6t6` dispatch-readiness pinned (defect survives slices A/B,
+  anchors on function names).
+- **Nothing further is factory-queued from this track.** Remaining valves unchanged: accept `5oou`
+  (auto-closes `ng5o`) → accept `7u7`/`96q` (ruling-8 basis; 96q's FIX-REGARDLESS first) → rule
+  `bbl`'s wording → dispatch `y21`/`wxq` serialized → `cvz` closes. `gam8` (P2) and `bd-ib-60pp`
+  (P1) are the open factory-reliability items; `bd-ib-qq7f` is marked secondary to `bd-ib-pums`.
+
 ### ⚡ ADDENDUM 3 ~09:55Z — cvz SLICED AND SEQUENCED; the Drivers' held accepts are the real gate
 
 - **Load-bearing discovery during cvz prep: the Drivers' railway/BLE adoption ALREADY LANDED**
