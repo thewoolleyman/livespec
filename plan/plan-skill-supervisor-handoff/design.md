@@ -415,29 +415,102 @@ but not literal silence.** Silence would leave `NFR:175`'s enumeration
 contradicted in fact — precisely the unstated drift the fleet's doctor checks
 exist to catch. Declaring the artifact ignored is what keeps the specs true.
 
-### 11.4 The one genuine snag — "everywhere by default" vs. an invoked skill
+### 11.4 Surfacing — DECIDED (maintainer, 2026-07-23): liveness-gated, two messages
 
-The maintainer's `by default = everywhere` decision was motivated by removing
-friction. A skill someone must invoke per topic **reintroduces exactly that
-friction**, so the decision and this shape need reconciling. Three ways, in
-recommended order:
+`by default = everywhere` is delivered by an **automatic nudge with an attended
+write**: the Control Plane surfaces the need, the operator runs `supervise-plan`,
+the skill writes via worktree → PR. The nudge is what makes it "everywhere"; the
+write stays reviewed.
 
-1. **Automatic nudge, attended write (RECOMMENDED).** The Control Plane detects a
-   plan thread with no supervisor handoff and SURFACES it — the daemon already
-   emits SURFACE lines, and surfacing is not touching. The operator runs
-   `supervise-plan`; the skill does the worktree → PR write. "Everywhere" is
-   delivered by the automatic *nudge*, while the *write* stays attended and
-   reviewed. **Snag inside the snag:** detecting absence is a `stat`, and
-   `spec.md:174-175` forbids the daemon to *"read, stat, or hash any file inside
-   a plan directory"*. So this needs either a narrowly-scoped allowance for a
-   single existence check, or the check relocated to the console / the skill
-   itself. Decide this explicitly; do not let it land by accident.
-2. **Batch mode.** `supervise-plan --all` walks every watched repo's unarchived
-   threads and opens ONE PR. One invocation genuinely covers everywhere, and
-   nothing needs to stat on a tick.
-3. **On supervision start only.** The file is created when supervision actually
-   begins. Cleanest conceptually, but it is the generate-on-request shape the
-   maintainer already rejected as too manual.
+**The anti-spam primitive is a liveness gate.** A track surfaces ONLY if it has a
+CURRENTLY MATCHING live session. Most plan threads across the watched repos have
+no session at all, and nagging about those forever is the failure mode this gate
+exists to prevent. Two distinct messages:
+
+- **Surface A — "no supervision prompt."** Live matching session exists, and
+  `plan/<topic>/supervisor-handoff.md` is MISSING → offer `supervise-plan`.
+- **Surface B — "nobody supervising."** Live matching session exists, the file IS
+  present, but NO SUPERVISOR IS RUNNING → offer to start one.
+
+#### The full truth table — including a cell the two rules do not cover
+
+Gate first: **no live matching session → silent, always.** Within a live track:
+
+| supervisor file | supervisor running | surface |
+|---|---|---|
+| missing | no | **A** — no supervision prompt |
+| present | no | **B** — nobody supervising |
+| present | yes | silent (healthy) |
+| **missing** | **yes** | **UNSPECIFIED — see below** |
+
+The fourth cell is not hypothetical: it is **the state of every supervised track
+right now** (2026-07-23). Three supervisors are running tonight, and all three
+keep their charter in gitignored `tmp/`, so every one of them is "supervisor
+running, no file". Left undefined, the most likely implementation silently treats
+a running supervisor as healthy and **never surfaces the missing file** — which
+would permanently exempt precisely the tracks that already proved they need one,
+and would quietly defeat the durability motive in §1. Recommended: treat it as
+**A**, worded as a capture offer ("supervision is running but has no durable
+prompt — capture it"), since it is also the migration path for the three live
+charters.
+
+#### "Running" must be proven, never inferred from a name
+
+Apply the repo's own rule — runtime identity is established *"from exact live
+process evidence, never inferred from a topic name"*
+(`livespec-overseer/SPECIFICATION/spec.md:225-226`). A tmux session named
+`<topic>-supervisor` is NOT sufficient evidence for Surface B: its pane must be
+running a `claude`/`codex` process. Otherwise a dead supervisor's leftover tmux
+session suppresses Surface B forever — a false negative that hides the exact
+condition the surface exists to report. This is the same failure shape as §6's
+precondition 2, and the same shape as the fleet's standing "a verifier must be
+able to fail" rule.
+
+#### Both surfaces MUST be edge-triggered
+
+One line per EPISODE, not per tick. This is not a stylistic preference: the
+daemon shipped exactly this defect and it was fixed hours before this note —
+`overseer-4dr`, the malformed-state alert re-firing every tick instead of
+edge-triggering, which alert-spammed a real operator pane. Re-arm only when the
+condition clears and recurs. The machinery already exists and should be reused
+rather than reinvented (`supervisor.py` carries edge-triggered alert state and
+the `notified_bands` stamp pattern for exactly this).
+
+#### Precedence — never bury a real signal
+
+These are the lowest-priority surfaces. A track that is genuinely blocked on a
+human (`blocked:` declaration or a structured gate on its pane) must show THAT,
+not a supervision nag. Order supervision surfaces strictly below the existing
+NEEDS-YOU / blocked classes.
+
+#### What this costs, honestly
+
+- **The stat allowance shrinks to something defensible.** Surface A still needs
+  to test existence of one path inside a plan directory, which
+  `spec.md:174-175` currently forbids (*"never reads, stats, or hashes any file
+  inside a plan directory"*). But the liveness gate means it runs **only for
+  tracks with an established live session** — a handful, not every thread in
+  every watched repo. The amendment becomes narrow and bounded: for a track with
+  live-session evidence, the daemon MAY test existence of the single reserved
+  supervision-artifact path, and MUST NOT open, read, or hash it. That is a much
+  smaller ask than the general-purpose stat the earlier draft implied, and it
+  keeps the interlock rationale (never inspect the session's working files)
+  intact.
+- **Supervisor sessions are NEW machinery, though small.** Verified: the overseer
+  today has NO notion of a `<topic>-supervisor` session — discovery is
+  plan-directory-driven, and a supervisor session has no plan directory of its
+  own, so it is not a track. Surface B therefore needs a new lookup (does a tmux
+  session by that derived name exist, and is its pane a live agent process). Both
+  halves are operations the overseer already performs for tracks; the work is
+  wiring, not new capability. Derive the name with the SAME rule as
+  `spec.md:188-193` (bare plan topic, repo-qualified only on genuine
+  cross-repository collision) so the two never disagree.
+
+#### Still available if the stat allowance is refused
+
+`supervise-plan --all` — walk every watched repo's unarchived threads and open
+ONE PR. Covers "everywhere" in a single attended invocation with nothing stat-ing
+on a tick. Weaker ergonomics, zero spec cost. Keep as the fallback.
 
 ### 11.5 Net effect
 
@@ -448,7 +521,49 @@ recommended order:
 | §10.3 third seam, inverted direction | **Gone** — generator is Control-Plane |
 | §10.4 overseer non-interference | **Defused** — worktree→PR preserves the actual invariant; amendment scopes the daemon rule |
 | §10.5 duplicating ratified spec | **Gone** — the skill invokes the overseer's own rules |
-| "everywhere by default" | **Open** — see §11.4; the nudge/stat question needs a decision |
+| "everywhere by default" | **DECIDED** — §11.4: liveness-gated nudge + attended write. Two open sub-questions only: the narrow stat allowance, and the fourth truth-table cell |
+
+### 11.6 THE CUT — ready to work
+
+Slices, dependency-ordered. All land in `livespec-overseer` under epic
+`overseer-3wt` unless stated. Slice 1 is unblocked NOW: the entry-points slice
+`overseer-m5dtmj` merged 2026-07-23 (PR #42, `5ddcfee`), so the plugin vehicle
+this binds to exists.
+
+1. **`supervise-plan` skill + template.** Thin binding over repo-owned prose (the
+   pattern `research/operator-surface.md` already chose). Creates
+   `plan/<topic>/supervisor-handoff.md` via the TARGET repo's own documented
+   commit discipline — worktree → PR → merge, prose-determined, never hard-coded.
+   Template content per §7; HALT-first precondition block per §6, deriving names
+   with the `spec.md:188-193` rule rather than restating it. **No daemon changes
+   in this slice** — it is invocable by hand, which makes it independently
+   useful and independently testable.
+2. **Overseer spec amendment — scope non-interference.** Per §11.2: the DAEMON's
+   unattended observation/restart loop never touches the plan tree (unchanged,
+   still enforced by the startup refusal); an ATTENDED operator skill may create
+   exactly one named artifact through the repo's normal commit discipline. Keep
+   "authored artifact" and "runtime state" distinct so the two-places sentence
+   (`spec.md:237`) survives intact. Independent Fable review before ratification,
+   per repo discipline.
+3. **Surface A + B, liveness-gated and edge-triggered.** Per §11.4. Needs the
+   narrow stat allowance (slice 3a, an amendment bounded to live-session tracks,
+   existence-test only) and the `<topic>-supervisor` session lookup with live
+   process evidence. **Decide the fourth truth-table cell before building** — it
+   is the current state of all three live supervisors and the default
+   implementation gets it wrong.
+4. **Upstream one-liners** (`livespec` core `NFR:175`; orchestrator
+   `contracts.md` thread store) via `/livespec:propose-change` → `/livespec:revise`.
+   **Deliberately LAST** — the amendments should describe something that exists,
+   not something planned.
+5. **Migrate the three live charters** out of gitignored `tmp/` into their
+   threads, closing the §1 durability defect that motivated all of this.
+
+**Not yet anchored:** this thread has no `handoff.md` and no core ledger epic, and
+that remains deliberate — the implementation work items belong under
+`overseer-3wt` in `livespec-overseer` (§11.5), not to a core-tenant epic, and an
+active handoff would have to declare a concrete anchor or fail
+`plan_thread_anchor_declared`. This note is the design record; the ledger carries
+the work.
 
 **Next action:** file `supervise-plan` as a groomed slice under epic
 `overseer-3wt` in `livespec-overseer`, sequenced after the plugin and
