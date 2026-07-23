@@ -166,7 +166,78 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 14 (written 2026-07-20 at session end)
+## ▶▶ START HERE — cont. 15 (written 2026-07-23; the adopter/gate chain is COMPLETE)
+
+**Read the STOP block above first** — local self-hosted runners remain DEFERRED.
+Everything under cont. 14 and lower is prior trail. This section supersedes it.
+
+### The one-line state
+
+**Every item in the adopter/conformance chain is CLOSED and live-verified.** What
+remains on the track: one armed-and-waiting acceptance dispatch for `a46`, two
+small decided-but-unbuilt items, one maintainer-blocked item, and the Honeycomb
+trigger.
+
+### ✅ Closed since cont. 14 — all merged to `livespec-dev-tooling` master, each
+### independently verified by re-running the real gates (never the agent report)
+
+| Item | What landed | Key evidence |
+|---|---|---|
+| `7vj` | Per-repo canonical ref for the sweep's GitHub reads | homelab `RowSkip` → `RowFinding`; members unchanged |
+| `ahg` (3 steps) | 8 false positives killed (spec's top-level-gate rule restored); the two admin rows enforced for the FIRST TIME EVER via the world-gate admin lane (`check-fleet-conformance-admin`); protection READ de-hardcoded | Gate 8 errors/exit 4 → 0/exit 0; admin lane exit 0, both rows × 9 members, fleet genuinely compliant |
+| `b02` + `29qo` | Blind-row visibility → complete vantage model → blind = **ERROR** everywhere. `app-installation` labeled `central-app` (credential-class detected via the `ghs_` token prefix); every unreadable row is out-of-vantage with a NAMED owner; no lever anywhere | Central sweep: `blind_rows: 0`, `out_of_vantage_rows: 4`, exit 0; pre-change baseline was `blind_rows: 1` |
+| `453` | **`manifest.adopters` has its reader** — admin lane, currency row only, `posture: released` only, posture-excluded distinctly labeled; recurrence-guard test flips exit to 4 if the consumer is ever lost | homelab evaluated → `RowPass`; `adopters_evaluated: 1`; `posture_excluded: [openbrain, resume]` |
+| `6rs`/`6ge` | Partial-payload false errors (found independently by two sessions) | Fixed on master `61f2d7b`; both items cross-closed |
+| `17o` | Reconcile WRITE path de-hardcoded (+ a 4th site the item missed: the shim-branch SHA lookup) | `main`-default member gets `branches/main/...` on PUT/SHA/PR-base; zero `branches/master` left |
+| `oik` | Base → `buildpack-deps:noble-scm`; compiler confined to the rust layer; `libatomic1` re-added (10.5 kB, found by building) | Registry: `python-` 414.5 → **237.7 MB** (prediction off by 0.1 MB); init median 19s → 13s over real-run distributions. **Close is dep-blocked by `a46` only** |
+
+Cross-repo: homelab's currency fix was driven END-USER-SIDE by its own track
+(coordination archived both sides); `livespec-console-beads-fabro-x9o` is the
+throwaway confirmation item for `a46` (see below).
+
+### ▶ THE ONE ARMED ACTION — `a46`'s last acceptance shape
+
+`a46` is delivered and orchestrator-shape-proven (34+ h of real dispatches in
+`python-agent-` images, incl. a merged-PR-janitor-green run — see the item). The
+console's `python-rust-agent-` shape has never hosted a dispatch. Maintainer
+decision 2026-07-23: prove it with a **throwaway factory-confirmation dispatch**
+(`livespec-console-beads-fabro-x9o`, filed, admission deliberately MANUAL).
+
+**Dispatch discipline, all mandatory:** drive ONLY when zero `fabro-run-*`
+containers are live AND load is sane (a watcher was armed for exactly this);
+`--budget 1 --parallel 1`; explicit `--fabro-bin /home/ubuntu/.fabro/bin/fabro`;
+admission via the `set-admission` valve, never hand-edited labels; journal the
+observed image tag on the item — the OBSERVATION is the deliverable. Then close
+`a46`, then `oik` (dep-chained).
+
+### ▶ THEN (small, decided, unblocked)
+
+1. **`6cf`** — bounded parser convention (decided: rule-encoding parsers must be
+   shared; the spec-citation marker makes it mechanical). Fix the
+   self-contradicting docstring in `checks/_ci_matrix_parse.py`.
+2. **`n5s`** — merged-branch sweep's protected set must derive from the repo's
+   real default branch (the `canonical_ref` machinery exists).
+
+### ▶ STILL MAINTAINER-BLOCKED / JUDGMENT-GATED
+
+3. **`livespec-bg47fr`** — adopter pin fan-out. Unchanged since cont. 13.
+4. **`livespec-3lev.1`** — Honeycomb trigger on sustained CPU-idle≈0. Bring the
+   maintainer a threshold recommendation BEFORE creating anything.
+
+### The arc, for whoever reads this cold
+
+This track set out to shrink a CI image and ended up repairing the fleet's
+verification layer: **eight defects of one class** — checks pointed at sources
+that could not show the failure, passing in ways that looked like confirmation
+(`7vj`, `ahg`×2, `b02`, `453`'s near-miss, `6ge`/`6rs`, `secret-names`' latency,
+`17o`'s write path). The structural cure shipped in three layers: per-repo ref
+resolution, the vantage model with named owners, and blind-as-error. The CI image
+went **751 → 237.7 MB (−68%)** and per-job init **39s → ~13s median** across
+`a46` + `oik`.
+
+---
+
+## ▶▶ START HERE — cont. 14 (written 2026-07-20 at session end — superseded by cont. 15 above)
 
 **Read the STOP block above first** — local self-hosted runners are DEFERRED until
 new hardware. Nothing below changes that; all of this is runner-agnostic work.
