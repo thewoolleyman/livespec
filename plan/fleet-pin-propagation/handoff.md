@@ -5,11 +5,89 @@
 
 ---
 
-## 🟢 START HERE — 2026-07-23 (SIXTH session, mid-flight checkpoint). READ THIS FIRST.
+## 🟢 START HERE — 2026-07-24 (SIXTH session close). READ THIS FIRST.
 
-**Everything below is history. This section is the current truth. This is a
-MID-SESSION checkpoint (fallback hygiene while awaiting an external trigger),
-not a session close — one worktree is DELIBERATELY live (see Slice 3).**
+**Everything below is history. This section is the current truth. The epic's
+final approvals are GRANTED and partially executed — finish the Slice-3
+landing sequence below, in order.**
+
+### Supervisor + protocol (unchanged, load-bearing)
+A **fleet-pin-propagation-supervisor** session relays maintainer decisions via
+the prompt channel and monitors
+`tmp/fleet-pin-propagation-supervisor/status.log` (append one line per work
+block). `tmp/overseer/fleet-pin-propagation/.overseer-state` takes ONLY tokens
+(`blocked: <reason>` / `ready` / `winding-down`); write NOTHING there while
+actively working. Factory dispatches: strictly serialized host-wide,
+container-check for foreign running `fabro-run-*` first, coordinate via
+status.log (see `.ai/dispatcher-drain-operations.md` + `bd-ib-6yll`/`bd-ib-sd8o`).
+
+### DONE this session (all verified; do not redo)
+- **`livespec-oq9w` CLOSED** (supervisor-authorized). **`livespec-f73t` CLOSED**
+  (maintainer-approved, evidence: the per-member FILTER preflight ran in
+  production — v0.53.2 fan-out run 30028730379, verdict artifact consumed,
+  `excluded=0 kept=8`, 8/8 dispatched). **`livespec-591t`, `livespec-bhqt`,
+  `livespec-dev-tooling-72r5`, `livespec-dev-tooling-34t2` CLOSED** with
+  evidence (Slices 1+2a landed: dev-tooling PRs #544, #577; Slice 2b: #580).
+- Orchestrator items filed: `bd-ib-w2ah` (execution-mirror convention),
+  `bd-ib-6yll` (concurrency doctrine split), `bd-ib-sd8o` (P2 fix).
+- Combined-decision packet (evidence detail):
+  `tmp/fleet-pin-propagation-supervisor/f73t-close-and-slice3-packet.md`.
+
+### IN FLIGHT — Slice 3 (`livespec-dh9r`'s payload), maintainer-APPROVED landing
+**Code PR is open with auto-merge armed: `livespec-dev-tooling` PR #590**
+(branch `dh9r-persisting-gap-error`, one Red-Green commit, both TDD trailer
+blocks — never rewrite its message). The persisting-gap conjunction (stale AND
+open bump PR for latest → ERROR, all four currency legs) + the REST→parser
+`headRefName` normalizer. Steps, in order:
+
+1. **Verify PR #590 MERGED** (auto-merge on green). If a check is red: a
+   PyPI-download timeout in job setup has happened before — `gh run rerun
+   <run> --failed` is the precedent; a real red routes to the supervisor per
+   `.ai/ci-gate-discipline.md`. After merge: `git -C
+   /data/projects/livespec-dev-tooling pull --ff-only origin master`, then
+   remove worktree `~/.worktrees/livespec-dev-tooling/dh9r-persisting-gap-error`
+   and delete the branch.
+2. **Spec path** (attended): file
+   `plan/fleet-pin-propagation/dh9r-severity-policy-proposal-draft.md` (in THIS
+   repo, committed beside this handoff) as a propose-change in the
+   `livespec-dev-tooling` tenant — RE-GREP every verbatim target first (the
+   vantage-model stream edits contracts.md constantly; the draft's line
+   numbers are advisory), include the `tests/heading-coverage.json` co-edit
+   for the new `## Pin-currency severity policy` heading. Then an independent
+   READ-ONLY Fable review to NO-BLOCKERS (blockers route to the supervisor,
+   never self-waived), then `/livespec:revise` accept. The v029/v030 precedent:
+   the revise CLI may exit 3 on two PRE-EXISTING doctor findings
+   (`livespec-dev-tooling-tem4t2`) — verify the snapshot byte-correct and land.
+3. **Post-ratification live read**: run the conformance sweep (wrapper +
+   `LIVESPEC_RUN_FLEET_CONFORMANCE=1`, set the lever INSIDE the wrapper — it
+   scrubs env) and READ it: on a healthy fleet expect zero persisting-gap
+   errors, warnings-or-pass only.
+4. **STAGED EXCLUSION DRILL** (maintainer-required close precondition for
+   `dh9r`; design + constraints journaled ON `livespec-dh9r` 2026-07-23): the
+   filter's exclusion path has run only in tests — one controlled
+   non-conformant member, verify loud exclusion + others dispatched + revert.
+   Coordinate the window via status.log.
+5. **Assemble `dh9r` close evidence** (steps 1–4) and route close
+   authorization through the supervisor — do NOT self-close `dh9r`.
+
+### Hands-off (unchanged)
+`livespec-dev-tooling-vod6`, `livespec-eerz` (filed, maintainer-gated);
+driver defects `livespec-driver-claude-tun`+`-6lc` (sequence together);
+`livespec-cbmw` + overseer scaffolding (overseer-productization track);
+`livespec-orchestrator-git-jsonl` #369/#370 (autonomous-mode-retirement track).
+
+### RESUME POSTURE
+Read status.log first; expect supervisor relays. The factory was free at
+session close (v0.53.2 was `39i`'s release). Everything in "DONE" is closed
+with evidence — verify against live state before redoing anything.
+
+---
+
+## 🟡 2026-07-23 (SIXTH session, mid-flight checkpoint) — SUPERSEDED by the close above
+
+**History. Superseded facts: f73t has since CLOSED; Slice 3 has since been
+approved and its PR opened; the filtered preflight has since run in
+production.**
 
 ### ⚠ OVERSEER-STATE PROTOCOL (cross-track complaint, corrected 2026-07-23)
 `tmp/overseer/fleet-pin-propagation/.overseer-state` accepts ONLY protocol
