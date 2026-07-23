@@ -1,6 +1,169 @@
-# rop-sweep-fleet-policy — HARDEN SLICE A LANDED: exact closed-set marker matching is live. Remaining: slice B (ruff-BLE precondition), then cvz Driver coverage; factory serialized host-wide, yi6l FIXED
+# rop-sweep-fleet-policy — bbl LANDED AND PROPAGATED: the canonical body is strict-clean and its ratified marker is live in BOTH Drivers. Remaining: promote + dispatch y21 (prepped, go), then wxq (gated on livespec-driver-codex master going green)
 
-## ✅ STATE AS OF 2026-07-23 (SECOND session close, ~04:45Z) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-24 (THIRD session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### WHAT LANDED THIS SESSION
+
+- **The entire held-valve chain is DISCHARGED.** The maintainer ruled `bbl`'s wording (below),
+  and all three held accepts were pulled: `livespec-dev-tooling-5oou`,
+  `livespec-driver-claude-7u7`, and `livespec-driver-codex-96q` are CLOSED. Their dependents
+  closed with them — `livespec-dev-tooling-ng5o` (the umbrella; both slices terminal) plus the
+  livespec-tenant mirror children `livespec-heejvw` and `livespec-kumh3e`.
+- **`bbl` WORDING RULING (maintainer, 2026-07-23): the canonical replacement IS TRUTHFUL.**
+  `— sole fail-open hook boundary: silent pass-through, exit 0` sits on the `except Exception:`
+  in `main()`. On the branch that marker governs — `_warning()` raises → `warning = None` → the
+  `if warning is not None` guard is False → nothing is written → `return 0` — the boundary
+  genuinely is silent, pass-through, exit 0. The `systemMessage` is emitted ONLY on the SUCCESS
+  path, outside this catch's scope. The tmux lying-marker precedent does NOT apply (that marker
+  claimed fail-CLOSED while the body failed open; here claim and behavior agree). Journaled on
+  `bbl`; this discharged the "DO NOT DISPATCH UNATTENDED UNTIL RULED" hold.
+- **`bbl` dev-tooling core LANDED**: `livespec-dev-tooling` PR #587, rebase merge `d08ca94`,
+  master CI green on the merge commit, **released as v0.54.0**. It delivers (a) the canonical
+  body made pyright-strict-clean, (b) the ruled marker swap, and (c) a NEW check
+  `livespec_dev_tooling/checks/no_shadow_ledger_body_typechecks.py` that renders the body
+  constant to a throwaway `.py` and runs pyright strict against it — wired into the `just check`
+  aggregate AND the `ci.yml` matrix, with a paired 100%-covered test.
+- **DESIGN DECISION, pinned on `bbl`: render-at-check-time — chosen AGAINST the item's own
+  tentatively-preferred "promote the body to a real `.py`".** The body is a CARRIER in
+  dev-tooling: its logic is executed and 100%-covered only where it is INSTALLED (the Drivers),
+  never in dev-tooling. Promoting it would pull it into dev-tooling's `fail_under = 100`
+  coverage universe, forcing either a full port of the Drivers' body test-suite or a coverage
+  `omit` — and an omit is exactly the per-repo exemption the item's HARD CONSTRAINTS forbid.
+  Zero exemptions were added anywhere.
+- **Dual review NO-BLOCKERS ×2 on #587, unprimed.** Non-inertness was PROVEN by execution, not
+  asserted: the reviewers ran the new check against the PRE-PR body and got exit 4 with 44 and
+  46 error-diagnostics respectively, and exit 0 against the fixed body; both recomputed the
+  test-file sha256 to confirm Red↔Green byte-identity. **NOTE for future review dispatches: the
+  Fable leg was UNAVAILABLE** (that account hit a monthly spend limit mid-session), so an Opus
+  reviewer was substituted and the pairing was Opus + Codex. Surfaced to the maintainer at the
+  time; re-check Fable availability before assuming the standard pairing.
+- **BOTH Drivers are SYNCED to v0.54.0** via fan-out bump PRs completed with the body
+  re-install: `livespec-driver-claude` **PR #265** (MERGED) and `livespec-driver-codex`
+  **PR #247** (MERGED). Verified by execution: `check-no-shadow-ledger-body-identical` EXIT=0
+  on livespec-driver-claude's merged master, whose `no_shadow_ledger.py:205` now carries the
+  ratified canonical marker.
+
+### 🔑 THE COUPLING THIS SESSION DISCOVERED — it recurs on EVERY canonical-body change
+
+**A dev-tooling release that changes the BYTES of `CANONICAL_NO_SHADOW_LEDGER_BODY` turns the
+mechanical pin-only fan-out bump PR RED in every consumer.** The instant a Driver's pin advances,
+its installed copy drifts from the new canonical constant and
+`check-no-shadow-ledger-body-identical` fails (exit 4). The fan-out bumps the pin; it does NOT
+re-install the body. **So the pin bump and the body re-install MUST land in the same PR.** Both
+#265 and #247 were completed exactly that way (`just install-no-shadow-ledger`, never a hand edit
+— a Driver-side edit fails the identity check by construction).
+
+**Sub-lesson, recorded because it was got WRONG first.** A body re-install is a `.py` change, so
+each Driver's `check-commit-pairs-source-and-test` refuses it without a paired test change. The
+first conclusion was "there is no honest test to pair" (behavior is unchanged by construction, all
+19 hook tests passed, nothing asserted body content) and the proposed fix was to exempt generated
+bodies in the guard. **The maintainer caught that as wrong reasoning**: behavior is not the only
+testable property. The file's CONTENT changed, and a genuine Red exists — assert the installed body
+is byte-identical to the packaged canonical constant. It FAILS before the re-install and PASSES
+after. Both sides are DERIVED, so it hardcodes no body bytes and keeps working across every future
+body change. That test now ships in BOTH Drivers as
+`tests/hooks/test_no_shadow_ledger.py::test_installed_body_is_byte_identical_to_packaged_canonical`,
+authored Red→Green. **Reach for the Red before concluding a guard is gapped.**
+
+### ⚠️ TWO GATES THAT WILL STALL A y21/wxq DISPATCH (both verified from source)
+
+1. **`livespec-driver-claude-y21` and `livespec-driver-codex-wxq` are `status: backlog`, NOT
+   `ready`** — even though their only typed deps (`7u7`, `96q`) are CLOSED. Neither surfaces to
+   `next` nor is picked up by the Dispatcher until EXPLICITLY promoted. Do not misread the empty
+   queue as the factory being busy. Promotion-to-ready under supervisor delegation is the
+   established fleet pattern.
+2. **`livespec-driver-codex` master CI is RED**, so a `wxq` dispatch would die at the Red commit:
+   `check-master-ci-green` reads the LATEST master run, its `_GREEN_CONCLUSIONS` set is exactly
+   `{"success"}`, and the Dispatcher janitor hard-gates on it. The failing job is
+   `export-telemetry` (`jq: Argument list too long`, exit 126) — NOT flaky, reproduced on two
+   consecutive runs. `livespec-driver-claude` is GREEN and unaffected. Fix owned by the
+   supervisor session; the `MAX_ARG_STRLEN` mechanism first proposed for it was measured and
+   FALSIFIED, so the fix (move unbounded-growth values off argv onto stdin) must be proven
+   EMPIRICALLY by the PR's own CI run on the real runner, never by a merge alone.
+
+### REVISED DISPATCH ORDER
+
+1. **`y21`** (livespec-driver-claude) — unaffected by the codex red, prepped, go. Promote → dispatch.
+2. **The livespec-driver-codex `export-telemetry` fix** (supervisor-owned) → then WAIT for a fresh
+   livespec-driver-codex master run to conclude success. The repair only counts once a green run
+   EXISTS, because the check reads the latest run.
+3. **`wxq`** — only after step 2 shows green.
+
+### y21 IS PREPPED — its one open design choice is now RESOLVED in the description
+
+`y21` leg (3) previously embedded an unresolved choice ("io_trees placement or 64s-style
+narrowing"), which is what burns an unattended ACP turn. It is now decided and folded in:
+
+- **(3a) NARROW, do not mark, the two I/O-seam catches** in
+  `.claude/hooks/livespec_footgun_guard.py`: `:229` `_read_stdin` wrapping `sys.stdin.read()`
+  → `except (OSError, ValueError)` (`UnicodeDecodeError` is a `ValueError` subclass); `:237`
+  `_write_stdout` wrapping `sys.stdout.write()` → `except OSError` (its only input is
+  `json.dumps()` output, ASCII under the default `ensure_ascii`, so `UnicodeEncodeError` is
+  unreachable — verified at the call site). Under ruling 8 (ratified v172) narrow typed catches
+  PASS outside `io_trees` and need NO marker, so narrowing DISSOLVES the wording problem at both
+  sites. NOT `io_trees` placement — that would make leg (3) depend on the `source_trees`
+  declaration leg (1) introduces in the same dispatch.
+- **(3b) CANONICALIZE `:270`** — `main()`'s `except Exception:  # noqa: BLE001 — fail-open by
+  contract` is a genuine broad boundary and STAYS broad. Its verified behavior (catch → `pass`
+  → `return 0`, nothing written on that path) makes
+  `— sole fail-open hook boundary: silent pass-through, exit 0` TRUTHFUL. **ORDERING MATTERS:**
+  `sole` only becomes truthful AFTER (3a) narrows `:229`/`:237`, so do (3a) first.
+- **The older marker survey is SUPERSEDED.** Re-measured at `origin/master`: exactly THREE
+  non-canonical markers remain in livespec-driver-claude, ALL in `livespec_footgun_guard.py`
+  (`:229`, `:237`, `:270`). There is no live `— deliberate fail-open bulkhead` site, and
+  `no_shadow_ledger.py:205` is already canonical via the re-install.
+
+Sizing: `y21`'s description is ~3308 chars (over the 1500 warn) after the fold-in. **Do NOT trim
+it.** The dispatcher renders BOTH description and notes into the goal but the heuristic measures
+`len(description)` alone, so moving text to NOTES would lower the warn without changing what the
+agent reads — gaming the signal. The warn is warn-only and never blocking; expect it.
+
+### 🆕 FINDINGS FILED THIS SESSION (all file-only; none block y21)
+
+- **`livespec-dev-tooling-rkdg` (P2)** — `_IMPL_PREFIXES` omits BOTH livespec-driver-claude hook
+  trees, so that repo's entire hand-authored product surface (7 `.py`, including the
+  commit-refuse hook, tmux fleet guard, footgun guard, auto-memory blocker) has **zero
+  Red-Green-Replay enforcement on both legs** — the commit-msg leg via `_classify_staged` and the
+  pre-push range gate via `_commit_violates` key off the same tuple. livespec-driver-codex IS
+  covered, but only by accident through the bare legacy `livespec/` prefix, whose own comment
+  claims "Production has no top-level `livespec/` or `bin/` dirs" — a STALE NEGATIVE ASSERTION,
+  false precisely because of livespec-driver-codex. This is a THIRD gate missing the SAME Driver
+  hook trees that `cvz`/`y21`/`wxq` exist to fix. Deliberately kept OUT of y21/wxq scope (it is a
+  dev-tooling change and would drag a release + fan-out chain onto their critical path).
+- **`livespec-dev-tooling-8xyb` (P3)** — the new type-check's `_PYRIGHT_STRICT_CONFIG` is a
+  HARDCODED mirror of `[tool.pyright]`, kept in lockstep "by review" with no automated parity
+  check. Both #587 reviewers independently flagged it; it matches field-by-field TODAY and the
+  drift is one-directional (only weakening). Preferred fix: DERIVE the config from
+  `pyproject.toml` rather than assert parity.
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR
+
+1. **Promote `y21` to `ready`** (supervisor delegation) — its cross-tenant `bbl` prerequisite is
+   discharged and VERIFIED (identity check EXIT=0 on merged master).
+2. **Hold `wxq`'s promotion** until livespec-driver-codex master shows a fresh green run.
+3. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+4. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; implementation still
+   pending (unchanged).
+
+### NEXT WORK
+
+- **`y21` → `wxq` → `cvz` closes** per the revised dispatch order above.
+- **`e9j` (P0)** is the highest-priority open dev-tooling item — the loudness half
+  (armed-but-inspecting-nothing still exits 0). Note its own `check_mutation` reasoning argues
+  the answer is ERROR.
+- `x6t6`, `9ar`, `ajo`, `jjb` unchanged. `jjb` still owns `sole` cardinality, marker-flavor
+  pairing, and contract-discharge; the wording-EXACTNESS half remains discharged.
+- `gam8` (P2) and `bd-ib-60pp` (P1) remain the open factory-reliability items. On `60pp`: the
+  main goal-assembly path IS escaped (`escape_minijinja_literal` is applied to the whole
+  assembled goal), so the blanket "grep every item for double-brace tokens" advice is
+  over-broad — but 60pp was filed off an OBSERVED live death, so a narrower leak remains
+  somewhere off that path. Treat 60pp's own journal as the authority on which field leaks.
+- `pure_trees` stays gated on `livespec-mutreal.1`.
+
+## (HISTORY) ✅ STATE AS OF 2026-07-23 (SECOND session close, ~04:45Z)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
 
