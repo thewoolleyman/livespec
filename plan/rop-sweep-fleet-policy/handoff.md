@@ -4,6 +4,35 @@
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from prose.
 
+### ⚡ ADDENDUM 3 ~09:55Z — cvz SLICED AND SEQUENCED; the Drivers' held accepts are the real gate
+
+- **Load-bearing discovery during cvz prep: the Drivers' railway/BLE adoption ALREADY LANDED**
+  under `livespec-driver-claude-7u7` / `livespec-driver-codex-96q` (2026-07-19 dispatch-mirrors of
+  `livespec-heejvw`), and BOTH sit in **ACCEPTANCE, HELD** on the I/O-lift dual-review conflict
+  that **ruling 8 + v172 has since settled** (narrow-at-the-seam sanctioned). Unblock analyses
+  journaled on both; `96q` also carries a live FIX-REGARDLESS remainder (second internal broad
+  except; its blocker-1 remedy was already marked misdiagnosed). Their briefs carried the
+  pre-v169 instruction to keep `— fail-open by contract` — which is WHY the fleet grep finds that
+  non-canonical wording in the Driver hook trees.
+- **cvz is now sliced into per-Driver execution mirrors** (their own tenants, per the mirror
+  convention): **`livespec-driver-claude-y21`** and **`livespec-driver-codex-wxq`** (P1 each) —
+  source_trees + supervisor_entry_files declarations, ruff un-exclusion of hook trees (FORCED by
+  slice B's coverage precondition), fresh-list marker canonicalization, installed no-shadow-ledger
+  body EXCLUDED, halt-clause for untruthful-wording sites. Deps wired: each blocked-by its repo's
+  held item (7u7/96q) AND `external:livespec-dev-tooling:bbl-canonical-wording`.
+- **`bbl` is the first domino and carries a MAINTAINER GATE**: the canonical no-shadow-ledger
+  body's `— fail-open by contract` must become a closed-set wording BEFORE the Drivers arm; the
+  natural pick is `— sole fail-open hook boundary: silent pass-through, exit 0`, but this hook
+  EMITS a stdout systemMessage when the warning fires — whether "silent pass-through" is truthful
+  there (the #516 output-contract reading says yes; the tmux-guard lying-marker precedent warns)
+  is a wording-truthfulness call journaled on `bbl`. DO NOT dispatch bbl unattended until ruled.
+- **Sequencing for the whole cvz arc:** maintainer accepts 7u7 + 96q (ruling-8 basis; 96q's
+  remainder first) → rule + land `bbl`'s wording (re-install legs included) → dispatch `y21` /
+  `wxq` (serialized, one at a time) → cvz closes on non-empty inspection in core + both Drivers.
+- **`39i` slot request posted 09:52Z** in the coordination log, queued AFTER x9o's standing
+  position-3 grant (not yet observed launched). Whoever holds the factory next: launch 39i only
+  after x9o's done line + zero foreign `fabro-run-*` containers, and post done after.
+
 ### ⚡ ADDENDUM 2 ~08:40Z — SLICE B LANDED VIA THE FACTORY; ng5o discharged; cvz is the front
 
 - **`q4cs` (slice B) went GREEN through the FULL factory pipeline** — the queue's release order was
