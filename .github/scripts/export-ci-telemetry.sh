@@ -107,15 +107,18 @@ while IFS=$'\t' read -r jid jname jconcl jstart_iso jend_iso; do
 done < <(jq -r '.jobs[] | [.databaseId, .name, (.conclusion // ""), (.startedAt // ""), (.completedAt // "")] | @tsv' "$run_json_file")
 
 payload_file="$(mktemp)"
-# `run_span` is a single span and `job_spans` are TRIMMED spans (~5 attributes each,
-# a few hundred bytes/job, ~20 KB total at current scale) — small enough that argv+envp
-# stays under ARG_MAX, so `--argjson` is safe here (unlike the raw `run_json` above). If
-# this workflow's job count grows enough that `job_spans` approaches that budget, stage
-# it in a temp file and slurp it the same way.
+# The final span batch grows with the workflow job count, so keep it off argv too.
+# Route spans through temp files and slurp them; only fixed-size scalars stay in argv.
+run_span_file="$(mktemp)"
+job_spans_file="$(mktemp)"
+printf '%s\n' "$run_span" > "$run_span_file"
+printf '%s\n' "$job_spans" > "$job_spans_file"
 jq -nc \
-  --argjson run "$run_span" --argjson jobs "$job_spans" \
   --arg svc "$DATASET" --arg ns "$NAMESPACE" \
-  --arg scope "$SCOPE_NAME" --arg ver "$SCOPE_VERSION" '
+  --arg scope "$SCOPE_NAME" --arg ver "$SCOPE_VERSION" \
+  --slurpfile runs "$run_span_file" --slurpfile jobs "$job_spans_file" '
+  ($runs[0]) as $run |
+  ($jobs[0]) as $jobs |
   {resourceSpans:[{
      resource:{attributes:[
        {key:"service.name",value:{stringValue:$svc}},
