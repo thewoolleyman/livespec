@@ -84,25 +84,91 @@ while per-PR CI invokes it bare. So scope the promotion on
 `emit_member_verdicts is not None` — an existing signal, no new lever, matching
 the `1e85cd1` vantage-classification precedent in spirit.
 
+### ✅ SLICE 3 HAS LANDED — context-scoped (`livespec-dev-tooling` PR #590, merged 01:52Z)
+
+Two commits: the **sealed** `9b3ee48` (untouched — same SHA, message and both
+TDD trailer blocks intact) and `d689793`, the context-scoping, itself a
+Red-Green pair stacked on top.
+
+`FleetContext.filter_consuming_preflight` (default `False`) is set from
+`args.emit_member_verdicts is not None`. Both persisting-gap sites
+(`_rows_pin_currency.py`, `_rows_files.py`) moved together — a half-armed
+promotion would make the contract text false — and the diagnostic message is
+identical across contexts, so a per-PR warning still *names* the gap.
+
+**`1e85cd1` is followed in spirit, not mechanism.** It classifies vantage by
+credential class (`ghs_` via `holds_app_class_credential`); both contexts here
+hold the same fleet App token, so the discriminator has to be the invocation.
+
+**Test-integrity note.** The change would have made five pre-existing "stays
+warning" assertions *vacuous* (in per-PR context everything warns, so they'd
+pass even with the conjunction broken). Both persisting test files' context
+helpers now build the preflight context, where the guard conditions stay
+falsifiable; the per-PR context is covered by the new
+`test_rows_pin_currency_context_scope.py`.
+
+### ✅ THE EXCLUSION DRILL IS DISCHARGED — live, in production, unstaged
+
+`dh9r`'s close precondition is met **without** the staged non-conformant member
+its 2026-07-23 design called for. `livespec-overseer` supplied a real
+persisting gap, so nothing had to be deliberately broken.
+
+**Run `30060186985`** (v0.54.3 fan-out, the first executing the scoped
+escalation). Read off the run, not its conclusion:
+
+```
+EXCLUDED from release dispatch: livespec-overseer — failing conformance rows: compat-pin-currency
+```
+
+Seven dispatch jobs, all success; `livespec-overseer` absent from the matrix.
+
+Together with run `30059932539` (same gap, same wording, `level: warning`,
+`fleet conformance passed`), the two runs pin **both directions of the scoping
+against the same live gap** — one condition, two contexts, two severities, both
+observed in production. Propagation continued to all seven conformant siblings,
+which is precisely what the `f73t`-before-Slice-3 ordering exists to guarantee,
+now observed rather than argued.
+
+⚠ This evidence is **point-in-time**: the overseer will eventually be repaired
+and the run cannot be re-derived. Cite `30060186985` by id.
+
 ### NEXT ACTIONS, IN ORDER
 
-1. **Amend PR #590** to context-scoped severity per the above. Red-Green on top;
-   **never rewrite the existing sealed commit's message/trailers**.
-2. **Fold the context-scoped policy** into
-   `plan/fleet-pin-propagation/dh9r-severity-policy-proposal-draft.md`, then the
-   spec path: propose-change → independent Fable review to NO-BLOCKERS → revise.
-3. **The exclusion drill is now FREE.** `livespec-overseer`'s persisting gap
-   supplies a real non-conformant member, so the next fan-out exercises the
-   loud-exclusion path live — no member need be deliberately broken, which
-   retires the staged-exclusion design journaled on `dh9r` 2026-07-23.
-4. **Assemble `dh9r` close evidence** and route through the supervisor — do NOT
-   self-close.
+1. **Finish the spec half — the only thing left before `dh9r` can close.** The
+   proposal `pin-currency-severity-policy` is FILED in the `livespec-dev-tooling`
+   tenant (commit `86d7869`, branch `pin-currency-severity-policy`,
+   worktree `~/.worktrees/livespec-dev-tooling/pin-currency-severity-policy`).
+   An independent read-only Fable review is in flight. Ratify **only** on a
+   NO-BLOCKERS verdict; route any blocker to the supervisor — never self-waive.
+   Filing and ratification are deliberately landing in **one PR** on that branch,
+   because this thread's own history records two proposals sitting
+   filed-but-never-ratified for 17 days.
+2. **The revise payload MUST carry the `tests/heading-coverage.json` co-edit**
+   for the new `## Pin-currency severity policy` heading. Shape confirmed: a
+   list of `{spec_root, spec_file, heading, test, reason}`, TODO + reason
+   pattern. Path is spelled `../tests/heading-coverage.json` in
+   `resulting_files[]` when `--spec-target` is the main tree.
+3. **Assemble `dh9r` close evidence** — Slice-3 landing, both scoping-direction
+   runs, the drill, and the ratification — and route through the supervisor.
+   **Do NOT self-close.**
 
-### ALSO WORTH FILING
+### FILED THIS SESSION
 
-`check-doctor-static` in `livespec` core failed and then passed on rerun with
-no code change. A flake in a merge-blocking gate is a hard blocker per the
-repo's own discipline; it has no work-item yet.
+- `livespec-dev-tooling-lmv2` (P1) — the carrier-propagation class.
+- `livespec-dev-tooling-l8d7` (P3) — the `@generated` generalization.
+- `livespec-s9il` (P1, core) — `check-doctor-static` flakes in core CI. Filed P1
+  because the flake **manufactured** a real persisting pin gap on PR #1688, i.e.
+  it fabricates exactly the signal the alarm exists to detect. Attempt-1 logs had
+  already expired, so the item leads with "make it capturable" rather than a
+  guessed cause.
+
+### ⚠ A JOURNALING FOOTGUN, RECORDED BECAUSE IT COST REAL CONTENT
+
+A `bd note` body passed as a **double-quoted** shell argument had its backtick
+code spans **command-substituted** — prose that merely *mentioned* shell syntax
+was executed, silently deleting two spans from a journaled note. Corrected in
+place on `dh9r`. Pass `bd note` bodies as **single-quoted** arguments or via a
+file.
 
 ---
 
