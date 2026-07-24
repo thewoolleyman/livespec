@@ -177,7 +177,47 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 18 (written 2026-07-24; new maintainer decision REOPENS narrow local-lane work)
+## ▶▶ START HERE — cont. 19 (written 2026-07-24; the cont. 18 arc is COMPLETE — track quiescent again)
+
+**Read the STOP block above first** — its narrow 2026-07-24 sentinel amendment
+is now fully DELIVERED; everything else in it still binds.
+
+### The one-line state
+
+Every item the 2026-07-24 maintainer decision re-armed is DONE, merged, and
+live-proven. The track is quiescent again: no dispatchable work, no in-flight
+delegations. Wind-down/archive remains the standing recommendation (cont. 17's
+case, now with cont. 18's additions also closed).
+
+### ✅ Delivered since cont. 18 (all live-verified, not report-trusted)
+
+| Piece | Outcome |
+|---|---|
+| **Sentinel lane** | `check-self-hosted-routing` pinned to `local-ci` ([dev-tooling #593](https://github.com/thewoolleyman/livespec-dev-tooling/pull/593), merged `4ffe7784`). **Three consecutive live successes** on real local runners the same night (72 s cold, 39 s warm, third on #596's run) — the lane is exercised on every dev-tooling CI run |
+| **Runner-liveness alert** | Heartbeat gauge `livespec.ci_runners.active` (5-min timer, pgrep-based, fail-closed zero/read split) → collector filter pipeline (otel-collector `c036159`, marker 0.10) → `livespec-host-metrics` → Honeycomb trigger `m82yfeYR2GX` (MAX < 1 over 20 min, email). Live value 48 = 6 slots × 8 repos, cross-checked. Blind spot honestly stated in the trigger; sentinel is the end-to-end backstop |
+| **Cache prune** | Daily age-aware rootless-podman prune as `ci-runner`; first live run reaped a wedged job container "Up 5 days" from the 2026-07-18 incident. Source + installer merged ([dev-tooling #595](https://github.com/thewoolleyman/livespec-dev-tooling/pull/595), `90a8caae`); installed ONLY via `install-observability.sh` (s2t rule; live == source verified) |
+| **`5eow`** | Content-keyed docs-only pairing-gate carve-out + both docstring fixes ([dev-tooling #596](https://github.com/thewoolleyman/livespec-dev-tooling/pull/596), merged `4fa0c791`, Red-Green-Replay, 62-target gate green; composes with master's concurrent `64590bf` neutral-hook exemption). Item CLOSED |
+
+All journaled on `livespec-3lev.1`. Remaining on that child: nothing
+runner-coupled; only the standing `docker_stats` rootless-podman attribution
+note (gates future capacity decisions, not detection).
+
+### Loose ends a future session may care about
+
+- The maintainer was handed `/tmp/.env` (mode 600) holding the Honeycomb
+  configuration key `HONEYCOMB_CONFIG_KEY_AGENT_ACTIVITY` for import into the
+  livespec 1Password Environment — until imported, that file is the only copy
+  outside Honeycomb.
+- `livespec-dev-tooling` repo root carries an old untracked
+  `install-livespec-pr-bot.png` (not this track's; left in place, surfaced to
+  the maintainer).
+- One verbose debug command echoed an ephemeral runner JIT-config blob into
+  this session's transcript; those credentials rotate per job cycle — no
+  action, recorded for honesty.
+
+---
+
+## ▶▶ START HERE — cont. 18 (written 2026-07-24; superseded by cont. 19 above — everything it re-armed is DONE)
 
 **Read the STOP block above first** — it now carries a dated NARROW AMENDMENT;
 everything else in it still binds. Cont. 17's wind-down recommendation is
