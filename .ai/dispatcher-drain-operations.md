@@ -143,13 +143,30 @@ history and dies with a misleading GitHub rejection about "creating"
 dispatch: `git status --short` on the primary, restore tracked churn
 (`git checkout -- uv.lock`), ff-refresh to origin/master, THEN drive.
 
-## Factory dispatch is strictly sequential — one Fabro run at a time
+## Factory dispatch concurrency is governed by the host dispatch cap
 
-Fabro sandboxes run with `--network host`, so two concurrent runs collide on the
-host network namespace. There is no supported parallel drain: hold every
-dispatch to `--budget 1 --parallel 1` and let each item finish before starting
-the next. (The sanctioned `drive --action impl:<id>` path emits exactly this
-pair; a hand-driven `dispatcher.py loop` must match it.)
+The former "strictly sequential — one Fabro run at a time" mandate rested on
+the claim that sandboxes run `--network host` and collide on the host network
+namespace. That premise was FALSIFIED on 2026-07-24 by the `bd-ib-tyxzhv`
+diagnosis (livespec-orchestrator-beads-fabro tenant; the closed item carries
+the full evidence matrix): the engine maps the `allow_all` network mode to the
+Docker BRIDGE default at the running binary's own commit, so every sandbox
+already has a per-run network namespace; the historically observed `bwrap`
+namespace denial is a host sysctl constant unrelated to concurrency (tracked
+as `bd-ib-blk3`); and two real runs completed green with forced overlap at the
+engine, sandbox, and live-ACP-agent layers.
+
+Concurrency is instead governed by the committed
+`dispatcher.host_dispatch_cap` setting (default **2** — the live-verified
+level), enforced by the Dispatcher's counting admission guard
+(livespec-orchestrator-beads-fabro `SPECIFICATION/contracts.md` v047
+§"Host-level dispatch concurrency cap (`host_dispatch_cap`)"): an over-cap
+dispatch is refused with the cap value, the observed in-flight count, and the
+remedy. Do not hand-serialize dispatches, and do not reach around the guard.
+`drive --action impl:<id>` still emits `--budget 1 --parallel 1` per
+invocation — run CONCURRENT invocations, up to the cap, for parallel drains.
+Raising the cap beyond 2 is a config-only edit and should follow
+observed-safe operation.
 
 ## Never hand-edit a beads `admission:*` label — use the valve
 
