@@ -646,3 +646,44 @@ supervisor fills them rather than discovering it needed them.
    `livespec-orchestrator-beads-fabro`: contract, then `prose/plan.md`, then the
    two bindings; tighten the refusal pattern per §4.2.
 5. **Template authoring** per §6/§7.
+
+## 12. SHIPPED — 2026-07-24 status addendum
+
+*Recorded by the plan-skill-supervisor-handoff session after driving the §11.6
+cut. The ledger stays authoritative; the anchors below are pointers, not a
+status store.*
+
+- **Slice 1 SHIPPED and ACCEPTED.** The plugin scaffold landed as
+  `livespec-overseer` PR #46 (work-item `overseer-tn3hmi`, accepted done with
+  journaled evidence) and the `supervise-plan` skill as `livespec-overseer`
+  PR #49 (work-item `overseer-myjovi`, accepted done). The acceptance's live
+  exercise drove the shipped prose end-to-end against the live
+  `rop-sweep-fleet-policy` track: all four HALT-first preconditions verified
+  from live process evidence, then the operation generated
+  `plan/rop-sweep-fleet-policy/supervisor-handoff.md` through THIS repo's own
+  worktree → PR → merge discipline (livespec PR #1706). The fail-fast negative
+  leg was observed honestly: against this thread itself the operation halts at
+  precondition 3 (no `plan-skill-supervisor-handoff-supervisor` session), and
+  no session was created to satisfy the gate.
+- **Slice 2 FILED (not yet ratified).** The overseer non-interference scoping
+  amendment is a pending proposed change in `livespec-overseer`'s own
+  `SPECIFICATION/proposed_changes/` (filed via its PR #44), awaiting
+  `/livespec:revise` there with the required independent review.
+- **Slice 4 FILED (not yet ratified) — §11.6's "deliberately LAST" precondition
+  met.** Both upstream one-liners were routed through `/livespec:propose-change`
+  AFTER the skill existed and had produced a real artifact: livespec core
+  PR #1724 (`SPECIFICATION/proposed_changes/supervisor-handoff-hosted-control-plane-artifact-in-plan-threads.md`)
+  and `livespec-orchestrator-beads-fabro` PR #920
+  (`SPECIFICATION/proposed_changes/supervisor-handoff-hosted-artifact-in-the-thread-store.md`).
+  Ratification remains human-gated at `/livespec:revise` in each repo.
+- **Slice 3 (+3a) still needs the §11.4 fourth-cell decision** before filing —
+  unchanged from §11.6.
+- **Slice 5 unblocked.** `overseer-tvko3z` (migrate the three live `tmp/`
+  charters) is dependency-clear in the `livespec-overseer` ledger now that
+  `overseer-myjovi` is done. Note `rop-sweep-fleet-policy` is NOT one of the
+  three — its prompt was generated fresh by the live exercise above precisely
+  because it had no `tmp/` charter to migrate.
+
+The §11.6 "Next action" paragraph is discharged; the remaining maintainer
+surface is: the fourth-cell decision (slice 3), the three pending
+ratifications (slices 2 and 4), and dispatching `overseer-tvko3z` (slice 5).
