@@ -54,7 +54,7 @@ jobs:
     name: slot ${{ matrix.slot }}
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.5
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.6
     strategy:
       fail-fast: false
       matrix:
@@ -75,7 +75,7 @@ jobs:
     name: mechanism + live isolation
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.5
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.6
     permissions:
       contents: read
     steps:
@@ -117,7 +117,7 @@ jobs:
     needs: [mechanism-and-isolation]
     runs-on: [self-hosted, local-ci]
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.5
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.6
     permissions:
       contents: read
     env:
