@@ -1,7 +1,70 @@
-# fleet-pin-propagation — handoff
+# fleet-pin-propagation — CLOSED (epic complete; archived)
 
-**Ledger anchor:** epic `livespec-n4ptl2` (livespec CORE tenant).
-**Opened:** 2026-07-19.
+**Ledger anchor:** epic `livespec-n4ptl2` (livespec CORE tenant) — closed at archive.
+**Opened:** 2026-07-19. **Closed:** 2026-07-24.
+
+---
+
+## 🏁 THREAD CLOSED 2026-07-24 — `livespec-dh9r` is closed (maintainer-directed, supervisor-executed); the epic is complete and this thread ARCHIVES. This block is the FINAL record; everything below is prior detail.
+
+**The epic's substantive arc is done.** The founding P0 — the v0.20.0 fan-out
+stall that silently halted fleet propagation — was resolved in the fourth
+session. The systemic half (an alarm with teeth that cannot recreate the
+stall) landed as Slice 1 (four-format pin-currency at WARNING, dev-tooling
+PR #577), Slices 2a/2b (per-member conformance verdicts + the fan-out
+preflight re-shaped from whole-job GATE to per-member FILTER, PRs #544/#580),
+and Slice 3 (the persisting-gap conjunction promoted to ERROR, context-scoped
+to the fan-out preflight, PR #590) — production-verified in BOTH severity
+directions against `livespec-overseer`'s real gap, with the live exclusion
+drill discharged unstaged (run 30060186985). The spec ratified in lockstep:
+`livespec-dev-tooling` contracts.md **v031** (PR #611) + livespec core
+non-functional-requirements **v173** (PR #1718).
+
+**`livespec-dh9r` (the epic's systemic-alarm payload) was CLOSED by the
+supervisor on maintainer authorization, 2026-07-24, with this verbatim
+reason:**
+
+> dh9r CLOSED. The persisting-gap alarm is live, context-scoped, and
+> production-verified in both severity directions against livespec-overseer's
+> real gap (runs 30059932539 warning / 30060186985 error). The live exclusion
+> drill discharged unstaged (run 30060186985). The fail-loud regression the
+> review surfaced is fixed (PR #604); its residual complete-guard seams are
+> tracked on livespec-dev-tooling-jeqp, which does not gate this payload. The
+> spec is ratified in lockstep across both governed trees (dev-tooling v031
+> PR #611, livespec-core v173 PR #1718), so no fleet spec asserts the
+> superseded gate semantics. Ordering honored throughout (f73t filter before
+> the error promotion; guard before the contract).
+
+### Residuals — ordinary backlog now, owned by NO plan thread
+
+Each item carries a de-scoping journal note naming its state at archive:
+
+- **`livespec-dev-tooling-jeqp`** (P1, open) — the complete non-sibling
+  guard (publisher corner + co-occurrence); needs the non-sibling error
+  count exposed via a coordinated emitter+parser artifact-shape change,
+  worth a maintainer priority nod first. The #604 guard covers the pure
+  discovery case; the ratified contract stays true meanwhile.
+- **`livespec-s9il`** (P1, open, core) — the `check-doctor-static` flake.
+  Step 1 (durable failure capture in core `ci.yml`) landed via livespec
+  PR #1722; the candidate mechanism (a transient sibling-justfile
+  can't-read classified as a violation in the cross-repo wiring check)
+  is journaled on the item. Root-cause on next captured occurrence.
+- **`livespec-dev-tooling-lmv2`** (P1) / **`-l8d7`** (P3) — the
+  carrier-constant propagation class and the `@generated`
+  generalization; design options journaled on `lmv2`.
+- **`livespec-dev-tooling-vtvr`** — CLOSED this session (dev-tooling
+  PR #612): the last code-comment drift vs the ratified filter contract.
+
+### Where the records live
+
+- **`supervisor-handoff.md`** (the supervisor charter) archives WITH this
+  thread, in this directory.
+- The volatile coordination log stayed in
+  `tmp/fleet-pin-propagation-supervisor/status.log` (maintainer-owned
+  scratch; not part of this archive).
+- Close evidence packet:
+  `tmp/fleet-pin-propagation-supervisor/dh9r-close-packet.md`; the durable
+  evidence is journaled on `livespec-dh9r` and restated above.
 
 ---
 
