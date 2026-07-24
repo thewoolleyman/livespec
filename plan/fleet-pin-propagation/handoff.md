@@ -65,12 +65,36 @@ fleet-pin-propagation.
 - **`livespec-dev-tooling-lmv2`** (P1) / **`-l8d7`** (P3) — the carrier-constant
   propagation class + the `@generated` generalization (from the stall triage).
 
-### RESUME POSTURE
+### RESUME POSTURE — do NOT idle waiting on the close
 
-Read `status.log` first. `dh9r` awaits the close authorization only. If the
-supervisor authorizes, close `dh9r` with the packet's reason and this epic is
-substantively done. Nothing of mine is in flight; both primaries clean on
-master.
+Read `status.log` first, then act in this order:
+
+1. **If the supervisor/maintainer has authorized the `dh9r` close** (check
+   `status.log` and any relay): close `dh9r` from the **core tenant** (run `bd`
+   from `/data/projects/livespec`, NOT dev-tooling — `dh9r` is a core-tenant
+   item) using the verbatim reason in
+   `tmp/fleet-pin-propagation-supervisor/dh9r-close-packet.md`. That
+   substantively completes fleet-pin-propagation.
+2. **If NOT yet authorized, do NOT sit idle** — the close is the only
+   HUMAN-gated item, and there is pre-authorized work to make progress on
+   meanwhile:
+   - **`livespec-dev-tooling-vtvr`** (P3, unambiguous, small): reword the two
+     "BLOCKING preflight" code comments (`fleet_conformance.py` docstring +
+     `fleet-conformance.yml` header) to the filter language — a clean
+     do-it-now ride-along that also clears the last drift vs the ratified
+     contract.
+   - **`livespec-dev-tooling-jeqp`** (P1, larger): the complete non-sibling
+     guard (publisher + co-occurrence). Design is on the item: expose the
+     non-sibling-attributable error count so the fan-out fails closed on any
+     finding not attributable to a filtered sibling (a coordinated
+     emitter+parser change; the verdict artifact is a bare list today, so
+     wrapping it in an object touches both `_write_member_verdicts` and
+     `dispatch_matrix_filter.py`). Worth a quick maintainer nod on priority
+     before the emitter+parser reshape, since it changes the artifact shape.
+   - **`livespec-s9il`** (P1): the `check-doctor-static` flake — start by
+     making a failure CAPTURABLE (logs expired last time).
+
+Nothing of mine is in flight; both primaries clean on master.
 
 ---
 
