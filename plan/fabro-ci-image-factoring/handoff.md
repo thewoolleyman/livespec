@@ -94,6 +94,17 @@ this host **killed the CPU in a major incident that caused lost work**. The move
 is **DEFERRED until new hardware exists**. This supersedes every "flip vs narrow"
 framing elsewhere in this document.
 
+> **NARROW AMENDMENT (maintainer-declared 2026-07-24):** exactly ONE tiny,
+> always-run, credential-free CI job — `check-self-hosted-routing` in
+> `livespec-dev-tooling` — runs PERMANENTLY on the local `local-ci` runner
+> fleet as a rot-proofing sentinel (design + evidence: §"Permanent single-job
+> local lane (sentinel)" below). Everything else in this STOP block stands:
+> do NOT flip `CI_RUNNER_LABELS`, do NOT add further jobs to the local lane
+> without a new maintainer decision. The same 2026-07-24 decision also
+> authorized building the runner-liveness alert and the cache budget/prune
+> automation (the two runner-coupled `3lev.1` leftovers) NOW, proving them
+> against the existing registered runner fleet.
+
 This block exists because the deferral was NOT recorded anywhere, so a later
 session (cont. 9) read the plan's optimistic load analysis, gathered more evidence
 that the lane *works*, and proposed flipping it — burning maintainer time and
@@ -166,7 +177,74 @@ guidance.
 
 ---
 
-## ▶▶ START HERE — cont. 17 (written 2026-07-23 late / 2026-07-24; the track's queue is EMPTY)
+## ▶▶ START HERE — cont. 18 (written 2026-07-24; new maintainer decision REOPENS narrow local-lane work)
+
+**Read the STOP block above first** — it now carries a dated NARROW AMENDMENT;
+everything else in it still binds. Cont. 17's wind-down recommendation is
+superseded: the maintainer decided (2026-07-24, interactive session) to (a) do
+`livespec-dev-tooling-5eow` now, (b) build the two runner-coupled `3lev.1`
+leftovers now — the runner-liveness alert and the cache budget/prune
+automation — proving them against the live runner fleet, and (c) run a
+permanent single-job local lane (next section).
+
+### Permanent single-job local lane (sentinel) — design record + live evidence
+
+**Decision (maintainer, 2026-07-24, via structured picker):** exactly one CI
+job runs permanently on the co-located `[self-hosted, local-ci]` runner fleet:
+**`check-self-hosted-routing` in `livespec-dev-tooling`**, chosen because it
+(1) does real work on EVERY CI run of the fleet's busiest repo (always-run
+metadata matrix, not `py_changed`-gated), so lane rot surfaces within hours;
+(2) costs ~1 s of single-core work per run (<300 MB RAM; measured 22 s wall on
+hosted, dominated by container init the warm local cache mostly removes) —
+zero pressure against the 2026-07-18 incident's 42-job scale; (3) is the
+security guard that keeps forbidden triggers away from `local-ci` jobs, so the
+lane continuously exercises the very check that keeps the lane safe; and
+(4) fails CLOSED — a dead runner fleet leaves the sentinel pending/red and
+blocks merges, which is the rot-proofing property the maintainer asked for.
+Runner-up considered: `check-no-direct-destructive-cli` (16 s, cheapest, no
+structural fit).
+
+**Mechanics:** matrix `include:` runner-key override in
+`livespec-dev-tooling` `.github/workflows/ci.yml` — only that target gets
+`runner: '["self-hosted","local-ci"]'`; every other job keeps following
+`CI_RUNNER_LABELS` (currently `["ubuntu-latest"]`). Shipped in
+[livespec-dev-tooling #593](https://github.com/thewoolleyman/livespec-dev-tooling/pull/593)
+(merged `4ffe7784`, 2026-07-24T00:14:04Z).
+
+**Live evidence (first exercise, #593's own CI run 30055410372):**
+`check-self-hosted-routing` executed on runner
+`ci-livespec-dev-tooling-5-4131964-7093` with labels
+`["self-hosted","local-ci"]`, SUCCESS, 00:10:28Z→00:11:40Z (72 s cold — first
+image pull into the runner's podman cache; subsequent runs warm). The
+already-registered fleet (6 ephemeral JIT runners per repo + supervisor
+respawn) provides redundancy; no new runner provisioning was needed.
+
+**Infrastructure facts for the follow-on work** (verified 2026-07-24): the
+runner source-of-truth tree is `livespec-dev-tooling/ci-runner/` (units,
+supervisor, provisioning, isolation exit tests); live units are hand-installed
+under `/etc/systemd/system` with a known source-drift gap tracked as
+`livespec-dev-tooling-s2t` — new liveness/prune artifacts MUST be authored in
+the source tree first and installed from it, never hand-only. Found live: a
+5-day-old orphaned rootless-podman job container under `ci-runner` (created
+2026-07-18 12:31 +0200, the incident day) — direct evidence for the prune
+automation's target class.
+
+### In flight at cont. 18 write time
+
+- `livespec-dev-tooling-5eow` — delegated to a sub-agent (worktree
+  `fix-5eow-pairing-gate-carveout`), Red-Green-Replay in progress. NOTE: master
+  commit `64590bf` (another track, 2026-07-23 ~23:46Z) added a different
+  pairing-gate exemption (generated no-shadow-ledger body) — the 5eow carve-out
+  builds on top of it.
+- Runner-liveness alert + cache prune (tasks re-armed by the 2026-07-24
+  decision): heartbeat gauge via the collector loopback OTLP (4319) into
+  `livespec-host-metrics` + Honeycomb trigger via the maintainer's minted
+  configuration key; age-aware podman prune timer for the `ci-runner` user.
+  The existing disk-floor triggers are the budget backstop.
+
+---
+
+## ▶▶ START HERE — cont. 17 (written 2026-07-23 late; superseded by cont. 18 above — the wind-down recommendation was overtaken by a new maintainer decision)
 
 **Read the STOP block above first** — local self-hosted runners remain DEFERRED.
 Everything under cont. 16 and lower is prior trail. This section supersedes it.
