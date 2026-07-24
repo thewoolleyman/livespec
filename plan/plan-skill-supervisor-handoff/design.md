@@ -441,7 +441,7 @@ Gate first: **no live matching session → silent, always.** Within a live track
 | missing | no | **A** — no supervision prompt |
 | present | no | **B** — nobody supervising |
 | present | yes | silent (healthy) |
-| **missing** | **yes** | **UNSPECIFIED — see below** |
+| **missing** | **yes** | **A (capture offer) — DECIDED 2026-07-24, see below** |
 
 The fourth cell is not hypothetical: it is **the state of every supervised track
 right now** (2026-07-23). Three supervisors are running tonight, and all three
@@ -453,6 +453,10 @@ and would quietly defeat the durability motive in §1. Recommended: treat it as
 **A**, worded as a capture offer ("supervision is running but has no durable
 prompt — capture it"), since it is also the migration path for the three live
 charters.
+
+**DECIDED (maintainer, 2026-07-24): as recommended — Surface A, worded as a
+capture offer.** Recorded on epic `overseer-3wt` in the `livespec-overseer`
+ledger; slice 3's filing precondition is discharged.
 
 #### "Running" must be proven, never inferred from a name
 
@@ -521,7 +525,7 @@ on a tick. Weaker ergonomics, zero spec cost. Keep as the fallback.
 | §10.3 third seam, inverted direction | **Gone** — generator is Control-Plane |
 | §10.4 overseer non-interference | **Defused** — worktree→PR preserves the actual invariant; amendment scopes the daemon rule |
 | §10.5 duplicating ratified spec | **Gone** — the skill invokes the overseer's own rules |
-| "everywhere by default" | **DECIDED** — §11.4: liveness-gated nudge + attended write. Two open sub-questions only: the narrow stat allowance, and the fourth truth-table cell |
+| "everywhere by default" | **DECIDED** — §11.4: liveness-gated nudge + attended write. One open sub-question only: the narrow stat allowance (the fourth truth-table cell was DECIDED 2026-07-24 — Surface A as capture offer) |
 
 ### 11.6 THE CUT — ready to work
 
@@ -676,8 +680,10 @@ status store.*
   and `livespec-orchestrator-beads-fabro` PR #920
   (`SPECIFICATION/proposed_changes/supervisor-handoff-hosted-artifact-in-the-thread-store.md`).
   Ratification remains human-gated at `/livespec:revise` in each repo.
-- **Slice 3 (+3a) still needs the §11.4 fourth-cell decision** before filing —
-  unchanged from §11.6.
+- **Slice 3 (+3a) fourth-cell precondition DISCHARGED** — the maintainer
+  decided the §11.4 cell on 2026-07-24 (Surface A, worded as a capture offer;
+  recorded on epic `overseer-3wt`); slice 3 is now fileable in
+  `livespec-overseer`.
 - **Slice 5 unblocked.** `overseer-tvko3z` (migrate the three live `tmp/`
   charters) is dependency-clear in the `livespec-overseer` ledger now that
   `overseer-myjovi` is done. Note `rop-sweep-fleet-policy` is NOT one of the
@@ -685,5 +691,6 @@ status store.*
   because it had no `tmp/` charter to migrate.
 
 The §11.6 "Next action" paragraph is discharged; the remaining maintainer
-surface is: the fourth-cell decision (slice 3), the three pending
-ratifications (slices 2 and 4), and dispatching `overseer-tvko3z` (slice 5).
+surface is: the three pending ratifications (slices 2 and 4, the slice-4 pair
+carrying NO-BLOCKERS independent reviews from 2026-07-24), filing and building
+slice 3 in `livespec-overseer`, and dispatching `overseer-tvko3z` (slice 5).
