@@ -177,6 +177,60 @@ guidance.
 
 ---
 
+## ⏹ CLOSED — cont. 20 (written 2026-07-24): thread ARCHIVED, epic CLOSED
+
+**This thread is closed.** The maintainer accepted the standing wind-down
+recommendation (cont. 17/19) via structured picker on 2026-07-24, and the
+supervisor confirmed the disposition. The directory now lives at
+`plan/archive/fabro-ci-image-factoring/`; the beads epic **`livespec-3lev`**
+(livespec tenant) is CLOSED, with its still-deferred children closed as
+PARKED (each carries a close note naming this archive and its reopen
+condition). To resume when new hardware arrives: `bd reopen livespec-3lev`
+(plus the relevant children) and `git mv plan/archive/fabro-ci-image-factoring
+plan/fabro-ci-image-factoring` — reopening the epic unarchives the thread.
+
+**The STOP block above still governs after archive**: the local self-hosted
+runner lane stays DEFERRED until new hardware; the single permanent exception
+is the `check-self-hosted-routing` sentinel job in `livespec-dev-tooling`,
+pinned to `[self-hosted, local-ci]`.
+
+### Live state verified at archive time (2026-07-24, this session)
+
+- `livespec` and `livespec-dev-tooling` master CI green (`--workflow CI`).
+- Sentinel: 4th consecutive live success — dev-tooling master run
+  30057936935 ran `check-self-hosted-routing` on runner
+  `ci-livespec-dev-tooling-6-4131964-7146`, labels
+  `["self-hosted","local-ci"]`, SUCCESS in 34 s (warm).
+- `livespec-3lev.1` journal confirms cont. 19: liveness alert
+  (`m82yfeYR2GX`, gauge `livespec.ci_runners.active` = 48) and daily cache
+  prune live; nothing runner-coupled remains.
+
+### ⚠ SECRET DISPOSITION CORRECTION (supersedes cont. 19's `/tmp/.env` loose end)
+
+`/tmp/.env` was **deleted 2026-07-24 BEFORE the 1Password import was
+confirmed** (a picker-input mishap answered "imported — delete it"; the
+supervisor correction arrived after the deletion ran). A probe via
+`with-livespec-env.sh` (`printenv … | wc -c`, no value echoed) returned 0
+bytes: `HONEYCOMB_CONFIG_KEY_AGENT_ACTIVITY` is ABSENT from the livespec
+1Password Environment. `/tmp` is tmpfs and Honeycomb never re-displays a
+key value — **the configuration-key value is lost everywhere; no import
+ever succeeded.** Impact is zero operationally (all five triggers keep
+evaluating; ingest uses a separate key). **Human-facing follow-up** before
+any future trigger API create/edit (notably the 0.05 × core-count threshold
+re-derivation new hardware forces): re-mint a configuration key in the
+Honeycomb UI (agent-activity env; triggers+recipients+queries-and-columns
+only), import it into the livespec 1Password Environment as
+`HONEYCOMB_CONFIG_KEY_AGENT_ACTIVITY`, and delete the orphaned old key id
+`hcalk_01ky8j6sx3rddpxmtk2z0aqwmx`. Full record journaled on
+`livespec-3lev.1` (2026-07-24).
+
+### Remaining loose end (informational only)
+
+- `livespec-dev-tooling` repo root still carries the old untracked
+  `install-livespec-pr-bot.png` (not this track's file).
+
+---
+
 ## ▶▶ START HERE — cont. 19 (written 2026-07-24; the cont. 18 arc is COMPLETE — track quiescent again)
 
 **Read the STOP block above first** — its narrow 2026-07-24 sentinel amendment
