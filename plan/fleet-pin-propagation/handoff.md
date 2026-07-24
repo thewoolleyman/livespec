@@ -5,11 +5,111 @@
 
 ---
 
-## 🟢 START HERE — 2026-07-24 (SIXTH session close). READ THIS FIRST.
+## 🟢 START HERE — 2026-07-24 (SEVENTH session). READ THIS FIRST.
 
-**Everything below is history. This section is the current truth. The epic's
-final approvals are GRANTED and partially executed — finish the Slice-3
-landing sequence below, in order.**
+**Everything below is history, including the sixth-session section. Slice 3's
+landing sequence changed shape: step 1 uncovered a live fleet-wide stall, and
+the maintainer re-scoped the alarm itself.**
+
+### WHAT HAPPENED — step 1 was not a flake
+
+PR #590 (`livespec-dev-tooling`) never merged. Its `check-fleet-conformance`
+exited 4 with **10 error findings, all of them the persisting-gap ERROR the PR
+itself introduces**. They were TRUE POSITIVES — the alarm's first live catch.
+Full triage is journaled on `livespec-dh9r`. Root causes, one per member:
+
+| member | bump PR | cause | outcome |
+|---|---|---|---|
+| `livespec` | #1688 | `check-doctor-static` **flake** | `gh run rerun --failed` cleared it → merged |
+| `livespec-driver-claude` | #265 | carrier-body identity | fixed (below) |
+| `livespec-driver-codex` | #247 | carrier-body identity | fixed (below) |
+| `livespec-overseer` | #8 | known scaffolding stall | still open, owned elsewhere |
+
+### THE NEW DEFECT CLASS — `livespec-dev-tooling-lmv2` (P1)
+
+`livespec-dev-tooling` v0.54.0 (`d08ca94`) rewrote
+`CANONICAL_NO_SHADOW_LEDGER_BODY`, 8084 → 8759 bytes. **The fan-out rewrites
+PINS ONLY and never re-renders packaged carrier constants**, so every consumer
+shipping a byte-identity-gated copy has a bump PR that is *self-blocking by
+construction*: body-alone is compared against the old canonical, pin-alone
+against the new one, only both-in-one-commit passes. No retry, sweep, or
+supersession clears it.
+
+**It compounded:** the hand repair was refused too, because
+`check-commit-pairs-source-and-test` rejected a source-tree `.py` with no
+co-staged `tests/` file — and a carrier re-render touches no test by
+construction. So the change was propagatable by *neither* route.
+**Fixed:** `livespec-dev-tooling` PR #591 (`64590bf3`, released as **v0.54.1**)
+exempts exactly the path declared at config's `neutral_hook_body_path` —
+path-scoped, never prefix-wide, pinned by a companion non-vacuity test.
+Generalization to `@generated` + the existing-but-unused `is_generated()`
+primitive is deferred to `livespec-dev-tooling-l8d7` (P3) because it would
+change each Driver's first-party-`.py` universe (`file_lloc` gate + coverage).
+
+### ⚠ THE DRIVERS WERE REPAIRED BY THE MAINTAINER, IN PARALLEL — not by me
+
+`livespec-driver-claude` `f35425c` and `livespec-driver-codex` `dd1b5e6`
+(both 22:57Z, while this session was still triaging) re-rendered each body AND
+added a derived byte-identity test; co-staging that *new* test is what cleared
+the pairing gate. My driver worktrees were no-ops and were discarded.
+
+**This does NOT make #591 redundant, and the distinction is load-bearing for
+`lmv2`:** those tests are *derived* (both sides computed, no hardcoded bytes),
+so a FUTURE carrier change alters only the body and leaves the test file
+untouched — the pairing gate would refuse the re-render again, identically.
+The maintainer's commits fixed the instance; #591's carve-out fixes the class.
+
+### VERIFIED CLEAR (measured, not assumed)
+
+v0.54.1 fan-out → `livespec-driver-claude` #267 and `livespec-driver-codex`
+#251 both merged. Conformance sweep re-run locally (wrapper +
+`LIVESPEC_RUN_FLEET_CONFORMANCE=1` set INSIDE the wrapper): **"fleet
+conformance passed", 9 members, blind_rows 0, ZERO error findings**, both
+Drivers absent from the warning list. Residual warnings are ordinary
+post-release transient staleness plus the known `livespec-overseer` compat pin.
+
+### THE MAINTAINER RE-SCOPED THE ALARM — Slice 3 is now CONTEXT-SCOPED
+
+Measured blast radius: `check-fleet-conformance` runs in CI in
+**`livespec-dev-tooling` only** (0 mentions in the other 7 members' `ci.yml`),
+plus the fan-out preflight. As-landed, the ERROR would make dev-tooling's own
+per-PR CI hostage to any stalled member. **Maintainer ruling: CONTEXT-SCOPED** —
+WARNING in per-PR CI context, ERROR in the fan-out preflight context where the
+`f73t` filter consumes it as a loud per-member exclusion.
+
+**The distinguishing signal is already there** (verified in
+`reusable-release-dispatch.yml`): the preflight invokes
+`just check-fleet-conformance --emit-member-verdicts member-verdicts.json`,
+while per-PR CI invokes it bare. So scope the promotion on
+`emit_member_verdicts is not None` — an existing signal, no new lever, matching
+the `1e85cd1` vantage-classification precedent in spirit.
+
+### NEXT ACTIONS, IN ORDER
+
+1. **Amend PR #590** to context-scoped severity per the above. Red-Green on top;
+   **never rewrite the existing sealed commit's message/trailers**.
+2. **Fold the context-scoped policy** into
+   `plan/fleet-pin-propagation/dh9r-severity-policy-proposal-draft.md`, then the
+   spec path: propose-change → independent Fable review to NO-BLOCKERS → revise.
+3. **The exclusion drill is now FREE.** `livespec-overseer`'s persisting gap
+   supplies a real non-conformant member, so the next fan-out exercises the
+   loud-exclusion path live — no member need be deliberately broken, which
+   retires the staged-exclusion design journaled on `dh9r` 2026-07-23.
+4. **Assemble `dh9r` close evidence** and route through the supervisor — do NOT
+   self-close.
+
+### ALSO WORTH FILING
+
+`check-doctor-static` in `livespec` core failed and then passed on rerun with
+no code change. A flake in a merge-blocking gate is a hard blocker per the
+repo's own discipline; it has no work-item yet.
+
+---
+
+## 🟡 2026-07-24 (SIXTH session close) — SUPERSEDED by the section above
+
+**History. Superseded facts: PR #590 did NOT merge on auto-merge as step 1
+assumed; the Slice-3 payload is being re-scoped rather than landed as-is.**
 
 ### Supervisor + protocol (unchanged, load-bearing)
 A **fleet-pin-propagation-supervisor** session relays maintainer decisions via
