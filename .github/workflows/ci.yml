@@ -110,7 +110,7 @@ jobs:
     # green-in-CI / red-in-sandbox drift this epic exists to remove.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.3
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.4
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -246,7 +246,7 @@ jobs:
     # CI_RUNNER_LABELS repo variable).
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.3
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v0.54.4
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
