@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — THE DISPATCH ARC IS COMPLETE: y21, wxq, AND cvz are CLOSED with live evidence. Remaining: the spec proposal awaits revise + Fable review; the long-tail items (e9j, jjb halves, x6t6, 9ar, ajo, rkdg, 8xyb) are unchanged
+# rop-sweep-fleet-policy — ALL OWED WORK IS DISCHARGED: y21/wxq/cvz closed, the allowlist spec change RATIFIED as v174. Remaining: ONLY the long-tail backlog (e9j P0 first), each item needing a fresh readiness check before any pickup
 
 ## ✅ STATE AS OF 2026-07-24 (FOURTH session) — READ FIRST; everything below is HISTORY
 
@@ -29,15 +29,20 @@ prose. Live-state claims expire in minutes, this section included.
   live exercise. y21 attempt 1's sandbox agent deserves the credit for the diagnosis: it
   completed the work, hit the two honest gate conflicts, refused to cheat, and said why.
 
-### 📌 SPEC-SIDE NEXT ACTION — the one thing this track still owes
+### 📌 SPEC-SIDE ACTION — DISCHARGED: RATIFIED AS v174 (same session, after the refresh below)
 
-`SPECIFICATION/proposed_changes/no-inheritance-allowlist-generic.md` is FILED and merged
-into the queue (livespec PR #1716): it adds `Generic` to the two allowlist enumerations in
-`SPECIFICATION/non-functional-requirements.md` (the sites were lines 663/734 at filing) that
-the v165 railway ratification left behind — the check-side half already ships in v0.54.6.
-**Next `/livespec:revise` pass ratifies it, gated on the independent Fable review** (the
-2026-07-04 discipline). Both verbatim FIND targets were verified to occur exactly twice at
-filing; no `## ` heading changes, so no `tests/heading-coverage.json` co-edit is owed.
+The `no-inheritance-allowlist-generic` proposal (filed via livespec PR #1716) was ACCEPTED
+and merged as **livespec PR #1723 → history/v174**. The full discipline ran in order: a
+separately-spawned READ-ONLY Fable reviewer returned **NO-BLOCKERS** (all five criteria plus
+the three `.ai/spec-proposal-review.md` latent classes, each re-derived against origin/master
+by the reviewer's own commands) BEFORE the accept; then the revise CLI (`--post-step-doctor`,
+`proposal_topic` = file stem) snapshotted v174; full `just check` ran green in the pre-push
+gate. Verified on origin/master: the amended enumeration `{…, TypedDict, Generic}` appears
+exactly twice in `SPECIFICATION/non-functional-requirements.md`, the old FIND string zero
+times, and `history/v174/` carries the consumed proposal. The unrelated pending proposal
+`owned-heading-coverage-todos.md` was deliberately left in the queue undecided. The
+stale-branch precondition was skipped ONLY for the known orphan
+`spec/rop-loop-iteration-marker` (v172-pass precedent; its deletion remains the maintainer's).
 
 ### 🆕 FILED THIS SESSION
 
@@ -74,14 +79,14 @@ filing; no `## ` heading changes, so no `tests/heading-coverage.json` co-edit is
   EVERYTHING and correct the record before re-claiming (the 02:22Z dispatch had actually
   fired and failed at the ledger check — the freeze merely hid it).
 
-### 👤 WHAT NEEDS A HUMAN / SUPERVISOR (unchanged except as noted)
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR
 
-1. **Ratify the allowlist proposal** at the next revise pass (Fable review first).
-2. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
-3. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; implementation
+1. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+2. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; implementation
    still pending (unchanged).
 
-### NEXT WORK (the long tail, unchanged from the third session)
+### NEXT WORK (the long tail, unchanged from the third session — a resuming session should
+### run a FRESH readiness check per item before picking anything up; do not manufacture work)
 
 - **`e9j` (P0)** — the loudness half (armed-but-inspecting-nothing still exits 0); its own
   `check_mutation` reasoning argues ERROR.
