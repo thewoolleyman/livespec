@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.2](https://github.com/thewoolleyman/livespec/compare/v0.20.1...v0.20.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* route the span batch through slurpfile in the CI telemetry export ([42de7a9](https://github.com/thewoolleyman/livespec/commit/42de7a90d5822c2b8466f0fac429dfd97549a31b))
+
 ## [0.20.1](https://github.com/thewoolleyman/livespec/compare/v0.20.0...v0.20.1) (2026-07-21)
 
 
