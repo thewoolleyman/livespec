@@ -371,6 +371,14 @@ jobs:
           for sibling in livespec-orchestrator-git-jsonl livespec-dev-tooling livespec-runtime; do
             git clone --depth 1 "https://github.com/thewoolleyman/$sibling.git" \
               "$RUNNER_TEMP/sibling-clones/$sibling"
+            # Record each clone's HEAD so a failure artifact (work-item
+            # livespec-s9il) pins exactly which sibling state the
+            # cross-repo read ran against — siblings release actively,
+            # so a race against a sibling master moving mid-run is a
+            # candidate failure class and the SHAs make it checkable.
+            printf '%s %s\n' "$sibling" \
+              "$(git -C "$RUNNER_TEMP/sibling-clones/$sibling" rev-parse HEAD)" \
+              >> "$RUNNER_TEMP/sibling-clone-shas.txt"
           done
 
       # Baked tools; `mise install` is a near-no-op, `mise trust` is required
@@ -423,7 +431,37 @@ jobs:
           shims_dir="$(dirname "$(command -v npm)")"
           node_bin="$(cd "$shims_dir/../installs/node/latest/bin" 2>/dev/null && pwd || ls -d "$shims_dir/../installs/node"/*/bin 2>/dev/null | head -1)"
           [ -n "$node_bin" ] && export PATH="$node_bin:$PATH"
-          just ${{ matrix.target }}
+          # Tee the check's output to a file the failure-capture step
+          # below uploads (work-item livespec-s9il: a merge-blocking
+          # check-doctor-static failure's job logs were already
+          # unretrievable by triage time, so the diagnostic was lost;
+          # an artifact survives log expiry and reruns). The explicit
+          # PIPESTATUS exit keeps the step's outcome the check's own
+          # exit code whether or not the shell sets pipefail — the tee
+          # can never mask a failing check.
+          just ${{ matrix.target }} 2>&1 | tee "$RUNNER_TEMP/check-output.log"
+          exit "${PIPESTATUS[0]}"
+
+      # Durable diagnostic capture (work-item livespec-s9il): on any
+      # metadata-matrix check failure, upload the teed check output —
+      # plus, for check-doctor-static, the sibling-clone SHAs pinning
+      # which sibling state the cross-repo read ran against — as a job
+      # artifact. Job logs proved perishable (the s9il flake's
+      # attempt-1 logs were unretrievable once the rerun completed);
+      # artifacts survive log expiry and reruns, and the name embeds
+      # the attempt so reruns never collide. Capture only — this step
+      # adds no lever and cannot turn a red check green, so the gate
+      # semantics are unchanged (.ai/ci-gate-discipline.md).
+      - name: Upload check output on failure (durable diagnostic capture)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-failure-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/check-output.log
+            ${{ runner.temp }}/sibling-clone-shas.txt
+          retention-days: 30
+          if-no-files-found: warn
 
   # Closed-loop CI telemetry: export this run's per-job timings to Honeycomb
   # (dataset github-ci) and FAIL if Honeycomb does not accept them. The run
