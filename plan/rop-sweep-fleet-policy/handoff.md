@@ -1,6 +1,99 @@
-# rop-sweep-fleet-policy — bbl LANDED AND PROPAGATED: the canonical body is strict-clean and its ratified marker is live in BOTH Drivers. Remaining: promote + dispatch y21 (prepped, go), then wxq (gated on livespec-driver-codex master going green)
+# rop-sweep-fleet-policy — THE DISPATCH ARC IS COMPLETE: y21, wxq, AND cvz are CLOSED with live evidence. Remaining: the spec proposal awaits revise + Fable review; the long-tail items (e9j, jjb halves, x6t6, 9ar, ajo, rkdg, 8xyb) are unchanged
 
-## ✅ STATE AS OF 2026-07-24 (THIRD session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-24 (FOURTH session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🟢 WHAT CLOSED — the whole y21 → wxq → cvz sequence, plus its two unblockers
+
+- **`livespec-driver-claude-y21` CLOSED.** Landed as livespec-driver-claude **PR #276**
+  (rebase tip `96c62c2d8`), master CI green. Verified by READ of origin/master: `source_trees`
+  + `supervisor_entry_files` declared; `livespec_footgun_guard.py:229` narrowed to
+  `except (OSError, ValueError)` and `:237` to `except OSError` (3a); `:270` carries the exact
+  canonical marker `— sole fail-open hook boundary: silent pass-through, exit 0` (3b);
+  ruff hook-tree coverage restored; `tests/hooks/test_rop_policy.py` ships.
+- **`livespec-driver-codex-wxq` CLOSED** — full-pipeline green (PR #258, merge `a7c49f6da`,
+  post-merge janitor green, auto-closed `resolution:completed`; release 0.5.7 cut after).
+- **`livespec-dev-tooling-cvz` CLOSED on LIVE evidence**: `no_except_outside_io` executed in
+  each repo's own cwd inspects livespec core=89, livespec-driver-claude=7,
+  livespec-driver-codex=8 files, 0 offenses everywhere.
+- **The two check defects y21's FIRST attempt exposed were filed, fixed, released, and
+  live-exercised in one session**: `livespec-dev-tooling-77k4` (the first-party universe now
+  exempts the config-declared `neutral_hook_body_path` centrally — the installed canonical
+  body is foreign content no universe-derived check may demand edits to) and
+  `livespec-dev-tooling-mg53` (`Generic` added to the no_inheritance allowlist AND
+  `_base_terminal_name` now unwraps `ast.Subscript` — subscripted bases could never match
+  ANY allowlist entry before). Both via livespec-dev-tooling **PR #607** (two Red→Green
+  commits), released **v0.54.6**, both CLOSED on the green y21/wxq re-dispatches as the
+  live exercise. y21 attempt 1's sandbox agent deserves the credit for the diagnosis: it
+  completed the work, hit the two honest gate conflicts, refused to cheat, and said why.
+
+### 📌 SPEC-SIDE NEXT ACTION — the one thing this track still owes
+
+`SPECIFICATION/proposed_changes/no-inheritance-allowlist-generic.md` is FILED and merged
+into the queue (livespec PR #1716): it adds `Generic` to the two allowlist enumerations in
+`SPECIFICATION/non-functional-requirements.md` (the sites were lines 663/734 at filing) that
+the v165 railway ratification left behind — the check-side half already ships in v0.54.6.
+**Next `/livespec:revise` pass ratifies it, gated on the independent Fable review** (the
+2026-07-04 discipline). Both verbatim FIND targets were verified to occur exactly twice at
+filing; no `## ` heading changes, so no `tests/heading-coverage.json` co-edit is owed.
+
+### 🆕 FILED THIS SESSION
+
+- **`bd-ib-hycf` (P1, livespec-orchestrator-beads-fabro tenant)** — dispatcher silent
+  journal/close tail: y21 attempt 2 merged + janitor-cleaned + released its locks but never
+  wrote the outcome event nor closed the item (journal stops after `janitor-core-provision`);
+  the operator completed the bookkeeping manually from PR/CI/content evidence. wxq's run did
+  NOT reproduce it — the gap is intermittent on the success path.
+- **Telemetry argv sweep COMPLETE fleet-wide** (supervisor-delegated): the E2BIG
+  `export-ci-telemetry.sh` fix landed in livespec-dev-tooling #601, livespec-runtime #320,
+  livespec-orchestrator-git-jsonl #395, livespec-driver-claude #271, and livespec #1713
+  (mirroring livespec-overseer #50 byte-for-byte); livespec-orchestrator-beads-fabro verified
+  already-fixed; livespec-console-beads-fabro carries no copy. Every fix verified
+  byte-identical old-vs-new against that repo's real run payload. Key scope lesson recorded
+  in the log: HASH INEQUALITY IS NOT AFFECTEDNESS — read the variant, not the digest.
+
+### ⚠️ REGIME + LEDGER FACTS a resuming session must know
+
+- **Manual factory serialization is RETIRED** (maintainer-directed, ~07:11Z–07:25Z arc): the
+  `bd-ib-tyxzhv` diagnosis proved no contended host resource; concurrent dispatches are
+  sanctioned. Enforcement is the shipped `host_dispatch_cap` — currently SLOT-ONLY (the
+  over-cap refusal probe FAILED: mutex call sites hardcode bare `fabro`, unresolvable inside
+  the credential wrapper, so the run gauge fails open; fix owned by
+  factory-success-rate-remediation). The coordination log remains the etiquette surface:
+  LAUNCHING lines after argv-proven container visibility, done-or-failed lines, ownership by
+  argv scan — never by container position.
+- **Ledger hygiene that bit twice**: a `depends_on` row targeting a pseudo-id
+  (`external:livespec-dev-tooling:bbl-canonical-wording`) parses as a LOCAL dep in the
+  dispatcher's `no-orphan-dependency` pre-dispatch check and BLOCKS dispatch. Removed from
+  both y21 and wxq (journaled). If future mirrors wire cross-tenant prerequisites, use a
+  shape the checker understands or a plain journal note — not a fake dep row.
+- **The usage-limit freeze class is real**: this session froze ~5 h on a Claude usage-limit
+  modal mid-claim; the supervisor retracted the stranded claim. On resume, re-verify
+  EVERYTHING and correct the record before re-claiming (the 02:22Z dispatch had actually
+  fired and failed at the ledger check — the freeze merely hid it).
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR (unchanged except as noted)
+
+1. **Ratify the allowlist proposal** at the next revise pass (Fable review first).
+2. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+3. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; implementation
+   still pending (unchanged).
+
+### NEXT WORK (the long tail, unchanged from the third session)
+
+- **`e9j` (P0)** — the loudness half (armed-but-inspecting-nothing still exits 0); its own
+  `check_mutation` reasoning argues ERROR.
+- `x6t6` (position exemption), `9ar` (except*/TryStar, arms at Py3.11), `ajo`
+  (contextlib.suppress), `jjb` (sole cardinality, marker-flavor pairing, contract-discharge),
+  `rkdg` (P2, `_IMPL_PREFIXES` omits the livespec-driver-claude hook trees — note y21's landed
+  `source_trees` declarations do NOT fix this; it keys off a different tuple), `8xyb` (P3,
+  `_PYRIGHT_STRICT_CONFIG` hardcoded mirror), `gam8` (P2) and `bd-ib-60pp` (P1) factory
+  reliability, now joined by `bd-ib-hycf` (P1).
+- `pure_trees` stays gated on `livespec-mutreal.1`.
+
+## (HISTORY) ✅ STATE AS OF 2026-07-24 (THIRD session)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
