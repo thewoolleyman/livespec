@@ -5,7 +5,76 @@
 
 ---
 
-## 🟢 START HERE — 2026-07-24 (SEVENTH session). READ THIS FIRST.
+## 🟢 START HERE — 2026-07-24 (SEVENTH session CLOSE). READ THIS FIRST.
+
+**The spec half of `dh9r` Slice 3 is fully LANDED across both governed trees.
+The one remaining step is the maintainer/supervisor `dh9r` CLOSE
+authorization — do NOT self-close. Everything below the "SEVENTH session
+resume" heading is history.**
+
+### DONE this session (all merged + verified; do not redo)
+
+- **Slice 3 landed context-scoped** — `livespec-dev-tooling` PR #590 (sealed
+  `17ab424` + scoping `4855a92`). A persisting gap is an ERROR only in the
+  fan-out preflight, a WARNING everywhere else. Both directions
+  production-verified against `livespec-overseer`'s real gap (runs
+  **30059932539** warning / **30060186985** error).
+- **The live exclusion drill discharged UNSTAGED** — run **30060186985**
+  excluded the overseer by name and dispatched to 7 conformant siblings. No
+  member was deliberately broken.
+- **A fail-loud regression fixed** (`livespec-dev-tooling-jeqp`, maintainer
+  ruled it a bug) — workflow guard **PR #604**: a discovery-sweep finding (no
+  member) now reds the fan-out instead of being demoted to a log line.
+- **The spec ratified in LOCKSTEP** after an independent Fable review reached
+  **NO-BLOCKERS in seven rounds** (eleven distinct defects caught
+  pre-ratification): `livespec-dev-tooling` PR **#611** (`pin-currency-severity-policy`,
+  **v031**) + `livespec` PR **#1718** (`fleet-conformance-preflight-filter-semantics`,
+  **v173**). Verified on both `origin/master`: no fleet spec asserts the
+  superseded gate semantics.
+- **`dh9r` close packet assembled + routed**:
+  `tmp/fleet-pin-propagation-supervisor/dh9r-close-packet.md` (with a verbatim
+  recommended close reason). `dh9r` is close-ready but NOT self-closed.
+
+### THE ONE PENDING STEP
+
+`dh9r` CLOSE authorization from the supervisor/maintainer. The packet has the
+recommended close reason; route it through the valve. `dh9r` is the epic's
+systemic-alarm payload — closing it substantively completes
+fleet-pin-propagation.
+
+### OPEN, none gating the close
+
+- **`livespec-dev-tooling-jeqp`** (P1) — the COMPLETE non-sibling guard. The
+  #604 guard closes the pure discovery case; two narrower same-class seams
+  remain (the **publisher corner** — a non-conformant publishing repo excluded
+  from its own fan-out; **co-occurrence** — a no-member finding alongside a
+  non-conformant member). Both need the same fix: expose the
+  non-sibling-attributable error count (a coordinated emitter+parser change,
+  the artifact is a bare list today) so the workflow fails closed on any
+  finding not attributable to a filtered sibling. The ratified contract is
+  deliberately scoped to the dispatch sibling set so it stays true meanwhile.
+- **`livespec-s9il`** (P1, core) — `check-doctor-static` FLAKES in core CI.
+  ⚠ NOT the same as the deterministic doctor finding hit this session (a real
+  cross-spec-citation finding on B, fixed via the `.livespec.jsonc`
+  `external_references` allowlist). The flake is separate and real; when
+  `check-doctor-static` is red on a core PR, READ it before assuming flake.
+- **`livespec-dev-tooling-vtvr`** (P3) — two code comments
+  (`fleet_conformance.py` docstring + `fleet-conformance.yml` header) still say
+  "BLOCKING preflight" and now contradict the ratified contract; small
+  ride-along cleanup.
+- **`livespec-dev-tooling-lmv2`** (P1) / **`-l8d7`** (P3) — the carrier-constant
+  propagation class + the `@generated` generalization (from the stall triage).
+
+### RESUME POSTURE
+
+Read `status.log` first. `dh9r` awaits the close authorization only. If the
+supervisor authorizes, close `dh9r` with the packet's reason and this epic is
+substantively done. Nothing of mine is in flight; both primaries clean on
+master.
+
+---
+
+## 🟡 SEVENTH session resume (history) — Slice 3 shape change
 
 **Everything below is history, including the sixth-session section. Slice 3's
 landing sequence changed shape: step 1 uncovered a live fleet-wide stall, and
