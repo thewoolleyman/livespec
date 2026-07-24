@@ -68,7 +68,8 @@
       "SPECIFICATION/contracts.md §\"Cross-repo coordination automation surface\"",
       "SPECIFICATION/contracts.md §\"Sibling discovery\"",
       "SPECIFICATION/contracts.md §\"Semver discipline\"",
-      "SPECIFICATION/contracts.md §\"Bump-pin policy\""
+      "SPECIFICATION/contracts.md §\"Bump-pin policy\"",
+      "SPECIFICATION/contracts.md §\"`reusable-release-dispatch.yml`\""
     ],
     "openbrain": [
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
