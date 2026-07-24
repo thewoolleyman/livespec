@@ -86,9 +86,22 @@ the `1e85cd1` vantage-classification precedent in spirit.
 
 ### ✅ SLICE 3 HAS LANDED — context-scoped (`livespec-dev-tooling` PR #590, merged 01:52Z)
 
-Two commits: the **sealed** `9b3ee48` (untouched — same SHA, message and both
-TDD trailer blocks intact) and `d689793`, the context-scoping, itself a
-Red-Green pair stacked on top.
+Two commits, **as they exist on master**: the **sealed** escalation `17ab424`
+(untouched — message and both TDD trailer blocks intact) and `4855a92`, the
+context-scoping, itself a Red-Green pair stacked on top. GitHub records
+`4855a92` as PR #590's merge commit.
+
+⚠ **Cite master SHAs, not branch SHAs.** An earlier revision of this section
+named `9b3ee48` / `d689793`. Those are **pre-merge branch** SHAs — this repo
+rebase-merges, so they never existed on master and live only on the deletable
+`origin/dh9r-persisting-gap-error`. The content is patch-id-identical either
+way, so no claim changed, but the identifiers would dangle. The failure is
+**silent**: `git show` against a branch SHA succeeds today and only breaks once
+the branch is deleted. Resolve durable citations with
+`gh pr view <n> --json mergeCommit` or `git merge-base --is-ancestor <sha>
+origin/master` — never the SHA a local worktree happened to hold. This is the
+trap `.ai/verifying-against-the-right-source.md` catalogues; it was caught by
+the independent Fable review, not by me.
 
 `FleetContext.filter_consuming_preflight` (default `False`) is set from
 `args.emit_member_verdicts is not None`. Both persisting-gap sites
