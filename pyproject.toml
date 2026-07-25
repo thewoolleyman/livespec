@@ -145,6 +145,51 @@ dataclasses_tree = ".claude-plugin/scripts/livespec/schemas/dataclasses"
 source_trees = [".claude-plugin/scripts/livespec"]
 io_trees = [".claude-plugin/scripts/livespec/io"]
 
+# e9j Wave-1 B-core — declare EVERY remaining structural role key explicitly,
+# ending core's reliance on the absent-block fallback (which stopped applying
+# on 2026-05-31 when this block was first added; see the slice-1a note above).
+# A role core GENUINELY HAS is declared with its REAL value — the literal path
+# constants dev-tooling's `_livespec_core_config()` carried as core's historical
+# layout — so re-arming the previously no-opping checks is a pure severity
+# restoration, verified behavior-neutral by a green `just check`. A role core
+# LACKS is declared explicitly empty (list `[]`, scalar `""`) with a reason,
+# so no key is left to silently fall back.
+commands_trees = [".claude-plugin/scripts/livespec/commands"]
+supervisor_entry_files = [
+    ".claude-plugin/scripts/livespec/doctor/run_static.py",
+    ".claude-plugin/scripts/bin/_bootstrap.py",
+]
+covered_trees = [
+    ".claude-plugin/scripts/livespec",
+    ".claude-plugin/scripts/bin",
+    "dev-tooling",
+]
+target_dirs = [
+    ".claude-plugin/scripts",
+    "dev-tooling",
+    "tests",
+]
+source_tree_prefixes = [
+    ".claude-plugin/scripts/livespec/",
+    ".claude-plugin/scripts/bin/",
+    "dev-tooling/checks/",
+]
+# `mirror_pairings` is the required companion to `source_tree_prefixes`: the
+# `tests_mirror_pairing` check maps each covered source tree to its paired
+# `tests/` subtree via these pairings, and WITHOUT them it falls back to a
+# naive `tests/<full-source-path>` derivation that does not match core's
+# `tests/livespec` layout. These are core's real historical pairings; the
+# fourth `_livespec_core_config()` pairing (`livespec_dev_tooling/checks`) is
+# omitted — that tree belongs to the consumed dev-tooling package, not core,
+# so declaring it would trip `source_trees_scoped_to_consumer`'s exists check.
+mirror_pairings = [
+    { source_tree = ".claude-plugin/scripts/livespec", test_tree = "tests/livespec" },
+    { source_tree = ".claude-plugin/scripts/bin", test_tree = "tests/bin" },
+    { source_tree = "dev-tooling/checks", test_tree = "tests/dev-tooling/checks" },
+]
+pure_trees = []  # gated on livespec-mutreal.1 (mutation staging-tree not yet productized)
+neutral_hook_body_path = ""  # core installs no neutral shared hook body (the Drivers do)
+
 destructive_cli_allowlist = []
 # Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
 # (canonical, added in livespec-dev-tooling v0.14.1) exempts from its
