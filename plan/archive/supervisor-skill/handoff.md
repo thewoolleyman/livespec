@@ -1,7 +1,36 @@
-# supervisor-skill — active handoff
+# supervisor-skill - CLOSED (work landed; archived)
 
 **Ledger anchor:** epic `overseer-3wt` (livespec-overseer tenant).
-**Opened:** 2026-07-25. **Status:** ACTIVE coordination thread.
+**Opened:** 2026-07-25. **Closed:** 2026-07-25. **Status:** ARCHIVED.
+
+---
+
+## THREAD CLOSED 2026-07-25 - supervisor-skill implementation/correction landed
+
+This thread is complete and moved to `plan/archive/supervisor-skill/`. It is no
+longer an active resume point.
+
+Final landed state:
+
+- The durable supervisor prompt feature shipped before this archive: the
+  `supervise-plan` operator surface exists in `livespec-overseer`, and core plus
+  the beads/fabro orchestrator have ratified the declarations that let a plan
+  directory host one Control-Plane supervisor artifact while the Spec and
+  Orchestrator planes ignore it.
+- The supervisor blocked-state correction landed in livespec PR #1736, merge
+  commit `90cef6a18dfc78ba18c712596d36dc138ec262d6`: future supervisor-skill
+  runs distinguish standing down on a conflicting proposal lane from a true
+  blocked state, and must continue non-conflicting coordination work or ask a
+  maintainer-facing blocking question with the recommended answer first.
+- The active `cutover-and-shipping` ownership boundary is preserved. This
+  archived thread never owns `livespec-overseer` PR #44, its proposed-change
+  repair/split/ratification lane, or `overseer-6uobos`.
+
+No successor action is owned by this plan thread. If new supervisor-prompt work
+appears, open a new active plan thread or work item rather than resuming this
+archive. Everything below is prior state retained for historical context.
+
+---
 
 This thread supersedes the archived research-only topic
 `plan/archive/plan-skill-supervisor-handoff/`. Read that archived design note

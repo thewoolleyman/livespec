@@ -1,4 +1,20 @@
-# Supervisor Handoff - supervisor-skill
+# Supervisor Handoff - supervisor-skill (ARCHIVED)
+
+This supervisor prompt archived with the closed `supervisor-skill` plan thread
+on 2026-07-25. Do not execute its HALT-first preconditions or use it to restart
+a supervisor session.
+
+Final landed state: `supervise-plan` shipped, the core/orchestrator
+declarations for `supervisor-handoff.md` were ratified, and livespec PR #1736
+merged as `90cef6a18dfc78ba18c712596d36dc138ec262d6` to correct the
+blocked-state semantics. The `cutover-and-shipping` track remains the owner of
+the `livespec-overseer` PR #44 proposal lane and `overseer-6uobos`; this
+archived thread must not be resumed to take them over.
+
+Everything below is the final operational prompt as it existed before archive,
+kept only as historical context.
+
+---
 
 Generated as the durable supervisor prompt for the `supervisor-skill` planning
 thread. The supervised session owns the thread's work. The supervisor keeps it
