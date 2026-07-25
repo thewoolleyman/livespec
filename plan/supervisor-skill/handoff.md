@@ -60,10 +60,26 @@ ratify, dispatch, or close the same work.
    `supervisor-skill`; do not infer state from this file.
 2. Re-read `cutover-and-shipping`'s visible pane or handoff before touching any
    `livespec-overseer` proposal.
-3. If `cutover-and-shipping` still owns PR #44/proposal repair, stand down on
-   that lane and only offer review findings as input.
+3. If `cutover-and-shipping` still owns PR #44/proposal repair, stand down only
+   on that conflicting lane, offer review findings as input, and continue any
+   non-conflicting supervisor-skill coordination work.
 4. If ownership has been explicitly transferred, record the transfer in this
    handoff before acting.
+
+## Blocked-State Rule
+
+A conflicting lane is not a thread-wide blocked state. Never declare blocked or
+leave this lane idle merely because PR #44/proposal repair remains owned by
+`cutover-and-shipping`.
+
+When a conflict is found, preserve the boundary and keep moving on legitimate
+non-conflicting work: update the supervisor prompt, refresh this handoff,
+prepare safe tmux nudges, or pass findings to the owning track without taking
+over its proposal lane.
+
+Declare `blocked:` only when every legitimate non-conflicting action is blocked
+by a genuinely human-facing maintainer-only decision. When that happens, ask the
+blocking question immediately and state the recommended answer first.
 
 ## Next Action
 
@@ -81,5 +97,7 @@ first. The fresh supervised session should read this file first.
 - Never touch another session's worktrees, branches, or active proposal lane.
 - Treat plan prose as stale until re-verified from git, GitHub, ledger, and tmux
   live state.
-- If every remaining action is owned by `cutover-and-shipping`, declare that
-  explicitly rather than manufacturing work.
+- If a remaining action is owned by `cutover-and-shipping`, stand down only on
+  that action and continue non-conflicting coordination work. If nothing
+  legitimate remains, ask the maintainer a blocking question with the
+  recommended answer first.

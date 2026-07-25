@@ -85,8 +85,17 @@ Escalate to the maintainer only when the question is both genuinely blocking and
 genuinely human-facing. Before asking, do the decision-prep: read the current
 handoffs, check tmux, check GitHub, and state the recommended answer first.
 
-If the only remaining action belongs to `cutover-and-shipping`, report that
-ownership boundary and stand down on that lane.
+Standing down on a conflicting lane is not a blocked state and is not
+permission to leave this supervisor lane idle. If the next tempting action
+belongs to `cutover-and-shipping`, report that ownership boundary, stand down
+only on that conflicting action, and keep driving non-conflicting
+supervisor-skill coordination work: refresh handoffs, pass review findings as
+input, re-check live session state, or prepare the next safe supervisor nudge.
+
+Declare `blocked:` only when there is a genuinely maintainer-facing,
+maintainer-only decision that prevents every legitimate non-conflicting next
+step. In that case, ask the maintainer the blocking question immediately and
+include the recommended answer first.
 
 ## AskUserQuestion Presentation Rules
 
@@ -111,3 +120,8 @@ Repeat these in every instruction sent to the supervised session:
   `livespec-overseer` PR #44 lane while `cutover-and-shipping` was already
   surfacing the same maintainer decision. Future supervisors must treat review
   findings as input unless ownership is transferred.
+- 2026-07-25: A conflicting active proposal lane was incorrectly treated as a
+  thread-wide blocked/stand-down state. Future supervisors must preserve the
+  ownership boundary while continuing non-conflicting coordination work, or ask
+  a maintainer-facing blocking question with a recommended answer when no such
+  work remains.
