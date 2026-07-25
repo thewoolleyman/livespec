@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — jjb's cardinality piece landed; x6t6's brief was falsified; the tail is now design-gated, not merely unstarted
+# rop-sweep-fleet-policy — jjb's cardinality piece landed; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
 
 ## ✅ STATE AS OF 2026-07-25 (EIGHTH session) — READ FIRST; everything below is HISTORY
 
@@ -18,9 +18,18 @@ seventh session handed over, and the shape of that tail changed materially:
   2026-07-24, and the remainder was ROUTED TO THE MAINTAINER on 2026-07-25 as a pure vantage
   POLICY question. Nothing to pick up; do not re-diagnose it.
 
-So group A is now: one piece done, one blocked on a design ruling, one awaiting the maintainer.
-**The remaining unblocked work in this thread is group B** (`njyx`, `tljy`, `3q2c`, `rgt8`, and
-`ct9` in the livespec-driver-codex tenant), plus the newly filed `bd-ib-45z9`.
+So group A is now: one piece done, one blocked on a narrow ruling, one awaiting the maintainer.
+
+**Then a supervisor re-derivation corrected TWO escalations this session had inherited and passed
+on unchecked — both are now removed from the maintainer's plate:**
+
+- **`livespec-dev-tooling-4er` (P1) was never waiting on a human.** Its ruling landed 2026-07-21;
+  only implementation remains. It is now the **highest-priority unblocked item in this thread** —
+  see the queue below for the two dispatch preconditions.
+- **The orphan branch `spec/rop-loop-iteration-marker` is GONE** — discharged, not pending.
+
+So the unblocked queue is `4er` first, then group B (`njyx`, `tljy`, `3q2c`, `rgt8`, and `ct9` in
+the livespec-driver-codex tenant), plus the newly filed `bd-ib-45z9`.
 
 ### 🚨 THE MOST IMPORTANT FINDING — `x6t6`'s stated fix shape does not match the real world
 
@@ -41,33 +50,68 @@ ClassDef Supervisor (580-2785)
           ExceptHandler (2779)     <-- the armed loop-iteration marker
 ```
 
-The catch IS a direct child of a supervision-loop body — but that loop lives in a class method in
-a non-entry module, not inside `main()` at any depth.
+The catch IS a direct child of a supervision-loop body — but that loop lives in a class METHOD,
+not inside `main()` at any depth. Under TODAY's shipped rule that is decisive on its own:
+`_supervisor_main_boundary_lines` collects only the direct children of a module-level `main()`.
 
-**And the obvious config escape is closed by contract, not by accident.** "Just let overseer
-declare `supervisor.py` in `supervisor_entry_files`" fails: livespec-dev-tooling
-`SPECIFICATION/contracts.md:217` defines that key as "files whose **`main()` direct-child**
-`try/except` is exempt". The exemption is defined in terms of `main()` direct children, and
-`supervisor.py` has no `main()`. No declaration can make that site conforming.
+> ⚠️ **CORRECTED — an earlier draft of this section said "`supervisor.py` has no `main()`". That
+> is FALSE**, caught by supervisor re-derivation and verified: `overseer/supervisor.py` at
+> origin/master `6d7b49b` carries a module-level `def main(argv: list[str] | None = None) -> int:`
+> at lines 2978-3025 plus a `__main__` guard at 3028. The conclusion above survives, but for the
+> position reason, NOT for a missing `main()`. (Confirming detail: that `main()` has ZERO
+> direct-child `Try` nodes, so the file's boundary-line set is empty either way.) Do not reuse the
+> retracted reason.
 
 The ratified spec (livespec `non-functional-requirements.md` §"Supervisor discipline", line 675)
 says a daemon "MAY carry ONE ADDITIONAL broad catch as a direct child of its supervision-loop
 body" — and is **silent on where that loop must live**. That silence is the actual gap.
 
-**THE OPEN DECISION (maintainer's), stated as one question — where may a sanctioned
-loop-iteration catch live?** Three mechanization shapes, none free:
+**THE OPTION SET COLLAPSED — the earlier three-way dilemma was largely manufactured by an
+inconsistency of ours, and is superseded.** Option (A) had been written as "any loop body inside a
+declared artifact" (FILE-scoped) but EVALUATED as though it read "loop body within `main()`" —
+x6t6's original brief. Those are different rules, and the file-scoped one **does** reach overseer's
+site: the `While` at 2766-2783 sits inside the declared artifact, so its direct-child handler at
+2779 becomes exempt once the widening lands.
 
-- **(A)** Any loop body inside a `supervisor_entry_files`/`commands_trees` artifact. Cheapest;
-  does NOT reach overseer's real site, so it closes the false-RED without unblocking the arming.
-- **(B)** Any loop body anywhere in the inspected trees when the loop-iteration marker is present.
-  Reaches the site — but `x6t6`'s own text warns against exactly this: "do NOT silently widen to
-  'anywhere with a marker', which would gut position enforcement".
-- **(C)** A new/widened config surface naming supervision-loop artifacts, so position stays
-  declared rather than inferred. Honest and reaches the site; adds a role key, which cuts against
-  "prefer primitives over new artifacts".
+Mechanics verified on livespec-dev-tooling origin/master: `_is_supervisor_main_file` is a **pure
+file-membership test** (`rel_path in config.supervisor_entry_files`, or under `commands_trees`) —
+it never inspects the file for a `main()`, so nothing blocks livespec-overseer from declaring
+`overseer/supervisor.py`. Membership alone exempts nothing, though; the position set comes from
+`_supervisor_main_boundary_lines`, so the widening must land there.
 
-A fourth path is to amend the SPEC to state the location rule first, then mechanize to it — the
-harden-first ordering this thread has used elsewhere. Full reasoning is journaled on `x6t6`.
+**CURRENT RECOMMENDATION: take (A) file-scoped, plus ONE `contracts.md:217` amendment. (B) and
+(C) are dropped.** (A) does not inherit (B)'s fault — (B) was "anywhere in `source_trees`", i.e.
+ordinary library modules, while (A) is confined to DECLARED entry artifacts, so position stays
+declared rather than inferred, which was (C)'s whole purpose. And (A) needs no new role key: its
+cost is one spec line, since `contracts.md:217` currently reads "files whose `main()` direct-child
+`try/except` is exempt" and (A) makes that incomplete. One line in one repo, versus a required-key
+schema change — which this fleet treats as a cross-repo epic that must backfill every sibling.
+
+**Two residual costs of (A), so nobody reads it as free:**
+
+1. **File granularity is not process granularity.** `supervisor.py` is ~3000 lines carrying TWO
+   surfaces: the track-management CLI `main()` (whose docstring says it deliberately carries no
+   daemon subcommand) and the daemon loop `Supervisor.run`, reached from `run_daemon` (2835) →
+   `overseer/daemon.py:main`, the `overseerd` console script. Declaring the file is honest by the
+   key's literal definition, but the exemption it buys covers a loop belonging to a DIFFERENT
+   process's entry path, anywhere in that module.
+2. **Per-supervision-loop cardinality is still unmechanized** (`jjb` piece 3): under (A), two
+   marked loop-iteration catches as direct children of the SAME loop body would pass, which the
+   spec forbids. Strictly better than today, but (A) does not close it.
+
+**WITH THE MAINTAINER as of this session** — now ONE narrow yes/no, not a three-way architecture
+choice: *is "declared entry artifact" the right unit, accepting that it grants file-wide loop-body
+exemption inside a multi-surface module?* **Do not start `x6t6` until it is answered.**
+
+Sequencing if (A) is ruled (order is load-bearing — declaring before the widening lands REDS
+livespec-overseer's master): amend `contracts.md:217` (propose-change + independent adversarial
+review) → widen `_supervisor_main_boundary_lines` (Red-Green-Replay) → livespec-overseer declares
+`source_trees` + `supervisor_entry_files`.
+
+**Scope note:** this collapses leg (a) (loop-iteration position) only. Leg (b) — foreign-code
+position, "accounted per extension invocation surface" — is NOT addressed by (A), since those
+surfaces are not confined to entry artifacts. Leg (b) remains open. Full reasoning, including the
+retraction, is journaled on `x6t6`.
 
 ### ✅ WHAT LANDED — `jjb` piece (1), and why the tally is flavor-aware
 
@@ -147,6 +191,23 @@ maintainer.
 Unblocked work, all `backlog` (so NOTHING picks them up automatically — promote to `ready` or
 drive directly; an empty queue looks like a busy factory):
 
+- **`livespec-dev-tooling-4er` (P1)** — the highest-priority unblocked item in this thread, and
+  it was **MIS-ROUTED for roughly eight sessions** as "needs the maintainer". It does not. The
+  `check-fleet-conformance` blast-radius question was **RULED by the maintainer on 2026-07-21** (a
+  non-conforming member must fail ONLY its own CI, never every other member's `ci-green`), and the
+  ruling plus the required behavior are written into the item's own description. Ledger-verified
+  this session: `status: backlog`, `priority: 1`, **no typed dependencies and no blockers**. What
+  remains is IMPLEMENTATION. Two conditions before dispatching, both journaled on the item: (i) its
+  2026-07-23 note requires **re-deriving against current master** — the surface was split into
+  `fleet_conformance.py` / `fleet_conformance_admin.py` / `_lanes.py` and v0.52.0 already ships
+  per-member verdicts, so the change may reduce to scoping the exit aggregation; (ii) the surface is
+  **actively owned by the fabro-ci-image-factoring track** (29qo/b02 thread) — announce and sequence
+  with them or you will collide on the same files. There is also one in-brief design point the
+  ruling explicitly assigns to the IMPLEMENTER (not the maintainer): the scheduled
+  fleet-conformance workflow and the fan-out preflight both run inside a dev-tooling checkout, so a
+  naive running-as derivation would scope them to dev-tooling-only findings and neuter the fleet
+  view — it needs an explicit invocation-surface distinction, "a declared mode with two legitimate
+  callers, not a lever".
 - **`njyx`, `tljy`, `3q2c`, `rgt8`** (livespec-dev-tooling) and **`ct9`**
   (livespec-driver-codex) — group B, filed during the slice-S ratification, independent.
 - **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — newly filed above, self-contained,
@@ -156,13 +217,19 @@ Blocked pending a ruling, do not start: **`x6t6`** (and therefore `jjb` pieces (
 are downstream of it).
 
 **Run a FRESH readiness check per item before picking any up.** This session is itself the
-argument: `x6t6`'s brief was falsified by reading the live site, and `gam8` had already been
-discharged. `bd show` the item, then verify its claims against the live tree — several group-B
-items record something that is NOT a defect and must not be "fixed".
+argument, three times over: `x6t6`'s brief was falsified by reading the live site, `gam8` had
+already been discharged, and `4er` had been parked behind a decision that was made on 2026-07-21.
+`bd show` the item, then verify its claims against the live tree — several group-B items record
+something that is NOT a defect and must not be "fixed".
 
-**Two items that are NOT this track's and need a human, unchanged across many sessions:** delete
-the orphan branch `spec/rop-loop-iteration-marker`, and `livespec-dev-tooling-4er` (P1, ruled
-conformance blast-radius fix).
+**✅ DISCHARGED — stop re-escalating this.** The orphan branch `spec/rop-loop-iteration-marker`
+was carried across roughly eight sessions as "needs a human"; **it no longer exists.** Verified
+this session by `git for-each-ref` over ALL refs (local AND remote) in every one of the nine fleet
+clones: zero matches; `/data/projects/livespec` holds 35 local branches, none under `spec/`, and
+no worktree holds it. It only ever held the `rop-broad-except-boundary-rule.md` proposal already
+ratified into v169, so nothing was lost. **Method note, because this is the trap this repo
+documents:** it was a purely LOCAL branch, so `git ls-remote --heads origin` is the WRONG SOURCE —
+"absent from every remote" would be a vacuously green answer to a question about local refs.
 
 **Still deliberately unfiled, needing the maintainer's call:** the livespec CLI auto-backfill
 hazard described in the seventh-session section below.
