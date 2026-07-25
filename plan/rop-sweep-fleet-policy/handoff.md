@@ -1,6 +1,177 @@
-# rop-sweep-fleet-policy — e9j CLOSED and slice S ratified (v032); the EPIC is done but the thread still owns a P2 long tail
+# rop-sweep-fleet-policy — jjb's cardinality piece landed; x6t6's brief was falsified; the tail is now design-gated, not merely unstarted
 
-## ✅ STATE AS OF 2026-07-25 (SEVENTH session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-25 (EIGHTH session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🎯 THE HEADLINE — one group-A piece is DONE; the rest of group A is BLOCKED ON DECISIONS, not on effort
+
+The epic (`e9j`) remains CLOSED — do not reopen it. This session worked the P2 long tail the
+seventh session handed over, and the shape of that tail changed materially:
+
+- **`jjb` piece (1), per-artifact boundary-catch cardinality: LANDED and live-exercised.**
+  livespec-dev-tooling **PR #662**, merged 2026-07-25T22:59:06Z, merge commit `9695ea3d4`.
+- **`x6t6` is NOT dispatch-ready, and its own brief is now known to be WRONG** (details below).
+  The prior readiness note called leg (a) "well-defined"; that verdict is superseded.
+- **`gam8` is not this track's to implement** — its leg (1) was discharged by evidence back on
+  2026-07-24, and the remainder was ROUTED TO THE MAINTAINER on 2026-07-25 as a pure vantage
+  POLICY question. Nothing to pick up; do not re-diagnose it.
+
+So group A is now: one piece done, one blocked on a design ruling, one awaiting the maintainer.
+**The remaining unblocked work in this thread is group B** (`njyx`, `tljy`, `3q2c`, `rgt8`, and
+`ct9` in the livespec-driver-codex tenant), plus the newly filed `bd-ib-45z9`.
+
+### 🚨 THE MOST IMPORTANT FINDING — `x6t6`'s stated fix shape does not match the real world
+
+`x6t6` says to widen the position exemption to "a broad catch that is the direct child of a loop
+body **within a `supervisor_entry_files` / `commands_trees` `main()`**". The only real armed site
+in the entire fleet does not have that shape, so implementing the item as written would not
+unblock the overseer arming path that is the item's whole justification.
+
+Measured by computing the AST ancestry of livespec-overseer `overseer/supervisor.py:2779` (the
+line MOVED from the 2679 recorded in the item):
+
+```
+ClassDef Supervisor (580-2785)
+  FunctionDef run (2728-2785)      <-- a METHOD, not main()
+    Try (2763-2785)
+      While (2766-2783)
+        Try (2767-2780)
+          ExceptHandler (2779)     <-- the armed loop-iteration marker
+```
+
+The catch IS a direct child of a supervision-loop body — but that loop lives in a class method in
+a non-entry module, not inside `main()` at any depth.
+
+**And the obvious config escape is closed by contract, not by accident.** "Just let overseer
+declare `supervisor.py` in `supervisor_entry_files`" fails: livespec-dev-tooling
+`SPECIFICATION/contracts.md:217` defines that key as "files whose **`main()` direct-child**
+`try/except` is exempt". The exemption is defined in terms of `main()` direct children, and
+`supervisor.py` has no `main()`. No declaration can make that site conforming.
+
+The ratified spec (livespec `non-functional-requirements.md` §"Supervisor discipline", line 675)
+says a daemon "MAY carry ONE ADDITIONAL broad catch as a direct child of its supervision-loop
+body" — and is **silent on where that loop must live**. That silence is the actual gap.
+
+**THE OPEN DECISION (maintainer's), stated as one question — where may a sanctioned
+loop-iteration catch live?** Three mechanization shapes, none free:
+
+- **(A)** Any loop body inside a `supervisor_entry_files`/`commands_trees` artifact. Cheapest;
+  does NOT reach overseer's real site, so it closes the false-RED without unblocking the arming.
+- **(B)** Any loop body anywhere in the inspected trees when the loop-iteration marker is present.
+  Reaches the site — but `x6t6`'s own text warns against exactly this: "do NOT silently widen to
+  'anywhere with a marker', which would gut position enforcement".
+- **(C)** A new/widened config surface naming supervision-loop artifacts, so position stays
+  declared rather than inferred. Honest and reaches the site; adds a role key, which cuts against
+  "prefer primitives over new artifacts".
+
+A fourth path is to amend the SPEC to state the location rule first, then mechanize to it — the
+harden-first ordering this thread has used elsewhere. Full reasoning is journaled on `x6t6`.
+
+### ✅ WHAT LANDED — `jjb` piece (1), and why the tally is flavor-aware
+
+`no_except_outside_io` had exempted EVERY marked broad catch at a `main()` direct-child position
+with **no counting**, so an artifact could carry any number of conforming-*looking* boundary
+handlers and pass. That is the **false-GREEN** direction (under-enforcement) — unlike `x6t6`,
+which is false-RED.
+
+The tally had to be flavor-aware, because `sole` scopes per accounting unit (this is `jjb`'s own
+piece (3) non-uniformity):
+
+| Marker flavor | Accounting unit | Consumes the artifact's boundary slot? |
+|---|---|---|
+| supervisor bug-catcher / fail-open hook boundary / fail-closed guard boundary | per process entry artifact | **yes** — these three share one slot |
+| loop-iteration bug-catcher | per supervision loop | no |
+| foreign-code isolation | per extension invocation surface | no |
+
+Both catch forms (`except` and `contextlib.suppress`) feed the same tally, and the offense names
+the EXCESS catch rather than the whole set. Marker recognition + the closed wording set + the
+tally moved to `checks/_no_except_outside_io_markers.py` (mirroring the existing
+`_no_except_outside_io_ruff.py` sibling); the split was FORCED by the LLOC hard ceiling, which the
+addition crossed.
+
+**Live-exercised, not merely merged.** Baseline on merged master inspects 137 real files with 0
+offenses. Then a SECOND conforming-looking boundary catch was temporarily added to the `main()`
+of `livespec_dev_tooling/agent_hooks/subagent_stop_guard.py` — a real file genuinely listed in
+this repo's `supervisor_entry_files`, already carrying a legitimate boundary catch at line 311.
+The shipped check reported 1 offense naming **line 320, the excess one**, leaving 311 unflagged.
+Probe reverted; back to 0 offenses over 137 files. Evidence is journaled on `jjb`.
+
+**Fleet blast radius was measured before implementing, and was ZERO** — a `# noqa: BLE001` sweep
+across all eight repos found no file carrying two boundary markers, so nothing reddened and no
+remediation item was needed.
+
+### 🆕 FILED THIS SESSION
+
+- **`bd-ib-45z9` (P2, livespec-orchestrator-beads-fabro tenant)** — that repo's
+  `.claude-plugin/hooks/` tree sits OUTSIDE its declared `source_trees`
+  (`[".claude-plugin/scripts/livespec_orchestrator_beads_fabro"]`), so the ROP railway checks skip
+  its hook bodies entirely. Same class as `cvz`, but PARTIAL: the scripts tree IS armed. Hidden
+  behind it, exactly one site — `codex_yolo_reapply.py:204` — with TWO independent defects: a
+  marker wording (`— deliberate fail-open bulkhead; see docstring.`) outside the sanctioned closed
+  set, AND a position that is a direct child of the helper `_reconcile_guarded`, not of `main()`
+  (which carries no `try` at all). The sibling livespec-driver-claude DOES declare its hook trees
+  (`[".claude/hooks", ".claude-plugin/hooks"]`), so the asymmetry is that repo's, not the fleet's.
+  Fix is order-dependent (harden-first): correct the hook, THEN declare the tree — declaring first
+  reds master. **Recorded as NOT-a-defect on the item: the fail-open POSTURE is correct and
+  deliberate** (a SessionStart hook that raises can wedge the session); only wording and position
+  are non-conforming.
+
+### 📌 SPEC FOLLOW-UP NOW PARTLY DUE — not filed, and deliberately so
+
+`jjb`'s hard constraints require amending livespec core once mechanization lands, replacing
+"enforced by REVIEW today" with the accurate attribution. `non-functional-requirements.md` line
+675 lists FOUR things as review-enforced; **two are now stale in the UNDERSTATING direction** —
+exact marker wording (closed by `ng5o`) and the per-ARTIFACT half of the cardinality rule (closed
+by #662). It was NOT filed piecemeal: it is a livespec-core spec change requiring the independent
+adversarial review, and it should land once, as one amendment, after the `x6t6` ruling settles
+whether the loop-iteration position also becomes mechanical. Nothing currently OVERSTATES its
+reach — PR #662's module docstring states the honest split.
+
+### 🛑 SESSION STATE — clean, nothing in flight
+
+- `/data/projects/livespec` and `/data/projects/livespec-dev-tooling` both on `master`, in sync
+  with `origin/master`, no uncommitted tracked changes. (The untracked
+  `install-livespec-pr-bot.png` in dev-tooling PRE-DATES this track — not ours, leave it.)
+- The `fix/jjb-boundary-catch-cardinality` worktree and branch were both reaped after merge.
+  Other worktrees under `~/.worktrees/livespec-dev-tooling/` belong to OTHER tracks — do not reap.
+- No background agents, monitors, or subprocesses running.
+- Master CI green on both repos, queried with `--workflow CI`.
+
+### 🎯 WHAT TO DO FIRST IN A FRESH SESSION
+
+**Do NOT reopen `e9j`, and do NOT re-derive `gam8`.** Both are settled; `gam8` is with the
+maintainer.
+
+Unblocked work, all `backlog` (so NOTHING picks them up automatically — promote to `ready` or
+drive directly; an empty queue looks like a busy factory):
+
+- **`njyx`, `tljy`, `3q2c`, `rgt8`** (livespec-dev-tooling) and **`ct9`**
+  (livespec-driver-codex) — group B, filed during the slice-S ratification, independent.
+- **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — newly filed above, self-contained,
+  order-dependent fix documented on the item.
+
+Blocked pending a ruling, do not start: **`x6t6`** (and therefore `jjb` pieces (2) and (3), which
+are downstream of it).
+
+**Run a FRESH readiness check per item before picking any up.** This session is itself the
+argument: `x6t6`'s brief was falsified by reading the live site, and `gam8` had already been
+discharged. `bd show` the item, then verify its claims against the live tree — several group-B
+items record something that is NOT a defect and must not be "fixed".
+
+**Two items that are NOT this track's and need a human, unchanged across many sessions:** delete
+the orphan branch `spec/rop-loop-iteration-marker`, and `livespec-dev-tooling-4er` (P1, ruled
+conformance blast-radius fix).
+
+**Still deliberately unfiled, needing the maintainer's call:** the livespec CLI auto-backfill
+hazard described in the seventh-session section below.
+
+`pure_trees` arming stays gated on `livespec-mutreal.1`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-25 (SEVENTH session)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
