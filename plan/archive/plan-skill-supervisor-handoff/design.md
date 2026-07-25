@@ -1,4 +1,23 @@
-# plan-skill-supervisor-handoff — design note
+# plan-skill-supervisor-handoff — archived design note
+
+**Archived 2026-07-25.** This research-only thread is superseded by the active
+`plan/supervisor-skill/` thread. Do not resume work from this archived topic.
+
+The archived note remains the historical design record for the durable
+`supervisor-handoff.md` feature, including the shipped core/orchestrator
+ratifications and the review findings on the `livespec-overseer`
+non-interference proposal. The active continuation deliberately moved to a
+better-named topic because this thread's name described an implementation detail
+of the plan skill rather than the Control-Plane operator surface that actually
+shipped.
+
+Conflict boundary: the `livespec-overseer` PR #44 proposed-change lane
+(`SPECIFICATION/proposed_changes/non-interference-attended-skill-carveout.md`)
+is owned by the active `cutover-and-shipping` track. This archived thread must
+not repair, split, revise, ratify, or dispatch that proposal. Its independent
+review findings are input only: missed `constraints.md` drift, missing discovery
+scenario coverage, and the advisory to split the slice-2 carve-out from the
+slice-3a existence-probe allowance.
 
 **Status:** RESEARCH-ONLY thread, opened 2026-07-23. No `handoff.md` yet and no
 ledger epic anchored yet — deliberate, see §9. A young thread MAY be
