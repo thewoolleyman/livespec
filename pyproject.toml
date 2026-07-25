@@ -172,7 +172,7 @@ target_dirs = [
 source_tree_prefixes = [
     ".claude-plugin/scripts/livespec/",
     ".claude-plugin/scripts/bin/",
-    "dev-tooling/checks/",
+    "dev-tooling/",
 ]
 # `mirror_pairings` is the required companion to `source_tree_prefixes`: the
 # `tests_mirror_pairing` check maps each covered source tree to its paired
