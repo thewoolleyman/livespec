@@ -1,6 +1,145 @@
-# rop-sweep-fleet-policy — ALL OWED WORK IS DISCHARGED: y21/wxq/cvz closed, the allowlist spec change RATIFIED as v174. Remaining: ONLY the long-tail backlog (e9j P0 first), each item needing a fresh readiness check before any pickup
+# rop-sweep-fleet-policy — e9j re-cut as an EPIC; Wave-1 (8 role-key backfills) COMPLETE + verified; Wave-2 (L/D/C enforcement) is DRAFTED and AWAITING SUPERVISOR DECISION-2 SIGN-OFF before the first mutating dispatch
 
-## ✅ STATE AS OF 2026-07-24 (FOURTH session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-25 (FIFTH session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🎯 THE ONE THING TO DO FIRST — the maintainer ruling is IN; e9j is an epic; Wave-1 is done; Wave-2 is drafted and GATED ON SUPERVISOR SIGN-OFF
+
+**`livespec-dev-tooling-e9j` was re-cut into an EPIC** (P0, livespec-dev-tooling tenant) per the
+maintainer's 2026-07-24 ruling (relayed by supervisor 017/018/020/022): undeclared role key →
+hard ERROR, PLUS a mandatory mechanical enforcement that every fleet repo MUST DECLARE every
+role key. The epic's full structure, roster, and every decision is journaled ON THE e9j ITEM —
+read `bd show livespec-dev-tooling-e9j` (its notes are the authoritative cross-tenant tracking
+surface; this handoff summarizes).
+
+**WAVE-1 IS COMPLETE.** All 8 role-key backfills are LANDED and VERIFIED on their origin/master
+(each declares 10/10 role keys: source_trees, io_trees, commands_trees, supervisor_entry_files,
+pure_trees, covered_trees, target_dirs, source_tree_prefixes, dataclasses_tree,
+neutral_hook_body_path). Landed set + owning repo:
+- `iroq` (livespec-dev-tooling), `bd-ib-unfh` (livespec-orchestrator-beads-fabro),
+  `7wu` (livespec-driver-codex), `6ej` (livespec-driver-claude), `overseer-3o9` (livespec-overseer),
+  `rgi` (livespec-orchestrator-git-jsonl), `th71` (livespec core), `coe` (livespec-runtime).
+- Two loader preconditions also landed+released: **L0** (`4thg`, dataclasses_tree ""→None,
+  v0.54.7) and **L0b** (`d7gi`, neutral_hook_body_path ""→None, v0.54.8) — the declared-none
+  convention for BOTH scalar keys. Every fleet repo is now pinned ≥ v0.54.11.
+
+**WAVE-2 IS DRAFTED AND HELD.** The Wave-2 enforcement slices (L/D/C below) are fully specified
+and the "all backfills before enforcement" gate is SATISFIED — but **do NOT file or dispatch
+L/D/C until the supervisor signs off on Decision 2** (the dispatch path + the L→{D,C} slicing).
+I presented the full package (below) at session end; the supervisor had not yet ruled when this
+session wound down for context. The next session's FIRST action: check the coordination log
+(`/data/projects/livespec/tmp/fleet-pin-propagation-supervisor/status.log`) and the overseer
+channel for a Decision-2 ruling; if present, file L/D/C per it; if absent, re-present and wait.
+
+### 📋 THE WAVE-2 SLICE BRIEFS (drafted, approved-in-shape by supervisor 018, awaiting Decision-2 sign-off on dispatch)
+
+All three are dev-tooling PRODUCT `.py` → RGR applies → factory-dispatchable (dev-tooling HAS the
+`check-no-workflow-edits` recipe, so `bd-ib-d6ds` does NOT block them; only exposure is the
+INTERMITTENT `bd-ib-g5hp`, retryable).
+
+- **Slice L — ERROR flip + fallback retirement (foundation):** in `config.py`, record which role
+  keys were DECLARED (`key in table`) and export ONE `REQUIRED_ROLE_KEYS` constant (single source
+  of truth). The gating checks: UNDECLARED consumed key → hard ERROR naming the key + the 2
+  sanctioned outs (declare real / declare empty-with-reason); DECLARED-EMPTY → visible sanctioned
+  INFO no-op (unchanged); DECLARED non-empty tree walking 0 files → ERROR (e9j's loudness half).
+  Retire `_livespec_core_config` (block becomes REQUIRED for check consumers). Files: config.py +
+  the 7 check modules.
+- **Slice D — declaration-presence enforcement (maintainer's anti-rot piece; CALL #2 RULED:
+  fleet-conformance placement ONLY, NO /livespec:doctor extension):** a new dev-tooling check in
+  the `just check` aggregate — every consumer wiring layout-dependent checks MUST DECLARE every
+  role key (presence required, sanctioned-empty accepted, silent absence rejected) — PLUS a
+  fleet-conformance row over `.livespec-fleet-manifest.jsonc` members (catches a NEW fleet member
+  that never wires the keys). `livespec-console-beads-fabro` excluded MECHANICALLY (scope = repos
+  consuming dev-tooling via pyproject.toml), named not silent. **Typed dep: blocked-by L.**
+- **Slice C — the `_IMPL_PREFIXES` cluster consolidation (folds in kfp[anchor,P1] + rkdg +
+  fp5yfv + 30g + 9j8.7):** derive `_IMPL_PREFIXES` from each repo's declared `source_tree_prefixes`;
+  delete the dead block-absent fallback tuple; fix the stale "no top-level livespec/ dirs" comment;
+  add the fleet regression matrix. Files: `red_green_replay.py` (+ check-pre-commit copy).
+  **Typed dep: blocked-by L.**
+- **Recommended dispatch order (my Decision-2 recommendation, awaiting sign-off):** L first
+  (foundation), then D and C CONCURRENTLY after L merges (D touches new-check/fleet/justfile; C
+  touches red_green_replay.py — no file conflict; both depend on L's fallback retirement). Factory
+  with g5hp retry-tolerance.
+- **Spec-side S:** proposal `role-key-declaration-required.md` is ALREADY FILED into
+  livespec-dev-tooling `SPECIFICATION/proposed_changes/` (PR #613, MERGED — inert). RATIFY it
+  only AFTER L+D merge (file-early/ratify-after, CALL #1 ruled) via independent Fable review →
+  revise. NOTE: the Fable account is SPEND-LIMITED (hit its cap twice this session) — re-check at
+  ratification and substitute a different strong model (Opus+Sonnet, or Opus+Codex) per precedent.
+
+### 🔑 g5hp DETERMINISM RESOLVED — it is INTERMITTENT (this flips the inline-vs-factory question toward factory)
+
+`bd-ib-g5hp` (sandbox pyright analyzes the uv-managed stdlib → 19788 errors → agent halts) was
+OBSERVED EXACTLY ONCE (L0 attempt 1) and recurred ZERO times across ~9 subsequent dev-tooling
+`.py` dispatches that reached check-types (L0 a2, L0b, iroq a2, 9ar ×2, ajo, 8xyb ×2). The
+"deterministic" label came from supervisor 019 on the single first data point; 9 clean passes
+resolve it to a low-rate retryable flake. So factory-with-retry is defensible for L/D/C.
+
+### 🆕 FILED / DISCOVERED THIS SESSION (verify each before acting)
+
+- **`bd-ib-d6ds` (P1, livespec-orchestrator-beads-fabro tenant)** — dispatcher DEFAULT janitor
+  (`_DEFAULT_JANITOR`, `commands/_dispatcher_fabro_argv.py:40`, set by 3fe97cc) requires the
+  `check-no-workflow-edits` recipe present in only 4 of 8 fleet repos; dispatch into the 4 lacking
+  it (livespec core, runtime, git-jsonl, overseer) FALSE-REDS at the janitor even with `just check`
+  green. FIX LOCUS + a dispatcher-provided-guard recommendation are journaled on the item.
+  **FIRST-CLAIM OFFERED to the factory-success-rate-remediation track** via the coordination log;
+  per supervisor-020 Q1, do NOT touch dispatcher-internal code until that collision clears. This
+  is WHY Wave-1's 4 non-recipe mirrors were landed INLINE (supervisor-authorized), NOT via factory.
+- **`bd-ib-g5hp` (P1, livespec-orchestrator-beads-fabro tenant)** — the intermittent sandbox
+  pyright-stdlib failure above.
+- **`livespec-runtime-5ud` (P2)** — CI `detect-py-changes` greps `\.py$` only, so a pyproject-only
+  PR SKIPS every real check yet reports SUCCESS (green is VACUOUS). Proven live on coe's PR #332.
+  Fleet-wide sweep likely needed (ci.yml is repo-local, may be copy-drifted).
+- **`livespec-dev-tooling-6vz`** — cross-referenced: livespec-runtime added as another consumer
+  where `no_raise_outside_io` is a dead check (hardcoded `_DOMAIN_ERROR_NAMES` = core class names).
+
+### ⚠️ OPERATIONAL FACTS a resuming session MUST know
+
+- **An AUTONOMOUS DISPATCHER polls `ready` items.** `overseer-3o9` (B-ov) landed via a Fabro
+  dispatch at 01:00Z that I never drove — proven by its commit carrying my exact brief subject.
+  So promoting a Wave-2 item to `ready` may get it AUTO-DISPATCHED before you drive it. Manage
+  Wave-2 promotion carefully (it's usually harmless — just lands the work — but watch for a
+  poller/your-dispatch race). It likely runs an OLDER dispatcher build without the bd-ib-d6ds
+  janitor requirement (which is how it passed overseer's missing recipe).
+- **coe (B-rt) rework lesson — READ before touching runtime ROP:** the FIRST coe attempt NARROWED
+  `retry.py:49`'s broad catch and was CAUGHT BY DUAL REVIEW as a spec violation — livespec-runtime's
+  OWN ratified `SPECIFICATION/constraints.md:41-44,63-67` MANDATES that broad catch (the retry
+  layer MUST degrade to UNKNOWN; domain errors are ValueError subclasses "so the retry layer's
+  broad catch still works"). The correct fix (LANDED, PR #332) was config-only: declare
+  `io_trees=["livespec_runtime/cross_repo"]` to EXEMPT the seam, NOT narrow it. LESSON: a fleet
+  ROP-general rule does NOT override a consumer's own ratified spec; check the consumer's spec first.
+- **Unprimed DUAL REVIEW with MODEL DIVERSITY is load-bearing** — it caught the coe spec violation
+  that the implementer AND the first (Opus) reviewer both approved (the first reviewer read CORE's
+  spec, not runtime's own). Keep it for every inline product-.py landing. Fable is spend-limited;
+  use Opus+Sonnet.
+- **Orphaned interview-lingering sandbox containers** from failed first-attempts persist
+  (`fabro-run-*`, parent drive procs dead). Recorded for operator hygiene; the dispatcher admission
+  path reclaims dead slots automatically — no manual surgery needed, but note them.
+- **host_dispatch_cap = 2 slots host-wide** — concurrent dispatches self-throttle; a 3rd refuses
+  cleanly (no state burned).
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR
+
+1. **Decision-2 sign-off** on the Wave-2 dispatch path + L→{D,C} slicing (the gate before filing/
+   dispatching L/D/C). This is the single blocker on Wave-2.
+2. **`bd-ib-d6ds` ownership** — offered to the factory-reliability track; if they defer, rop-sweep
+   may drive it (supervisor-020 Q1).
+3. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+4. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; still pending.
+
+### NEXT WORK (after Wave-2 L/D/C land + the S ratification)
+
+- The long-tail readiness verdicts from the FOURTH session are all journaled on their items
+  (x6t6, 9ar[CLOSED], ajo[CLOSED], rkdg, 8xyb[CLOSED], jjb, gam8, aa7, bd-ib-60pp, bd-ib-hycf).
+  Re-read those journals; several were re-scoped or found stale/already-fixed. `9ar`/`ajo`/`8xyb`
+  landed this session (the ready-but-held trio). `gam8`/`aa7` were found already-fixed/mechanism-
+  solved — candidates to close. The kfp/rkdg/fp5yfv/30g/9j8.7 cluster folds into Slice C.
+- `pure_trees` arming stays gated on `livespec-mutreal.1` (declared `[]` fleet-wide with that reason).
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-24 (FOURTH session)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
