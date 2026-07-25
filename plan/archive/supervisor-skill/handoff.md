@@ -30,6 +30,16 @@ No successor action is owned by this plan thread. If new supervisor-prompt work
 appears, open a new active plan thread or work item rather than resuming this
 archive. Everything below is prior state retained for historical context.
 
+## Follow-up Work Item
+
+- `overseer-fitvmo` (`livespec-overseer`, pending-approval): productize the
+  correction in the generated `supervise-plan` supervisor-handoff prompt/template
+  and regression tests. Acceptance centers on No Idle / No Silent Block
+  semantics: generated supervisor prompts must not stall at conflict boundaries,
+  must continue legitimate non-conflicting coordination work, and must ask a
+  maintainer-facing blocking question with a recommended answer when no such work
+  remains.
+
 ---
 
 This thread supersedes the archived research-only topic
