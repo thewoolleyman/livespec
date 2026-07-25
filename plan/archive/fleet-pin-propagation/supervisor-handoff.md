@@ -114,7 +114,8 @@ do not repeat them:
   marker.
 - 2026-07-24, durability: this charter previously lived only in gitignored
   `tmp/fleet-pin-propagation-supervisor-prompt.md` (the section-1
-  durability defect in `plan/plan-skill-supervisor-handoff/design.md`);
+  durability defect now archived at
+  `plan/archive/plan-skill-supervisor-handoff/design.md`);
   migrated here via the `supervise-plan` skill. The volatile "vetted
   queue" tables from that prompt were deliberately left behind — live
   state belongs in the thread handoff, the ledger, and `status.log`,
