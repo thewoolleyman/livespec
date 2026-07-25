@@ -1,6 +1,104 @@
-# rop-sweep-fleet-policy — e9j Wave-2 (L+D+C) MERGED and fleet-verified 8/8; slice S is drafted, four-times-reviewed, COMMITTED AND PUSHED, and HELD on ONE supervisor ruling: the exit-code direction
+# rop-sweep-fleet-policy — e9j is CLOSED. Slice S ratified as livespec-dev-tooling history/v032; the epic is complete end to end
 
-## ✅ STATE AS OF 2026-07-25 (SIXTH session, wrap) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-25 (SEVENTH session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🎉 THE EPIC IS DONE — there is no next action on e9j
+
+`livespec-dev-tooling-e9j` is **CLOSED** (`resolution: completed`). Every slice landed and the
+spec-side contract is ratified. **Do not re-open, re-verify, or look for remaining work in it.**
+
+**Live evidence, each read from the canonical source:**
+- livespec-dev-tooling **PR #660 MERGED** 2026-07-25T21:40:39Z, merge commit `665da2955`.
+- `SPECIFICATION/history/v032/` on origin/master carries the six-file snapshot, the consumed
+  proposal, and its paired `role-key-declaration-required-revision.md`.
+- `SPECIFICATION/proposed_changes/` on origin/master holds only `README.md` — the proposal was
+  consumed, not copied. The queue is empty.
+- The ratified `contracts.md` blob on origin/master is `993002f844925136efe65608fc558e73b6046de9`,
+  **byte-identical to the blob both independent reviewers cleared**. Chain of custody was proven by
+  blob hash across the pre-ratification rebase, so what shipped is what was reviewed.
+- Master CI on the ratification commit: run `30176097844`, conclusion **success**.
+- Full `just check` on the ratified tree: **63/63** green.
+
+### ⚠️ THE REVIEW LESSON THIS SESSION PAID FOR — the most transferable thing here
+
+**Eight** independent adversarial rounds across **four** models produced **thirteen** distinct
+defects, **six of them introduced by repairs to earlier defects**. Not one was catchable by CI or
+`just check` — all thirteen were prose-level defects in a specification.
+
+1. **A single reviewer is not a gate.** Twice, two reviewers on IDENTICAL bytes returned OPPOSITE
+   verdicts. One cleared text that another found two blockers in. If this discipline is ever cut to
+   one reviewer for cost, that is the specific failure being bought.
+2. **A fix is a prime suspect, not a settled matter.** Nearly half the defects were introduced while
+   repairing an earlier one. Re-review the WHOLE amended bytes, never "just the changed spots" — a
+   defect twice lived in a different SECTION from the edit that broke it, and once in a different
+   FILE.
+3. **A drift sweep and an internal-consistency pass are different jobs.** The sweep proves the change
+   leaves none of the OLD regime's claims standing, and can be run at authorship. It says nothing
+   about whether the change's own repairs agree with each other. Both are needed; only the first is
+   traditionally done.
+4. **Counts are the most fragile clause type.** Four separate closed enumerations needed repair. Two
+   reviewers disagreed over a "seven of eight" that was TRUE — they were counting different
+   populations, because the document contained two different eights (repos PINNING a release vs
+   repos CARRYING a config block) against a fleet of nine. Name the population or drop the tally.
+5. **A string search can CONFIRM a wrong answer.** `git log -S` on three role-key names returns the
+   same earliest commit for all three, so "did one land first?" answers "no" — while the diff shows
+   that commit declared one key and mentioned the others in a comment saying "deliberately NOT
+   declared here". A grep and a diff disagreed; the grep was the wrong instrument.
+6. **Execution beats reading.** The single most decisive finding came from RUNNING the checks: the
+   text asserted three checks "no-op against this library" while each inspects 136 files.
+
+### 🚨 A REAL HAZARD DISCOVERED — livespec CLIs auto-backfill against a mid-flight spec branch
+
+A reviewer under an explicit read-only brief ran a livespec CLI against the live worktree. It
+**auto-created an untracked `SPECIFICATION/history/v032/`** recording the in-flight contract change
+as an anonymous **"out-of-band edit"**. Left in place it would have permanently attributed the change
+to nobody. It was caught only by re-checking worktree cleanliness before the revise.
+
+**Any agent running the revise/doctor surface against a spec branch mid-change silently manufactures
+a false history entry.** Every review brief after that point carried an explicit ban on livespec
+CLIs, and the hazard did not recur. Worth a work-item against core's revise/doctor surface — NOT
+filed, because it is core's surface and the call is the maintainer's.
+
+### 🆕 FILED THIS SESSION (all verified against live state before filing)
+
+- **`livespec-dev-tooling-njyx` (P2)** — `newtype_domain_primitives` never implements the
+  declared-non-empty-but-zero-`.py` hard ERROR: it calls the plain gate, not the paths-aware variant.
+  The second of two deliberate spec-ahead-of-code divergences recorded in the ratified text. No
+  consumer occupies the triggering state today.
+- **`livespec-dev-tooling-tljy` (P2)** — eight rotted cross-repo citations into livespec core. Two
+  are the ONLY doctor failures on this repo and are **PRE-EXISTING** (proven by reproducing them on a
+  clean master checkout before any of this work). Root cause: the repo declares no
+  `external_references` block, so cross-repo citations are unvalidated rather than validated.
+- **`livespec-dev-tooling-3q2c` (P2)** — role-key inventory consumer lists inaccurate in BOTH
+  directions (`io_trees` names two checks that never read it; `supervisor_entry_files` omits two that
+  do). Records the method trap: a naive grep over-counts, because two meta-checks read nearly every
+  role key.
+- **`livespec-dev-tooling-rgt8` (P3)** — two shipped artifacts still describe the retired fallback
+  regime, both misleading in the unsafe direction.
+- **`livespec-driver-codex-ct9` (P3)** — that repo's `pyproject.toml` comment tells a maintainer an
+  omitted role key "reverts to an EMPTY baseline"; it now hard-errors.
+- **Journaling on `1aba`** (the exit-code ruling, its `contracts.md:602` semver-stability violation,
+  the git-history provenance of the 4→1 flip, and a THIRD fix part: the undeclared-key exit has no
+  documented code), **`eihv`** (a trap: its docstring is stale in one direction and AHEAD of the code
+  in the other — do not "fix" the `4` into `1`), and **`1a6w`** (scope trimmed to what S did not
+  discharge, plus two config-key locations).
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR (unchanged; neither is this track's)
+
+1. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (still outstanding, many sessions).
+2. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; still pending.
+
+### NEXT WORK
+
+Nothing on e9j. The five follow-ups above are independent and unblocked. `pure_trees` arming stays
+gated on `livespec-mutreal.1`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-25 (SIXTH session, wrap)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
