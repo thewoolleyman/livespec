@@ -1,143 +1,40 @@
 # Supervisor Handoff - supervisor-skill (ARCHIVED)
 
-This supervisor prompt archived with the closed `supervisor-skill` plan thread
-on 2026-07-25. Do not execute its HALT-first preconditions or use it to restart
-a supervisor session.
+This file is intentionally non-executable. The `supervisor-skill` plan is
+closed, its directory is archived, and no `supervisor-skill` or
+`supervisor-skill-supervisor` tmux session should be started from this prompt.
+The former HALT-first checks, driving instructions, and active-path references
+remain available in git history.
 
-Final landed state: `supervise-plan` shipped, the core/orchestrator
-declarations for `supervisor-handoff.md` were ratified, and livespec PR #1736
-merged as `90cef6a18dfc78ba18c712596d36dc138ec262d6` to correct the
-blocked-state semantics. The `cutover-and-shipping` track remains the owner of
-the `livespec-overseer` PR #44 proposal lane and `overseer-6uobos`; this
-archived thread must not be resumed to take them over.
+## What This Archived Supervisor Track Completed
 
-Everything below is the final operational prompt as it existed before archive,
-kept only as historical context.
+- Preserved the adopted Control-Plane ownership model for
+  `plan/<topic>/supervisor-handoff.md`.
+- Recorded the merged `livespec-overseer` source implementation
+  (`supervise-plan`, PR #49) and its bounded live exercise that produced
+  livespec PR #1706.
+- Recorded the ratified hosting declarations in livespec core v175
+  (PR #1731) and `livespec-orchestrator-beads-fabro` v048 (PR #937).
+- Corrected this track's supervisor semantics in livespec PR #1736: an
+  ownership conflict blocks only the conflicting action, not all legitimate
+  coordination; when every legitimate action is genuinely maintainer-blocked,
+  ask the human-facing question immediately and put the recommended answer
+  first.
+- Filed `overseer-fitvmo` in `livespec-overseer` for the corresponding
+  generated-prompt/template regression.
 
----
+## What This Archive Does Not Prove
 
-Generated as the durable supervisor prompt for the `supervisor-skill` planning
-thread. The supervised session owns the thread's work. The supervisor keeps it
-moving, prevents cross-track conflicts, and surfaces only genuinely blocking
-maintainer questions.
+A merged source binding and one local exercise do not prove that the plugin was
+released, installed, loaded, or discoverable in fresh fleet/adopter sessions.
+This archive also does not prove top-of-pyramid shipping coverage, automatic
+release, automatic fleet/adopter installation, or automatic release-pin
+propagation.
 
-The thread's own mission, state, and next actions live in
-`plan/supervisor-skill/handoff.md`. Do not duplicate or fork that file here.
+Those outcomes remain in the owning repository's productization and shipping
+track. Start any new worker or supervisor sessions from:
 
-## HALT-first preconditions
+`/data/projects/livespec-overseer/plan/cutover-and-shipping/handoff.md`
 
-Run these checks before doing anything else. Stop on the FIRST failure and
-report the exact failing check and expected name. Do not create a missing
-session, do not fall back to a similar name, and do not proceed read-only.
-
-- Supervised tmux session, exact name: `supervisor-skill`
-
-  ```bash
-  tmux has-session -t supervisor-skill
-  ```
-
-- The supervised session is really a live agent session. Its pane's process tree
-  must contain a `claude` or `codex` CLI process, established from exact live
-  process evidence, never inferred from the session name.
-
-  ```bash
-  pane_pid=$(tmux list-panes -t supervisor-skill -F '#{pane_pid}' | head -1)
-  pstree -p "$pane_pid" | grep -oE "claude|codex" | sort -u
-  ```
-
-- Supervisor tmux session, exact name: `supervisor-skill-supervisor`
-
-  ```bash
-  tmux has-session -t supervisor-skill-supervisor
-  ```
-
-- Target repository present: `/data/projects/livespec`, with the plan thread
-  directory `plan/supervisor-skill/`.
-
-## Role
-
-You are the supervisor, NOT the implementer. Hand work to the supervised session
-as **INPUT TO VERIFY**. If the supervised session's verification contradicts
-yours, your claim is wrong until re-proven.
-
-Your primary job is conflict prevention: keep this thread from taking work
-already owned by `cutover-and-shipping`.
-
-## Non-Negotiable Conflict Boundary
-
-The `livespec-overseer` PR #44 proposed-change lane is owned by
-`cutover-and-shipping` unless the maintainer explicitly transfers it.
-
-Do not let this thread repair, split, revise, ratify, dispatch, or close:
-
-- `livespec-overseer/SPECIFICATION/proposed_changes/non-interference-attended-skill-carveout.md`
-- the associated `constraints.md` drift fix
-- the missing discovery scenario fix
-- the split between the attended `supervise-plan` carve-out and the Surface A/B
-  existence-probe allowance
-- `overseer-6uobos`
-
-The review findings from the archived `plan-skill-supervisor-handoff` session
-are useful input. They are not ownership.
-
-## How to Inspect and Drive
-
-- Inspect the supervised pane with:
-
-  ```bash
-  tmux capture-pane -p -t supervisor-skill -S -120
-  ```
-
-- Use short, direct one-line `tmux send-keys` instructions for small nudges.
-- For larger prompts, use `tmux load-buffer` / `tmux paste-buffer`, then
-  re-capture the pane and verify the paste landed before sending Enter.
-- `IDLE` with queued input means STUCK, not idle.
-- Never name a shell variable `TMUX`.
-- Never run `tmux kill-server` on the maintainer's default socket.
-
-## Decision-Vetting Rubric
-
-Escalate to the maintainer only when the question is both genuinely blocking and
-genuinely human-facing. Before asking, do the decision-prep: read the current
-handoffs, check tmux, check GitHub, and state the recommended answer first.
-
-Standing down on a conflicting lane is not a blocked state and is not
-permission to leave this supervisor lane idle. If the next tempting action
-belongs to `cutover-and-shipping`, report that ownership boundary, stand down
-only on that conflicting action, and keep driving non-conflicting
-supervisor-skill coordination work: refresh handoffs, pass review findings as
-input, re-check live session state, or prepare the next safe supervisor nudge.
-
-Declare `blocked:` only when there is a genuinely maintainer-facing,
-maintainer-only decision that prevents every legitimate non-conflicting next
-step. In that case, ask the maintainer the blocking question immediately and
-include the recommended answer first.
-
-## AskUserQuestion Presentation Rules
-
-- One question per turn.
-- Recommended option first and labelled "(Recommended)".
-- Full repository and topic names; no shorthand.
-- End the message before a picker with `---` on its own final line.
-
-## Standing Safety Clauses
-
-Repeat these in every instruction sent to the supervised session:
-
-- Never pass `--no-verify`.
-- Halt and report on hook failure.
-- Never touch another session's worktrees or branches.
-- Never take over another track's active proposal lane without maintainer
-  transfer.
-
-## Corrections
-
-- 2026-07-25: `plan-skill-supervisor-handoff` was nudged into the
-  `livespec-overseer` PR #44 lane while `cutover-and-shipping` was already
-  surfacing the same maintainer decision. Future supervisors must treat review
-  findings as input unless ownership is transferred.
-- 2026-07-25: A conflicting active proposal lane was incorrectly treated as a
-  thread-wide blocked/stand-down state. Future supervisors must preserve the
-  ownership boundary while continuing non-conflicting coordination work, or ask
-  a maintainer-facing blocking question with a recommended answer when no such
-  work remains.
+Do not resume this archived supervisor prompt, and do not use its archived
+status as a completion signal for `livespec-overseer`.

@@ -1,142 +1,70 @@
-# supervisor-skill - CLOSED (work landed; archived)
+# supervisor-skill - archived completion record
 
-**Ledger anchor:** epic `overseer-3wt` (livespec-overseer tenant).
-**Opened:** 2026-07-25. **Closed:** 2026-07-25. **Status:** ARCHIVED.
+**Ledger anchor:** epic `overseer-3wt` (`livespec-overseer` tenant).
+**Opened:** 2026-07-25. **Archived:** 2026-07-25.
 
----
+This thread is closed and is not an active resume point. It preserves the
+core-side coordination record for the durable `supervisor-handoff.md` design,
+its bounded source-level proof, the upstream hosting declarations, and the
+supervisor prompt correction. It does not claim that the `livespec-overseer`
+plugin completed release, installation, or fleet/adopter rollout.
 
-## THREAD CLOSED 2026-07-25 - supervisor-skill implementation/correction landed
+## Completed Work
 
-This thread is complete and moved to `plan/archive/supervisor-skill/`. It is no
-longer an active resume point.
+- The maintainer adopted the Control-Plane `supervise-plan` shape: the
+  `livespec-overseer` plugin owns creation of
+  `plan/<topic>/supervisor-handoff.md` through the target repository's normal
+  worktree -> PR -> merge discipline. The full reasoning remains in
+  `plan/archive/plan-skill-supervisor-handoff/design.md`.
+- The source implementation of the `supervise-plan` binding, prose, and tests
+  merged in `livespec-overseer` PR #49 as work item `overseer-myjovi`.
+- A bounded live exercise ran that source operation against the live
+  `rop-sweep-fleet-policy` track and created its reviewed artifact through
+  livespec PR #1706. That proves the operation in the exercise environment; it
+  is not proof that a released plugin is installed or discoverable in a fresh
+  fleet or adopter session.
+- The hosted-artifact declarations were ratified in livespec core v175
+  (PR #1731) and `livespec-orchestrator-beads-fabro` v048 (PR #937). Those
+  declarations let a plan directory host one opaque Control-Plane supervisor
+  artifact without making the Spec or Orchestrator plane create or consume it.
+- The no-idle/no-silent-block correction landed in livespec PR #1736,
+  commit `90cef6a18dfc78ba18c712596d36dc138ec262d6`. The archived supervisor
+  prompt now records that a conflicting ownership lane is not a thread-wide
+  blocked state: continue legitimate non-conflicting work, or immediately ask
+  the maintainer the genuinely blocking question with the recommended answer.
+- Follow-up work item `overseer-fitvmo` was filed in `livespec-overseer` to
+  carry that correction into the generated `supervise-plan` prompt/template
+  and its regression tests.
 
-Final landed state:
+## Explicit Scope Boundary
 
-- The durable supervisor prompt feature shipped before this archive: the
-  `supervise-plan` operator surface exists in `livespec-overseer`, and core plus
-  the beads/fabro orchestrator have ratified the declarations that let a plan
-  directory host one Control-Plane supervisor artifact while the Spec and
-  Orchestrator planes ignore it.
-- The supervisor blocked-state correction landed in livespec PR #1736, merge
-  commit `90cef6a18dfc78ba18c712596d36dc138ec262d6`: future supervisor-skill
-  runs distinguish standing down on a conflicting proposal lane from a true
-  blocked state, and must continue non-conflicting coordination work or ask a
-  maintainer-facing blocking question with the recommended answer first.
-- The active `cutover-and-shipping` ownership boundary is preserved. This
-  archived thread never owns `livespec-overseer` PR #44, its proposed-change
-  repair/split/ratification lane, or `overseer-6uobos`.
+This archive is not evidence that any of the following are complete:
 
-No successor action is owned by this plan thread. If new supervisor-prompt work
-appears, open a new active plan thread or work item rather than resuming this
-archive. Everything below is prior state retained for historical context.
+- published-release availability of the `livespec-overseer` plugin;
+- discovery and invocation of `/livespec-overseer:supervise-plan` from a fresh,
+  correctly installed Claude/tmux session, including
+  `worktree-location-enforcement`;
+- top-of-pyramid end-to-end coverage for the shipping and installation
+  scenarios;
+- automatic plugin release;
+- automatic installation for fleet and adopter repositories; or
+- automatic propagation of the released plugin pin.
 
-## Follow-up Work Item
+Those productization, cutover, shipping, and rollout outcomes belong to the
+active plan in the owning repository:
 
-- `overseer-fitvmo` (`livespec-overseer`, pending-approval): productize the
-  correction in the generated `supervise-plan` supervisor-handoff prompt/template
-  and regression tests. Acceptance centers on No Idle / No Silent Block
-  semantics: generated supervisor prompts must not stall at conflict boundaries,
-  must continue legitimate non-conflicting coordination work, and must ask a
-  maintainer-facing blocking question with a recommended answer when no such work
-  remains.
+`/data/projects/livespec-overseer/plan/cutover-and-shipping/handoff.md`
 
----
+Do not reopen this livespec-core archive to perform that work, and do not cite
+this archive's closed state as proof that the owning plan's acceptance gates
+have passed. Start follow-up sessions in `livespec-overseer` from the path
+above.
 
-This thread supersedes the archived research-only topic
-`plan/archive/plan-skill-supervisor-handoff/`. Read that archived design note
-for historical context only; do not resume from it.
+## Historical Supervisor Prompt
 
-## Current Objective
-
-Keep the durable supervisor prompt feature moving without colliding with the
-active `cutover-and-shipping` track.
-
-The feature has already shipped its core shape:
-
-- `supervise-plan` exists in `livespec-overseer` and can create
-  `plan/<topic>/supervisor-handoff.md` through the target repo's own
-  worktree -> PR -> merge discipline.
-- `livespec` core and `livespec-orchestrator-beads-fabro` have ratified the
-  upstream one-line declarations that let a plan directory host one
-  Control-Plane supervisor artifact while the Spec and Orchestrator planes
-  ignore it.
-- The remaining `livespec-overseer` spec repair/ratification lane is active
-  elsewhere, under `cutover-and-shipping`.
-
-## Hard Conflict Boundary
-
-Do not touch the `livespec-overseer` PR #44 proposed-change lane from this
-thread unless the maintainer explicitly transfers ownership here.
-
-That lane includes:
-
-- `SPECIFICATION/proposed_changes/non-interference-attended-skill-carveout.md`
-  in `livespec-overseer`.
-- The review blockers found by `plan-skill-supervisor-handoff`: missed
-  `constraints.md` drift and missing discovery scenario coverage.
-- The advisory to split the already-shipped attended `supervise-plan` carve-out
-  from the unbuilt Surface A/B existence-probe allowance.
-- Any `/livespec:revise` ratification or follow-up dispatch of
-  `overseer-6uobos`.
-
-`cutover-and-shipping` is already surfacing and driving that maintainer decision.
-This thread may pass review findings to that track, but must not repair, split,
-ratify, dispatch, or close the same work.
-
-## What This Thread Owns
-
-- Preserve the durable design record by keeping the old topic archived and this
-  topic as the active resume point.
-- Keep future supervisor-skill sessions conflict-aware.
-- Verify that any new supervisor prompt artifacts created in `livespec` do not
-  duplicate active work owned by another plan thread.
-- Resume work only on supervisor-skill coordination that is not already owned by
-  `cutover-and-shipping` or another named track.
-
-## Immediate Resume Checklist
-
-1. Re-check the live tmux sessions for `cutover-and-shipping` and
-   `supervisor-skill`; do not infer state from this file.
-2. Re-read `cutover-and-shipping`'s visible pane or handoff before touching any
-   `livespec-overseer` proposal.
-3. If `cutover-and-shipping` still owns PR #44/proposal repair, stand down only
-   on that conflicting lane, offer review findings as input, and continue any
-   non-conflicting supervisor-skill coordination work.
-4. If ownership has been explicitly transferred, record the transfer in this
-   handoff before acting.
-
-## Blocked-State Rule
-
-A conflicting lane is not a thread-wide blocked state. Never declare blocked or
-leave this lane idle merely because PR #44/proposal repair remains owned by
-`cutover-and-shipping`.
-
-When a conflict is found, preserve the boundary and keep moving on legitimate
-non-conflicting work: update the supervisor prompt, refresh this handoff,
-prepare safe tmux nudges, or pass findings to the owning track without taking
-over its proposal lane.
-
-Declare `blocked:` only when every legitimate non-conflicting action is blocked
-by a genuinely human-facing maintainer-only decision. When that happens, ask the
-blocking question immediately and state the recommended answer first.
-
-## Next Action
-
-After this rotation lands, restart fresh sessions named exactly:
-
-- supervised: `supervisor-skill`
-- supervisor: `supervisor-skill-supervisor`
-
-The fresh supervisor should read `plan/supervisor-skill/supervisor-handoff.md`
-first. The fresh supervised session should read this file first.
-
-## Standing Safety
-
-- Never pass `--no-verify`; halt and report on hook failure.
-- Never touch another session's worktrees, branches, or active proposal lane.
-- Treat plan prose as stale until re-verified from git, GitHub, ledger, and tmux
-  live state.
-- If a remaining action is owned by `cutover-and-shipping`, stand down only on
-  that action and continue non-conflicting coordination work. If nothing
-  legitimate remains, ask the maintainer a blocking question with the
-  recommended answer first.
+The companion
+`plan/archive/supervisor-skill/supervisor-handoff.md` is an archived,
+non-executable completion record. The former live-session prompt and restart
+instructions remain available in git history, but are intentionally absent
+from current tracked state so a fresh reader cannot restart this closed track
+by mistake.
