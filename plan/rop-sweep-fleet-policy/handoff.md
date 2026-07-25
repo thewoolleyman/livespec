@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — e9j is CLOSED. Slice S ratified as livespec-dev-tooling history/v032; the epic is complete end to end
+# rop-sweep-fleet-policy — e9j CLOSED and slice S ratified (v032); the EPIC is done but the thread still owns a P2 long tail
 
 ## ✅ STATE AS OF 2026-07-25 (SEVENTH session) — READ FIRST; everything below is HISTORY
 
@@ -112,15 +112,31 @@ The seventh session wound down deliberately at a finished point. Verified at win
 single most likely way to waste an hour here is to treat this thread as unfinished because it is
 long.
 
-This plan thread has **no remaining work of its own**. A fresh session should either:
+The EPIC is complete, but **this thread still owns a long tail** — a correction to an earlier draft
+of this section, which claimed the thread had no remaining work. It does. Two groups, both
+`livespec-dev-tooling` tenant, all P2 and all `backlog` (so NOTHING picks them up automatically —
+they must be promoted to `ready` or driven directly, which is the single likeliest way to lose an
+hour here: an empty queue looks like a busy factory):
 
-1. **Take direction from the supervisor / maintainer** on what to pick up next — that is the
-   expected path, since this track's epic is complete; or
-2. **If told to continue autonomously**, pick from the five follow-ups filed below (`njyx`, `tljy`,
-   `3q2c`, `rgt8`, `ct9`). They are independent, unblocked, and each carries its own measured
-   evidence and fix shape. Re-read the item with `bd show` first — every one records something that
-   is NOT a defect and must not be "fixed", and at least two record a trap that would send a naive
-   fix in the wrong direction.
+**A. The pre-existing long tail, named by the supervisor as this track's remaining scope:**
+- **`x6t6`** — `no_except_outside_io` position exemption misses two sanctioned v172 marker positions
+  (loop-iteration, foreign).
+- **`jjb`** — mechanize the ROP boundary rules currently enforced only by review: catch cardinality
+  plus BLE001 marker-wording.
+- **`gam8`** — `check-master-ci-green` rejected a sandbox Red commit while GitHub showed master
+  green; capture and diagnose.
+
+**B. Filed during the slice-S ratification, all independent and unblocked:** `njyx`, `tljy`, `3q2c`,
+`rgt8` (livespec-dev-tooling tenant) and `ct9` (livespec-driver-codex tenant).
+
+**Run a FRESH readiness check per item before picking any of them up** — these descriptions were
+written at filing time and several items elsewhere in this thread's history turned out to be stale,
+already-fixed, or re-scoped by the time they were reached. `bd show` the item first: every one of
+group B records something that is NOT a defect and must not be "fixed", and at least two record a
+trap that would send a naive fix in the wrong direction.
+
+Prefer taking direction from the supervisor on ordering; absent that, group A is this track's
+declared scope and group B is the newer material.
 
 **Two items that are NOT this track's and need a human, unchanged across many sessions:** delete the
 orphan branch `spec/rop-loop-iteration-marker`, and `livespec-dev-tooling-4er` (P1, ruled conformance
