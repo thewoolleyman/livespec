@@ -1,6 +1,150 @@
-# rop-sweep-fleet-policy — e9j re-cut as an EPIC; Wave-1 (8 role-key backfills) COMPLETE + verified; Wave-2 (L/D/C enforcement) is DRAFTED and AWAITING SUPERVISOR DECISION-2 SIGN-OFF before the first mutating dispatch
+# rop-sweep-fleet-policy — e9j Wave-2 enforcement (L + D + C) is MERGED and fleet-verified 8/8 green; only the SPEC ratification (S) remains, and it is HELD on ONE supervisor decision
 
-## ✅ STATE AS OF 2026-07-25 (FIFTH session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-25 (SIXTH session) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🎯 THE ONE THING TO DO FIRST — get a ruling on the "universality overclaim" fork, then finish S
+
+**Everything else in the epic is DONE.** Wave-2's three enforcement slices are merged,
+released, and verified across all 8 fleet repos. The ONLY open work is ratifying the
+spec-side contract (S), and it is blocked on a single decision that is NOT the worker's
+to make.
+
+**THE BLOCKING DECISION.** The maintainer's 2026-07-24 ruling was "undeclared role key →
+hard ERROR", unqualified. The shipped code delivers that for **7** checks. The spec text
+drafted for ratification asserted it **universally**, and an independent reviewer caught
+that as a false contract. So:
+
+- **(A)** Narrow the spec to describe shipped reality. Truthful, but quietly reduces the
+  scope of a P0 maintainer ruling — inside a proposal whose entire purpose is stopping
+  enforcement claims from outrunning enforcement.
+- **(B)** Hold ratification, extend the gate to the remaining consumers, ratify the
+  universal text. Honors the ruling fully.
+- **(C) — the worker's recommendation.** Ratify the narrowed truthful text NOW *and* file
+  the gap as a tracked item citing the ruling, so the narrowing is a recorded shortfall
+  rather than a silent new ceiling.
+
+**B IS MUCH CHEAPER THAN THE RAW RATIO SUGGESTS — measured, not estimated.** All 30
+`load_config` callers were classified into four classes:
+
+| Class | Count | Meaning |
+|---|---|---|
+| Gated | 7 | already implement the ruling |
+| Delta-WARN family | 9 | **NOT a hole** — call `resolve_check_universe()`, derive their universe from git, keep `source_trees` only as a severity classifier. With the key undeclared they still inspect the ENTIRE first-party universe. |
+| Meta-checks | 3 | `partition_completeness`, `source_trees_scoped_to_consumer`, `required_role_keys_declared` — gating them would be circular; exclude by design |
+| **Genuine holes** | **~8** | `claude_md_coverage`, `comment_line_anchors`, `commit_pairs_source_and_test`, `check_coverage_incremental`, `tests_mirror_pairing`, `no_lloc_soft_warnings`, `no_write_direct`, `supervisor_discipline` |
+
+So B is ~8 checks with a shared fix shape, not 21. **Do not re-derive this from the raw
+7-of-28 ratio — that number is misleading and led one reviewer to overstate the finding.**
+
+### ✅ WHAT LANDED THIS SESSION — the whole Wave-2 enforcement arc
+
+- **Slice L** (`livespec-dev-tooling-z3bk`, PR #633, v0.54.12) — undeclared role key → hard
+  ERROR naming the key and both sanctioned outs; declared-empty → visible sanctioned INFO
+  no-op; declared-non-empty-resolving-to-zero-`.py` → ERROR; `_livespec_core_config`
+  RETIRED. Shipped a shared `checks/_role_key_gate.py` helper rather than 7 copies.
+- **Slice D** (`livespec-dev-tooling-1ys0`, PR #644, v0.54.13) — the declaration-presence
+  check in `just check` plus a fleet-conformance row.
+- **Slice C** (`livespec-dev-tooling-kua4`, PR #648, v0.54.14) — `_IMPL_PREFIXES` derived
+  from the UNION of `source_trees` + `source_tree_prefixes` under a superset-assertion
+  fixture matrix; fixes `rkdg` (driver-claude hook trees gain RGR coverage).
+- **C's prerequisite** (livespec PR #1745) — widened livespec's `source_tree_prefixes` from
+  `dev-tooling/checks/` to `dev-tooling/`, without which C's superset assertion could not
+  pass. All 71 targets green.
+- **FLEET VERIFIED 8/8** on v0.54.14, every row a CI conclusion read on that repo's
+  origin/master: livespec `ca802ffc9`, dev-tooling `d5d5e907e`, driver-claude `23621aa5e`,
+  driver-codex `aa42f829f`, runtime `0347fea3c`, overseer `3a1b4a859`, git-jsonl
+  `414581a4b`, orchestrator-beads-fabro `14c8ace86`.
+
+### ⚠️ FOUR TRAPS THIS SESSION HIT — each cost real time
+
+1. **`gh` 2.46.0 has NO `--json` on `gh pr checks`.** A `--json name,bucket` query returns
+   the literal string "unknown flag", which a script reads as *zero checks, zero failures*
+   across every repo — indistinguishable from a clean board. Parse the TSV
+   (name/state/elapsed/url) instead. A zero-result query is never a green signal.
+2. **A vocabulary-based drift sweep cannot establish completeness.** Two separate misses,
+   both caught by reviewers: `declares NO <key>` and `Default empty array` each evaded a
+   grep built from the phrases the *author* had written rather than the phrases the
+   *document* used. Sweep with a deliberately over-broad net and read the hits.
+3. **The pretooluse background guard DENIES backgrounding gate commands** (`just check*`,
+   `git commit`, `git push`, `gh pr ...`). It fired twice. Run them foreground with a
+   raised timeout — do not restructure around the hook.
+4. **Fan-out ordering race on a NEW canonical slug.** When a dev-tooling release adds a
+   `just check` aggregate slug, livespec's `doctor-wiring-completeness-cross-repo` reads
+   siblings' LIVE master and reds until EVERY sibling has landed its wiring — while
+   livespec's own bump PR is in the same wave. It self-resolved (superseded by the next
+   release wave), but a bump PR reading red mid-fan-out is expected, not a defect.
+   Structural fix is dev-tooling PR #642's owner's, NOT this track's.
+
+### 🔑 THE WORKFLOWS-CREDENTIAL BOUNDARY — expect it on any new CI matrix slug
+
+Slice D implemented correctly in-sandbox but could NOT push its `.github/workflows` CI-matrix
+leg: the Fabro sandbox dispatch credential deliberately lacks the workflows grant, so
+`check-ci-matrix-completeness` failed with `ci-matrix-missing-aggregate-slug`. **Re-dispatching
+hits the identical boundary.** The sanctioned path is an ATTENDED follow-up commit on the
+sandbox's own PR branch (a normal push, not a force-push, not a foreign branch). Any future
+slice adding a canonical slug should carry a STOP-AND-REPORT instruction rather than attempt
+the push.
+
+### 📌 S — WHERE IT STANDS EXACTLY
+
+Worktree `~/.worktrees/livespec-dev-tooling/spec-role-key-declaration-required`, branch
+`spec/role-key-declaration-required`, UNCOMMITTED. The proposal
+(`SPECIFICATION/proposed_changes/role-key-declaration-required.md`) and
+`SPECIFICATION/contracts.md` are both amended.
+
+**Reviews are DONE and both returned BLOCKERS.** The Fable leg capped again (third time),
+so the pre-authorized substitution ran: unprimed dual review, Opus + Sonnet, byte-identical
+read-only briefs. **They found largely DISJOINT defects** — a single reviewer would have
+missed about half.
+
+| # | Finding | Found by | Status |
+|---|---|---|---|
+| 1 | Exemption clause still sanctioned absence | Opus only | ✅ FIXED |
+| 2 | `neutral_hook_body_path` bullet head `string or null` vs its own "no null literal" tail | both | ✅ FIXED |
+| 3 | Seven `Default X` bullets contradict undeclared-is-ERROR; three stated retired-fallback values | Sonnet only | ✅ FIXED |
+| 4 | §"Role keys" universality overclaim | Sonnet only | ⛔ **THE BLOCKING DECISION** |
+
+Both reviewers ruled the stale `Three first-party consumers as of v0.2.x` line NOT a
+blocker (this change edits bullet *content*, not *membership*) — fast-follow, and Opus
+noted the third bullet's "once Phase G.7 wiring lands" is actually CONSISTENT with the new
+regime, since wiring IS the scope trigger.
+
+**Ratification is staged:** `scratchpad/build-revise-json.py` generates the `--revise-json`
+payload. `proposal_topic` must be the FILE STEM (`role-key-declaration-required`), never a
+`## Proposal:` section name — a mismatch exits 3 silently. No `## ` heading changes, so NO
+`tests/heading-coverage.json` co-edit is needed (verified: the coverage map is H2-only).
+
+### 🆕 FILED THIS SESSION
+
+- **`livespec-dev-tooling-eihv` (P2)** — `install_no_shadow_ledger` still keys off ABSENCE
+  while its check now hard-errors on UNDECLARED, so its docstring's claim that the
+  counterpart "no-ops identically" is FALSE as of v0.54.12. A real behavioral asymmetry:
+  the surface that exists to FIX consumer state is silent about exactly the condition the
+  verifier fails on. Two coherent fix options journaled on the item.
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR
+
+1. **The (4) A/B/C ruling** — the sole blocker on S, and therefore on closing the epic.
+2. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+3. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; still pending.
+
+### NEXT WORK (once (4) is ruled)
+
+- Apply the (4) fix, re-run the dual review on the changed text only, drive
+  `/livespec:revise` with `--post-step-doctor`, confirm `history/vNNN`.
+- Close `livespec-dev-tooling-e9j` — it is the ONLY item still open in the epic; all slice
+  items (L0 `4thg`, L0b `d7gi`, L `z3bk`, D `1ys0`, C `kua4`, B-dt `iroq`) and all 8
+  cross-tenant backfills are already CLOSED.
+- Fast-follow: re-derive the `Three first-party consumers as of v0.2.x` list against the
+  current fleet manifest (also fixes the pre-rename `livespec-impl-git-jsonl` name).
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-25 (FIFTH session)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
