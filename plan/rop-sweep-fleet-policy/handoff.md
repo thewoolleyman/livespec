@@ -1,6 +1,107 @@
-# rop-sweep-fleet-policy — e9j Wave-2 enforcement (L + D + C) is MERGED and fleet-verified 8/8 green; only the SPEC ratification (S) remains, and it is HELD on ONE supervisor decision
+# rop-sweep-fleet-policy — e9j Wave-2 (L+D+C) MERGED and fleet-verified 8/8; slice S is drafted, four-times-reviewed, COMMITTED AND PUSHED, and HELD on ONE supervisor ruling: the exit-code direction
 
-## ✅ STATE AS OF 2026-07-25 (SIXTH session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-25 (SIXTH session, wrap) — READ FIRST; everything below is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🎯 THE ONE THING TO DO FIRST — get the exit-code ruling, then finish S in one pass
+
+Everything in the e9j epic is done EXCEPT ratifying the spec (S). S is fully drafted and has
+survived FOUR independent review rounds. It is blocked on ONE decision the worker deliberately
+did NOT make, because two reviewers reached opposite conclusions on it.
+
+**THE WORK IS SAFE AND OFF-HOST.** Branch `spec/role-key-declaration-required` in
+**`livespec-dev-tooling`**, commit `bc3a961`, PUSHED to origin. Worktree
+`~/.worktrees/livespec-dev-tooling/spec-role-key-declaration-required`. Nothing is
+uncommitted. **`/livespec:revise` has NOT run; there is no `history/vNNN` yet.**
+
+**THE BLOCKING DECISION — the exit code for `no_shadow_ledger_body_identical`.**
+Round-3 Opus said the documented `exit 4` was false and must become `1`. That was applied, and
+the branch currently carries `1` at `contracts.md:180/189/190`. Round-4 Opus then said applying
+it was WRONG and recommended reverting to `4`. Facts verified directly, not relayed:
+
+- The module ships `_FAIL_EXIT = 1`, but its OWN docstring (line ~24) still says `` `4` — fail ``
+  — the code contradicts itself.
+- Every other check documented in `contracts.md` uses `4`; `plugin_resolution` and
+  `primary_checkout_commit_refuse_hook_installed` genuinely ship `_FAIL_EXIT = 4`. The `1` is a
+  lone outlier.
+- `contracts.md`'s Exit-code table defines `1` = "internal bug (uncaught exception)",
+  `4` = "check failed (structured findings)".
+- §"Semver discipline" (`contracts.md:591`) pins each slug's **exit-code semantics** as
+  semver-stable; the `1` shipped in a 0.x patch with no acknowledgment.
+- The exit-code edit is **not declared** in any of the proposal's EDITs 1–6.
+
+**The worker's recommendation: REVERT to `4`.** The shipped `1` looks like an undeclared slice-L
+side effect, not a deliberate contract change. Documenting it as `1` would ratify a defect and
+destroy the spec's ability to name it; leaving the spec at `4` keeps the contract correct and
+makes the CODE the thing that is wrong — already filed as `livespec-dev-tooling-1aba`.
+**If the ruling is instead spec-follows-code**, then the Exit-code table AND the semver clause
+must be amended in the SAME change and declared as an EDIT — not left contradicting.
+
+**THE FINISHING SEQUENCE** once ruled:
+1. Apply the ruling (if "revert to 4": change `contracts.md:180/189/190` back).
+2. **Re-review the FINAL bytes** — dual-model, read-only, unprimed. Never ratify on a stale
+   review (see the trap below; this bit once already).
+3. On NO-BLOCKERS → `/livespec:revise --revise-json <payload> --post-step-doctor`.
+   `proposal_topic` MUST be the FILE STEM `role-key-declaration-required`, never a
+   `## Proposal:` section name — a mismatch exits 3 SILENTLY. Payload schema:
+   `.claude-plugin/scripts/livespec/schemas/revise_input.schema.json`; `resulting_files[].path`
+   is spec-target-relative (`contracts.md`, NOT `SPECIFICATION/contracts.md`) and `content` is
+   the FULL post-update file.
+4. **No `tests/heading-coverage.json` co-edit is needed** — verified by three reviewers: no
+   `## ` H2 is added/renamed/removed (the one new heading is H3), and the coverage map is
+   H2-only.
+5. Close `livespec-dev-tooling-e9j` with live evidence. It is the ONLY item left open in the
+   epic — L0 `4thg`, L0b `d7gi`, L `z3bk`, D `1ys0`, C `kua4`, B-dt `iroq` and all 8
+   cross-tenant backfills are already CLOSED.
+
+### ⚠️ THE REVIEW LESSON THIS SESSION PAID FOR — read before touching the text
+
+Four rounds, **16 distinct defects, every one in text the worker authored**, and **three of them
+introduced by the worker's own fixes**. None was catchable by CI or `just check`.
+
+1. **A vocabulary-based drift sweep CANNOT establish completeness.** Three separate misses —
+   `declares NO <key>`, `Default empty array`, `defaulting to empty` — each evaded a grep built
+   from the phrases the AUTHOR wrote rather than the phrases the DOCUMENT uses. Sweep with a
+   deliberately over-broad net and READ the hits.
+2. **A fix can be worse than the defect.** A round-2 fix added `repo` to a "NOT members"
+   enumeration, cementing the claim that a key the loader never parses is loader-backed. A
+   round-3 fix corrected a bullet's lead-in but left three superseded sentences standing, so the
+   bullet asserted both "never parses this key" and "When null, the check resolves…".
+3. **Never string-replace a sentence that appears more than once.** An exit-code fix used
+   `replace(..., 1)` on a sentence appearing verbatim in THREE module descriptions and silently
+   corrupted the wrong one (`primary_checkout_commit_refuse_hook_installed`, which correctly
+   ships `4`). Repair by line number after verifying each module's real value.
+4. **Concurrent reviewers verdict-clear only the bytes they SAW.** Round 3 ran two reviewers on
+   identical bytes; one returned NO-BLOCKERS, the other found three defects. Fixing those three
+   left the text cleared by NOBODY. A NO-BLOCKERS from a concurrent peer is NOT a clearance of
+   post-fix bytes.
+
+### 🆕 FILED THIS SESSION (all verified before filing, none relayed from a review)
+
+- **`livespec-dev-tooling-eihv` (P2)** — `install_no_shadow_ledger` keys off ABSENCE while its
+  check hard-errors on UNDECLARED. Scope extended: `no_shadow_ledger_body_identical`'s OWN
+  docstring is also stale against its own code. Root cause journaled: the installer tests
+  `is None` (so declared-`""` and undeclared are indistinguishable to it) while the check
+  consults `config.declared_keys`.
+- **`livespec-dev-tooling-1aba` (P2)** — the Exit-code table says `1` = internal bug while
+  several checks return `1` for genuine structured failures. **This is the item the blocking
+  decision above feeds into.**
+- **`livespec-dev-tooling-1a6w` (P3)** — `contracts.md`'s "Three first-party consumers as of
+  v0.2.x" is stale (manifest lists 9; one name is pre-rename). Records what is NOT a defect:
+  the third bullet's "once Phase G.7 wiring lands" is CONSISTENT with the new regime, because
+  wiring IS the scope trigger — "fixing" it would regress.
+
+### 👤 WHAT NEEDS A HUMAN / SUPERVISOR
+
+1. **The exit-code ruling** — the sole blocker on S, and therefore on closing e9j.
+2. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (unchanged, still outstanding).
+3. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; still pending.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-25 (SIXTH session, mid-session)
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
