@@ -217,6 +217,7 @@ check:
         check-private-calls
         check-public-api-result-typed
         check-red-green-replay
+        check-required-role-keys-declared
         check-rop-pipeline-shape
         check-self-hosted-routing
         check-skill-invocation-paths
@@ -1087,3 +1088,6 @@ check-plan-thread-epic-parity:
 
 check-no-shadow-ledger-body-typechecks:
     uv run python -m livespec_dev_tooling.checks.no_shadow_ledger_body_typechecks
+
+check-required-role-keys-declared:
+    uv run python -m livespec_dev_tooling.checks.required_role_keys_declared
