@@ -673,13 +673,15 @@ status store.*
   amendment is a pending proposed change in `livespec-overseer`'s own
   `SPECIFICATION/proposed_changes/` (filed via its PR #44), awaiting
   `/livespec:revise` there with the required independent review.
-- **Slice 4 FILED (not yet ratified) — §11.6's "deliberately LAST" precondition
-  met.** Both upstream one-liners were routed through `/livespec:propose-change`
-  AFTER the skill existed and had produced a real artifact: livespec core
-  PR #1724 (`SPECIFICATION/proposed_changes/supervisor-handoff-hosted-control-plane-artifact-in-plan-threads.md`)
-  and `livespec-orchestrator-beads-fabro` PR #920
-  (`SPECIFICATION/proposed_changes/supervisor-handoff-hosted-artifact-in-the-thread-store.md`).
-  Ratification remains human-gated at `/livespec:revise` in each repo.
+- **Slice 4 RATIFIED (2026-07-25).** Both upstream one-liners were routed
+  through `/livespec:propose-change` AFTER the skill existed and had produced a
+  real artifact (filed as livespec core PR #1724 and
+  `livespec-orchestrator-beads-fabro` PR #920, each earning a NO-BLOCKERS
+  independent review), then maintainer-accepted through the `/livespec:revise`
+  per-proposal dialogue: livespec core **v175** (PR #1731) and
+  `livespec-orchestrator-beads-fabro` **v048** (PR #937, including the
+  `prose/plan.md` third-bullet co-edit). The two-facet enumerations and the
+  live hosted artifact now agree.
 - **Slice 3 (+3a) fourth-cell precondition DISCHARGED** — the maintainer
   decided the §11.4 cell on 2026-07-24 (Surface A, worded as a capture offer;
   recorded on epic `overseer-3wt`); slice 3 is now fileable in
@@ -691,6 +693,6 @@ status store.*
   because it had no `tmp/` charter to migrate.
 
 The §11.6 "Next action" paragraph is discharged; the remaining maintainer
-surface is: the three pending ratifications (slices 2 and 4, the slice-4 pair
-carrying NO-BLOCKERS independent reviews from 2026-07-24), filing and building
-slice 3 in `livespec-overseer`, and dispatching `overseer-tvko3z` (slice 5).
+surface is: slice 2's pending ratification in `livespec-overseer` (its own
+independent review still owed), filing and building slice 3 there, and
+dispatching `overseer-tvko3z` (slice 5).
