@@ -91,10 +91,62 @@ filed, because it is core's surface and the call is the maintainer's.
 1. **Delete the orphan branch `spec/rop-loop-iteration-marker`** (still outstanding, many sessions).
 2. **`livespec-dev-tooling-4er` (P1)** — ruled conformance blast-radius fix; still pending.
 
-### NEXT WORK
+### 🛑 SESSION ENDED CLEAN — nothing is in flight, and there is no resume state
 
-Nothing on e9j. The five follow-ups above are independent and unblocked. `pure_trees` arming stays
-gated on `livespec-mutreal.1`.
+The seventh session wound down deliberately at a finished point. Verified at wind-down:
+
+- `/data/projects/livespec` and `/data/projects/livespec-dev-tooling` both on `master`, in sync with
+  `origin/master`, no uncommitted tracked changes. (One untracked file in dev-tooling,
+  `install-livespec-pr-bot.png`, PRE-DATES this track — not ours, do not clean it up.)
+- **No worktrees or branches belonging to this track exist.** Both were reaped
+  (`spec/role-key-declaration-required` and `docs/rop-sweep-s-ratified`). Other worktrees under
+  `~/.worktrees/livespec-dev-tooling/` belong to OTHER tracks — **do not reap them.**
+- No background agents, monitors, or subprocesses left running.
+- Nothing is half-landed: every PR this track opened is merged.
+
+**So there is no work to resume.** Do not go looking for an interrupted task; there isn't one.
+
+### 🎯 WHAT TO DO FIRST IN A FRESH SESSION
+
+**Do NOT re-verify or re-open `e9j`.** It is closed and its evidence is journaled on the item. The
+single most likely way to waste an hour here is to treat this thread as unfinished because it is
+long.
+
+This plan thread has **no remaining work of its own**. A fresh session should either:
+
+1. **Take direction from the supervisor / maintainer** on what to pick up next — that is the
+   expected path, since this track's epic is complete; or
+2. **If told to continue autonomously**, pick from the five follow-ups filed below (`njyx`, `tljy`,
+   `3q2c`, `rgt8`, `ct9`). They are independent, unblocked, and each carries its own measured
+   evidence and fix shape. Re-read the item with `bd show` first — every one records something that
+   is NOT a defect and must not be "fixed", and at least two record a trap that would send a naive
+   fix in the wrong direction.
+
+**Two items that are NOT this track's and need a human, unchanged across many sessions:** delete the
+orphan branch `spec/rop-loop-iteration-marker`, and `livespec-dev-tooling-4er` (P1, ruled conformance
+blast-radius fix).
+
+**One thing deliberately left unfiled, needing the maintainer's call:** the livespec CLI
+auto-backfill hazard described above. It is livespec CORE's revise/doctor surface, not
+dev-tooling's, so filing cross-repo against it was judged the maintainer's decision rather than a
+worker's. The reproduction is in this document; if the maintainer wants it filed, it is a
+straightforward write-up.
+
+`pure_trees` arming stays gated on `livespec-mutreal.1`.
+
+### 📁 WHERE THE DURABLE RECORD LIVES (this file is a summary, not the source of truth)
+
+Everything load-bearing was written where it survives this thread — read those, not this summary,
+before acting on any of it:
+
+- **The ratified contract** — `livespec-dev-tooling` `SPECIFICATION/contracts.md` §"Role keys",
+  §"Declaration-presence enforcement", §"Default layout fallback", plus the full decision record at
+  `SPECIFICATION/history/v032/proposed_changes/role-key-declaration-required.md` and its paired
+  `-revision.md`. The ratification record deliberately carries the review narrative, the two
+  spec-ahead-of-code divergences, and the reasoning behind each deferral.
+- **The epic's tracking journal** — `bd show livespec-dev-tooling-e9j` (closed; its notes are the
+  authoritative cross-tenant surface for the whole arc).
+- **Each follow-up's evidence** — on its own ledger item, not here.
 
 ---
 
