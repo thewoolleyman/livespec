@@ -81,7 +81,7 @@ failures), and my first extraction returned a confident **"0 broken"** because t
 the closing backtick before `§` — a sweep that agrees with nothing should be suspected before it is
 believed.
 
-### 🆕 `livespec-dev-tooling-ldyb` (P2) — a THIRD unsatisfiable gate, found the same way
+### ✅ `livespec-dev-tooling-ldyb` (P2) — CLOSED; the third unsatisfiable gate is fixed
 
 Attempting `tljy`'s `__init__.py` clause was blocked: `check_coverage_incremental` demands a
 mirror-paired test for every changed impl `.py` and has **no docs-only carve-out**, so a
@@ -90,10 +90,18 @@ and `__all__`) cannot be pushed. `just check` passed 63/63 and the commit succee
 commit-time gate correctly waived itself — and then the PRE-PUSH gate failed. The change was
 abandoned, not forced.
 
-The asymmetry IS the defect: `commit_pairs_source_and_test` has exactly this carve-out
-(`_is_docs_only_change`); its sibling does not. Recommended fix is to port the existing helper, not
-invent a second rule. **Do NOT create a test file for `__init__.py` to satisfy it** — that is the
-fabrication this repo bans.
+The asymmetry WAS the defect: `commit_pairs_source_and_test` had exactly this carve-out; its
+sibling did not. **FIXED in PR #674** by extracting the rule into a shared
+`checks/_docs_only_change.py` consumed by both, parameterized by full `<ref>:<path>` specs since
+the two callers compare different revision pairs (HEAD-vs-index; `origin/master`-vs-HEAD). No test
+file was fabricated for `__init__.py`.
+
+**Live-exercised by the very change that was blocked** — the strongest evidence available: the same
+docstring edit that had failed at pre-push now derives clean and pushed, landing as PR #677. That
+also discharges `tljy`'s named `__init__.py` clause. Two ride-along facts worth keeping: this
+repo's pyright treats an unused import as an ERROR (a moved-helper refactor trips it every time),
+and both consumers' suites pass together, so the extraction is behavior-preserving for the
+sibling.
 
 That makes **three gates in one family** found this session, all by the same route — a correct,
 minimal change that no honest commit could land: the non-Python pairing gap (fixed, PR #671), this
@@ -340,8 +348,8 @@ drive directly; an empty queue looks like a busy factory):
 - **`tljy`** (P2, livespec-dev-tooling) — RESEARCH DONE this session (every rotted citation now
   has a confirmed target, journaled on the item), but it is really THREE items: 11 spec-file
   citations needing ratification, a ~120-site code-side sweep blocked at its first site by the new
-  `ldyb`, and the `external_references` allowlist that is the structural fix. Recommend re-cutting
-  into three — see the section above.
+  `ldyb` (now CLOSED — its `__init__.py` clause LANDED, PR #677), and the `external_references`
+  allowlist that is the structural fix. Recommend re-cutting into three — see the section above.
 - **`3q2c`** (P2, livespec-dev-tooling) — readiness-checked and DELIBERATELY NOT STARTED. It is a
   `contracts.md` change, so it needs the propose-change + independent adversarial review path, and
   its acceptance asks for a mechanical guard ("prefer deriving over asserting"). Note the ordering
