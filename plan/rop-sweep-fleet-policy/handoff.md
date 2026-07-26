@@ -52,6 +52,54 @@ on that ruling:
   Good news for sequencing: this is the NARROWEST case in `x6t6`'s option space, so it is covered
   by **all three** options and needs no ruling of its own.
 
+### 🔬 `tljy` — RESEARCH DONE, but it is THREE items wearing one hat
+
+The hard half of `tljy` is finished and journaled on the item: **every rotted citation now has a
+confirmed target**, verified by reading livespec core, none guessed. Two of them are worth knowing
+before anyone re-derives them — §"Primary-checkout commit-refuse hook" is not a heading at all but
+a BOLD RULE under §"Workflow discipline — spec-side changes" (core's own `contracts.md:151` cites
+it that way, so copy core's form), and §"Vendor manifest" has the wrong FILE as well as the wrong
+heading (it lives in core `constraints.md` §"Locked vendored libs").
+
+**But the item is undercounted and mis-shaped.** A mechanical extraction over the whole tracked
+tree found **17** broken citations, not 8 — including a five-file cluster on §"CLI end-to-end
+harness contract" (renamed to §"E2E harness contract") that the item never mentions. And it is
+really three pieces with three different blockers:
+
+1. **11 citations in governed spec files** — needs the RATIFICATION path. Now mechanical, given
+   the mapping.
+2. **The code-side §"…" rule — roughly 120 sites**, not one. Fixing `__init__.py` did not clear the
+   doctor finding; it surfaced the next one (`canonical_checks.py`, citing a `.ai/` doc, which a
+   SPECIFICATION-only sweep misses entirely). The check reports one at a time, so this is an
+   iterative sweep of the package.
+3. **The `external_references` allowlist** — the structural fix, and the only part that stops (1)
+   from rotting again.
+
+Recommend re-cutting into three. **Two instrument lessons paid for here:** a line-based extractor
+misses citations WRAPPED across lines (`__init__.py`'s is, and it is one of the two live doctor
+failures), and my first extraction returned a confident **"0 broken"** because the pattern ignored
+the closing backtick before `§` — a sweep that agrees with nothing should be suspected before it is
+believed.
+
+### 🆕 `livespec-dev-tooling-ldyb` (P2) — a THIRD unsatisfiable gate, found the same way
+
+Attempting `tljy`'s `__init__.py` clause was blocked: `check_coverage_incremental` demands a
+mirror-paired test for every changed impl `.py` and has **no docs-only carve-out**, so a
+docstring-only edit to a module with no behavior to test (`__init__.py` carries only a docstring
+and `__all__`) cannot be pushed. `just check` passed 63/63 and the commit succeeded — the
+commit-time gate correctly waived itself — and then the PRE-PUSH gate failed. The change was
+abandoned, not forced.
+
+The asymmetry IS the defect: `commit_pairs_source_and_test` has exactly this carve-out
+(`_is_docs_only_change`); its sibling does not. Recommended fix is to port the existing helper, not
+invent a second rule. **Do NOT create a test file for `__init__.py` to satisfy it** — that is the
+fabrication this repo bans.
+
+That makes **three gates in one family** found this session, all by the same route — a correct,
+minimal change that no honest commit could land: the non-Python pairing gap (fixed, PR #671), this
+one (filed), and the earlier boundary-cardinality under-enforcement. Treat "a gate that cannot be
+satisfied by a correct change" as a recurring shape in this repo, not a one-off.
+
 ### 🔁 A PATTERN THIS SESSION HIT THREE TIMES — trust a work-item's EVIDENCE, not its PRESCRIPTION
 
 `x6t6`'s stated fix shape was falsified by reading the live site. `rgt8` named two stale artifacts
@@ -289,11 +337,11 @@ drive directly; an empty queue looks like a busy factory):
   naive running-as derivation would scope them to dev-tooling-only findings and neuter the fleet
   view — it needs an explicit invocation-surface distinction, "a declared mode with two legitimate
   callers, not a lever".
-- **`tljy`** (P2, livespec-dev-tooling) — the only group-B item left un-started. Eight rotted
-  cross-repo citations into livespec core; root cause is that the repo declares no
-  `external_references` block, so cross-repo citations are unvalidated rather than validated. Two
-  of the eight are the ONLY doctor failures on this repo and are **PRE-EXISTING** (proven by
-  reproducing them on a clean master checkout). Not readiness-checked this session.
+- **`tljy`** (P2, livespec-dev-tooling) — RESEARCH DONE this session (every rotted citation now
+  has a confirmed target, journaled on the item), but it is really THREE items: 11 spec-file
+  citations needing ratification, a ~120-site code-side sweep blocked at its first site by the new
+  `ldyb`, and the `external_references` allowlist that is the structural fix. Recommend re-cutting
+  into three — see the section above.
 - **`3q2c`** (P2, livespec-dev-tooling) — readiness-checked and DELIBERATELY NOT STARTED. It is a
   `contracts.md` change, so it needs the propose-change + independent adversarial review path, and
   its acceptance asks for a mechanical guard ("prefer deriving over asserting"). Note the ordering
