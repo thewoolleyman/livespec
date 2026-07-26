@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — the loop-iteration exemption is RULED OUT, not mechanized; x6t6 dissolves, one epic and ten items are filed, and 4er is ordinary implementation work
+# rop-sweep-fleet-policy — the loop-iteration exemption is RULED OUT, not mechanized; x6t6 dissolves, one epic and TWELVE items are filed, and 4er is ordinary implementation work
 
 ## 🔔 STATE AS OF 2026-07-26 (NINTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
 
@@ -84,7 +84,7 @@ cases, and both are already covered by narrow catches below it:
 So once the six leaks close, **bugs are the only exception class that can reach line 2779** — which
 is exactly the condition under which "let it crash" is the correct posture.
 
-### 📋 WHAT WAS FILED — one epic and ten items across three tenants
+### 📋 WHAT WAS FILED — one epic and TWELVE items across FOUR tenants
 
 **Epic: `overseer-bg2`** (livespec-overseer tenant) — "Remove the daemon loop-iteration broad-catch
 exemption and arm livespec-overseer enforcement — rop-sweep ruling 2026-07-26". **`livespec-dev-tooling-e9j`
@@ -107,6 +107,11 @@ blocks dispatch (the y21 lesson recorded on `livespec-dev-tooling-e9j`).
 | 8 | `livespec-dev-tooling-426a` | 1 | Retire the `file_lloc_hard_gate` opt-in fleet-wide. |
 | 9 | `livespec-dev-tooling-i532` | 2 | Derive the ROP-check universe from the git index. |
 | 10 | `livespec-dev-tooling-1khe` | 2 | Close `x6t6` as dissolved; re-scope `jjb` (2) and (3). |
+| 11 | `livespec-dev-tooling-5s6o` | 1 | Retire the marker from the closed set; INVERT its test. Land WITH or BEFORE #7. |
+| 12 | `livespec-driver-claude-jzy` | 2 | Fix the hand-copied closed marker set (livespec-driver-claude tenant). |
+
+Items 11 and 12 were authorized after being surfaced as unfiled gaps in the original approved set
+of ten; item 12 is what makes the tenant count four rather than three.
 
 ### ⚠️ SCOPE CORRECTIONS FOUND WHILE FILING — each verified against live state
 
@@ -147,21 +152,52 @@ for a different gate: the always-on `check-no-lloc-soft-warnings` flags the soft
 when `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` is set, which CI sets for the RELEASE context. So
 that file blocks a RELEASE; the other six block item 4.
 
-### 🕳️ TWO GAPS IN THE APPROVED SET — surfaced, NOT filed, awaiting authorization
+### ✅ THE TWO GAPS ARE NOW AUTHORIZED AND FILED — items 11 and 12
 
-Recorded on the epic so they cannot be lost. Neither is filed.
+These two were surfaced during the original filing pass, deliberately held back because they were
+not in the approved set of ten, and recorded on the epic so they could not be lost. Both are now
+authorized and filed, which is what takes the epic to TWELVE items across FOUR tenants.
 
-- **GAP 1 — load-bearing.** `livespec-dev-tooling` still **ACCEPTS** the retired marker:
-  `livespec_dev_tooling/checks/_no_except_outside_io_markers.py` defines `_LOOP_ITERATION_WORDING`
-  in the closed conforming set, and
+- **Item 11 — `livespec-dev-tooling-5s6o` (P1), the load-bearing one.** `livespec-dev-tooling` still
+  **ACCEPTS** the retired marker: `livespec_dev_tooling/checks/_no_except_outside_io_markers.py`
+  defines `_LOOP_ITERATION_WORDING` in the closed conforming set, and
   `tests/livespec_dev_tooling/checks/test_no_except_outside_io.py` actively asserts a loop-iteration
   catch does NOT consume the artifact's boundary slot. **If item 7 lands alone, the enforcement
-  suite sanctions exactly what the ratified spec forbids.** That test must be INVERTED, not deleted.
-  It also interacts with item 9: git-deriving the check universe arms the check over the overseer
-  package, and while the wording stays in the closed set the catch would still PASS on wording
-  grounds.
-- **GAP 2.** `livespec-driver-claude` `tests/hooks/test_rop_policy.py` enumerates the closed marker
-  set, so retiring the wording breaks that repo on its next pin bump.
+  suite sanctions exactly what the ratified spec forbids** — so item 11 must land **WITH or BEFORE**
+  item 7. That test must be **INVERTED, not deleted**: a deleted test silently stops proving
+  anything, while an inverted one proves the marker is now rejected. It also interacts with item 9:
+  git-deriving the check universe arms the check over the overseer package, but while the wording
+  stays in the closed set the catch at `supervisor.py:2779` would still PASS **on wording grounds**.
+  Hold the two axes apart — that catch is non-conforming by POSITION, and after item 11 also by
+  WORDING.
+- **Item 12 — `livespec-driver-claude-jzy` (P2).** `livespec-driver-claude`
+  `tests/hooks/test_rop_policy.py:49-55` defines `_STANDARD_BLE001_MARKERS` as a five-member set
+  literal with the retired wording at line 53.
+
+**CORRECTION — item 12 does NOT break on a pin bump, and that matters.** The authorization described
+it as breaking that repo "on its NEXT PIN BUMP". Verified against that repo's `origin/master`, it
+does not:
+
+- `_STANDARD_BLE001_MARKERS` is a **purely local Python set literal**; `_no_except_outside_io_markers`
+  and `_LOOP_ITERATION_WORDING` are referenced NOWHERE in that repo, so nothing derives from upstream.
+- It is consumed at line 120 as `assert marker in _STANDARD_BLE001_MARKERS` — a membership
+  **allowlist** over that repo's own shipped hooks, not a parity assertion against an upstream set.
+- No shipped hook in that repo uses the loop-iteration marker.
+
+So retiring the wording upstream leaves that test **PASSING** — nothing goes red, on a pin bump or
+otherwise. **That is precisely why it needed filing: the failure is SILENT, not loud.** The real
+defect is a latent false-GREEN: after the retirement the local set still ACCEPTS a marker the
+ratified specification forbids, so the very test whose job is to police marker conformance would
+approve it, with no signal. This is the "negative assertions about sibling-owned surfaces that rot
+without notice" latent-defect class in `.ai/spec-proposal-review.md`.
+
+Two consequences. **Sequencing:** item 12 has no ordering constraint against items 7 or 11 — nothing
+breaks in any order — but landing it early closes the window in which that repo's guard is weaker
+than the contract it guards. **Structural fix:** deleting line 53 leaves the root cause, a
+hand-maintained duplicate of a closed set owned in another repo. Deriving the set from
+`livespec-dev-tooling` is preferred and architecturally sanctioned — the No-Circular-Dependency
+Directive permits a consumer-side read of the producer, and that repo's tests already import
+`livespec_dev_tooling.install_no_shadow_ledger` and `livespec_dev_tooling.testing.cli_e2e`.
 
 **Fleet blast radius of the marker retirement, measured across `origin/master` of all nine repos:
 exactly ONE live code site** — `livespec-overseer` `overseer/supervisor.py:2779`. Everything else
@@ -193,7 +229,7 @@ override it.
    which corrects the incoming instruction that group B was "tljy, 3q2c, and ct9". Both survivors
    are `backlog`, so nothing picks them up automatically.
 
-### 🛑 SESSION STATE — the ten items are FILED, none is STARTED
+### 🛑 SESSION STATE — all TWELVE items are FILED, none is STARTED
 
 **Scope of this session was filing plus this plan update. No item was implemented.** In particular:
 
@@ -220,8 +256,10 @@ override it.
    discharged. Default the declared mode to STRICT fleet-view so a forgotten flag fails safe; the
    per-PR CI job opts into member scoping.
 
-**Ask before filing GAP 1 and GAP 2** — they are required follow-ons but were not in the approved
-set.
+**Item 11 (`livespec-dev-tooling-5s6o`) must land WITH or BEFORE item 7** — do not ratify the spec
+narrowing while the enforcement suite still accepts the retired marker. Nothing else in the twelve
+carries an ordering constraint that is not already a typed local dependency row or stated on its own
+item.
 
 `pure_trees` arming stays gated on `livespec-mutreal.1`.
 
