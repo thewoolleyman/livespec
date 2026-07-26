@@ -1,6 +1,203 @@
-# rop-sweep-fleet-policy — bg2.3 is three-fifths done; bg2.4's REAL blockers are now four filed items, not the LLOC split
+# rop-sweep-fleet-policy — bg2.3 is down to ONE file; supervisor.py is a decomposition project, analysed and NOT started
 
-## 🔔 STATE AS OF 2026-07-26 (ELEVENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (TWELFTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ SIX PRs MERGED — `bg2.3` is four of five files done
+
+| Slice | File | Before | After | PR |
+|---|---|---|---|---|
+| 3 | `test_registry.py` | 526 | 4 modules, 78-171 | #138 |
+| 4 | `registry.py` | 538 | façade 55 + 4 modules, 123-155 | #141 |
+| 7 | `test_signals.py` | 218 | 3 modules, 13-123 | #142 |
+| 6a | `test_supervisor.py` helpers | — | fakes 103 + builders 129 | #145 |
+| 6b | `test_supervisor.py` | 3010 | **24 modules, max 158** | #147 |
+| — | handoff (eleventh session) | — | — | livespec #1776 |
+
+All green, `just check` 61/61, coverage 100%.
+
+**`just check-file-lloc` on `livespec-overseer` master now reports EXACTLY ONE file:
+`overseer/supervisor.py`, 1350 LLOC.** Nothing else breaches either ceiling.
+
+### 🚨 `supervisor.py` IS A DECOMPOSITION PROJECT — analysed in full, deliberately NOT started
+
+Do not approach this like the other slices. Measured on master:
+
+| Part | LLOC |
+|---|---|
+| module-level code (everything outside the class) | 289 |
+| `class Supervisor` (lines 593-2815), 55 methods | 1021 |
+| **total** | **1350** |
+
+A class cannot span modules, and this repo **bans inheritance** (Protocol only), so mixins are out.
+
+**The binding constraint:** `evaluate()` is **196 LLOC by itself**, and its own docstring records a
+**maintainer ruling of 2026-07-19** that cutting its decision cascade into per-state helpers was
+*considered and REJECTED* — it would scatter the precedence order across call sites where no reader
+can verify it in one pass. It carries `noqa: C901,PLR0911,PLR0912,PLR0915` on that basis. **The
+cascade stays intact.**
+
+**The arithmetic that follows is brutal.** `supervisor.py` must end ≤250 LLOC while retaining the
+class shell + `__init__` + `evaluate` (196). That leaves ~30-50 LLOC for everything else — so **~54
+of the 55 methods (825 LLOC) AND all 289 LLOC of module-level code must move out.** This is a
+near-total decomposition of the daemon's core.
+
+**Do it as TWO items, not one:**
+
+- **STEP 1 — low risk, self-contained, do it first.** Extract the 289 LLOC of MODULE-LEVEL code
+  into private siblings, leaving the class untouched. The groups are already visible in the file:
+  `_supervisor_prompts.py` (~25: wrap-up / idle-nudge text, `default_handoff`, `default_resume`),
+  `_supervisor_view.py` (~40: ANSI colours, `_STATUS_COLOR`, `_row_color`, `_elide`, `RowView`,
+  `needs_attention`, `_tmux_cell`, `ATTENTION_STATUSES`), `_supervisor_cli.py` (~118:
+  `build_supervisor`, `run_daemon`, `_cmd_*`, `_add_track_args`, `main`), `_supervisor_config.py`
+  (~45: tuning constants, `_key`, `_iso_now`, `default_gitignore_check`, `_SUPERVISION_CONDITIONS`,
+  `_InjectState`, `_Observation`). Drops 1350 → **~1080**. Still over the ceiling, so it does NOT
+  close `bg2.3` — but it is low-risk, independently reviewable, and builds the exact module
+  structure step 2 needs.
+- **STEP 2 — the real work.** Extract ~54 methods as FREE FUNCTIONS in `_supervisor_<topic>.py`,
+  per the fleet precedent: `livespec-orchestrator-beads-fabro` flipped this same gate by
+  decomposing its 2616-line `dispatcher.py` into a 13-line `bin/` entry + a 372-line
+  `commands/dispatcher.py` + **76** `_dispatcher_<topic>.py` collaborator modules of free functions
+  with explicit `__all__`, dependencies passed as parameters, no inheritance. The class's own
+  internal banners give the grouping: output/logging, discovery+rows, evaluation, recovery+launch,
+  render, tick, run/lifecycle.
+
+> **THE HAZARD IN STEP 2, and it is the whole difficulty.** Every extracted free function that calls
+> `self._something` becomes a CROSS-MODULE PRIVATE CALL. pyright-strict's `reportPrivateUsage`
+> rejects it AND `check-private-calls` flags the attribute form — so each shared member must ALSO
+> become public, which is a large, visible API change to the daemon's core, not a mechanical move.
+> **Budget for that explicitly rather than discovering it mid-refactor.** Tests are exempt (pyright
+> excludes `overseer/test_*.py`); production is not.
+
+**The consumer surface is narrow, which helps.** Production reaches only THREE symbols —
+`supervisor.Supervisor`, `supervisor.build_supervisor`, `supervisor.run_daemon` (from
+`overseer/daemon.py` and `overseer/start.py`). Console scripts are `overseer.daemon:main` and
+`overseer.start:main`, **not** `supervisor:main`, so `supervisor.main` is free to move behind a
+façade. `check-main-guard` does not constrain this — it is role-scoped to `.claude-plugin/scripts/`.
+Six methods touch NO `self` and are trivially extractable: `_attention_lines`,
+`_release_singleton_lock`, `_codex_launch_command`, `_surface`, `_log`, `_launch_command`.
+
+**DO NOT START STEP 2 WITHOUT A FRESH CONTEXT BUDGET.** A half-decomposed `Supervisor` is far worse
+to inherit than an undecomposed one.
+
+### 🚨 `bg2.3` STILL DOES NOT UNBLOCK `bg2.4` — four filed blockers, unchanged
+
+Arming produces **690 error-level diagnostics across four checks**, entirely separate from the LLOC
+work. Measured by temporarily setting `source_trees` + `covered_trees`, running full `just check`,
+then reverting.
+
+| Id | Check | Errors (prod/test) | P |
+|---|---|---|---|
+| `overseer-bg2.7` | `check-all-declared` | 30 (11/19) | 1 |
+| `overseer-bg2.8` | `check-no-inheritance` | 1 (0/1) | 2 |
+| `overseer-bg2.9` | `check-keyword-only-args` | 614 (181/433) | 1 |
+| `livespec-dev-tooling-h65n` | `check-private-calls` carve-out | 45 (0/45) | 2 |
+
+The three local ones are typed `depends_on` rows on `bg2.4`; `h65n` is cross-tenant and journaled
+on `overseer-bg2` in **prose only** (a pseudo-id row parses as a local dependency and blocks
+dispatch — the y21 lesson).
+
+**`bg2.9` must land AFTER the `bg2.3` splits** — it touches 614 signatures in the same files.
+
+**The `pyproject.toml` comment's named hazard is STALE:** it warns about the Result-railway checks,
+which now produce ZERO errors since `bg2.1`/`bg2.2`. Do not plan `bg2.4` from it.
+
+### 🔧 THE SPLIT PATTERN — six slices in, this is what actually works
+
+1. **Sweep for EXTERNAL importers before touching anything.** One grep. Skipping it in #145 cost a
+   pytest collection failure — five modules outside the file imported its helpers, and **ruff
+   cannot see a broken cross-module import, so it reports all-clean**.
+2. **Pack at DEFINITION level, not section level.** An oversized section then sub-splits at a
+   function boundary automatically instead of needing a hand-picked seam.
+3. **Pack BALANCED, not greedy.** Greedy fills to the cap and leaves the tail as a runt — it
+   produced a 22-LLOC module. Choose the module COUNT first, pack to the resulting average.
+4. **Cap the packer at ~140, not 165.** Each module carries ~20 LLOC of imports + fixture the
+   packer does not count. A 165 cap produced modules up to 190 — under the 200 soft ceiling but one
+   test from it.
+5. **Shared helpers go to a `test_`-prefixed module with PUBLIC members.** The prefix is
+   load-bearing (`[tool.coverage.run] omit` lists `overseer/test_*.py`); public names are forced,
+   because sharing an `_`-prefixed name across modules is what the private-usage rules forbid.
+6. **Cross-boundary helpers are computable only AFTER packing** — a helper defined mid-section can
+   land in a different module from its callers. Run that check against the ACTUAL group boundaries.
+7. **Name from the nearest PRECEDING banner, scanning backward**, with a numeric suffix for a
+   continuation. An index fallback produces `part10` / `read_render_overseer`, which nobody can
+   navigate by.
+
+**TWO INSTRUMENT LESSONS, both paid for with false results:**
+
+- **Verify by TOKEN STREAM, never text diff.** `ruff format` re-wraps whenever a rename changes
+  length — it reported 13 false "changes" in #145, and a whitespace-collapsing regex normalizer did
+  NOT clear them. `tokenize` (comments retained, whitespace/newlines discarded) did.
+- **Collision-check via AST over IDENTIFIERS, never grep.** A regex over raw text also matches the
+  word in a docstring: it flagged `RESET` against the prose "stamp `at` and RESET its bands", and
+  earlier flagged `RULE` against a comment.
+
+**THE COLLISION TRAP, paid for twice.** De-underscoring `_x` collides with locals ALREADY named `x`,
+and the collision is *created by* the rename, so grepping for the new name beforehand finds nothing.
+`_norm` → `norm` broke three sites in #141; `_sup` → `sup` would have broken **594** in #145.
+**Check what the new name will collide WITH, not whether it already exists.**
+
+### 💥 STANDING COUNTER-MEASURE — run the suite under a scratch `HOME`
+
+In slice 4 a `DEFAULT_STORE_PATH` patch stopped reaching its reader and the CLI tests appended
+**7 rows to the maintainer's real `~/.livespec-overseer.jsonl`**. Detected, backed up, the 7
+removed, the remaining 6 real tracks verified byte-identical, mode `0600` preserved; the stamps
+sidecar was never touched.
+
+**The mechanism generalizes:** a constant read as a **bare module global** must not be separated
+from its reader. `monkeypatch.setattr` on a façade re-export **SUCCEEDS** while the resolver keeps
+returning the real path. It failed loudly only by luck — a test asserting merely "nothing raised"
+would have passed while corrupting live operator state.
+
+**So: run the suite with `HOME` pointed at a scratch dir and assert nothing lands there.** That is
+POSITIVE proof the default-path patches take effect; a green suite alone cannot distinguish a
+working patch from one writing to the real `$HOME`. Used in every slice since.
+
+### 🛑 SESSION STATE
+
+- **All six PRs merged. Every worktree and branch this session created is reaped.** `livespec` and
+  `livespec-overseer` are clean on `master`, in sync with origin.
+- **`overseer-bg2.10` FILED** (P2, bug) — `uv.lock` drifts one version behind `pyproject.toml` on
+  every release, so every fresh worktree dirties it on first `uv run`. Observed twice in one session
+  (0.12.2→0.12.3, then 0.12.3→0.12.4). **Leave the dirty `uv.lock` alone**; the fix belongs in the
+  release commit.
+- **Another session is active in `livespec-overseer`** — it landed `docs(plan)` and
+  `chore: wire the worktree-discipline pack` commits during this one. Coordinate before assuming
+  exclusive ownership.
+- `livespec` carries three worktrees belonging to OTHER sessions (`ci-concurrency-group`,
+  `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`). **Do not reap them.**
+
+### 🧾 ONE MECHANICAL LESSON
+
+`bd comment "…"` in **zsh** command-substitutes backticks — a journal entry silently lost three
+words that way and needed a correction comment. **Route long journal text through a file** and pass
+it as `"$(cat file)"`.
+
+### 📌 STILL OPEN ELSEWHERE — unchanged
+
+- **`livespec-dev-tooling-426a`** (P1) — retire the `file_lloc_hard_gate` opt-in fleet-wide. Gated
+  on `bg2.3`+`bg2.4` AND on measuring `livespec-console-beads-fabro`, the only other repo lacking
+  the gate.
+- **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, carried from `x6t6` leg (b).
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table; piece (3)
+  should be closed as dissolved.
+- **Group B** is only `tljy` and `3q2c`, both `backlog`.
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — maintainer's call.
+
+### ✅ STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS**.
+2. **`livespec-dev-tooling-4er` is CLOSED.**
+3. **Group B's `ct9` is CLOSED**, as are `njyx` and `rgt8`.
+
+---
+
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (ELEVENTH session) — superseded by the TWELFTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
