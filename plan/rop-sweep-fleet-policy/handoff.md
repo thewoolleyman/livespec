@@ -100,6 +100,24 @@ release-gate consequence as an accepted exception, or (b) raise the soft ceiling
 file with a documented, reviewable per-file entry. Both are worse than (the recommendation),
 which is why it is the recommendation — but both are legitimate and neither is mine to pick.
 
+**IF THAT DECISION HAS NOT BEEN ANSWERED WHEN YOU READ THIS, DO NOT DECIDE IT YOURSELF.**
+You inherit this file and one prompt, which makes it tempting to treat the recommendation as
+approval — it is not. The previous session deliberately declined to reverse a maintainer
+ruling on its own judgment, and inheriting its notes grants no more authority than it had.
+Surface the decision to the maintainer and take unblocked work meanwhile:
+
+- **`livespec-dev-tooling-h65n`** (P2, dev-tooling tenant) — the `check-private-calls`
+  beside-test carve-out. Fully specified, independent of `bg2.3`, and REQUIRED before
+  `bg2.4`. Note it is a dev-tooling PRODUCT `.py` change, so unlike everything in
+  `livespec-overseer` it carries the Red->Green ritual.
+- **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
+  Independent of everything here.
+- **`overseer-bg2.10`** (P2) — the `uv.lock` release drift. Small, self-contained, and it
+  removes a recurring per-worktree annoyance.
+
+Do NOT start `bg2.7` or `bg2.9` first: both counts grow with every remaining extraction, so
+work done on them before `bg2.3` closes is work redone.
+
 ### 📐 THE REMAINING GROUP, MEASURED
 
 Disposition per method — a stub is kept only when something OUTSIDE the module reaches it
@@ -229,8 +247,13 @@ slicing.**
   after every release. **Leave it unstaged**; the fix belongs in the release commit.
 - **The maintainer's `overseerd` daemon is RUNNING** from `/data/projects/livespec-overseer`'s
   own `.venv` and holds the OLD modules until restarted. Restart it to pick up the new layout.
-- **Another session is active in `livespec-overseer`** (it landed `docs(plan)` commits and a
-  dev-tooling pin bump during this one) and holds `fix/goal-5-pull-lane`. **Do not reap it.**
+- **Another session is active in `livespec-overseer`** and holds TWO worktrees —
+  `fix/goal-5-pull-lane` AND `docs/retime-in-flight`. **Do not reap either.** It landed a
+  dev-tooling pin bump (v0.54.24) and `docs(plan)` commits during this session, so
+  `livespec-overseer` master has advanced PAST the five PRs above: at wind-down its tip was
+  `e83853a`, with `be47c25` and `91e329b` interleaved beneath. **Refresh before measuring
+  anything** — and re-derive the 765 rather than trusting it; it was re-confirmed at
+  wind-down, but that claim expires like every other.
 - `livespec` carries three worktrees belonging to OTHER sessions (`ci-concurrency-group`,
   `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`). **Do not reap them.**
 
