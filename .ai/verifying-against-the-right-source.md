@@ -23,8 +23,8 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twelve instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, across four
-## repos and three independent operators
+## Thirteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, across five repos and four independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -224,11 +224,39 @@ landing — treat any state assertion older than the current turn as a hypothesi
 Prefer writing the INVARIANT ("gap zero") over the reading ("both at v0.20.0"),
 because the invariant survives the next release and the reading does not.
 
+### 13. An UNTRACKED file is invisible to a git-derived check universe
+
+`just check` reported **61/61 green** on a branch whose whole point was a new
+module — and the new module was not in the scan. The LLOC checks
+(`file_lloc`, `no_lloc_soft_warnings`) and every other check routed through
+`config.resolve_check_universe` derive their file set from `git ls-files`, which
+lists the INDEX. A newly created file that has never been `git add`-ed is not in
+the index, so it is not in the universe, so no check walks it. The green was
+read off a universe that did not contain the file under review.
+
+Nothing was misconfigured — the git-derived universe is the deliberate fix for
+an OLDER fail-open hole (a hardcoded tree list that resolved to zero files in
+repos whose package directory was named differently). It simply has this edge:
+coverage begins at `git add`, not at file creation.
+
+The mechanism is worst exactly when it matters most, because the checks it
+disarms are the ones that police NEW files: size ceilings, `__all__`
+declarations, mirror-test pairing. A refactor that splits one large module into
+several new ones is precisely the changeset where every new file is untracked
+and every relevant check silently skips it.
+
+**Counter-move:** on any changeset that ADDS files, `git add` before measuring,
+and treat a green obtained on a dirty tree with untracked files as provisional.
+`git status --short` showing `??` lines beside a passing check is the tell. The
+cheap habit is `git add -A` first, then run the gate — the same tree the commit
+will carry is the only tree whose green means anything.
+
 ## Why this file exists in livespec CORE
 
-The twelve instances span FOUR repositories — `livespec`,
-`livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`, and
-`livespec-console-beads-fabro` — and core owns fleet-level facts. A lesson filed only in one tenant would not be read
+The thirteen instances span FIVE repositories — `livespec`,
+`livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
+`livespec-console-beads-fabro` and `livespec-overseer` — and core owns
+fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.
 
 ## Related standing rules
