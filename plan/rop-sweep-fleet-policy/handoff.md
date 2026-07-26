@@ -36,11 +36,30 @@ BY NAME — a symbol slice L deleted — plus an instruction to "keep these in l
 which could no longer be followed. livespec-runtime's contradicted its own block, still claiming
 selective declaration while all ten keys were declared below it.
 
-One item FILED and still open:
+One item FILED and still open — and it turned out **BLOCKED ON `x6t6`**, which raises the stakes
+on that ruling:
 
 - **`bd-ib-45z9`** (P2, livespec-orchestrator-beads-fabro) — `.claude-plugin/hooks/` outside
-  `source_trees`, hiding a non-conforming fail-open bulkhead. Fix is ORDER-DEPENDENT: correct the
-  hook, THEN declare the tree.
+  `source_trees`, hiding a broad catch with non-sanctioned marker wording. **I filed this item
+  earlier the same session and its recommended fix is WRONG; a correction is journaled on it.**
+  The catch is not a misplaced hook fail-open boundary — it is a per-file bulkhead over N cached
+  files, i.e. the ratified **loop-iteration** flavor. Following the item's prescription ("the
+  fail-open boundary belongs at `main()`") would wrap the whole loop in one `try` and destroy the
+  per-file isolation, reintroducing the exact defect the bulkhead exists to prevent — the
+  function's own docstring says so. And the handler sits one call-frame below a `for` loop **inside
+  `main()`**, so even inlined it is a direct child of the loop body, not of `main()`: declaring the
+  tree reds the file until `x6t6`'s widening lands, regardless of wording.
+  Good news for sequencing: this is the NARROWEST case in `x6t6`'s option space, so it is covered
+  by **all three** options and needs no ruling of its own.
+
+### 🔁 A PATTERN THIS SESSION HIT THREE TIMES — trust a work-item's EVIDENCE, not its PRESCRIPTION
+
+`x6t6`'s stated fix shape was falsified by reading the live site. `rgt8` named two stale artifacts
+where a sweep found three. And `bd-ib-45z9` — filed by this very session, hours earlier —
+prescribed a fix that would have regressed the code. In each case the item's MEASURED EVIDENCE
+survived scrutiny and its RECOMMENDED FIX did not. Re-derive the fix from the code and the ratified
+spec before implementing; treat the prescription as a hypothesis, exactly as the handoff already
+says to treat status claims.
 
 **One repo-level gotcha found while landing these:** livespec-runtime's PR bot did **not** arm
 auto-merge (`autoMergeRequest: null`) though the PR was CLEAN and MERGEABLE with every check
@@ -89,7 +108,8 @@ on unchecked — both are now removed from the maintainer's plate:**
 - **The orphan branch `spec/rop-loop-iteration-marker` is GONE** — discharged, not pending.
 
 So the unblocked queue is `4er` first, then what remains of group B after this session's drain —
-`tljy` and `3q2c` — plus `bd-ib-45z9`. (`kj7`, `p0rh` and `ov9` were filed AND fixed this session.)
+`tljy` and `3q2c`. (`kj7`, `p0rh` and `ov9` were filed AND fixed this session; `bd-ib-45z9`
+turned out BLOCKED on the `x6t6` ruling — see above.)
 `njyx`, `rgt8` and `ct9` are CLOSED; see the table above.
 
 ### 🚨 THE MOST IMPORTANT FINDING — `x6t6`'s stated fix shape does not match the real world
@@ -282,12 +302,10 @@ drive directly; an empty queue looks like a busy factory):
   method note is load-bearing and already verified: a naive grep OVER-counts, because
   `partition_completeness`, `source_trees_scoped_to_consumer` and `_role_key_gate` touch nearly
   every role key; exclude all three.
-- **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — self-contained; the fix is
-  ORDER-DEPENDENT (correct the hook, THEN declare the tree — declaring first reds master).
-
-
-Blocked pending a ruling, do not start: **`x6t6`** (and therefore `jjb` pieces (2) and (3), which
-are downstream of it).
+Blocked pending the `x6t6` ruling, do not start: **`x6t6`** itself, **`jjb` pieces (2) and (3)**
+(downstream of it), and **`bd-ib-45z9`** (its hook's broad catch is a loop-iteration catch inside
+a `for` in `main()`, so declaring the tree reds the file until the loop-body widening lands — the
+correction is journaled on the item, and its own filed prescription must NOT be followed).
 
 **Run a FRESH readiness check per item before picking any up.** This session is itself the
 argument, three times over: `x6t6`'s brief was falsified by reading the live site, `gam8` had
