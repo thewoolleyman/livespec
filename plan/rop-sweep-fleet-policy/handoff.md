@@ -1,6 +1,271 @@
-# rop-sweep-fleet-policy — `supervisor.py` is COMPLIANT; one file breaches, and its target is 200 not 250
+# rop-sweep-fleet-policy — one group left, and `evaluate` cannot fit without a maintainer call
 
-## 🔔 STATE AS OF 2026-07-26 (THIRTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (FOURTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ FIVE PRs MERGED — `_supervisor_core.py` is 1116 → 765 LLOC
+
+| PR | What | core LLOC after |
+|---|---|---|
+| livespec-overseer #152 | `overseer-bg2.8` CLOSED — off inheritance, inert test given teeth | — |
+| livespec-overseer #153 | publicise the shared state + diagnostics surface (10 renames) | 1116 |
+| livespec-overseer #154 | table-rendering group → `_supervisor_render` | **1058** |
+| livespec-overseer #156 | launch + recovery + lifecycle (19 methods, 3 modules) | **883** |
+| livespec-overseer #158 | watch-set + discovery group, `resolve_watch` rehomed | **765** |
+
+All green: `just check` 61/61, 520 tests, coverage 100%, pyright 0 errors on every one.
+Master CI green throughout. Nothing is in flight; every worktree and branch this session
+created is reaped.
+
+The module set now is:
+
+| Module | LLOC |
+|---|---|
+| `overseer/supervisor.py` (façade + CLI) | 156 ✅ |
+| `overseer/_supervisor_core.py` | **765** ⚠️ the only breach left in the fleet |
+| `_supervisor_discovery.py` | 153 ✅ |
+| `_supervisor_lifecycle.py` | 96 ✅ |
+| `_supervisor_recovery.py` | 87 ✅ |
+| `_supervisor_render.py` | 80 ✅ |
+| `_supervisor_launch.py` | 71 ✅ |
+| `_supervisor_config` / `_view` / `_prompts` / `_records` | 57 / 62 / 40 / 28 ✅ |
+
+### 🛑 ONE GROUP LEFT, AND IT NEEDS A MAINTAINER DECISION FIRST
+
+The evaluation group is all that remains: **22 methods, 603 LLOC**. Moving it lands core at
+about **180**, which closes `overseer-bg2.3`. The per-method disposition is measured and
+listed below. But the arithmetic forces a collision with a maintainer ruling, and that
+should be resolved before anyone starts.
+
+**THE FORCED ARITHMETIC.** `evaluate` is **200 LLOC** on its own. An `evaluate`-only module
+needs roughly **40 LLOC of imports** (`registry`, `signals`, `_supervisor_launch`, plus
+named imports from `_supervisor_config` / `_view` / `_prompts` / `_records`, the
+`TYPE_CHECKING` block and `__all__`). That is **~240 — inside the 201-250 soft band**, which
+fails the release gate once `bg2.4` declares `covered_trees` (see the THIRTEENTH-session
+section for why the soft band, not the 250 hard ceiling, is the binding constraint).
+
+Every alternative was checked and none works:
+
+- **`evaluate` stays in core, everything else moves** → core = fields 32 + imports ~35 +
+  diagnostics 22 + `tick` 6 + `evaluate` 200 + ~63 of stubs ≈ **359**. Over even the hard
+  ceiling.
+- **drop the private stubs and retarget ~40 test call sites to the free functions** → saves
+  ~45, core still ≈ **321**. `evaluate` dominates.
+- **the whole evaluation group in one module** → 640. Needs splitting into ~4 modules
+  regardless, and `evaluate`'s own module is the binding one.
+- **module-form imports (`import _supervisor_config as cfg`)** to cut import lines → saves
+  ~6 lines, but lengthens body lines toward the 100-col limit and risks re-wraps that cost
+  more than they save.
+
+So **`evaluate` must shed about 40 LLOC.** There is no arrangement of the files that avoids
+it.
+
+**WHAT THAT COLLIDES WITH.** `evaluate`'s own docstring records a **maintainer ruling of
+2026-07-19**: cutting its decision cascade into per-state helpers was *considered and
+REJECTED*, because it would scatter the precedence order across call sites where no reader
+can verify it in one pass. It carries `noqa: C901,PLR0911,PLR0912,PLR0915` on that basis.
+
+**THE RECOMMENDED RESOLUTION, for the maintainer to accept or refuse.** Extract exactly ONE
+leg — the **R1 self-healing resume retry**, `evaluate`'s largest self-contained block at
+**53 LLOC** — into a `resume_retry(...) -> RowView | None` function in the SAME module,
+called at exactly its current position:
+
+```python
+retry = resume_retry(sup, track, obs=obs, session=session, target=target)
+if retry is not None:
+    return retry
+```
+
+That drops `evaluate` to ~147 and its module to ~187 ✅.
+
+**Why this is arguably faithful rather than a workaround.** The ruling rejected cutting the
+cascade into per-*state* helpers — plural, the whole cascade — because the ORDER would stop
+being readable in one pass. Here the order is untouched: one call sits at the leg's exact
+position, so a reader still sees the full precedence sequence top-to-bottom in `evaluate`.
+What moves is the leg's DETAIL, not its place in the order.
+
+**Why it is still the maintainer's call.** The R1 block's own comment says its position is
+load-bearing ("This branch intercepts first… It also runs BEFORE the busy/idle cascade"),
+and it has **three** `return RowView(...)` exits. Those three exits leave `evaluate`. A
+reader who wants to know every way `evaluate` can return early would have to open one more
+function. That is a real, if bounded, loss of exactly the property the ruling protects, so
+it should not be self-waived — the twelfth session already recorded "the cascade stays
+intact" as settled, and this reverses part of that.
+
+**If the maintainer refuses the extraction**, then `bg2.3` cannot close as specified and the
+honest options are: (a) let `_supervisor_core.py` sit in the 201-250 soft band and file the
+release-gate consequence as an accepted exception, or (b) raise the soft ceiling for this one
+file with a documented, reviewable per-file entry. Both are worse than (the recommendation),
+which is why it is the recommendation — but both are legitimate and neither is mine to pick.
+
+### 📐 THE REMAINING GROUP, MEASURED
+
+Disposition per method — a stub is kept only when something OUTSIDE the module reaches it
+(production caller or beside-test); everything else is DELETED and its in-class callers
+rewritten to the module-qualified free function, because a stub costs 2-3 LLOC and a
+deletion costs 0.
+
+**KEEP A STUB (6):** `evaluate` (200), `_is_codex_track` (11), `_clear_state` (7),
+`_void_if_stale` (15), `_void_stale_blocked` (17), `_write_idle_nudge_state` (7).
+
+**DELETE (16):** `_observe` (55), `_do_restart` (47), `_surface_supervision_offer` (37),
+`_do_codex_restart` (35), `_maybe_inject` (33), `_alert_non_responder` (31),
+`_nudge_idle_with_context` (25), `_no_managed_pane_row` (18), `_live_session_outside_tmux`
+(17), `_supervisor_running` (16), `_pane_is_managed_claude` (9), `_clear_idle_nudge_state`
+(8), `_clear_supervision_alerts` (7), `_effective_ctx` (6), `_pane_is_managed` (4),
+`_supervisor_session_of` (2).
+
+**STAYS IN CORE:** the 32 LLOC of dataclass fields, the diagnostics surface (`log` 2,
+`surface` 2, `alert` 18 — deliberately methods, so any collaborator can call `sup.log(...)`
+legally), `tick` (6 — three calls to public methods, better beside them than behind another
+indirection), and the ~22 delegating stubs the earlier PRs left.
+
+Split the group across ~4 modules, each ≤200 including imports. Suggested seams, by
+cohesion: the observation phase; the cascade (`evaluate` + its one extracted leg); the
+restart mechanics (`_do_restart` / `_do_codex_restart` / `_maybe_inject` /
+`_nudge_idle_with_context`); and the supervision-offer + no-managed-pane surfaces.
+
+### 🔧 THE EXTRACTION RECIPE — what four PRs of it taught
+
+**Dependency order is the design, not a detail.** A group may be extracted only when every
+private method it calls is either in the same group or already a free function. Extracting
+recovery before the launch primitives would have left `sup._await_pane(...)` — a
+cross-module private access `reportPrivateUsage` rejects. Extract leaves first.
+
+**Three mechanical traps, each of which produced wrong code that lint (not tests) caught:**
+
+1. **Receiver-dropping.** Rewriting `sup._singleton_lock_path()` to
+   `singleton_lock_path()` loses the receiver. The rewrite must be receiver-aware and
+   handle the zero-argument form first, or it emits `f(sup, )`.
+2. **Bare `self` as an argument.** A body moved in a LATER pass of the same PR can carry
+   `_supervisor_launch.await_pane(self, ...)`, written by the earlier pass. A
+   `self.` → `sup.` STRING replacement silently misses it; the rename must be token-based.
+3. **`@staticmethod`.** A former staticmethod takes no receiver, so its stub must KEEP the
+   decorator and its call sites must not gain a `sup`. Three exist:
+   `_launch_command`, `_codex_launch_command`, `_release_singleton_lock`.
+
+Build the tool so it FAILS LOUDLY when any `sup._<private>` would survive a move, rather
+than leaving pyright to find it later.
+
+**THE VERIFICATION THAT MADE 30 MOVES REVIEWABLE.** Raw `ast.dump` fails on *correct* output
+(the move changes `self`→`sup`, callee spelling, and receiver position), and re-applying the
+extractor's own rewrites to master just compares the tool with itself. So canonicalise BOTH
+sides identically: collapse every call's func to its terminal name with a leading underscore
+stripped (so `sup._await_pane(...)`, `_supervisor_launch.await_pane(...)` and
+`await_pane(...)` compare alike), drop a leading receiver argument, unify `self`/`sup`, and
+collapse string whitespace for the docstring dedent. Statement structure, control flow,
+literals, operators and argument lists still have to match. **Do NOT collapse a qualifier
+that is not the receiver** (`sup.tmux.capture_pane`, `registry.join`) or two different calls
+canonicalise the same.
+
+Two disciplines around that proof, both of which caught something:
+
+- **Sabotage-check the proof before trusting it.** Inverting one comparison inside a moved
+  body reddens exactly that function. A proof over N mechanical moves is worth nothing until
+  it has been shown to fail.
+- **Re-scope it to the CURRENT PR's moves.** After a PR lands, the methods it moved are
+  STUBS on master, so re-listing them proves nothing — and a rehomed function compared
+  against a stub can pass on wrong output. `resolve_watch` had to be compared against its
+  real previous home (`_supervisor_launch.py` on master), not core.
+
+### 💥 TWO ENVIRONMENTAL GOTCHAS THAT WILL RECUR
+
+**`just check` fails in a FRESH WORKTREE on
+`check-primary-checkout-commit-refuse-hook-installed`** with `failure_mode:
+worktree_pack_absent`. It is NOT a hook problem — the primary checkout's hooks are fine. The
+worktree-discipline pack under `dev-tooling/` is GITIGNORED and installed at bootstrap, so a
+new worktree lacks it. Fix: `just install-worktree-pack` in that worktree.
+
+**That installer also writes `"worktree_discipline": {"pack": "required"}` into
+`.livespec.jsonc` — a TRACKED governed file.** `"required"` is already what an absent key
+means, so the key is pure explicitness. It was reverted rather than smuggled into a refactor
+commit, and the check passes without it. Know that the installer mutates tracked config as a
+side effect.
+
+### 📌 CROSS-TENANT STATUS — asked and answered
+
+| Item | Tenant | Status |
+|---|---|---|
+| `livespec-driver-claude-jzy` | livespec-driver-claude | ✅ **CLOSED** |
+| `livespec-dev-tooling-4er` | livespec-dev-tooling | ✅ **CLOSED** |
+| `livespec-dev-tooling-h65n` | livespec-dev-tooling | open (`backlog`) |
+| `livespec-dev-tooling-426a` | livespec-dev-tooling | open (`backlog`), gated on bg2.3 + bg2.4 |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (`backlog`) |
+
+`h65n` is read and understood: teach `check-private-calls` the beside-test distinction ruff's
+`SLF001` already makes, deriving the pattern from the CONSUMER's own config rather than
+hardcoding `test_*`. Acceptance needs a test proving BOTH directions (exemption applies to a
+beside-test; does NOT leak to production). **It is a dev-tooling PRODUCT `.py` change, so it
+carries the Red→Green ritual** — unlike everything in `livespec-overseer`, whose
+`source_trees` is still empty. Do not accept the false fix (rewriting the 45 sites as direct
+imports satisfies the AST matcher and changes nothing).
+
+### 🚨 `bg2.4`'s BLAST RADIUS — re-measure, do not plan from the filed counts
+
+Measured this session on master f279533 with `source_trees`/`covered_trees` temporarily
+`["overseer"]`: `check-all-declared` **55** (filed 30), `check-keyword-only-args` **637**
+(filed 614), `check-private-calls` **42** (filed 45), `check-no-inheritance` **0** (fixed).
+Result-railway checks and `check-no-lloc-soft-warnings` both **0**.
+
+**Both grown counts grow FURTHER with each extraction**, because every new module is a new
+missing-`__all__` offender and brings new signatures. `bg2.7` and `bg2.9` must both land
+AFTER `bg2.3` closes, and both are journaled with this. **Re-derive immediately before
+slicing.**
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** #152, #153, #154, #156, #158 all merged; this handoff is the only
+  other work. Every worktree and branch this session created is reaped. `livespec` and
+  `livespec-overseer` are clean on `master`, in sync with origin, master CI green on both.
+- **`overseer-bg2.8` is CLOSED.** Open in the epic: `bg2.3` (one group left), `bg2.4`,
+  `bg2.7`, `bg2.9`, `bg2.10`.
+- **This session stopped at its context floor**, with the last group analysed and NOT
+  started — deliberately, because the only way to leave a half-decomposed `Supervisor` on
+  master is to run out of context inside a PR. Each of the five PRs was complete and green on
+  its own, so master never held a partial state.
+- **`overseer-bg2.10` still bites**: `uv.lock` drifts one version behind `pyproject.toml`
+  after every release. **Leave it unstaged**; the fix belongs in the release commit.
+- **The maintainer's `overseerd` daemon is RUNNING** from `/data/projects/livespec-overseer`'s
+  own `.venv` and holds the OLD modules until restarted. Restart it to pick up the new layout.
+- **Another session is active in `livespec-overseer`** (it landed `docs(plan)` commits and a
+  dev-tooling pin bump during this one) and holds `fix/goal-5-pull-lane`. **Do not reap it.**
+- `livespec` carries three worktrees belonging to OTHER sessions (`ci-concurrency-group`,
+  `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`). **Do not reap them.**
+
+### 📌 STILL OPEN ELSEWHERE — unchanged
+
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, carried from `x6t6` leg (b).
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table;
+  piece (3) should be closed as dissolved.
+- **Group B** is only `tljy` and `3q2c`, both `backlog`.
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — maintainer's call.
+
+### ✅ STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS**.
+2. **`livespec-dev-tooling-4er` is CLOSED**, as is **`livespec-driver-claude-jzy`**.
+3. **Group B's `ct9` is CLOSED**, as are `njyx` and `rgt8`.
+4. **`overseer-bg2.8` is CLOSED** (livespec-overseer #152).
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text
+  through a file** and pass it as `"$(cat file)"`.
+- Setting `HOME` for a `mise exec` invocation breaks mise (`config not trusted`). Use the
+  venv interpreter directly: `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
+- **Run the suite with `HOME` at a scratch dir and assert nothing lands there** — positive
+  proof the default-path patches take effect.
+- **A patch script that prints success without asserting its replacement applied will lie to
+  you.** One anchor string in this session no longer matched (an earlier `ruff --fix` had
+  already removed the import it anchored on), the `str.replace` silently no-opped, and the
+  script reported success anyway. Assert `new != old` before writing.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (THIRTEENTH session) — superseded by the FOURTEENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
