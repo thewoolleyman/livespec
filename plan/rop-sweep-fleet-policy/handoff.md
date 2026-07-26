@@ -7,15 +7,25 @@ prose. Live-state claims expire in minutes, this section included.
 
 ### 📦 CLOSED AND FILED THIS SESSION — the group-B drain
 
-Four items CLOSED, each live-exercised against merged code and its evidence journaled on the item
-(read those, not this summary):
+**SEVEN items CLOSED** across five repos, each live-exercised against merged code and its evidence
+journaled on the item (read those, not this summary). Sixteen PRs merged in all:
 
-| Item | What | Landed |
-|---|---|---|
-| `jjb` piece (1) | per-artifact boundary-catch cardinality | livespec-dev-tooling PR #662 |
-| `njyx` | `newtype_domain_primitives` zero-`.py` hard ERROR | livespec-dev-tooling PR #668 |
-| `rgt8` | retired-regime prose in 3 shipped artifacts | livespec-dev-tooling PR #671 |
-| `ct9` | retired-regime `pyproject` comment | livespec-driver-codex PR #272 |
+| Item | Repo | What | PR |
+|---|---|---|---|
+| `njyx` | dev-tooling | `newtype_domain_primitives` zero-`.py` hard ERROR | #668 |
+| `rgt8` | dev-tooling | retired-regime prose in 3 shipped artifacts | #671 |
+| `ldyb` | dev-tooling | docs-only carve-out for the incremental coverage gate | #674 |
+| `ct9` | driver-codex | retired-regime `pyproject` comment | #272 |
+| `kj7` | driver-claude | same, sibling instance | #289 |
+| `ov9` | runtime | same, sibling instance | #339 |
+| `p0rh` | orchestrator-beads-fabro | same, sibling instance | #961 |
+
+**TWO items are PARTIALLY discharged and remain OPEN — do not mistake them for closed:**
+
+- **`jjb`** — piece (1), per-artifact boundary-catch cardinality, LANDED as dev-tooling PR #662.
+  Pieces (2), (3) and (4) remain; (2) and (3) are blocked on `x6t6`.
+- **`tljy`** — its named `__init__.py` clause LANDED as dev-tooling PR #677. The rest (11 spec-file
+  citations, ~120 code-side sites, the `external_references` allowlist) remains — see below.
 
 **The four-repo `pyproject`-comment sweep is COMPLETE — all four fixed, not just filed:**
 
@@ -310,17 +320,29 @@ adversarial review, and it should land once, as one amendment, after the `x6t6` 
 whether the loop-iteration position also becomes mechanical. Nothing currently OVERSTATES its
 reach — PR #662's module docstring states the honest split.
 
-### 🛑 SESSION STATE — clean, nothing in flight
+### 🛑 SESSION STATE — clean, nothing in flight, NOTHING TO RESUME
 
-- `/data/projects/livespec` and `/data/projects/livespec-dev-tooling` both on `master`, in sync
-  with `origin/master`, no uncommitted tracked changes. (The untracked
+The session wound down deliberately at a finished point. Verified at wind-down:
+
+- **All SIX repos this session touched are on `master`, in sync with `origin/master`, with no
+  uncommitted tracked changes**: `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`,
+  `livespec-driver-codex`, `livespec-runtime`, `livespec-orchestrator-beads-fabro`. (The untracked
   `install-livespec-pr-bot.png` in dev-tooling PRE-DATES this track — not ours, leave it.)
-- The `fix/jjb-boundary-catch-cardinality` worktree and branch were both reaped after merge.
-  Other worktrees under `~/.worktrees/livespec-dev-tooling/` belong to OTHER tracks — do not reap.
+- **Every worktree and branch this session created was reaped after its PR merged.** Worktrees
+  still present under `~/.worktrees/livespec/` and `~/.worktrees/livespec-dev-tooling/` belong to
+  OTHER tracks — **do not reap them.**
 - No background agents, monitors, or subprocesses running.
-- Master CI green on both repos, queried with `--workflow CI`.
+- Every PR this session opened is MERGED; nothing is half-landed.
+
+**So there is no interrupted task to resume.** Do not go looking for one. Start from the queue
+below.
 
 ### 🎯 WHAT TO DO FIRST IN A FRESH SESSION
+
+**THE SINGLE NEXT ACTION: `livespec-dev-tooling-4er`.** It is the highest-priority unblocked item
+in this thread, it is `backlog` (so nothing picks it up automatically), and its two dispatch
+preconditions are spelled out below. Everything else is either blocked on the `x6t6` ruling or
+needs the ratification path.
 
 **Do NOT reopen `e9j`, and do NOT re-derive `gam8`.** Both are settled; `gam8` is with the
 maintainer.
