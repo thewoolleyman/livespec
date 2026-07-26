@@ -1,6 +1,212 @@
-# rop-sweep-fleet-policy — bg2.3, bg2.7 and h65n are CLOSED; bg2.9 is down to one design call
+# rop-sweep-fleet-policy — bg2.9 is down to one upstream gap; bg2.4 has one blocker left
 
-## 🔔 STATE AS OF 2026-07-26 (FIFTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (SIXTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ FIVE MORE PRs MERGED — both routed decisions were resolved by POLICY, not by a gate
+
+The maintainer resolved both decisions the fifteenth session routed, and neither needed a
+values call — **both fell out of policy this fleet had already stated.** That is the lesson
+worth carrying: before escalating, check whether a stated policy already decides it.
+
+| PR | Repo | What |
+|---|---|---|
+| #172 | livespec-overseer | dev-tooling pin → v0.54.26 — `check-private-calls` **42 → 0** |
+| #1785 | livespec | the untracked-file vacuous green, as instance 13 |
+| #173 | livespec-overseer | the seams this repo owns → keyword-only Protocols — **41 → 12** |
+| #175 | livespec-overseer | `test_claude_sessions.py` split back under the hard ceiling |
+
+**`check-keyword-only-args` is 673 → 12 across four slices. `check-private-calls` is 0.**
+
+### 🛑 ONE BLOCKER LEFT FOR `bg2.4`, AND IT IS UPSTREAM
+
+**`livespec-dev-tooling-2prg`** (filed this session, P2) — `check-keyword-only-args` has no
+way to express *"this function implements an externally-fixed calling convention"*.
+
+The residual **12** offenders are one class: every one is a test double substituting a
+**stdlib** callable — `subprocess.run` (4), `Path` (2), `Path.glob`/`rglob` (2), `open`,
+`fcntl.flock`, one error-injection double — plus argparse's `type=` callback. **None is
+fixable in the consumer.** `subprocess.run(argv, …)` is called positionally by code we do
+not own, so a double taking `*, argv` is not a double of it.
+
+This is the same shape of gap `check-private-calls` had before `livespec-dev-tooling-h65n`,
+and that item is the recommended model: teach the check to **derive** the exception from
+evidence the consumer already carries (a binding against a stdlib attribute, a
+`monkeypatch.setattr` target, an `argparse` `type=`) rather than hardcoding a list.
+`bg2.4` can arm this check at error severity only once `2prg` lands.
+
+### 🚨 `bg2.4` ARMING — three of four blockers CLEAR
+
+| Check | Filed | Now | State |
+|---|---|---|---|
+| `check-all-declared` | 30 | **0** | ✅ `bg2.7` closed |
+| `check-private-calls` | 45 | **0** | ✅ pin bumped to v0.54.26 |
+| `check-no-inheritance` | — | **0** | ✅ |
+| `check-keyword-only-args` | 614 | **12** | ⚠️ gated on `2prg` |
+| `check-file-lloc` | — | **1 over hard** | ⚠️ gated on `overseer-hfx` |
+
+### ⚠️ THE PREMISE OF THE SOFT-BAND DECISION CHANGED — re-read before acting on it
+
+`_supervisor_evaluate.py` was routed to the maintainer at **239 LLOC** as a SOFT-band
+question, and the ruling was *leave it*. **It is now 255 — over the 250 HARD ceiling.** It
+grew during `bg2.9` slices 2-3 as the keyword-only conversion re-wrapped its calls. Nothing
+is red today (Phase-0 keeps it at WARN) but `bg2.4`'s `file_lloc_hard_gate = true` would
+hard-fail on it, so the question that was answered is no longer the question on the table.
+
+Filed as **`overseer-hfx`** (P2) covering all three over-ceiling files as ONE item, per the
+maintainer's instruction not to treat any single file as special:
+
+| File | LLOC | vs 250 hard |
+|---|---|---|
+| `_supervisor_evaluate.py` | 255 | **OVER** — needs a decision |
+| `test_supervisor_r2_claude_identity.py` | 207 | under (soft band) |
+| `test_registry_injection.py` | 203 | under (soft band) |
+
+The two test modules are mechanical splits. `_supervisor_evaluate.py` is not: nothing can be
+moved WITHIN the module to reduce it, and the only arrangement that closes it moves
+`resume_retry` into `_supervisor_restart.py` — which "same module" was load-bearing against
+in the 2026-07-26 R1 ruling. At 239 that cost was not worth paying; at 255 and blocking
+`bg2.4`, it may be. **Still a maintainer call.**
+
+### 🔧 WHAT THE PROTOCOL CONVERSION TAUGHT
+
+**Deduplicate before you count — the "41" was never 41 seams.** The count came from a
+value-reference heuristic matching by NAME, so a dataclass field `sessions_dir`, a local
+variable `log` and a test-local `marker_dir` all masked functions of the same name.
+Re-deriving from the ACTUAL `Callable` annotations cut it to 8 functions in 6 shapes, plus
+`is_ready`, `keep` and a 5-handler argparse dispatch — **9 Protocols**, against a
+stop-and-report tripwire of ~12. Always re-derive a count from the annotations, never from
+a name-matching pass.
+
+**The line between "ours" and "not ours".** A seam THIS REPO declares is ours to reshape;
+`time.sleep`, `shutil.which`, `subprocess.run` and argparse's `type=` are not. The
+`TtyOut.write` precedent (bind the stdlib method rather than redefine it) applies to the
+latter and **does not extend** to the former — that asymmetry is the whole point.
+
+**Four substitute FORMS, and only the first is obvious.** Each of the others surfaced ONLY
+as a pytest `TypeError`, never as a pyright error:
+
+1. a keyword argument — `ppid_of=ppid.get`
+2. a `kwargs.setdefault("seam", …)` **string key** — invisible to a keyword scan
+3. `monkeypatch.setattr(mod, "name", …)` — a positional third argument
+4. a dict-literal seam table — `fake_host()`'s returned dict
+
+**`dict.get` cannot satisfy a keyword-only seam.** It takes a positional key and there is no
+way to call it by keyword, so 27 substitutes became `lambda *, pid: mapping.get(pid)`. That
+churn is the honest price of the conversion, not evidence against it.
+
+**A failed reduction worth not repeating.** Replacing twenty inline
+`lambda *, pid: m.get(pid)` with a named `by_pid(m)` adapter made the file **longer**. LLOC
+counts LINES; the lambdas already sat inline on existing lines while the helper added its
+own. **Shortening an expression cannot reduce a line-based measure.**
+
+### 🧾 TWO PROCESS FAILURES FROM THIS SESSION
+
+- **Auto-merge beat an amend.** A fix discovered after `gh pr merge --auto` was armed lost
+  the race: #173 merged before the amend carrying the `test_claude_sessions.py` split
+  landed, forcing follow-up PR #175. **Do not arm auto-merge while still verifying.**
+- **`git checkout -- pyproject.toml` discards real edits alongside temporary ones.** Used to
+  revert a temporary `source_trees` arming, it also threw away the S106 grant. And a
+  `str.replace` on `source_trees = []` rewrites the **comment above it** that quotes the same
+  key. **Revert by LINE, then re-diff.**
+
+### 📌 CROSS-TENANT STATUS — verified this session
+
+| Item | Tenant | Status |
+|---|---|---|
+| `livespec-driver-claude-jzy` | livespec-driver-claude | ✅ CLOSED |
+| `livespec-dev-tooling-4er` | livespec-dev-tooling | ✅ CLOSED |
+| `livespec-dev-tooling-h65n` | livespec-dev-tooling | ✅ CLOSED + **pin landed** |
+| `overseer-bg2.3` / `bg2.7` / `bg2.8` | livespec-overseer | ✅ CLOSED |
+| `overseer-bg2.9` | livespec-overseer | open — gated on `2prg` |
+| `overseer-bg2.4` | livespec-overseer | open — gated on `2prg` + `hfx` |
+| `overseer-bg2.10` | livespec-overseer | open — investigated, see below |
+| `overseer-hfx` | livespec-overseer | **NEW** (P2) — the over-ceiling files |
+| `livespec-dev-tooling-2prg` | livespec-dev-tooling | **NEW** (P2) — the last `bg2.4` blocker |
+| `livespec-dev-tooling-426a` | livespec-dev-tooling | open — gated on `bg2.4` |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — **measure first** |
+
+### 🔍 `bg2.10` — INVESTIGATED, DELIBERATELY NOT LANDED
+
+Three findings that narrow it, all journaled on the item:
+
+1. **The workflow route is GATED.** The item's suggested fix edits
+   `.github/workflows/release-please.yml`, and `check-no-workflow-edits` hard-fails any
+   branch touching that path (it greps both the committed diff AND `git status`).
+2. **`release-please.yml` is LOCAL**, not a `uses:` into dev-tooling — so this is not a
+   fleet-wide fix that belongs upstream.
+3. **The config route exists and is ungated.** `release-please-config.json` already has an
+   `extra-files` list; the candidate is a `toml` updater with
+   `$.package[?(@.name=='livespec-overseer')].version`. The `generic` updater is NOT an
+   option — it needs an `x-release-please-version` comment, and `uv lock` regenerates the
+   file without preserving comments.
+
+**Not landed because its acceptance requires live exercise against a real release**, and no
+release fires from `refactor:`/`chore(deps):` commits. Landing an unverified release-config
+change is exactly the "merged + green" completion the fleet rejects — and if the filtered
+jsonpath does not resolve, release-please updates nothing and reports success.
+
+**The drift is not confined to livespec-overseer**: a third instance blocked a
+`git pull --ff-only` in the `livespec-dev-tooling` PRIMARY this session. Check siblings
+before scoping the fix to one repo.
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped. All
+  three repos clean on `master` and in sync.
+- **Master CI**: `livespec` and `livespec-dev-tooling` green; `livespec-overseer`'s run for
+  #175 still in progress at wind-down. **Re-check; do not trust this line.**
+- **Foreign worktrees — DO NOT REAP.** livespec-overseer: `docs/header-facts`,
+  `docs/regenerate-supervisor-prompt-quality-charter`, `docs/supervisor-charter-hardening`.
+  livespec: `ci-concurrency-group`, `fabro-handoff-ci-capacity`,
+  `phase0-selfhosted-shadow-lane`. livespec-dev-tooling: five plus a detached
+  `tag-v0.54.24`. **These differ from the fifteenth session's list — re-enumerate, never
+  reuse.**
+- **The maintainer's `overseerd` daemon holds the OLD modules.** The layout changed again
+  (`_seams.py` added, `test_claude_sessions_corrupt_proc.py` added). Restart it.
+- **`just check` fails in a FRESH WORKTREE** on
+  `check-primary-checkout-commit-refuse-hook-installed`. Fix: `just install-worktree-pack`,
+  then `git checkout -- .livespec.jsonc` — the installer mutates that TRACKED file.
+- **A fresh worktree needs `uv sync`** before `./.venv/bin/python3` exists.
+
+### ✅ STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS**.
+2. `livespec-dev-tooling-4er`, `livespec-driver-claude-jzy`, `overseer-bg2.8`, Group B's
+   `ct9`, `njyx`, `rgt8`, `overseer-bg2.3`, `overseer-bg2.7` and
+   `livespec-dev-tooling-h65n` are **all CLOSED**.
+3. **The dev-tooling pin in `livespec-overseer` is at v0.54.26** — `check-private-calls` is
+   0, not 42. Do not re-report it as a stale-pin artifact.
+
+### 📌 STILL OPEN ELSEWHERE — unchanged
+
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, from `x6t6` leg (b).
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table;
+  piece (3) should be closed as dissolved.
+- **Group B** is only `tljy` and `3q2c`, both `backlog`.
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — maintainer's call.
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text
+  through a file** and pass it as `"$(cat file)"`.
+- **`ls` is aliased to a long-format lister**, and zsh does not word-split an unquoted
+  `$VAR` — `PROD=$(ls …)` then `cmd $PROD` passes one giant argument. Use
+  `find … -print0 | xargs -0`.
+- Setting `HOME` for a `mise exec` invocation breaks mise. Use the venv interpreter:
+  `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
+- **A patch script that prints success without asserting its replacement applied will lie
+  to you.** Assert `new != old` before writing.
+- **`git add` before measuring on any changeset that ADDS files** — the checks derive their
+  universe from `git ls-files`, so an untracked file is invisible. Now recorded as instance
+  13 of `.ai/verifying-against-the-right-source.md`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (FIFTEENTH session) — superseded by the SIXTEENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
