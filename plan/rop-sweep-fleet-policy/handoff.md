@@ -1,6 +1,235 @@
-# rop-sweep-fleet-policy — one group left, and `evaluate` cannot fit without a maintainer call
+# rop-sweep-fleet-policy — bg2.3, bg2.7 and h65n are CLOSED; bg2.9 is down to one design call
 
-## 🔔 STATE AS OF 2026-07-26 (FOURTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (FIFTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ SIX PRs MERGED, THREE ITEMS CLOSED
+
+| PR | Repo | What | Result |
+|---|---|---|---|
+| #161 | livespec-overseer | 21 methods → five collaborator modules | core 765 → **374** |
+| #164 | livespec-overseer | `evaluate` out, R1 leg extracted | core 374 → **165** ✅ |
+| #706 | livespec-dev-tooling | `check-private-calls` learns the beside-test rule | 42 → **0** on overseer |
+| #166 | livespec-overseer | annotated `__all__` on every module | 55 → **0** |
+| #168 | livespec-overseer | `bg2.9` slice 1 — tmuxio + its double | 673 → **618** |
+| #170 | livespec-overseer | `bg2.9` slice 2 — production | 618 → **464** |
+| #171 | livespec-overseer | `bg2.9` slice 3 — tests | 464 → **41** |
+
+All green: `just check` 61/61 (63/63 in dev-tooling), 520 tests, coverage 100%, pyright 0
+errors on every one. **CLOSED: `overseer-bg2.3`, `overseer-bg2.7`,
+`livespec-dev-tooling-h65n`.** Nothing is in flight; every worktree and branch this session
+created is reaped.
+
+**No file in `livespec-overseer` is over the 250 LLOC hard ceiling.** The module set:
+
+| Module | LLOC | | Module | LLOC |
+|---|---|---|---|---|
+| `supervisor.py` (façade + CLI) | 156 ✅ | | `_supervisor_evaluate.py` | **239** ⚠️ soft band |
+| `_supervisor_core.py` | 165 ✅ | | `_supervisor_restart.py` | 132 ✅ |
+| `_supervisor_discovery.py` | 153 ✅ | | `_supervisor_offer.py` | 117 ✅ |
+| `_supervisor_observe.py` | 103 ✅ | | `_supervisor_lifecycle.py` | 96 ✅ |
+| `_supervisor_nudge.py` | 85 ✅ | | the rest | ≤ 87 ✅ |
+
+### 🛑 TWO DECISIONS ARE OPEN, AND NEITHER IS YOURS TO SELF-RESOLVE
+
+Both are the same shape as the `evaluate` question the maintainer ruled on this session:
+**an external contract fixes something, and honouring it collides with a gate.** The
+maintainer's own reasoning for that ruling is the test to reuse — *a ruling protects its
+STATED property, not every property that correlates with it* — but applying that test is
+what they reserved to themselves. Surface both; take unblocked work meanwhile.
+
+**DECISION 1 — `_supervisor_evaluate.py` sits at 239 LLOC, in the 201-250 soft band.**
+It is `evaluate` 151 + `resume_retry` 61 + 27 of imports, and **nothing can be moved WITHIN
+the module to reduce it** (moving a function to the same module changes nothing). It blocks
+nothing today — Phase-0 `newly_covered` keeps even the release-context gate
+(`LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST=true`) at WARN with `"failing": false` — and it
+does **not** block `bg2.4`, which the 250 HARD ceiling governs. The only arrangement that
+closes it moves `resume_retry` into `_supervisor_restart.py`, where R1 belongs by subject.
+That was NOT done, because "in the SAME module" was load-bearing in the maintainer's own
+statement of what the R1 extraction costs (exit-point locality, *bounded to one file*).
+
+**DECISION 2 — `bg2.9`'s last 41 diagnostics are ONE design decision, not 41 edits.**
+Every one is a function bound to a `Callable[[X], Y]` seam: an injectable `Supervisor`
+field default (`proc_ppid`, `proc_comm`, `now`, `sleep`, `which`, …), an `argparse`
+`type=`, a `main` entry point, or a test double substituted for one. **`Callable[[int], str
+| None]` cannot express a keyword parameter**, so making these keyword-only breaks the
+ANNOTATION, not the caller — pyright rejects the assignment. Options: (a) change those
+seams to Protocols with a keyword-only `__call__` — correct, complete, and touches the
+dataclass field types plus every substitute in the tests; (b) leave them, and `bg2.4` cannot
+arm `check-keyword-only-args` at error severity. It must NOT be closed by exempting the
+package or widening the check — the item says so explicitly.
+
+**The precedent already set, and the one to reuse:** `TtyOut.write` implements the stdlib
+`IO[str]` interface, whose calling convention is positional and **not ours to change**. It
+was resolved by BINDING the buffer's own method in `__init__` (`self.write =
+self._buf.write`) rather than redefining it — the interface stays exact and no signature is
+left to flag. Where an external contract fixes the calling convention, the signature is not
+ours to annotate.
+
+**IF NEITHER DECISION HAS BEEN ANSWERED WHEN YOU READ THIS, DO NOT DECIDE THEM YOURSELF.**
+You inherit this file and one prompt, which makes it tempting to treat a recommendation as
+approval. It is not. Unblocked work meanwhile:
+
+- **`overseer-bg2.10`** (P2) — the `uv.lock` release drift. Small, self-contained, and it
+  removes a recurring per-worktree annoyance. **Leave `uv.lock` unstaged in ordinary work**;
+  the fix belongs in the release commit.
+- **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
+  **Read it before starting**: it REQUIRES a nine-repo blast-radius measurement first and
+  explicit sequencing behind per-repo remediation items. Starting the implementation now
+  would be premature; the measurement is the real next step.
+- **`livespec-dev-tooling-426a`** — still gated on `bg2.3` + `bg2.4`. `bg2.3` is now closed,
+  so only `bg2.4` gates it.
+
+### 🚨 `bg2.4` ARMING — THREE OF FOUR BLOCKERS ARE CLEAR
+
+Re-derived on the FINAL module set with `source_trees` + `covered_trees = ["overseer"]`
+temporarily set, then reverted:
+
+| Check | Filed | Now | State |
+|---|---|---|---|
+| `check-all-declared` | 30 | **0** | ✅ `bg2.7` closed |
+| `check-private-calls` | 45 | 42 | ✅ fixed upstream; see the pin note below |
+| `check-keyword-only-args` | 614 | **41** | ⚠️ decision 2 |
+| `check-no-inheritance` | — | **0** | ✅ |
+| `check-file-lloc` | — | **0 errors** | ✅ (one soft-band WARN — decision 1) |
+
+**The 42 for `check-private-calls` is a STALE-PIN ARTIFACT, not a regression.**
+`livespec-dev-tooling-h65n` (PR #706) fixes it, but `livespec-overseer` pinned
+`livespec-dev-tooling` at `v0.54.24`, which predates it. **Verified directly** by importing
+the installed package in that worktree and finding `load_slf001_exempt_globs` absent — not
+inferred from the version string. It clears when the pin reaches **v0.54.26 or later**
+(dev-tooling cut v0.54.25 and v0.54.26 during this session). **Re-verify the pin before
+concluding anything about that count.**
+
+### 🔧 WHAT THE bg2.9 SWEEP TAUGHT — six failure modes, five invisible to pyright
+
+Anyone continuing `bg2.9` must handle every one. The tooling that handles them is
+disposable; the list is not.
+
+1. **A second `*` in a signature that already had one.** `_call(self, args, *, input_text)`
+   is non-compliant but already carries a separator; a naive insert yields
+   `(self, *, args, *, input_text)`. The existing separator is redundant after the move and
+   must be deleted.
+2. **Calls to stdlib methods sharing a name.** Resolving by name turned `handle.write(body)`
+   into `handle.write(text=body)`. Names present on stdlib types are neither transformed nor
+   rewritten.
+3. **Locally-defined monkeypatch stand-ins.** `def vanishing_exists(name)` assigned onto a
+   fake to wrap its method. Invisible to pyright — the assignment defeats the type — and
+   surfaces only as a pytest `TypeError`. Find them with an AST sweep for a local `def`
+   whose name is assigned to an attribute matching a transformed method, **not** by grep.
+4. **A free function and a method sharing a name.** `auto_link`, `do_launch` and `evaluate`
+   each exist BOTH as a free function taking `sup` and as a method taking `self`, with
+   different parameter lists. Resolve by `(scope, name)` — module qualifier, or `"method"`
+   for a receiver — and fall back to the bare name ONLY where every definition agrees.
+   Name-matching alone gave 82 pyright errors; qualifier-only gave **284**, because an
+   IMPORTED name has no qualifier at its call site. The hybrid is what works.
+5. **An instance-attribute callable that looks like a method.** `self._run(...)` is an
+   injected field holding `subprocess.run`. Exclude every name assigned as
+   `self.<name> = ...` from receiver resolution AND from the name fallback — the fallback
+   re-admitted it the first time the guard was added.
+6. **Calls inside f-strings.** Python 3.10 reports `col_offset` inside an f-string RELATIVE
+   TO THE F-STRING, so column splicing corrupts the interior: `elide(row.note,
+   MAX_REASON_IN_ALERT)` became `elide(rotext=w.note, MAlimit=X_REASON_IN_ALERT)`. Skip any
+   line containing an f-string and repair those with a text pass that splits the argument
+   list at top-level commas respecting nesting and quotes. Keep the skip COARSE (whole
+   line) — the reported list is then a superset, and a missed call surfaces as a pytest
+   `TypeError` rather than silent corruption.
+
+### 🧾 VERIFICATION LESSONS THAT COST REAL TIME THIS SESSION
+
+- **A green `check-file-lloc` can be read off a universe that does not contain the file
+  under review.** The first `just check` on PR #164 reported 61/61 green while
+  `_supervisor_evaluate.py` was still UNTRACKED — the LLOC checks derive their universe
+  from `git ls-files`. **`git add` before measuring**, or the green is vacuous. This is the
+  `verifying-against-the-right-source` failure mode in its purest form and it nearly
+  shipped.
+- **A repo's own green does not exercise a fix it ships for someone else.**
+  `livespec-dev-tooling` grants no `SLF001` anywhere, so `h65n`'s 63/63 green never ran the
+  new path. The only evidence it works is the cross-repo exercise (42 → 0 on
+  `livespec-overseer`, plus a planted PRODUCTION violation there proving the exemption does
+  not leak). Run that exercise; do not accept the shipping repo's suite as proof.
+- **When an item warns of a specific trap, encode the check for it BEFORE the transform.**
+  `bg2.7`'s description warned that some modules already carry an unannotated `__all__` and
+  need the annotation rather than a second declaration. The first pass made exactly that
+  mistake. A duplicate-detection sweep caught it — afterwards.
+- **Reverting a temporary `pyproject.toml` edit is not a `str.replace`.** The comment above
+  `source_trees` QUOTES the key, so the replace rewrote the comment and left the key armed.
+  A blanket `git checkout -- pyproject.toml` then discarded a real edit (the S106 grant)
+  alongside the temporary one. **Revert by line, then re-diff.**
+- **`ls` is aliased to a long-format lister in this shell**, and zsh does not word-split an
+  unquoted `$VAR`. `PROD=$(ls ...)` then `cmd $PROD` passes one giant argument. Use
+  `find ... -print0 | xargs -0`.
+
+### 📌 CROSS-TENANT STATUS — verified this session
+
+| Item | Tenant | Status |
+|---|---|---|
+| `livespec-driver-claude-jzy` | livespec-driver-claude | ✅ CLOSED |
+| `livespec-dev-tooling-4er` | livespec-dev-tooling | ✅ CLOSED |
+| `livespec-dev-tooling-h65n` | livespec-dev-tooling | ✅ **CLOSED this session** (PR #706) |
+| `overseer-bg2.3` | livespec-overseer | ✅ **CLOSED this session** |
+| `overseer-bg2.7` | livespec-overseer | ✅ **CLOSED this session** |
+| `overseer-bg2.9` | livespec-overseer | open — decision 2 |
+| `overseer-bg2.4` | livespec-overseer | open — gated on bg2.9 + the pin bump |
+| `overseer-bg2.10` | livespec-overseer | open (P2), unblocked |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — measure first |
+| `livespec-dev-tooling-426a` | livespec-dev-tooling | open — now gated on `bg2.4` alone |
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** All six PRs merged; every worktree and branch this session
+  created is reaped. `livespec`, `livespec-overseer` and `livespec-dev-tooling` are clean on
+  `master` and in sync with origin.
+- **Master CI**: green on all three at wind-down, with `livespec-overseer`'s run for #171
+  and `livespec-dev-tooling`'s pin-bump run still in progress. **Re-check; do not trust
+  this line.**
+- **`livespec-overseer` carries one worktree belonging to ANOTHER session**
+  (`docs/header-facts`). **Do not reap it.** `livespec` carries three
+  (`ci-concurrency-group`, `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`).
+  **Do not reap those either.** Both sets differ from the ones the fourteenth session named,
+  so re-enumerate rather than reusing any list.
+- **The maintainer's `overseerd` daemon holds the OLD modules until restarted.** The layout
+  changed substantially this session (five new collaborator modules plus
+  `_supervisor_evaluate`), so restart it before trusting its behavior.
+- **`just check` fails in a FRESH WORKTREE** on
+  `check-primary-checkout-commit-refuse-hook-installed` (`failure_mode:
+  worktree_pack_absent`). Fix: `just install-worktree-pack` in that worktree — then
+  `git checkout -- .livespec.jsonc`, because the installer writes
+  `"worktree_discipline": {"pack": "required"}` into that TRACKED file as a side effect.
+
+### ✅ STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS**.
+2. `livespec-dev-tooling-4er`, `livespec-driver-claude-jzy`, `overseer-bg2.8`, Group B's
+   `ct9`, `njyx` and `rgt8` are **all CLOSED**.
+3. **`overseer-bg2.3`, `overseer-bg2.7` and `livespec-dev-tooling-h65n` are CLOSED** as of
+   this session.
+
+### 📌 STILL OPEN ELSEWHERE — unchanged
+
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, carried from `x6t6`
+  leg (b).
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table;
+  piece (3) should be closed as dissolved.
+- **Group B** is only `tljy` and `3q2c`, both `backlog`.
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — maintainer's call.
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text
+  through a file** and pass it as `"$(cat file)"`.
+- Setting `HOME` for a `mise exec` invocation breaks mise (`config not trusted`). Use the
+  venv interpreter directly: `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
+- **A patch script that prints success without asserting its replacement applied will lie to
+  you.** Assert `new != old` before writing.
+- A fresh worktree needs `uv sync` before `./.venv/bin/python3` exists.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (FOURTEENTH session) — superseded by the FIFTEENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
