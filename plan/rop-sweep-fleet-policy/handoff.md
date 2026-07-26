@@ -1,6 +1,297 @@
-# rop-sweep-fleet-policy — bg2.3 is down to ONE file; supervisor.py is a decomposition project, analysed and NOT started
+# rop-sweep-fleet-policy — `supervisor.py` is COMPLIANT; one file breaches, and its target is 200 not 250
 
-## 🔔 STATE AS OF 2026-07-26 (TWELFTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (THIRTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ TWO PRs MERGED — `bg2.8` is CLOSED and `supervisor.py` is under both ceilings
+
+| Item | What landed | Repo / PR | Result |
+|---|---|---|---|
+| `overseer-bg2.3` | `supervisor.py` → façade + five private collaborators | livespec-overseer #150 | 1350 → **156 LLOC** ✅ |
+| `overseer-bg2.8` | `NoSupervisorPaneTmux` off inheritance, **and its inert test given teeth** | livespec-overseer #152 | armed check → **0** ✅ CLOSED |
+
+Both green, `just check` 61/61, 520 tests, coverage 100%. Nothing is in flight; every
+worktree and branch this session created is reaped.
+
+The `supervisor.py` split produced:
+
+| Module | Owns | LLOC |
+|---|---|---|
+| `overseer/supervisor.py` | the façade + the one-shot track-management CLI | **156** ✅ |
+| `overseer/_supervisor_core.py` | `class Supervisor` — poll loop, cascade, table | **1116** ⚠️ |
+| `overseer/_supervisor_view.py` | `RowView`, row tint, note elision, `NEEDS YOU` | 62 ✅ |
+| `overseer/_supervisor_config.py` | tuning constants, gitignore probe, shared helpers | 57 ✅ |
+| `overseer/_supervisor_prompts.py` | every word injected into a tracked session | 40 ✅ |
+| `overseer/_supervisor_records.py` | `InjectState` / `Observation` | 28 ✅ |
+
+`just check-file-lloc` on `livespec-overseer` master now names **exactly one file:
+`overseer/_supervisor_core.py`, 1116 LLOC.** That single file is all that remains of
+`overseer-bg2.3`.
+
+### 🎯 WHAT TO DO FIRST — decompose `_supervisor_core.py`, and read the next two sections before you start
+
+The design is already done and is stated below as an executable plan, derived from measured
+data rather than sketched. Two corrections in it matter more than the plan itself, so read
+both before writing any code.
+
+If you would rather not open the daemon's core, the unblocked alternative is
+`overseer-bg2.7` — but see the ordering correction below: it should now land **after**
+`bg2.3`, not before.
+
+### 🚨 CORRECTION 1 — the target is **≤200 LLOC, not ≤250**
+
+Every earlier section of this handoff aimed `bg2.3` at the 250-LLOC hard ceiling. That is
+not the binding constraint. There are TWO checks:
+
+- `check-file-lloc` — hard-fails above **250**, but only once
+  `file_lloc_hard_gate = true` (off today).
+- `check-no-lloc-soft-warnings` — flags the **201-250 soft band** and fails when
+  `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` is set, which `release-tag.yml:76` and
+  `release-readiness.yml:54` both set to `"true"`.
+
+So a file landing at, say, 236 escapes the hard ceiling and lands **inside** the soft band,
+arming a **release-gate** failure. The perverse consequence: `_supervisor_core.py` at 1116
+passes `check-no-lloc-soft-warnings` today (it is above the band, not in it), while the same
+file at 236 would fail it.
+
+That gate is a no-op only because `covered_trees` is empty: `no_lloc_soft_warnings.py`
+splits offenders on that role key, so everything currently lands in the non-failing
+"Phase-0 WARN" bucket. **It arms itself the moment `bg2.4` declares the key.**
+
+Measured on master f279533 with the keys temporarily armed: `check-no-lloc-soft-warnings`
+reports **zero**. No file under `overseer/` is in the soft band — the highest is
+`overseer/test_claude_sessions.py` at **199**, one line of headroom. The `release-tag.yml`
+comment naming `overseer/test_signals.py` (211) as "the single offender" is STALE; that file
+was split in slice 7.
+
+One file sits at 202 — `tests/integration/test_startup_refusals_and_runtime.py` — but
+`tests/` is outside the planned `covered_trees = ["overseer"]`, so it does not arm. Worth
+knowing, not worth fixing now.
+
+**Target `_supervisor_core.py` at ≤200, and leave real headroom.**
+
+### 🚨 CORRECTION 2 — the `evaluate()` ruling protects COHESION, not method-ness
+
+Earlier sections read the maintainer ruling of 2026-07-19 as making the arithmetic nearly
+impossible: `evaluate()` is 196 LLOC and must stay intact, so a 250-LLOC file retaining the
+class shell had ~30-50 LLOC for everything else.
+
+Re-read the ruling. It rejected cutting the decision cascade **into per-state helpers**,
+because that would scatter the precedence order across call sites where no reader can verify
+it in one pass. It does **not** require the cascade to be a METHOD. Extracting `evaluate()`
+**whole** into its own module as a free function, with `Supervisor.evaluate` delegating in
+two lines, keeps the cascade intact in one place and honours the ruling exactly — while
+removing 194 LLOC from the ceiling arithmetic.
+
+That is what makes the ≤200 target reachable. Do not re-derive the old pessimistic framing.
+
+### 📐 THE STEP-2 PLAN — measured, not sketched
+
+`_supervisor_core.py` = 1116 LLOC: **1024** in 55 methods, **32** in dataclass fields, ~60
+in the docstring/imports/`__all__`.
+
+**Who must stay on the class.** Measured by AST over every `.py` outside the module:
+
+- **12 public methods are called externally** — `evaluate` (180 call sites across 21 files),
+  `tick`, `run`, `build_rows`, `adopt_sessions`, `render`, `do_launch`,
+  `recover_missing_sessions`, `archive_gc`, `auto_link`, `unignored_tmp_repos`,
+  `unsupported_host_reasons`. Zero public methods are unused.
+- **18 private methods are reached by beside-tests** — `_acquire_singleton_lock`,
+  `_release_singleton_lock`, `_singleton_lock_path`, `_clear_state`, `_void_if_stale`,
+  `_void_stale_blocked`, `_write_idle_nudge_state`, `_codex_launch_command`,
+  `_launch_command`, `_do_codex_launch`, `_do_codex_restart`, `_is_codex_track`,
+  `_refresh_claude_status`, `_refresh_codex_sessions`, `_refresh_window_name`,
+  `_resolve_watch`, `_session_of`, `_submit_prompt`.
+- **25 private methods are reached from nowhere outside** — `_log`, `_surface`, `_alert`,
+  `_alert_non_responder`, `_attention_lines`, `_await_input_box`, `_await_pane`,
+  `_clear_idle_nudge_state`, `_clear_supervision_alerts`, `_do_restart`, `_effective_ctx`,
+  `_live_session_outside_tmux`, `_maybe_inject`, `_no_managed_pane_row`,
+  `_nudge_idle_with_context`, `_observe`, `_pane_is_managed`, `_pane_is_managed_claude`,
+  `_pane_settled`, `_recover_codex_track`, `_resend_enter`, `_sessions_dir`,
+  `_supervisor_running`, `_supervisor_session_of`, `_surface_supervision_offer`. **These can
+  leave the class entirely** — their callers are being extracted alongside them.
+
+**The arithmetic.** 30 methods reduced to ~2-LLOC delegating stubs (~65), plus 32 field
+LLOC, plus ~22 import lines, plus `__all__` = **~120 LLOC**. Comfortably under 200. The 25
+internal-only methods contribute nothing, because they are deleted rather than stubbed.
+
+**Groups — use the class's own internal banners, they already partition it:**
+
+| Banner group | Method LLOC |
+|---|---|
+| Per-track evaluation (the state machine) | ~700 (incl. `evaluate` 196, `_observe` 55, `_do_restart` 47) |
+| Watch-set + discovery ⋈ mapping | 135 |
+| Singleton daemon lock (per store) + `run` | 77 |
+| Reboot recovery (startup-only) | 74 |
+| Table rendering | 57 |
+| Diagnostics | 22 |
+| Tick + loop | 6 |
+
+**Land it as one PR per group, not one PR total.** Each group extraction leaves the class
+consistent and the suite green, so an interrupted sequence is "4 of 7 groups extracted, all
+green" rather than a half-decomposed `Supervisor`. Start with the peripheral groups
+(Diagnostics, Table rendering, Reboot recovery, Singleton lock) to validate the pattern,
+then Watch-set, then the evaluation group last and on its own.
+
+**THE HAZARD, and budget for it explicitly.** An extracted free function that touches
+`sup._something` is a cross-module private access, which pyright-strict's
+`reportPrivateUsage` rejects. Seven private FIELDS must therefore become public, and six of
+them are touched by tests too: `_claude_status` (19 sites / 6 files), `_codex` (10 / 7),
+`_claude_names` (4 / 2), `_inject` (4 / 2), `_colliding` (1 / 1), `_window_name` (1 / 1),
+plus `_alerted` (internal only). `Supervisor` is a `@dataclass`, so check whether any
+renamed field is also a constructor keyword before renaming it.
+
+### 🚨 `bg2.4`'s BLAST RADIUS GREW — and `bg2.7` now has `bg2.9`'s ordering rule
+
+Re-measured on master f279533 by temporarily setting `source_trees` + `covered_trees` to
+`["overseer"]`, running each check, and reverting:
+
+| Check | Item | 11th session | NOW | Δ |
+|---|---|---|---|---|
+| `check-all-declared` | `overseer-bg2.7` (P1) | 30 | **55** | **+25** |
+| `check-keyword-only-args` | `overseer-bg2.9` (P1) | 614 | **637** | **+23** |
+| `check-private-calls` | `livespec-dev-tooling-h65n` (P2) | 45 | **42** | −3 |
+| `check-no-inheritance` | `overseer-bg2.8` | 1 | **0** | CLOSED |
+| Result-railway (3 checks) | — | 0 | **0** | — |
+| `check-no-lloc-soft-warnings` | — | not measured | **0** | — |
+
+**Why they grew: each `bg2.3` split multiplies modules and signatures.**
+`test_supervisor.py` became 24 modules, `test_registry.py` 4, `test_signals.py` 3 — every
+new module is a new missing-`__all__` offender and brings new signatures with it.
+
+**So `bg2.7` must land AFTER `bg2.3` completes, for exactly the reason already recorded on
+`bg2.9`.** Nothing in the epic said this about `bg2.7`; both counts are a function of how
+many modules exist, so a count measured before `bg2.3` closes will change again. Both items
+are journaled with this. **Re-derive before slicing; do not plan from 55 or 637.**
+
+`bg2.7`'s 55 split 9 production / 46 test, all the "missing `__all__`" mode, none the
+"undeclared name" mode. Several production files DO declare `__all__` but **unannotated**
+(`__all__ = [...]` rather than `__all__: list[str] = [...]`) — a one-token edit each. For a
+pure test module `__all__: list[str] = []` is the honest declaration (the shape
+`overseer/__init__.py` uses); only the five `*_fakes` / `*_builders` helper modules have
+real exports to list.
+
+The `pyproject.toml` comment's named hazard remains **STALE**: it warns about the
+Result-railway checks, which measure ZERO. Do not plan `bg2.4` from it.
+
+### 🔧 THE SPLIT PATTERN — what the façade slice added
+
+Everything the earlier sections record still holds. Four additions:
+
+1. **A façade beats a shrink.** The plan was to extract only module-level code and leave the
+   class, landing `supervisor.py` at ~1140 — still breaching. Moving the class to
+   `_supervisor_core.py` instead made the PUBLIC entry file **compliant** for the same 22
+   forced renames, and needed far LESS test churn, because `build_supervisor` / `run_daemon`
+   / `main` / `_cli_colliding` stayed put and their four
+   `monkeypatch.setattr(supervisor, ...)` sites never moved.
+2. **Check what executes the file as a SCRIPT before moving `main`.** The plan put `main` in
+   a `_supervisor_cli.py`. That would have broken the shipped operator surface:
+   `.claude-plugin/prose/overseer.md` invokes
+   `uv run --no-project python overseer/supervisor.py <cmd>`. `main` and the `__main__`
+   guard must stay in the façade — and keeping `build_supervisor` / `run_daemon` with them
+   also avoids an import cycle, since a CLI collaborator would need `Supervisor` back.
+3. **Retarget test reads to the DEFINING module; never re-export a constant for a test to
+   read.** A façade re-export can be `monkeypatch.setattr`-ed **successfully** while the real
+   reader keeps its own binding — the slice-4 failure that wrote to the maintainer's live
+   store. Retargeting also makes a MISSED update fail loudly with `AttributeError` instead
+   of silently exercising the wrong value.
+4. **Prove the rename set is forced rather than assuming it.** Re-privatising one name and
+   importing it across the boundary produced
+   `error: "_STATUS_COLOR" is private and used outside of the module in which it is declared
+   (reportPrivateUsage)`. Cheap, and it turns a stated reason into a verified one.
+
+**The verification pair that made the 3000-line move reviewable:** (a) `ast.dump` every
+top-level definition in its new home against `origin/master`'s, after applying the same
+declared rename map to master's source — all 55 identical, so any change outside the map
+would have surfaced; (b) assert every region's lines are byte-identical to master's renamed
+lines. `ruff format` then reporting "76 files unchanged" is a third, independent confirmation.
+
+### 💥 NEW INSTRUMENT HAZARD — `check-file-lloc` reads the git INDEX
+
+The 1116-LLOC `_supervisor_core.py` reported **CLEAN** while it was still untracked. The
+check derives its universe from the git index, so a session can split a file, run
+`just check-file-lloc`, see nothing, and never learn the new file breaches.
+
+**`git add` new files before believing that check.** This generalises to every
+`resolve_check_universe`-based check, not just this one.
+
+### 🧾 AND A TEST THAT PROVED NOTHING — the shape to watch for
+
+`bg2.8` looked like a one-line inheritance fix. The test the double served was **inert**.
+
+`_supervisor_running` answers False three independent ways: the session does not exist, its
+pane id does not resolve, or its pane process is neither Claude-like nor a Codex pane joined
+to a live rollout. `test_supervisor_session_without_a_pane_is_not_running` named leg 2, but
+it added the supervisor session to `fake.sessions` without SERVING it, so
+`pane_current_command` returned `None` and leg 3 answered False on its own. The `pane_id`
+override changed nothing — **neutering it on master's own version left the test passing.**
+
+The fix served the supervisor session as a fully live supervisor so the paneless declaration
+became the only cause, and sabotage-verified the other way. **The generalisable shape: when
+a predicate has N independent false legs, a test claiming one leg must make the other N-1
+TRUE, or it proves nothing while looking green.** Worth a sabotage check on any test whose
+setup leaves a sibling leg unset.
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** livespec-overseer #150 and #152 are merged; the handoff PR for
+  this section is the only other work. Every worktree and branch this session created is
+  reaped. `livespec` and `livespec-overseer` are clean on `master` and in sync with origin.
+- **Master CI was green on both repos throughout.**
+- **`overseer-bg2.8` is CLOSED.** Open in the epic: `bg2.3` (one file left), `bg2.4`,
+  `bg2.7`, `bg2.9`, `bg2.10`.
+- **`overseer-bg2.10` still bites**: `uv.lock` drifts one version behind `pyproject.toml`
+  after every release, so every fresh worktree dirties it on first `uv run`. **Leave it
+  alone** — do not stage it; the fix belongs in the release commit.
+- **The maintainer's `overseerd` daemon is RUNNING** (from `/data/projects/livespec-overseer`'s
+  own `.venv`). It keeps the OLD code until restarted, which `overseer/AGENTS.md` already
+  documents. Restart it to pick up the new module layout.
+- **Another session is active in `livespec-overseer`** — it landed three `docs(plan)`
+  commits during this one and holds the worktree `fix/goal-5-pull-lane`. **Do not reap it.**
+- `livespec` carries three worktrees belonging to OTHER sessions (`ci-concurrency-group`,
+  `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`). **Do not reap them.**
+
+### 📌 STILL OPEN ELSEWHERE — unchanged
+
+- **`livespec-dev-tooling-426a`** (P1) — retire the `file_lloc_hard_gate` opt-in fleet-wide.
+  Gated on `bg2.3`+`bg2.4` AND on measuring `livespec-console-beads-fabro`, the only other
+  repo lacking the gate.
+- **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
+  Note the hazard above is the OTHER side of this coin: it already does, and untracked files
+  are therefore invisible.
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, carried from `x6t6` leg (b).
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table;
+  piece (3) should be closed as dissolved.
+- **`livespec-dev-tooling-h65n`** (P2) — the `check-private-calls` beside-test carve-out,
+  cross-tenant, 42 diagnostics. Journaled on `overseer-bg2` in **prose only** (a pseudo-id
+  `depends_on` row parses as a local dependency and blocks dispatch — the y21 lesson).
+- **Group B** is only `tljy` and `3q2c`, both `backlog`.
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — maintainer's call.
+
+### ✅ STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS**.
+2. **`livespec-dev-tooling-4er` is CLOSED.**
+3. **Group B's `ct9` is CLOSED**, as are `njyx` and `rgt8`.
+4. **`overseer-bg2.8` is CLOSED** (livespec-overseer #152).
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text
+  through a file** and pass it as `"$(cat file)"`.
+- Setting `HOME` for a `mise exec` invocation breaks mise (`config not trusted`). For the
+  standing scratch-`HOME` counter-measure use the venv interpreter directly:
+  `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
+- **Run the suite with `HOME` at a scratch dir and assert nothing lands there.** That is
+  POSITIVE proof the default-path patches take effect; a green suite alone cannot
+  distinguish a working patch from one writing to the real `$HOME`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (TWELFTH session) — superseded by the THIRTEENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
