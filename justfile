@@ -36,6 +36,20 @@ default:
 # First-time setup.
 # ---------------------------------------------------------------
 
+# Worktree-discipline pack recipe fragments — OPTIONAL imports (`import?`, NOT
+# plain `import`): the fragments are gitignored-and-installed by
+# `just install-worktree-pack` (run from the `worktree-pack` LOCAL obligation
+# row that `bootstrap` walks), so they are ABSENT in a fresh clone until then. A
+# plain `import` of a missing file makes `just` fail to parse the ENTIRE
+# justfile, which would brick `just bootstrap` on a fresh clone; the optional
+# `import?` silently no-ops while the file is absent — the `worktree-*` and
+# `branch-protection-*` recipes simply are not available until the fragments are
+# materialized — and resolves once installed. Without these two lines a
+# byte-perfect installed pack is INVISIBLE to `just --list`, which is the
+# discoverability hole that let a session fall back to a raw `git worktree add`.
+import? 'dev-tooling/worktree.just'
+import? 'dev-tooling/branch-protection.just'
+
 # Install the canonical livespec commit-refuse hook by REUSING the
 # shared livespec-dev-tooling installer module
 # (`python -m livespec_dev_tooling.install_commit_refuse_hooks`) — the
@@ -63,22 +77,41 @@ default:
 install-commit-refuse-hooks:
     uv run python -m livespec_dev_tooling.install_commit_refuse_hooks
 
+# Install (or idempotently re-install) the canonical worktree-discipline pack —
+# FOUR files: `worktree-lib.sh` + `branch-protection.sh` (executable) and
+# `worktree.just` + `branch-protection.just` (imported above, not executable) —
+# into the current checkout's `dev-tooling/` directory. The livespec-dev-tooling
+# installer module is the single canonical-body carrier. The pack files are
+# GITIGNORED-AND-MATERIALIZED, never tracked: nothing is committed, and each
+# checkout re-materializes them. `bootstrap` covers this automatically via the
+# `worktree-pack` LOCAL obligation row, so this recipe is the standalone repair
+# path rather than a step `bootstrap` must duplicate. The
+# `check-primary-checkout-commit-refuse-hook-installed` verifier guards the
+# installed bytes against drift.
+install-worktree-pack:
+    uv run python -m livespec_dev_tooling.install_worktree_pack
+
 # First-touch setup — a THIN delegator to the shipped LOCAL first-touch
 # reconcile verb (`livespec_dev_tooling.fleet.local_reconcile`), the
 # generalized successor to this recipe's former inline steps. Reuse-first:
 # NO copied logic — the verb walks the LOCAL obligation partition
 # (`contract.LOCAL_OBLIGATION_ROWS`): mise trust/install, uv sync, the
+# canonical worktree-discipline pack, the
 # structural commit-refuse hooks, the advisory `refs/notes/*` refspec, the
 # worktree-root mise-trust entry, the beads tenant-dir hardening, and
 # project-scoped Claude/Codex plugin registration — each an idempotent
 # assert-then-reconcile row. The two plugin rows delegate back to THIS
 # repo's own `ensure-plugins` / `ensure-codex-plugins` recipes below (the
 # plugin set is repo-specific, so each governed repo's recipe stays the
-# single source). The verb resolves the target checkout worktree-safely via
+# single source). The verb resolves shared-state rows worktree-safely via
 # `git rev-parse --git-common-dir`, so invoking from a linked worktree still
 # provisions the primary checkout's shared state — preserving this recipe's
-# former primary-root resolution. `--checkout` defaults to the working
-# directory. Mirrors the `install-commit-refuse-hooks` recipe's
+# former primary-root resolution. The `worktree-pack` row is the ONE
+# exception: the pack lives in each checkout's own `dev-tooling/` and the
+# `import?` lines above resolve relative to the worktree you stand in, so
+# that row targets the INVOKED worktree — otherwise every linked worktree
+# would show no `worktree-create` in `just --list`. `--checkout` defaults to
+# the working directory. Mirrors the `install-commit-refuse-hooks` recipe's
 # `uv run python -m ...` from-package invocation.
 bootstrap:
     uv run python -m livespec_dev_tooling.fleet.local_reconcile

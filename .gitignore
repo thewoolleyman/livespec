@@ -1,5 +1,17 @@
 ### Project ignores
 tmp/
+
+# Worktree-discipline pack — installed from the livespec-dev-tooling package
+# (the single canonical source) into dev-tooling/ at bootstrap, NEVER tracked
+# here, mirroring how the commit-refuse hooks are installed into the untracked
+# shared .git/hooks/ dir. The pack is four files: the two executable shell
+# scripts plus the `worktree.just` and `branch-protection.just` recipe
+# fragments the root justfile `import?`s. `just bootstrap` materializes them
+# via the `worktree-pack` LOCAL obligation row.
+/dev-tooling/worktree-lib.sh
+/dev-tooling/branch-protection.sh
+/dev-tooling/worktree.just
+/dev-tooling/branch-protection.just
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/

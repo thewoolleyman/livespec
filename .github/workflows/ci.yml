@@ -414,6 +414,14 @@ jobs:
         if: matrix.target == 'check-primary-checkout-commit-refuse-hook-installed'
         run: just install-commit-refuse-hooks
 
+      # Same rationale as the hook step above: a fresh `actions/checkout` has no
+      # materialized worktree pack (the pack is gitignored-and-installed, never
+      # tracked), so the verifier's pack arm has nothing to compare against on an
+      # untouched runner. Installs from the SAME package source the check reads.
+      - name: Install canonical worktree pack (satisfy invariant)
+        if: matrix.target == 'check-primary-checkout-commit-refuse-hook-installed'
+        run: just install-worktree-pack
+
       - name: just ${{ matrix.target }}
         env:
           LIVESPEC_SIBLING_CLONES_ROOT: ${{ runner.temp }}/sibling-clones
