@@ -1,6 +1,233 @@
-# rop-sweep-fleet-policy — seven items closed across five repos; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
+# rop-sweep-fleet-policy — the loop-iteration exemption is RULED OUT, not mechanized; x6t6 dissolves, one epic and ten items are filed, and 4er is ordinary implementation work
 
-## ✅ STATE AS OF 2026-07-26 (EIGHTH session) — READ FIRST; everything below is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (NINTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ⚖️ THE RULING — the loop-iteration broad catch is REMOVED, not mechanized
+
+**Maintainer ruling, 2026-07-26.** A daemon does NOT get a per-iteration broad catch. "Let it
+crash, systemd restarts": a bug in any track's tick propagates, the daemon logs and exits 1, and
+systemd restarts it. **Exactly one broad catch per program, in `main()`.**
+
+**All three options this thread had converged on are REJECTED. Do not implement any of them:**
+
+| Option | What it was | Status |
+|---|---|---|
+| (A) | File-scoped loop-body exemption confined to declared entry artifacts | **REJECTED** |
+| (B) | Loop-body exemption anywhere in `source_trees` | **REJECTED** |
+| (C) | A new role key declaring loop position | **REJECTED** |
+
+No new exemption shape, no widened position rule, no new config key. **The eighth-session section
+below recommends (A) plus a `contracts.md:217` amendment — that recommendation is SUPERSEDED. Do
+not act on it.** The `contracts.md:217` amendment is not merely unnecessary, it would be wrong:
+that line already reads "files whose `main()` direct-child `try/except` is exempt", which is
+exactly the narrowed rule.
+
+Consequences: **`x6t6` DISSOLVES rather than being implemented.** `livespec-overseer`'s catch at
+`overseer/supervisor.py:2779` becomes non-conforming and is deleted. **`jjb` piece (3) dissolves
+outright** — it asked to mechanize per-supervision-loop cardinality, and after the ruling there is
+no per-supervision-loop accounting unit left to mechanize. `jjb` piece (2) must be re-derived
+against the narrowed rule rather than the old three-row flavor table.
+
+### 🚨 THE LOAD-BEARING PRECONDITION — harden before deleting, or you create a crashloop
+
+**Deleting the catch converts a recoverable ENVIRONMENTAL error into a permanent crashloop.** This
+is the single most important operational fact in this section.
+
+`Path.read_text(encoding="utf-8")` raises `UnicodeDecodeError` on non-UTF-8 bytes.
+`UnicodeDecodeError` subclasses `ValueError` — verified, the chain is `UnicodeDecodeError` →
+`UnicodeError` → `ValueError` — so it is **not** an `OSError` and **not** a
+`json.JSONDecodeError`. Six read sites in `livespec-overseer` catch only `OSError` or
+`(OSError, json.JSONDecodeError)`, so they leak it.
+
+**Today** that leak lands in the catch at 2779: the daemon warns and keeps supervising. **After the
+catch is deleted** the daemon exits, systemd restarts it, the same corrupt file is read again, and
+it exits again — **nothing is supervised until a human intervenes.**
+
+The six sites, each verified by reading its handler on `origin/master`:
+
+| Site | Handler today | Reads |
+|---|---|---|
+| `overseer/registry.py:276` | `except OSError` | mapping store |
+| `overseer/registry.py:700` | `except (OSError, json.JSONDecodeError)` | watch-set JSONC |
+| `overseer/registry.py:777` | `except (OSError, json.JSONDecodeError)` | injection-stamp sidecar |
+| `overseer/signals.py:385` | `except OSError` | track state file |
+| `overseer/codex_sessions.py:181` | `except OSError` | `session_index.jsonl` |
+| `overseer/claude_sessions.py:146` | `except OSError` | `/proc/<pid>/task/<pid>/children` |
+
+The fix is to widen each to `(OSError, ValueError)`; `ValueError` subsumes both subclasses, so the
+two three-element tuples get SHORTER. **Reachability nuance:** `claude_sessions.py:146` reads a
+kernel-generated ASCII list of process ids, where non-UTF-8 bytes cannot occur — so **five** of the
+six are genuinely reachable and that one is uniformity. Widen it anyway, but do not cite it as the
+justification.
+
+**Three sites are already correct — do NOT "fix" them:** `claude_sessions.py:88` and `:137` pass
+`errors="replace"`, and `:216-217` already catches `(OSError, ValueError)`.
+
+**The net is complete.** `read_text` is the only decode-on-read surface in `livespec-overseer`
+production modules, verified by sweeping `.decode(`, `open(`, `read_bytes()` and `json.load(` — all
+four `open()` sites are WRITE opens.
+
+### ✅ WHY THE RULING IS WELL-SUPPORTED — the docstring's own two cases are already boundaried
+
+The `run()` docstring at `overseer/supervisor.py:2734` justifies the broad catch with exactly two
+cases, and both are already covered by narrow catches below it:
+
+- **"an unreadable `plan/` dir"** — boundaried at `overseer/registry.py:527`, whose own docstring
+  cites adversarial-review blocker B7 and the same "must not crash the daemon that supervises ALL
+  tracks" rationale.
+- **"a malformed store"** — boundaried at `overseer/registry.py:276` plus a per-line
+  `json.JSONDecodeError` catch.
+
+So once the six leaks close, **bugs are the only exception class that can reach line 2779** — which
+is exactly the condition under which "let it crash" is the correct posture.
+
+### 📋 WHAT WAS FILED — one epic and ten items across three tenants
+
+**Epic: `overseer-bg2`** (livespec-overseer tenant) — "Remove the daemon loop-iteration broad-catch
+exemption and arm livespec-overseer enforcement — rop-sweep ruling 2026-07-26". **`livespec-dev-tooling-e9j`
+stays CLOSED and MUST NOT be reopened**; its own description puts `livespec-overseer` arming out of
+scope, so this epic is the successor vehicle.
+
+`depends_on` below means a TYPED LOCAL dependency row in the same tenant. Cross-tenant gating is
+journaled in prose only, never as a typed row: a pseudo-id row parses as a LOCAL dependency and
+blocks dispatch (the y21 lesson recorded on `livespec-dev-tooling-e9j`).
+
+| # | Id | P | What |
+|---|---|---|---|
+| 1 | `overseer-bg2.1` | 1 | Close the six `UnicodeDecodeError` boundary leaks. No deps. **PRECONDITION for #2.** |
+| 2 | `overseer-bg2.2` | 1 | Delete the catch at `supervisor.py:2779`. `depends_on` #1; gated on #7 (journaled). |
+| 3 | `overseer-bg2.3` | 1 | Split the six files over the 250 LLOC hard ceiling. |
+| 4 | `overseer-bg2.4` | 1 | Arm `source_trees` + `covered_trees` + `file_lloc_hard_gate`. `depends_on` #3 AND #2. |
+| 5 | `overseer-bg2.5` | 2 | Add `timeout=` to BOTH subprocess sites; widen for `TimeoutExpired`. |
+| 6 | `overseer-bg2.6` | 2 | Correct the stale core-parity justification comment. |
+| 7 | `livespec-b0v0` | 1 | Spec amendment deleting the supervision-loop permission (livespec tenant). |
+| 8 | `livespec-dev-tooling-426a` | 1 | Retire the `file_lloc_hard_gate` opt-in fleet-wide. |
+| 9 | `livespec-dev-tooling-i532` | 2 | Derive the ROP-check universe from the git index. |
+| 10 | `livespec-dev-tooling-1khe` | 2 | Close `x6t6` as dissolved; re-scope `jjb` (2) and (3). |
+
+### ⚠️ SCOPE CORRECTIONS FOUND WHILE FILING — each verified against live state
+
+Four places where the approved brief understated the work. Each is written into the filed item.
+
+1. **The spec amendment spans FOUR lines, not one.** `SPECIFICATION/non-functional-requirements.md`
+   grants or cross-references the permission at lines **114, 651, 675 and 783** — line 675 alone
+   references it in four places. **Two closed counts must be re-derived in the same change:** line
+   783's "the five standardized markers" becomes **four**, and its "the four
+   supervisor/boundary/loop categories" becomes **three**. Amending only 675 would ratify a partial
+   narrowing while line 783 kept listing the marker as a conforming escape. Counts are this
+   specification's most fragile clause type — the `e9j` ratification needed repair to four separate
+   closed enumerations — and this is the clause-lockstep latent-defect class in
+   `.ai/spec-proposal-review.md`.
+2. **The `jjb` spec follow-up is the SAME SENTENCES, so it is ONE amendment.** Lines 651 and 675
+   both carry the "what REMAINS review-enforced" attribution that `jjb` requires fixing. The
+   eighth-session section already recommended landing it "once, as one amendment, after the `x6t6`
+   ruling settles" — the ruling has settled it, so it folds into item 7 rather than being filed
+   separately.
+3. **The timeout hole is TWO subprocess sites, not one.** There are **zero** occurrences of
+   `timeout` in `livespec-overseer` production code. `overseer/tmuxio.py:167` hangs a TICK;
+   `overseer/supervisor.py:398` (`git check-ignore`, the start-up refusal gate) hangs STARTUP, which
+   is worse under the ruling because systemd restarts into the same hang with no tick ever running.
+   **And `subprocess.TimeoutExpired` subclasses `SubprocessError`, not `OSError` and not
+   `ValueError`** — so passing `timeout=` without widening both handlers converts a silent hang into
+   an uncaught exception.
+4. **Item 4 must also depend on item 2**, which the approved brief did not say. Arming
+   `source_trees` activates the Result-railway checks over the package, and the catch at 2779 is a
+   direct child of a supervision-loop body inside a class METHOD — not a `main()` direct child — so
+   `_supervisor_main_boundary_lines` does not exempt it. Arming while it exists reds master
+   **unconditionally**. Before this ruling that red was expected to be cleared by `x6t6`'s widening;
+   the ruling rejects the widening, so nothing will ever clear it. The typed row was added.
+
+**One count correction to the LLOC list:** the approved brief called it "seven files over the 250
+LLOC hard ceiling", but only **six** are. `overseer/test_signals.py` at 211 LLOC sits in the
+201-250 SOFT band, so it clears the hard gate and does not block item 4 — it is still in scope, but
+for a different gate: the always-on `check-no-lloc-soft-warnings` flags the soft band and hard-fails
+when `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` is set, which CI sets for the RELEASE context. So
+that file blocks a RELEASE; the other six block item 4.
+
+### 🕳️ TWO GAPS IN THE APPROVED SET — surfaced, NOT filed, awaiting authorization
+
+Recorded on the epic so they cannot be lost. Neither is filed.
+
+- **GAP 1 — load-bearing.** `livespec-dev-tooling` still **ACCEPTS** the retired marker:
+  `livespec_dev_tooling/checks/_no_except_outside_io_markers.py` defines `_LOOP_ITERATION_WORDING`
+  in the closed conforming set, and
+  `tests/livespec_dev_tooling/checks/test_no_except_outside_io.py` actively asserts a loop-iteration
+  catch does NOT consume the artifact's boundary slot. **If item 7 lands alone, the enforcement
+  suite sanctions exactly what the ratified spec forbids.** That test must be INVERTED, not deleted.
+  It also interacts with item 9: git-deriving the check universe arms the check over the overseer
+  package, and while the wording stays in the closed set the catch would still PASS on wording
+  grounds.
+- **GAP 2.** `livespec-driver-claude` `tests/hooks/test_rop_policy.py` enumerates the closed marker
+  set, so retiring the wording breaks that repo on its next pin bump.
+
+**Fleet blast radius of the marker retirement, measured across `origin/master` of all nine repos:
+exactly ONE live code site** — `livespec-overseer` `overseer/supervisor.py:2779`. Everything else
+that mentions the marker is a specification, a check, or a test.
+
+### 🧹 THREE CORRECTIONS TO THIS DOCUMENT'S OWN STANDING CLAIMS
+
+Each verified this session. The sections below still contain the superseded text; these three
+override it.
+
+1. **The orphan branch `spec/rop-loop-iteration-marker` NO LONGER EXISTS — stop re-escalating it.**
+   It was carried as "needs a human" for roughly eight sessions. Verified three ways in
+   `/data/projects/livespec`: `git rev-parse --verify` fails with "Needed a single revision",
+   `git branch --list --all` greps to 0 matches, and `git for-each-ref` over ALL refs greps to 0.
+   **Drop it from every "what needs a human" list.**
+2. **`livespec-dev-tooling-4er` was RULED on 2026-07-21 and needs IMPLEMENTATION, not a decision.**
+   It must stop being listed under "what needs the maintainer" — it was mis-routed there for roughly
+   eight sessions. Separately, **its P1 justification was overstated ninefold**: the item claims
+   `check-fleet-conformance` runs in every governed repo's CI, but it is wired in EXACTLY ONE repo,
+   `livespec-dev-tooling`. That was never otherwise: `git log -S'fleet_conformance'` over
+   `canonical_checks.py` returns zero commits, so it was never canonical, and
+   `check_master_ci_green` shells out to `gh run list` with no `--repo`, so it reads each repo's own
+   master and cannot propagate. The harm is real but confined to one repo. **It stays P1 on a
+   corrected rationale** — `livespec-dev-tooling` is the enforcement chokepoint where every fleet
+   gate lands, so blocking ITS merges stalls the whole enforcement pipeline. Full re-derivation is
+   journaled on the item.
+3. **"Group B" is now only `tljy` and `3q2c`.** Ledger-verified this session: `njyx` CLOSED, `rgt8`
+   CLOSED, **and `ct9` CLOSED as well** (livespec-driver-codex tenant, P3, updated 2026-07-26) —
+   which corrects the incoming instruction that group B was "tljy, 3q2c, and ct9". Both survivors
+   are `backlog`, so nothing picks them up automatically.
+
+### 🛑 SESSION STATE — the ten items are FILED, none is STARTED
+
+**Scope of this session was filing plus this plan update. No item was implemented.** In particular:
+
+- **`livespec-overseer` was NOT edited.** Its working tree was never touched. It is clean on
+  `master`, in sync with `origin/master`, with **no worktrees** — but its three most recent commits
+  (`40ef4f6`, `1cd516d`, `1915900`) are `docs(plan)` commits belonging to the **generator-edge
+  thread**, timestamped 09:46-10:34 +0200 on 2026-07-26. **Coordinate with that thread before
+  touching that repo's code.**
+- `4er` was NOT implemented; only its corrected scope was journaled.
+- Master CI was green on `livespec` and `livespec-dev-tooling` at session start.
+
+### 🎯 WHAT TO DO FIRST IN A FRESH SESSION
+
+**Two tracks are independent and can run in parallel**, because `source_trees = []` in
+`livespec-overseer` leaves `check-no-except-outside-io` unarmed there — so retiring the marker in
+`livespec-dev-tooling` cannot redden `livespec-overseer`.
+
+1. **`overseer-bg2.1`** — the six leak sites. No dependencies, fully specified, and it is the
+   precondition for everything else in that epic. **Start here.**
+2. **`livespec-b0v0`** — the spec amendment. Needs `/livespec:propose-change` → independent
+   adversarial Fable review → `/livespec:revise`. Read the four-line scope and the two re-derived
+   counts on the item before drafting.
+3. **`livespec-dev-tooling-4er`** — ordinary implementation work, unblocked, preconditions
+   discharged. Default the declared mode to STRICT fleet-view so a forgotten flag fails safe; the
+   per-PR CI job opts into member scoping.
+
+**Ask before filing GAP 1 and GAP 2** — they are required follow-ons but were not in the approved
+set.
+
+`pure_trees` arming stays gated on `livespec-mutreal.1`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (EIGHTH session) — superseded by the NINTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
