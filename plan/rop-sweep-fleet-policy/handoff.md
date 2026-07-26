@@ -1,4 +1,4 @@
-# rop-sweep-fleet-policy — four items closed and four filed; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
+# rop-sweep-fleet-policy — seven items closed across five repos; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
 
 ## ✅ STATE AS OF 2026-07-26 (EIGHTH session) — READ FIRST; everything below is HISTORY
 
@@ -17,13 +17,36 @@ Four items CLOSED, each live-exercised against merged code and its evidence jour
 | `rgt8` | retired-regime prose in 3 shipped artifacts | livespec-dev-tooling PR #671 |
 | `ct9` | retired-regime `pyproject` comment | livespec-driver-codex PR #272 |
 
-Four items FILED, each verified live before filing:
+**The four-repo `pyproject`-comment sweep is COMPLETE — all four fixed, not just filed:**
+
+| Item | Repo | PR |
+|---|---|---|
+| `ct9` | livespec-driver-codex | #272 |
+| `kj7` | livespec-driver-claude | #289 |
+| `ov9` | livespec-runtime | #339 |
+| `p0rh` | livespec-orchestrator-beads-fabro | #961 |
+
+Each states the current regime (declaration required; undeclared consumed key is a hard ERROR;
+declared-empty is the sanctioned visible opt-out), with retired-regime framing either removed or
+explicitly relabelled as HISTORY — and genuine history RETAINED wherever it explains why a block
+has its current shape. `ct9`'s journal carries the worked example.
+
+Worst instance, for the record: livespec-orchestrator-beads-fabro's cited `_livespec_core_config`
+BY NAME — a symbol slice L deleted — plus an instruction to "keep these in lockstep" with it,
+which could no longer be followed. livespec-runtime's contradicted its own block, still claiming
+selective declaration while all ten keys were declared below it.
+
+One item FILED and still open:
 
 - **`bd-ib-45z9`** (P2, livespec-orchestrator-beads-fabro) — `.claude-plugin/hooks/` outside
-  `source_trees`, hiding a non-conforming fail-open bulkhead.
-- **`livespec-driver-claude-kj7`**, **`bd-ib-p0rh`** (livespec-orchestrator-beads-fabro),
-  **`livespec-runtime-ov9`** (all P3) — the SAME retired-regime `pyproject` comment defect `ct9`
-  fixed, found in three MORE repos by the fleet sweep `ct9` recommended.
+  `source_trees`, hiding a non-conforming fail-open bulkhead. Fix is ORDER-DEPENDENT: correct the
+  hook, THEN declare the tree.
+
+**One repo-level gotcha found while landing these:** livespec-runtime's PR bot did **not** arm
+auto-merge (`autoMergeRequest: null`) though the PR was CLEAN and MERGEABLE with every check
+passing — it simply sat open until merged explicitly with `gh pr merge --rebase`. The other five
+repos armed it automatically. Do not assume a green PR in that repo will land on its own; check
+`autoMergeRequest` before waiting on it.
 
 **Two findings from this drain are worth more than the items themselves:**
 
@@ -66,7 +89,7 @@ on unchecked — both are now removed from the maintainer's plate:**
 - **The orphan branch `spec/rop-loop-iteration-marker` is GONE** — discharged, not pending.
 
 So the unblocked queue is `4er` first, then what remains of group B after this session's drain —
-`tljy` and `3q2c` — plus the four items filed this session (`bd-ib-45z9`, `kj7`, `p0rh`, `ov9`).
+`tljy` and `3q2c` — plus `bd-ib-45z9`. (`kj7`, `p0rh` and `ov9` were filed AND fixed this session.)
 `njyx`, `rgt8` and `ct9` are CLOSED; see the table above.
 
 ### 🚨 THE MOST IMPORTANT FINDING — `x6t6`'s stated fix shape does not match the real world
@@ -261,10 +284,7 @@ drive directly; an empty queue looks like a busy factory):
   every role key; exclude all three.
 - **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — self-contained; the fix is
   ORDER-DEPENDENT (correct the hook, THEN declare the tree — declaring first reds master).
-- **`livespec-driver-claude-kj7`, `bd-ib-p0rh`, `livespec-runtime-ov9`** (P3) — the three sibling
-  `pyproject`-comment instances. Each is a comment-only change with the rewrite shape and the
-  current-regime wording already written into the item, so they are near-mechanical. `ct9`'s
-  journal carries the finished example to copy.
+
 
 Blocked pending a ruling, do not start: **`x6t6`** (and therefore `jjb` pieces (2) and (3), which
 are downstream of it).
