@@ -1,6 +1,209 @@
-# rop-sweep-fleet-policy — the loop-iteration exemption is RULED OUT, not mechanized; x6t6 dissolves, one epic and TWELVE items are filed, and 4er is ordinary implementation work
+# rop-sweep-fleet-policy — the loop-iteration ruling is FULLY IN FORCE; 11 items closed; only the livespec-overseer LLOC split and arming remain
 
-## 🔔 STATE AS OF 2026-07-26 (NINTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-26 (TENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ THE RULING IS DONE — all three layers landed, in the only safe order
+
+**Maintainer ruling 2026-07-26.** A daemon does NOT get a per-iteration broad catch. "Let it
+crash, systemd restarts": a bug propagates, the daemon logs the full traceback and exits, and its
+process supervisor restarts it. **Exactly one broad catch per program, in `main()`.** Options (A)
+file-scoped loop-body exemption, (B) loop-body exemption anywhere in `source_trees`, and (C) a new
+role key declaring loop position are **ALL REJECTED** — no new exemption shape, no widened position
+rule, no new config key. `x6t6` DISSOLVED rather than being implemented.
+
+| Layer | What landed | Repo / PR | Merge commit |
+|---|---|---|---|
+| Checker | marker retired from the closed set; its test **inverted** | livespec-dev-tooling #681 | `1e031aaf` |
+| Spec | narrowing ratified as **`SPECIFICATION/history/v176`** | livespec #1772 | `91dfe628` |
+| Consumer | the armed catch **deleted** | livespec-overseer #134 | `878fc6e2` |
+
+**Sequencing held and matters:** the checker stopped accepting the marker BEFORE the spec forbade
+it, so at no moment did one sanction what the other banned. And the catch deletion went in only
+after PR #118 closed the six `UnicodeDecodeError` leaks — without that, deleting it would have
+converted a recoverable environmental error into a permanent crashloop (exit → restart → re-read
+the same corrupt file → exit again, nothing supervised until a human intervened).
+
+**Verified:** `git grep -c 'sole loop-iteration' origin/master -- 'overseer/*.py'` returns **0**.
+That was the last armed site fleet-wide.
+
+### 📋 ELEVEN ITEMS CLOSED THIS SESSION
+
+| Item | Repo | PR | Merge commit |
+|---|---|---|---|
+| `overseer-bg2.1` — six `UnicodeDecodeError` boundary leaks | livespec-overseer | #118 | `236209c6` |
+| `livespec-dev-tooling-5s6o` — retire marker, INVERT test | livespec-dev-tooling | #681 | `1e031aaf` |
+| `livespec-dev-tooling-1khe` — ledger hygiene (see below) | — | — | — |
+| `overseer-bg2.5` — `timeout=` on BOTH subprocess sites | livespec-overseer | #124 | `cee8c83d` |
+| `overseer-bg2.6` — stale core-parity comment | livespec-overseer | #126 | `e223a9ce` |
+| `livespec-driver-claude-jzy` — hand-copied marker set | livespec-driver-claude | #296 | `56269561` |
+| `livespec-dev-tooling-4er` — member-CI exit scoping | livespec-dev-tooling | #690 | `08b7bae6` |
+| `livespec-b0v0` — spec amendment, ratified v176 | livespec | #1772 | `91dfe628` |
+| `overseer-bg2.2` — delete the armed catch | livespec-overseer | #134 | `878fc6e2` |
+| `overseer-bg2.3` slice 1 — `test_tmuxio` split | livespec-overseer | #132 | `b3ffbb00` |
+| `overseer-bg2.3` slice 2 — `test_codex_sessions` split | livespec-overseer | #133 | `46b3112d` |
+
+Every one green with **zero check failures**. `1khe` also: closed `x6t6` as dissolved, re-filed its
+surviving leg (b) as **`livespec-dev-tooling-u4xw`** (foreign-code catch POSITION is unmechanized
+and NOT touched by the ruling), and re-scoped `jjb` by journal — piece (3) DISSOLVES outright, piece
+(2) landed in substance and must be RE-STATED against the now two-row accounting table, not
+dispatched as written.
+
+### 🎯 WHAT TO DO FIRST — `overseer-bg2.3` slice 3
+
+**Only TWO items remain open in epic `overseer-bg2`:** `bg2.3` (the LLOC split) and `bg2.4`
+(arming), and `bg2.4` is blocked on `bg2.3`. Ledger-verified at wind-down.
+
+**Current measured state on livespec-overseer `origin/master`** — re-measure before starting, my own
+landed test additions moved these:
+
+| File | LLOC | Note |
+|---|---|---|
+| `overseer/test_supervisor.py` | 3192 | **12× the ceiling — a project of its own; sub-slice it** |
+| `overseer/supervisor.py` | 1350 | production code |
+| `overseer/registry.py` | 538 | production code, higher risk |
+| `overseer/test_registry.py` | 526 | **START HERE** — test file, lowest risk |
+| `overseer/test_signals.py` | 218 | **SOFT band only** — see below |
+
+**`test_signals.py` is NOT a hard-ceiling breach.** 218 < 250, so it does NOT block `bg2.4`. It
+sits in the 201-250 soft band, where the always-on `check-no-lloc-soft-warnings` hard-fails only
+when `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST` is set (CI sets it for the RELEASE context). So it
+blocks a RELEASE, not the arming. This is the six-vs-seven correction to the item's own list,
+confirmed three times now.
+
+### 🔧 THE SPLIT PATTERN — established over two slices, reuse it
+
+Both landed slices used the same shape, and the section banners the files already carry ARE the
+seam, so no test changes meaning:
+
+1. Split at an existing `# ---` section banner, not at an invented boundary.
+2. Put shared test doubles in a **`test_`-prefixed** fakes module (`test_tmuxio_fakes.py`,
+   `test_codex_sessions_fakes.py`) rather than having one test module import another's privates.
+   **The `test_` prefix is load-bearing:** `[tool.coverage.run] omit` lists `overseer/test_*.py`, so
+   a differently-named helper in this package is measured as PRODUCT code and demands 100% coverage
+   of a test double.
+3. Verify the test COUNT is unchanged against master before and after.
+4. Subject `refactor(tests):`, which takes the green-verified leg.
+
+**Three gate lessons paid for, all avoidable next time:**
+
+- Exported helper names must not collide with LOCAL variables in the tests — de-underscoring `_host`
+  to `host` made `host = host(...)` raise `UnboundLocalError`. Hence the `fake_` prefix.
+- The rename must be **word-boundary anchored**. A plain `str.replace` of `_rollout` corrupted
+  `open_rollout_id` into `openfake_rollout_id`, silently.
+- Expect `ruff I001` (stray blank line after the new import) and `F401` (an import left behind by
+  the move); `ruff check --fix` plus `ruff format` clears both.
+
+### 🚨 RGR CANNOT ATTEST IN livespec-overseer — read before any product `.py` change there
+
+`red_green_replay` no longer uses a static `_IMPL_PREFIXES` tuple; it **DERIVES** impl prefixes from
+`source_trees`, and livespec-overseer declares `source_trees = []`. So
+`_impl_prefixes_for_current_repo()` returns `()`, the commit-msg hook finds no product paths, and it
+writes **no `TDD-*` trailers at all**. Verified by calling it directly.
+
+Consequences: every product `.py` change in that repo is currently OUTSIDE Red-Green-Replay
+enforcement, and the ritual passes vacuously rather than attesting. **Do NOT hand-forge a
+`TDD-Green-*` trailer to make it look attested** — that is explicitly banned. Follow the ritual for
+its own value (I did: single test file at Red with a genuine failing assertion, impl at the Green
+`--amend --no-edit`, one commit carrying both) and say plainly in the PR that it cannot attest.
+**This materially raises `bg2.4`'s value beyond the LLOC gate** — arming `source_trees` is what
+turns RGR on there.
+
+### ⚠️ THE DEFECT CLASS THIS SESSION KEPT GENERATING — self-inflicted staleness
+
+**Both blockers the second reviewer found were caused by my own earlier landings in the same
+session.** Fast sequential work on one epic generates this specific defect:
+
+1. The proposal listed `livespec-driver-claude-jzy` as remaining consumer work — after I had landed
+   it myself hours earlier (`56269561`). Ratifying would have frozen a false enumeration into
+   `history/v176` permanently.
+2. It cited the armed catch at `supervisor.py:2779` — my own `bg2.1`/`bg2.5` changes had moved it to
+   **2793**, and 2779 now holds an unrelated statement. Worse, the proposal by then carried a
+   paragraph *preaching* function-first citation two paragraphs BELOW a bare wrong line number.
+
+**Counter-move, now applied throughout:** cite the enclosing **FUNCTION** first, line second and
+marked "as of this writing". Reviewer 1 had already caught the same class (`registry.py:527/:276` →
+`discover_plans`:529 / `_read_rows`:279). **Before ratifying anything, re-verify every line number
+you wrote earlier in the same session.**
+
+### 🔍 TWO REVIEWERS ON IDENTICAL BYTES DISAGREED — the third time in this thread
+
+Reviewer 1 returned **NO-BLOCKERS** after a genuinely thorough pass (recomputed the diff itself,
+swept all nine repos, verified the "by EQUALITY" claim against shipped code). Reviewer 2 returned
+**BLOCKERS FOUND** — the two above. Both were real.
+
+**Waiting for the second reviewer was correct and should not be cut.** Ratification creates
+`history/vNNN`, the hardest thing here to walk back. Two mechanical notes for next time: the
+reviewer's report may be DELAYED reaching you (reviewer 1 finished before my first check-in yet its
+report arrived much later), so do not conclude a silent reviewer is stuck; and dispatching a second
+reviewer on the same bytes is cheap insurance, not redundancy.
+
+### 🧾 RATIFICATION MECHANICS THAT WORKED — reuse verbatim
+
+- Apply the amendment to a **COPY** in scratchpad, never to the worktree's spec file. The revise
+  wrapper writes the file itself from the payload, and the tree must be pristine when it runs.
+- Author the edit as a SCRIPT of exact-match replacements, each asserted to occur **exactly once**,
+  so a silent miss or double-apply fails loudly. Seven replacements, all verified.
+- Build the payload programmatically from the amended copy — do not paste a 1133-line file through
+  context.
+- Invoke `python3 .claude-plugin/scripts/bin/revise.py --revise-json <payload> --author <id>`.
+- **A single-decision payload does NOT dispose of a sibling track's pending proposal.** Revise
+  validation only requires each decision's `proposal_topic` to resolve to an existing file, so
+  `owned-heading-coverage-todos.md` was correctly left untouched in the queue. It is STILL PENDING —
+  do not dispose of it; it is not this track's.
+- **Do NOT run any `livespec` CLI from a review brief.** A prior reviewer did and it auto-created an
+  untracked `history/vNNN` recording the in-flight change as an anonymous "out-of-band edit". Every
+  review brief this session carried an explicit ban and the hazard did not recur.
+
+### 🛑 SESSION STATE — CLEAN, nothing in flight, NOTHING TO RESUME
+
+- **All four repos this session touched are on `master`, in sync with `origin/master`, clean:**
+  `livespec`, `livespec-dev-tooling`, `livespec-driver-claude`, `livespec-overseer`.
+- **Every worktree and branch I created was reaped after its PR merged.** Worktrees still present
+  under `~/.worktrees/` belong to OTHER sessions — including
+  `livespec-dev-tooling/fix-except-check-breadth-aware` and
+  `.../fix-worktree-pack-obligation-row`, which a `fix-` glob will match. **Do NOT reap them.**
+- Both review sub-agents were explicitly stopped. No background agents, monitors, or subprocesses
+  running.
+- Every PR opened this session is MERGED. Nothing is half-landed.
+- livespec-overseer's primary checkout may show a dirty `uv.lock` (a 0.11.0→0.12.0 version
+  restatement regenerated by `uv run`). It is NOT ours — leave it alone; do not commit or revert it.
+
+### 📌 STILL OPEN ELSEWHERE — not this track's next action
+
+- **`livespec-dev-tooling-426a`** (P1) — retire the `file_lloc_hard_gate` opt-in fleet-wide. Gated
+  on `bg2.3`+`bg2.4`, AND on measuring `livespec-console-beads-fabro`, which is the ONLY other repo
+  lacking the gate (verified: 7 of 9 declare it; the two without are livespec-overseer and
+  livespec-console-beads-fabro). Do not flip before measuring the console repo, or it reds with no
+  work-item explaining why.
+- **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index instead of
+  the `source_trees` allowlist. Large fleet-wide blast radius; measure all nine repos first and
+  expect per-repo remediation items before it can land at error severity.
+- **`livespec-dev-tooling-u4xw`** (P2) — foreign-code catch POSITION, carried forward from `x6t6`
+  leg (b). NOT dissolved by the ruling.
+- **`livespec-dev-tooling-jjb`** — piece (2) needs RE-STATING against the two-row table; piece (3)
+  should be closed as dissolved, not deferred.
+- **Group B** is only **`tljy`** and **`3q2c`**, both `backlog` (`njyx`, `rgt8`, `ct9` all CLOSED).
+- `pure_trees` arming stays gated on `livespec-mutreal.1`.
+- The livespec CLI auto-backfill hazard remains deliberately unfiled — it is core's revise/doctor
+  surface and the call is the maintainer's.
+
+### ✅ THREE STANDING CLAIMS ALREADY DISCHARGED — stop re-escalating them
+
+1. The orphan branch `spec/rop-loop-iteration-marker` **NO LONGER EXISTS** (verified three ways:
+   `rev-parse --verify` fails, `branch --list --all` and `for-each-ref` both grep to 0).
+2. **`livespec-dev-tooling-4er` is CLOSED.** It was ruled on 2026-07-21 and needed implementation,
+   not a decision. Its P1 justification was also overstated ninefold — `check-fleet-conformance` is
+   wired in EXACTLY ONE repo (livespec-dev-tooling), never was canonical, and
+   `check-master-ci-green` reads each repo's own master. It stayed P1 on the corrected rationale:
+   that repo is the enforcement chokepoint.
+3. **Group B's `ct9` is CLOSED** as well as `njyx` and `rgt8`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (NINTH session) — superseded by the TENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
