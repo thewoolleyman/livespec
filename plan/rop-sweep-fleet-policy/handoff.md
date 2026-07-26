@@ -5,6 +5,30 @@
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
 
+### ▶️ START HERE — nothing is in flight, so pick up at the top of this list
+
+Every PR this session opened is merged and every worktree it created is reaped. There is no
+half-finished work to resume; this is a clean pick-up. In priority order:
+
+1. **`overseer-hfx`'s two MECHANICAL splits** — `test_supervisor_r2_claude_identity.py` (207)
+   and `test_registry_injection.py` (203). Split each at a section banner, the pattern used
+   six times in `bg2.3` and again for `test_claude_sessions.py` this session. No decision
+   needed; this is the cheapest real progress available.
+2. **`overseer-hfx`'s THIRD file needs a maintainer ruling first** —
+   `_supervisor_evaluate.py` at 255, over the HARD ceiling. See "THE PREMISE OF THE
+   SOFT-BAND DECISION CHANGED" below. **Do not decide it yourself**; surface it and take
+   item 1 or 3 meanwhile.
+3. **`livespec-dev-tooling-2prg`** — the last `bg2.4` blocker, fully specified, modelled on
+   `h65n`. A dev-tooling PRODUCT `.py` change, so it carries the Red→Green ritual.
+4. **`overseer-bg2.10`** — now has a cheap verification path (see its section); the config
+   edit itself is small.
+5. **`overseer-bg2.4`** — arming. Blocked until 2 and 3 land. Do NOT start it before then.
+
+**Do not re-derive any count in this file.** Re-measure with `source_trees` +
+`covered_trees = ["overseer"]` set temporarily in `livespec-overseer/pyproject.toml`, then
+**revert BY LINE** (a `str.replace` rewrites the comment above the key that quotes it, and
+`git checkout -- pyproject.toml` discards real edits alongside the temporary one).
+
 ### ✅ FIVE MORE PRs MERGED — both routed decisions were resolved by POLICY, not by a gate
 
 The maintainer resolved both decisions the fifteenth session routed, and neither needed a
@@ -148,6 +172,15 @@ release fires from `refactor:`/`chore(deps):` commits. Landing an unverified rel
 change is exactly the "merged + green" completion the fleet rejects — and if the filtered
 jsonpath does not resolve, release-please updates nothing and reports success.
 
+**🔑 THE CHEAP VERIFICATION PATH, found at wind-down — this is the actionable bit.**
+`livespec-overseer` PR **#162 (`chore(master): release 0.13.2`) is OPEN** — release-please's
+own release PR. release-please REGENERATES that PR on every push to `master`, so landing the
+`release-please-config.json` change and then reading #162's refreshed diff verifies the
+jsonpath **without waiting for a new release cycle and without manufacturing a release**. If
+the diff gains a `uv.lock` version line, the mechanism works; if it does not, the jsonpath is
+wrong and nothing was silently accepted. Confirm #162 is still open before relying on this —
+if it has merged, the same trick works on the next release PR release-please opens.
+
 **The drift is not confined to livespec-overseer**: a third instance blocked a
 `git pull --ff-only` in the `livespec-dev-tooling` PRIMARY this session. Check siblings
 before scoping the fix to one repo.
@@ -156,14 +189,22 @@ before scoping the fix to one repo.
 
 - **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped. All
   three repos clean on `master` and in sync.
-- **Master CI**: `livespec` and `livespec-dev-tooling` green; `livespec-overseer`'s run for
-  #175 still in progress at wind-down. **Re-check; do not trust this line.**
-- **Foreign worktrees — DO NOT REAP.** livespec-overseer: `docs/header-facts`,
-  `docs/regenerate-supervisor-prompt-quality-charter`, `docs/supervisor-charter-hardening`.
-  livespec: `ci-concurrency-group`, `fabro-handoff-ci-capacity`,
-  `phase0-selfhosted-shadow-lane`. livespec-dev-tooling: five plus a detached
-  `tag-v0.54.24`. **These differ from the fifteenth session's list — re-enumerate, never
-  reuse.**
+- **Master CI**: `livespec-dev-tooling` green. `livespec` and `livespec-overseer` had runs
+  IN PROGRESS at the final wind-down check (both for this session's own doc commits; the
+  substantive runs before them were green). **Re-check before acting; this line expired the
+  moment it was written.**
+- **Foreign worktrees — DO NOT REAP.** Re-enumerated at wind-down:
+  - livespec-overseer: `regen-spq-charter`, `supervisor-charter-hardening`
+  - livespec: `ci-concurrency-group`, `fabro-handoff-ci-capacity`,
+    `phase0-selfhosted-shadow-lane`
+  - livespec-dev-tooling: `cap-test-parallelism`, `ci-concurrency-group`,
+    `docs/archive-fleet-plan-lifecycle-thread`, `fix-except-check-breadth-aware`,
+    `fix/generated-block-comment-syntax`, plus a detached `tag-v0.54.24`
+
+  **THIS LIST CHANGED TWICE WITHIN THIS ONE SESSION** — `docs/header-facts` was present
+  mid-session and had been reaped by another session before wind-down. Treat any worktree
+  list in this file as expired on arrival: **`git worktree list` in each repo before you
+  reap anything.**
 - **The maintainer's `overseerd` daemon holds the OLD modules.** The layout changed again
   (`_seams.py` added, `test_claude_sessions_corrupt_proc.py` added). Restart it.
 - **`just check` fails in a FRESH WORKTREE** on
