@@ -1,9 +1,46 @@
-# rop-sweep-fleet-policy — jjb's cardinality piece landed; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
+# rop-sweep-fleet-policy — four items closed and four filed; x6t6 narrowed to one yes/no; two long-carried escalations retired, and 4er is unblocked work
 
-## ✅ STATE AS OF 2026-07-25 (EIGHTH session) — READ FIRST; everything below is HISTORY
+## ✅ STATE AS OF 2026-07-26 (EIGHTH session) — READ FIRST; everything below is HISTORY
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
+
+### 📦 CLOSED AND FILED THIS SESSION — the group-B drain
+
+Four items CLOSED, each live-exercised against merged code and its evidence journaled on the item
+(read those, not this summary):
+
+| Item | What | Landed |
+|---|---|---|
+| `jjb` piece (1) | per-artifact boundary-catch cardinality | livespec-dev-tooling PR #662 |
+| `njyx` | `newtype_domain_primitives` zero-`.py` hard ERROR | livespec-dev-tooling PR #668 |
+| `rgt8` | retired-regime prose in 3 shipped artifacts | livespec-dev-tooling PR #671 |
+| `ct9` | retired-regime `pyproject` comment | livespec-driver-codex PR #272 |
+
+Four items FILED, each verified live before filing:
+
+- **`bd-ib-45z9`** (P2, livespec-orchestrator-beads-fabro) — `.claude-plugin/hooks/` outside
+  `source_trees`, hiding a non-conforming fail-open bulkhead.
+- **`livespec-driver-claude-kj7`**, **`bd-ib-p0rh`** (livespec-orchestrator-beads-fabro),
+  **`livespec-runtime-ov9`** (all P3) — the SAME retired-regime `pyproject` comment defect `ct9`
+  fixed, found in three MORE repos by the fleet sweep `ct9` recommended.
+
+**Two findings from this drain are worth more than the items themselves:**
+
+1. **A gate had to be fixed before a doc could be.** `commit_pairs_source_and_test` classified
+   every staged path under a source-tree prefix as source needing a paired test, regardless of
+   extension. For a non-`.py` file that is UNSATISFIABLE — the mirror transform is defined on
+   `<name>.py` → `test_<name>.py` — and the docs-only carve-out cannot rescue it either, because
+   that carve-out compares docstring-stripped ASTs and a non-Python file does not parse, so it
+   FAILS CLOSED into the very requirement it can never meet. Latent because the repo's one such
+   file had only ever been touched by a commit that happened to carry tests. Editing it alone was
+   impossible without fabricating an unrelated test change, so the gate is what changed
+   (livespec-dev-tooling PR #671 commit 1).
+2. **A vocabulary sweep tuned to one instance misses its siblings.** The `livespec-runtime`
+   instance carries none of the "empty-baseline flip" wording the driver repos use — it says
+   "omitted role keys make the corresponding check no-op" — and was caught only because the net
+   included the bare word `omitted`. This thread has now paid for that lesson three times; build
+   the net from the DOCUMENTS' phrasings, never the author's.
 
 ### 🎯 THE HEADLINE — one group-A piece is DONE; the rest of group A is BLOCKED ON DECISIONS, not on effort
 
@@ -28,8 +65,9 @@ on unchecked — both are now removed from the maintainer's plate:**
   see the queue below for the two dispatch preconditions.
 - **The orphan branch `spec/rop-loop-iteration-marker` is GONE** — discharged, not pending.
 
-So the unblocked queue is `4er` first, then group B (`njyx`, `tljy`, `3q2c`, `rgt8`, and `ct9` in
-the livespec-driver-codex tenant), plus the newly filed `bd-ib-45z9`.
+So the unblocked queue is `4er` first, then what remains of group B after this session's drain —
+`tljy` and `3q2c` — plus the four items filed this session (`bd-ib-45z9`, `kj7`, `p0rh`, `ov9`).
+`njyx`, `rgt8` and `ct9` are CLOSED; see the table above.
 
 ### 🚨 THE MOST IMPORTANT FINDING — `x6t6`'s stated fix shape does not match the real world
 
@@ -208,10 +246,25 @@ drive directly; an empty queue looks like a busy factory):
   naive running-as derivation would scope them to dev-tooling-only findings and neuter the fleet
   view — it needs an explicit invocation-surface distinction, "a declared mode with two legitimate
   callers, not a lever".
-- **`njyx`, `tljy`, `3q2c`, `rgt8`** (livespec-dev-tooling) and **`ct9`**
-  (livespec-driver-codex) — group B, filed during the slice-S ratification, independent.
-- **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — newly filed above, self-contained,
-  order-dependent fix documented on the item.
+- **`tljy`** (P2, livespec-dev-tooling) — the only group-B item left un-started. Eight rotted
+  cross-repo citations into livespec core; root cause is that the repo declares no
+  `external_references` block, so cross-repo citations are unvalidated rather than validated. Two
+  of the eight are the ONLY doctor failures on this repo and are **PRE-EXISTING** (proven by
+  reproducing them on a clean master checkout). Not readiness-checked this session.
+- **`3q2c`** (P2, livespec-dev-tooling) — readiness-checked and DELIBERATELY NOT STARTED. It is a
+  `contracts.md` change, so it needs the propose-change + independent adversarial review path, and
+  its acceptance asks for a mechanical guard ("prefer deriving over asserting"). Note the ordering
+  trap: the prose is currently WRONG in both directions, so adding the guard FIRST reds master —
+  the prose fix must land first, which is what makes this a ratification, not a quick edit. Its
+  method note is load-bearing and already verified: a naive grep OVER-counts, because
+  `partition_completeness`, `source_trees_scoped_to_consumer` and `_role_key_gate` touch nearly
+  every role key; exclude all three.
+- **`bd-ib-45z9`** (livespec-orchestrator-beads-fabro) — self-contained; the fix is
+  ORDER-DEPENDENT (correct the hook, THEN declare the tree — declaring first reds master).
+- **`livespec-driver-claude-kj7`, `bd-ib-p0rh`, `livespec-runtime-ov9`** (P3) — the three sibling
+  `pyproject`-comment instances. Each is a comment-only change with the rewrite shape and the
+  current-regime wording already written into the item, so they are near-mechanical. `ct9`'s
+  journal carries the finished example to copy.
 
 Blocked pending a ruling, do not start: **`x6t6`** (and therefore `jjb` pieces (2) and (3), which
 are downstream of it).
