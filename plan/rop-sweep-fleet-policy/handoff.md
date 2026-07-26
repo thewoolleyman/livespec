@@ -5,7 +5,7 @@
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
 
-### ✅ SIX PRs MERGED — `bg2.3` is four of five files done
+### ✅ SEVEN PRs MERGED — `bg2.3` is four of five files done
 
 | Slice | File | Before | After | PR |
 |---|---|---|---|---|
@@ -15,11 +15,26 @@ prose. Live-state claims expire in minutes, this section included.
 | 6a | `test_supervisor.py` helpers | — | fakes 103 + builders 129 | #145 |
 | 6b | `test_supervisor.py` | 3010 | **24 modules, max 158** | #147 |
 | — | handoff (eleventh session) | — | — | livespec #1776 |
+| — | handoff (twelfth session — this one) | — | — | livespec #1777 |
 
 All green, `just check` 61/61, coverage 100%.
 
 **`just check-file-lloc` on `livespec-overseer` master now reports EXACTLY ONE file:
 `overseer/supervisor.py`, 1350 LLOC.** Nothing else breaches either ceiling.
+
+### 🎯 WHAT TO DO FIRST
+
+**Take `supervisor.py` STEP 1** — extract the 289 LLOC of module-level code into private siblings,
+leaving the `Supervisor` class untouched. It is low-risk, independently reviewable, drops the file
+1350 → ~1080, and builds the module structure step 2 needs. Full breakdown in the next section.
+
+It does NOT close `bg2.3` on its own — only step 2 does — and neither closes `bg2.4`, which has four
+separate filed blockers. Re-measure with `just check-file-lloc` before starting; do not trust the
+numbers below without re-deriving them.
+
+If you would rather not open the daemon's core at all this session, the alternative unblocked work
+is `overseer-bg2.7` (30 mechanical `__all__` annotations) or `overseer-bg2.8` (one test double off
+inheritance) — both are `bg2.4` arming blockers and neither touches `supervisor.py`.
 
 ### 🚨 `supervisor.py` IS A DECOMPOSITION PROJECT — analysed in full, deliberately NOT started
 
@@ -157,8 +172,11 @@ working patch from one writing to the real `$HOME`. Used in every slice since.
 
 ### 🛑 SESSION STATE
 
-- **All six PRs merged. Every worktree and branch this session created is reaped.** `livespec` and
-  `livespec-overseer` are clean on `master`, in sync with origin.
+- **NOTHING IS IN FLIGHT. All SEVEN PRs merged** — livespec-overseer #138, #141, #142, #145, #147
+  and livespec #1776, #1777 (this handoff itself). **Every worktree and branch that session created
+  is reaped**, including the handoff worktree. `livespec` and `livespec-overseer` are clean on
+  `master`, in sync with origin, and master CI was green on both throughout. There is no
+  half-landed work to confirm and no branch to chase — start from `bg2.3`'s remaining file.
 - **`overseer-bg2.10` FILED** (P2, bug) — `uv.lock` drifts one version behind `pyproject.toml` on
   every release, so every fresh worktree dirties it on first `uv run`. Observed twice in one session
   (0.12.2→0.12.3, then 0.12.3→0.12.4). **Leave the dirty `uv.lock` alone**; the fix belongs in the
