@@ -1,6 +1,122 @@
-# rop-sweep-fleet-policy — the `io_trees` design was FORECLOSED BY SPEC, reverted, and replaced with the conforming conversion
+# rop-sweep-fleet-policy — COMPLETE. i532 landed on a conforming base, and the dodge that blocked it is now mechanically impossible
 
-## 🔔 STATE AS OF 2026-07-27 (EIGHTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🏁 STATE AS OF 2026-07-27 (EIGHTEENTH session, FINAL) — THE SWEEP IS DONE
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ✅ WHAT THIS THREAD SET OUT TO DO, AND DID
+
+`livespec-dev-tooling-i532` is **CLOSED**. Both ROP checks derive their universe from the git
+index, so `source_trees = []` can no longer mean "scan nothing" — the scope dodge the whole sweep
+existed to close. Getting there took reverting a wrong design out of six repositories, converting
+seven hook files to the shape the spec actually asks for, and fixing a check that was reporting
+clean because it exited early.
+
+**Nothing in this thread is in flight. There is no next action here.** Remaining fleet work has
+moved to its own items, listed under OPEN WORK below.
+
+### 📋 EVERY PR THIS SESSION, in the order they landed
+
+| # | repo | what |
+|---|---|---|
+| #722 #1794 #190 #353 #425 #1027 | six repos | **revert** the `io_trees` hook declarations — a live spec violation, inert but real |
+| #723 #1795 #191 #354 #426 #1028 | six repos | **convert** each hook to one marked fail-open boundary |
+| #1796 #1798 | livespec | the eighteenth-session handoff, then its own correction |
+| #724 | livespec-dev-tooling | `check-hook-trees-not-io-exempt` — the anti-regression guard |
+| #727 | livespec-dev-tooling | the **early-return masking** fix |
+| #730 | livespec-dev-tooling | **`i532`** — the git-derived ROP universe |
+| #733 | livespec-dev-tooling | **`s22c5z`** — preserve GitHub read-failure causes |
+| #736 | livespec-dev-tooling | **`z4qi`** — credential preflight with bounded retry |
+| #1803 | livespec | instance 15 of `.ai/verifying-against-the-right-source.md` |
+
+Closed: `i532`, `s22c5z`, `z4qi`, `bv81`, `hev1` + its six children. Filed: `8o8e` (P1), `sh71` (P2).
+
+### 🛑 THE ONE THING A FUTURE SESSION MUST NOT REDO
+
+**Do not declare a hook tree in `io_trees`.** It was proposed three times, built twice, and merged
+into six repositories once before review caught it. livespec
+`SPECIFICATION/non-functional-requirements.md` line 114 forecloses it by name: *"There is NO 'thin
+repo' exemption — a repo whose only Python is fail-open hooks still composes those hooks' bodies on
+the railway beneath that single boundary."*
+
+It is now **mechanically impossible**: `check-hook-trees-not-io-exempt` (dev-tooling v0.55.0) is
+wired into `just check` and the CI matrix fleet-wide, has NO silencing lever, and its diagnostic
+carries the quoted clause, why the exemption is unnecessary, and the conforming route. It was
+regression-verified against the ACTUAL reverted commit, not a fixture.
+
+The conforming shape, if you ever need it again: `main() -> int` under `raise SystemExit(main())`,
+narrow seam catch kept, ONE broad catch as a direct child of `main()` carrying
+`# noqa: BLE001 — sole fail-open hook boundary: silent pass-through, exit 0`, the hook path in
+**`supervisor_entry_files`** (load-bearing three times over — it is what makes the marker
+consulted, exempts `no_write_direct`, and exempts `check-supervisor-discipline`), `sys.stdout.write`
+instead of `print`, and a NARROW per-file-ignore instead of a wholesale ruff exclusion so `BLE001`
+stays live. `livespec-driver-claude`'s footgun guard is the shipped reference.
+
+### 📂 OPEN WORK, now owned by items rather than by this thread
+
+1. **`livespec-dev-tooling-8o8e`** (P1, EPIC) — **the largest unclosed hole in this sweep's own
+   subject matter.** The spec's central requirement — product logic on the Result/IOResult railway
+   with `dry-python/returns` vendored — is enforced by NOTHING. `check-rop-pipeline-shape` only
+   asserts that `@rop_pipeline`-decorated classes have one public method. Measured: FOUR repos
+   vendor `returns` at all (`livespec-dev-tooling`, `livespec-overseer`, `livespec-runtime`,
+   `livespec-driver-codex`), and vendoring is not usage — `livespec-orchestrator-beads-fabro` has
+   1 of 184 first-party modules importing it. `livespec-dev-tooling`, the enforcement suite
+   itself, is entirely returns-free while green. **The epic's first job is a DECISION, not code:
+   does the clause bind a check suite, and if so is the remedy conversion or a ratified exemption?
+   Do not start converting 142 modules on an unexamined premise.**
+2. **`livespec-dev-tooling-sh71`** (P2) — a PARTIAL blind-row red survives the `z4qi` preflight.
+   Observed on master while `z4qi` was in flight: 2 rows blind, passed on re-run, no code change.
+   `s22c5z` now makes the causes measurable, so step one is measurement, not a fix.
+3. **`livespec-dev-tooling-r5m`** (sibling `uv.lock` drift), **`-u4xw`**, **`-jjb`**, **Group B**
+   (`tljy`, `3q2c`) — unchanged, untouched by this session.
+
+### 🧠 THE FOUR FINDINGS MOST WORTH CARRYING
+
+1. **A check that exits early reports a clean STREAM, not a clean result.** `no_except_outside_io`
+   returned on the first ruff-backstop gap before logging position offenses, so a census concluded
+   "zero broad catches" when there were seven. The tell was there and missed twice: the info line
+   said `"offenses": 1` while the error stream named none. **Reconcile a check's summary COUNTS
+   against the items it listed.** Recorded as instance 15; fixed in #727.
+2. **Validate a design against the ratified SPEC, not against a check's test suite.** Three
+   sessions checked the `io_trees` design against the check suite and per-repo ruff comments; none
+   opened the contract, which names the situation exactly. A per-repo config comment is not a
+   contract.
+3. **A behavior-preserving refactor of a guard hook must be MEASURED.** The harness used here
+   diffs pre/post stdout+exit across 15–17 cases. It is cheap, it is what made seven hook
+   conversions reviewable, and it caught nothing — which is the point.
+4. **Transient CI reds are frequent enough that "re-run and move on" is not a stable answer.**
+   THREE in this session: a `uv` download failure, a `grimp==3.14` fetch failure, and a
+   fleet-conformance blind-row red. Only the third has an item (`sh71`); the dependency-download
+   flakes remain unowned.
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped; all fleet
+  clones are clean on `master` and refreshed. **Re-check before acting; this line expired the
+  moment it was written.**
+- **Foreign worktrees — DO NOT REAP.** Run `git worktree list` per repo before reaping anything;
+  the set changed within this session.
+- **Refresh sibling clones before trusting `doctor-wiring-completeness-cross-repo`.** It reads each
+  sibling's **local clone working tree**, not `origin/master`. A stale clone reports drift that
+  does not exist — and reading `origin/master` to "disprove" it is the wrong source.
+- **A fresh worktree** still needs `just install-worktree-pack`, then
+  `git checkout -- .livespec.jsonc` (the installer mutates that TRACKED file), plus `uv sync`.
+
+### ⚠️ RITUAL TRAPS PAID FOR THIS SESSION
+
+- **The Red test file must be byte-identical at the Green amend.** Migrating a test suite AFTER
+  the Red commit invalidates it (`test-file-checksum-mismatch`). Recovery, which worked: save the
+  changed files, `git reset --soft master`, restore ONLY the final test file with the impl at
+  master, re-author the Red, then restore everything and amend. No history rewrite needed.
+- **A Red stub must still lint.** An unused-argument stub fails `check-lint` in the working-tree
+  gate before the ritual even starts.
+- **A worktree cut from a stale primary silently reintroduces what you just reverted.** Refresh the
+  primary immediately BEFORE `worktree add`, not only after a merge.
+
+---
+
+## (HISTORY) 🔔 STATE AS OF 2026-07-27 (EIGHTEENTH session, mid-session) — superseded by the FINAL section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
