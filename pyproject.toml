@@ -155,9 +155,18 @@ io_trees = [".claude-plugin/scripts/livespec/io"]
 # LACKS is declared explicitly empty (list `[]`, scalar `""`) with a reason,
 # so no key is left to silently fall back.
 commands_trees = [".claude-plugin/scripts/livespec/commands"]
+# The PreToolUse guard hook is a supervisor entry artifact: its `main()` carries
+# the ONE fail-open boundary catch SPECIFICATION/non-functional-requirements.md
+# line 114 grants a hook, and the file owns the hook-protocol stdout contract
+# that `no_write_direct` otherwise bans. Listing it here is what makes both
+# exemptions legible, and it also exempts its `sys.exit` from
+# `check-supervisor-discipline`. It is deliberately NOT in `io_trees`: the same
+# clause forecloses exempting a hook tree wholesale ("There is NO 'thin repo'
+# exemption").
 supervisor_entry_files = [
     ".claude-plugin/scripts/livespec/doctor/run_static.py",
     ".claude-plugin/scripts/bin/_bootstrap.py",
+    ".claude/hooks/livespec_footgun_guard.py",
 ]
 covered_trees = [
     ".claude-plugin/scripts/livespec",
@@ -226,11 +235,17 @@ line-length = 100
 # they are out of scope for livespec's own style rules (mirrors how the
 # Driver's `.sh` hooks are not linted). pyright already scopes them out
 # via `[tool.pyright].include`.
+# `.claude/hooks/**` USED to sit here, on the ground that hook scripts are
+# fail-open boundary code whose blind catches and direct prints are the
+# contract. The premise was right and the remedy was wrong: excluding the tree
+# took the BLE001 backstop down with it, and `check-no-except-outside-io` treats
+# an inspected-but-ruff-excluded file as an error precisely because the position
+# rule alone is half the pair. The hook now carries a marked sole boundary catch
+# and writes via `sys.stdout.write`, so it needs no exclusion.
 extend-exclude = [
     "**/_vendor/**",
     "**/__pycache__/**",
     "mutants/**",
-    ".claude/hooks/**",
 ]
 
 

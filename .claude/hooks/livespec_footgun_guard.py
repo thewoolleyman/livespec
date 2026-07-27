@@ -253,7 +253,7 @@ def _check_segment(*, seg: str) -> tuple[bool, str]:
     return False, ""
 
 
-def _deny(*, reason: str, command: str) -> None:
+def _deny_payload(*, reason: str, command: str) -> str:
     payload = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -268,34 +268,46 @@ def _deny(*, reason: str, command: str) -> None:
             ),
         }
     }
-    json.dump(payload, sys.stdout)
-    sys.exit(0)
+    # No trailing newline: the pre-conversion form was `json.dump(payload,
+    # sys.stdout)`, and the hook-protocol consumer sees the same bytes.
+    return json.dumps(payload)
 
 
-def main() -> None:
+def _decision(*, raw: str) -> str | None:
+    """Return the deny payload for a blocked command, or None to allow.
+
+    Raises `json.JSONDecodeError` on malformed hook input; `main`'s narrow
+    seam catch turns that into the fail-open pass-through.
+    """
+    if not raw.strip():
+        return None
+    data = json.loads(raw)
+    if data.get("tool_name", "") != "Bash":
+        return None
+    command = data.get("tool_input", {}).get("command", "")
+    if not command:
+        return None
+    for seg in _segments(command=command):
+        mem_reason = _memory_write_reason(seg=seg)
+        if mem_reason is not None:
+            return _deny_payload(reason=mem_reason, command=command)
+        blocked, reason = _check_segment(seg=seg)
+        if blocked:
+            return _deny_payload(reason=reason, command=command)
+    return None
+
+
+def main() -> int:
     try:
-        raw = sys.stdin.read()
-        if not raw.strip():
-            sys.exit(0)
-        data = json.loads(raw)
-        if data.get("tool_name", "") != "Bash":
-            sys.exit(0)
-        command = data.get("tool_input", {}).get("command", "")
-        if not command:
-            sys.exit(0)
-        for seg in _segments(command=command):
-            mem_reason = _memory_write_reason(seg=seg)
-            if mem_reason is not None:
-                _deny(reason=mem_reason, command=command)
-            blocked, reason = _check_segment(seg=seg)
-            if blocked:
-                _deny(reason=reason, command=command)
-        sys.exit(0)
+        decision = _decision(raw=sys.stdin.read())
+        if decision is not None:
+            _ = sys.stdout.write(decision)
     except json.JSONDecodeError:
-        sys.exit(0)
-    except Exception:
-        sys.exit(0)
+        return 0
+    except Exception:  # noqa: BLE001 — sole fail-open hook boundary: silent pass-through, exit 0
+        return 0
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
