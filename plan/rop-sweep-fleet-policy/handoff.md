@@ -25,9 +25,9 @@ same clause GRANTS a hook one boundary catch — *"the fail-open silent pass-thr
 contract already requires"*. The spec never asked hooks to stop being fail-open; it asked their
 BODIES to sit beneath ONE marked boundary.
 
-### ▶️ START HERE — the blocker is cleared; `i532` itself is next
+### ▶️ START HERE — the blocker is cleared AND guarded; `i532` itself is next
 
-All twelve PRs of this session are merged and every worktree is reaped. In priority order:
+All fourteen PRs of this session are merged and every worktree is reaped. In priority order:
 
 1. **`livespec-dev-tooling-i532`** — the actual universe migration, now UNBLOCKED and with a
    conforming fleet beneath it. All eight Python-bearing repos measure **both ROP checks exit 0
@@ -35,12 +35,22 @@ All twelve PRs of this session are merged and every worktree is reaped. In prior
    remaining work is the check change itself: point `no_except_outside_io` and
    `no_raise_outside_io` at `resolve_check_universe()`, drop their `source_trees_exit_code` gate,
    and pass a repo-wide scan root to `find_ruff_backstop_gaps`. `all_declared.py` is the model —
-   sixteen checks already migrated; these two are the last.
-2. **`livespec-dev-tooling-bv81`** (P1, filed this session) — the guard check that REJECTS a hook
-   tree in `io_trees`. The supervisor's explicit instruction: a fourth attempt should be
-   impossible, not merely discouraged. Do this WITH or BEFORE `i532`.
-3. **`livespec-dev-tooling-z4qi`**, **`-u4xw`**, **`-jjb`**, **Group B** (`tljy`, `3q2c`),
+   sixteen checks already migrated; these two are the last. **Settle one thing explicitly in the
+   PR** rather than letting it fall out of which template gets copied: whether to adopt the
+   legacy-vs-`newly_covered` Phase-0 WARN band the migrated checks carry, or go straight to
+   uniform ERROR. Every repo is at zero right now, so nothing would fire either way, and `426a`
+   retired that bucket for `file_lloc` as a direction — but it is a fleet-visible severity call.
+   Also: a repo with ZERO first-party Python must PASS, not error
+   (livespec-console-beads-fabro is the case; `all_declared.main()` shows the pattern).
+2. **`livespec-dev-tooling-z4qi`**, **`-u4xw`**, **`-jjb`**, **Group B** (`tljy`, `3q2c`),
    **sibling `uv.lock` drift** (`-r5m`) — unchanged from the seventeenth session.
+
+**A fourth attempt at the `io_trees` dodge is now mechanically impossible.**
+`livespec-dev-tooling-bv81` shipped as `check-hook-trees-not-io-exempt` (PR #724, released
+v0.55.0): it REJECTS any `.claude/hooks` / `.claude-plugin/hooks` path in `io_trees`, is wired
+into `just check` and the CI matrix, has NO silencing lever, and its diagnostic carries the quoted
+clause, why the exemption is unnecessary, and the conforming route with the shipped reference. It
+was regression-verified against the ACTUAL reverted commit (`96276a1`) rather than only a fixture.
 
 ### ✅ TWELVE PRs MERGED — six reverts, then six conversions
 
@@ -52,6 +62,8 @@ All twelve PRs of this session are merged and every worktree is reaped. In prior
 | livespec-runtime | #353 | #354 |
 | livespec-orchestrator-git-jsonl | #425 | #426 |
 | livespec-orchestrator-beads-fabro | #1027 | #1028 |
+
+Plus livespec #1796 (this handoff) and livespec-dev-tooling #724 (the guard check).
 
 Reverts landed FIRST and as their own PRs: the declarations were inert (the checks do not reach
 those trees until `i532` lands) but they were a live spec violation on master, and stopping the
@@ -132,7 +144,7 @@ session fixed is the exemption the spec names and the marker/position/backstop t
 | Item | Tenant | Status |
 |---|---|---|
 | `livespec-dev-tooling-hev1` (EPIC) + 6 children | various | ✅ CLOSED, then its design REVERTED — read `i532`'s journal, not the epic |
-| `livespec-dev-tooling-bv81` | livespec-dev-tooling | **open (P1)** — the anti-regression guard check |
+| `livespec-dev-tooling-bv81` | livespec-dev-tooling | ✅ CLOSED — shipped as `check-hook-trees-not-io-exempt`, PR #724, v0.55.0 |
 | `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — **unblocked; fleet is conforming** |
 | `livespec-dev-tooling-z4qi` | livespec-dev-tooling | open (P2) — blocked by `s22c5z` |
 | `livespec-dev-tooling-r5m` / `-u4xw` / `-jjb` | livespec-dev-tooling | open — unchanged |
