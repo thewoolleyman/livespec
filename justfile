@@ -223,6 +223,7 @@ check:
         check-global-writes
         check-handoff-dispatch-routing
         check-heading-coverage
+        check-hook-trees-not-io-exempt
         check-keyword-only-args
         check-local-memory-drift-audit
         check-main-guard
@@ -1124,3 +1125,6 @@ check-no-shadow-ledger-body-typechecks:
 
 check-required-role-keys-declared:
     uv run python -m livespec_dev_tooling.checks.required_role_keys_declared
+
+check-hook-trees-not-io-exempt:
+    uv run python -m livespec_dev_tooling.checks.hook_trees_not_io_exempt
