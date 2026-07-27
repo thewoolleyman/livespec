@@ -1,6 +1,166 @@
-# rop-sweep-fleet-policy — bg2.9 is down to one upstream gap; bg2.4 has one blocker left
+# rop-sweep-fleet-policy — the `overseer-bg2` epic is CLOSED and the LLOC ceiling is unconditional fleet-wide
 
-## 🔔 STATE AS OF 2026-07-26 (SIXTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-27 (SEVENTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### ▶️ START HERE — nothing is in flight; the `bg2` track is DONE
+
+Every PR this session opened is merged and every worktree it created is reaped. **The entire
+`overseer-bg2` epic closed (10/10), and with it every item the sixteenth session's START HERE
+list named.** There is no queued work left on this track. In priority order, what remains:
+
+1. **`livespec-dev-tooling-z4qi`** (NEW, P2) — a transient App-token miss blinds every
+   fleet-conformance row and reds master on a no-op commit. Observed live this session and
+   confirmed a flake by re-run. **Read its "DO NOT fix this by demoting blind rows" clause
+   before touching it** — failing-loud on a blind row is a deliberate recent ruling.
+2. **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
+   Its worst-case repo is now measured at ZERO (see below), so its risk assessment changed.
+3. **`livespec-dev-tooling-u4xw`**, **`-jjb`**, **Group B** (`tljy`, `3q2c`) — unchanged.
+4. **Sibling `uv.lock` drift** — `livespec-dev-tooling-r5m` now carries the exact working
+   fix; it is a one-line copy. `livespec-runtime` has the same gap and no item.
+
+**Do not re-derive any count in this file** — but note the measurement hazard is now GONE;
+see "the arming dance was never necessary" below.
+
+### ✅ SIX PRs MERGED, FIVE ITEMS + ONE EPIC CLOSED
+
+| PR | Repo | What |
+|---|---|---|
+| #178 | livespec-overseer | every file under the 200 LLOC soft ceiling — closes `overseer-hfx` |
+| #712 | livespec-dev-tooling | `check-keyword-only-args` externally-fixed-convention exception — closes `2prg` |
+| #181 | livespec-overseer | the twelfth offender, a real defect — closes the last `bg2.9` gap |
+| #183 | livespec-overseer | **arm enforcement** + pin v0.54.27 — closes `overseer-bg2.4` |
+| #184 | livespec-overseer | release-please updates `uv.lock` — closes `overseer-bg2.10` |
+| #716 | livespec-dev-tooling | **retire the `file_lloc_hard_gate` opt-in** — closes `426a` |
+
+Closed: `overseer-hfx`, `overseer-bg2.9`, `overseer-bg2.4`, `overseer-bg2.10`,
+`livespec-dev-tooling-2prg`, `livespec-dev-tooling-426a`, and the **`overseer-bg2` epic**.
+
+### 🎯 THE TWO STATE CHANGES THAT MATTER MOST
+
+**`livespec-overseer` is ARMED.** `source_trees = ["overseer"]`, `covered_trees = ["overseer"]`,
+`file_lloc_hard_gate = true`, full `just check` 61/61 green. The blast radius `bg2.4` demanded be
+counted first was **zero** — no exemption, no severity change, no per-file carve-out.
+
+**The 250-LLOC ceiling is now unconditional in EVERY governed repo.** `426a` retired the opt-in,
+`config.load_file_lloc_hard_gate`, the `_LEGACY_HARDFAIL_TREES` classifier, and the
+`newly_covered` / `phase="0-warn"` bucket. Verified against all nine repos before landing: every
+one exits 0 with zero hard offenders. The retired key is **inert, not an error** — eight repos
+still carry the line, deliberately, so no coordinated flag-day edit was needed.
+
+### 🔑 THE ARMING DANCE WAS NEVER NECESSARY — this retires a hazard three sessions hit
+
+Sessions have been temporarily arming `source_trees`/`covered_trees` in a **tracked**
+`pyproject.toml` to take an LLOC reading, and that revert twice destroyed real edits.
+
+**`resolve_check_universe()` returns the SAME file set armed or unarmed** — the universe is
+git-derived; arming changes SEVERITY only (verified on livespec-overseer: 84 files either way).
+A package-wide census needs **no config mutation at all**:
+
+```python
+from livespec_dev_tooling.checks.file_lloc import _count_lloc, resolve_check_universe
+root, files = resolve_check_universe()
+rows = sorted(((_count_lloc(source=(root / p).read_text()), p) for p in files), reverse=True)
+```
+
+Arming is now only ever needed to make a check FAIL, never to measure it.
+
+### 🧠 FOUR FINDINGS WORTH CARRYING FORWARD
+
+1. **A mechanical conversion can push its own siblings over a ceiling.** `bg2.9`'s keyword-only
+   expansion re-wrapped call sites and pushed THREE files past ceilings `bg2.3` had already
+   cleared — one over the HARD ceiling. Per-file measurement never showed it; a package-wide
+   census did. **After any mechanical conversion, re-measure the whole package before arming a
+   gate against it.**
+
+2. **An "unfixable" list can hide a real defect.** `2prg` stated of its 12 residual offenders
+   that "NONE CAN BE FIXED IN THE CONSUMER". Eleven could not. The twelfth was a *positional*
+   double of the repo's OWN keyword-only `run_daemon`, misclassified with the stdlib doubles. It
+   surfaced only by **building** the exemption and asking what evidence made each one
+   externally-fixed. An exemption keyed to the looser reading ("is monkeypatched") would have
+   swallowed it while reporting the acceptance met.
+
+3. **The obvious jsonpath for `uv.lock` is a SILENT no-op.** The candidate this file carried,
+   `$.package[?(@.name=='...')].version`, matches nothing: release-please's toml updater wraps
+   every scalar as `{start, end, value}`, so `@.name` is an object. The working form is
+   **`@.name.value`**. On no match the updater logs "No entries modified" at warn and returns the
+   content unchanged — it reports success while doing nothing. Landing it unverified would have
+   closed `bg2.10` with the drift still live.
+
+4. **A green-looking signal read off the wrong source, twice more.** Reading `uv.lock` from the
+   *working tree* showed every repo clean — because any `uv run`/`uv sync` silently regenerates
+   it. Only `git show origin/master:uv.lock` is honest. And a `grep -m1` for a config key matched
+   *comment lines* in three repos, reporting them as configured when they were not.
+
+### 📌 CROSS-TENANT STATUS — verified this session
+
+| Item | Tenant | Status |
+|---|---|---|
+| `overseer-bg2` (EPIC) | livespec-overseer | ✅ **CLOSED 10/10** |
+| `overseer-hfx` / `bg2.4` / `bg2.9` / `bg2.10` | livespec-overseer | ✅ CLOSED |
+| `livespec-dev-tooling-2prg` | livespec-dev-tooling | ✅ CLOSED — released v0.54.27 |
+| `livespec-dev-tooling-426a` | livespec-dev-tooling | ✅ CLOSED — released v0.54.28 |
+| `livespec-driver-claude-jzy` | livespec-driver-claude | ✅ CLOSED (PR #296) |
+| `livespec-dev-tooling-z4qi` | livespec-dev-tooling | **NEW** (P2) — the conformance flake |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — worst case now measured at 0 |
+| `livespec-dev-tooling-r5m` | livespec-dev-tooling | open — now carries the working fix |
+| `livespec-dev-tooling-u4xw` / `-jjb` | livespec-dev-tooling | open — unchanged |
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped; all three
+  repos clean on `master` and in sync.
+- **Master CI green on all three**, including a `livespec-dev-tooling` failure this session
+  **investigated, re-run, and confirmed transient** (filed as `z4qi`). **Re-check before acting;
+  this line expired the moment it was written.**
+- **Foreign worktrees — DO NOT REAP.** livespec-overseer: `regen-spq-charter`,
+  `supervisor-charter-hardening`. livespec-dev-tooling: `cap-test-parallelism`,
+  `ci-concurrency-group`, `docs/archive-fleet-plan-lifecycle-thread`,
+  `fix-except-check-breadth-aware`, `fix/generated-block-comment-syntax`, detached
+  `tag-v0.54.24`. **This list has changed within a single session before — run
+  `git worktree list` in each repo before reaping anything.**
+- **Another session is live in `livespec-dev-tooling`**: it advanced master mid-session and holds
+  uncommitted edits to `plan/worktree-location-enforcement/handoff.md`. Left untouched.
+- **The maintainer's `overseerd` daemon holds OLD modules** — `_supervisor_resume_retry.py`,
+  `test_registry_injection_failsoft.py` and `test_supervisor_r2_fable_hardening.py` are new.
+  Restart it.
+- **`just check` fails in a FRESH WORKTREE** on
+  `check-primary-checkout-commit-refuse-hook-installed`. Fix: `just install-worktree-pack`, then
+  `git checkout -- .livespec.jsonc` — the installer mutates that TRACKED file. A fresh worktree
+  also needs `uv sync`.
+
+### ⚠️ ONE RITUAL TRAP THAT COST A CYCLE
+
+The commit-msg hook enforces **byte-identity of the Red test file** at the Green amend
+(`test-file-checksum-mismatch`). Editing the test after the Red commit — even to rename tests or
+fix docstrings — invalidates it. **Do all test reframing BEFORE the Red commit.** The recovery is
+documented: re-author the Red against the final test bytes with the impl reverted on disk.
+
+Also still true: `livespec-overseer` currently has **no** product-impl prefixes for the ritual
+(`_impl_prefixes_for_current_repo()` derives from `source_trees`) — but **`bg2.4` armed
+`source_trees`, so Red→Green now applies to `overseer/*.py`.** The next production change there
+carries the ritual; prior `refactor:` commits did not.
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text through a
+  file** and pass it as `"$(cat file)"`.
+- **`ls` is aliased to a long-format lister**, and zsh does not word-split an unquoted `$VAR`.
+  Use `find … -print0 | xargs -0`.
+- Setting `HOME` for a `mise exec` invocation breaks mise. Use the venv interpreter:
+  `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
+- **`git add` before measuring on any changeset that ADDS files** — the checks derive their
+  universe from `git ls-files`, so an untracked file is invisible (instance 13 of
+  `.ai/verifying-against-the-right-source.md`).
+- **Do not arm auto-merge while still verifying** — it beat an amend in the sixteenth session.
+- A **`grep -m1`** for a config key will happily match a COMMENT mentioning that key. Anchor on
+  `^\s*<key>\s*=`.
+
+---
+
+## (HISTORY) ✅ STATE AS OF 2026-07-26 (SIXTEENTH session) — superseded by the SEVENTEENTH-session section above
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
