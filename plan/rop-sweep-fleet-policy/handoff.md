@@ -1,6 +1,175 @@
-# rop-sweep-fleet-policy — the `overseer-bg2` epic is CLOSED; `i532` is measured and its design corrected
+# rop-sweep-fleet-policy — the `io_trees` design was FORECLOSED BY SPEC, reverted, and replaced with the conforming conversion
 
-## 🔔 STATE AS OF 2026-07-27 (SEVENTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+## 🔔 STATE AS OF 2026-07-27 (EIGHTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
+
+Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
+prose. Live-state claims expire in minutes, this section included.
+
+### 🛑 READ THIS BEFORE THE SEVENTEENTH-SESSION SECTION — its "corrected design" is WRONG
+
+The seventeenth session's journal and the section below both recommend declaring the fleet's hook
+trees in **`io_trees`** as `i532`'s remediation. **That design is foreclosed by ratified spec.** It
+was built, merged in six repos, caught in review, and fully reverted this session. Do not rebuild
+it; a guard check is filed to make a fourth attempt impossible.
+
+`livespec/SPECIFICATION/non-functional-requirements.md` line 114, verbatim: *"There is NO 'thin
+repo' exemption — a repo whose only Python is fail-open hooks still composes those hooks' bodies on
+the railway beneath that single boundary. The SOLE exemption is a governed repo with ZERO
+first-party Python."* Declaring a hook tree in `io_trees` to make it wholesale exempt IS that
+thin-repo exemption, written as a config key instead of as prose. Line 651 corroborates twice: the
+`io_trees` exemption is for *"a LAYERED `io/` tree"*, and *"In a repo without an `io/` layered tree
+(`io_trees` unset — e.g. a hook-only Driver) the check MUST still run rather than no-op"*.
+
+**The fail-open posture was never at risk**, which is why the conforming fix turned out cheap. The
+same clause GRANTS a hook one boundary catch — *"the fail-open silent pass-through its Driver hook
+contract already requires"*. The spec never asked hooks to stop being fail-open; it asked their
+BODIES to sit beneath ONE marked boundary.
+
+### ▶️ START HERE — the blocker is cleared; `i532` itself is next
+
+All twelve PRs of this session are merged and every worktree is reaped. In priority order:
+
+1. **`livespec-dev-tooling-i532`** — the actual universe migration, now UNBLOCKED and with a
+   conforming fleet beneath it. All eight Python-bearing repos measure **both ROP checks exit 0
+   under a git-derived universe, zero masked offenders, and NO hook tree in any `io_trees`**. The
+   remaining work is the check change itself: point `no_except_outside_io` and
+   `no_raise_outside_io` at `resolve_check_universe()`, drop their `source_trees_exit_code` gate,
+   and pass a repo-wide scan root to `find_ruff_backstop_gaps`. `all_declared.py` is the model —
+   sixteen checks already migrated; these two are the last.
+2. **`livespec-dev-tooling-bv81`** (P1, filed this session) — the guard check that REJECTS a hook
+   tree in `io_trees`. The supervisor's explicit instruction: a fourth attempt should be
+   impossible, not merely discouraged. Do this WITH or BEFORE `i532`.
+3. **`livespec-dev-tooling-z4qi`**, **`-u4xw`**, **`-jjb`**, **Group B** (`tljy`, `3q2c`),
+   **sibling `uv.lock` drift** (`-r5m`) — unchanged from the seventeenth session.
+
+### ✅ TWELVE PRs MERGED — six reverts, then six conversions
+
+| repo | revert | conversion |
+|---|---|---|
+| livespec-dev-tooling | #722 | #723 (the pilot) |
+| livespec | #1794 | #1795 |
+| livespec-overseer | #190 | #191 |
+| livespec-runtime | #353 | #354 |
+| livespec-orchestrator-git-jsonl | #425 | #426 |
+| livespec-orchestrator-beads-fabro | #1027 | #1028 |
+
+Reverts landed FIRST and as their own PRs: the declarations were inert (the checks do not reach
+those trees until `i532` lands) but they were a live spec violation on master, and stopping the
+bleeding precedes the improvement.
+
+### 🔧 THE CONFORMING SHAPE — copy it, do not re-derive it
+
+`livespec-driver-claude`'s `.claude/hooks/livespec_footgun_guard.py` has been in this shape all
+along and passes every check while sitting in `source_trees` and NOT ruff-excluded. Per repo:
+
+1. `_deny_payload` RETURNS the payload; `_decision` decides; `main() -> int` writes and returns,
+   under a module-level `raise SystemExit(main())`.
+2. the narrow `except json.JSONDecodeError` stays as the seam catch.
+3. the sole broad catch is a DIRECT CHILD of `main()` carrying a closed-set wording — for a hook,
+   `# noqa: BLE001 — sole fail-open hook boundary: silent pass-through, exit 0`.
+4. the hook path joins **`supervisor_entry_files`**. This is load-bearing three times over: it is
+   what makes `_is_supervisor_main_file` true so the marker is even consulted, what exempts the
+   file from `no_write_direct`, and what exempts its `sys.exit` from `check-supervisor-discipline`.
+   Forgetting it was the one mistake that cost a cycle this session.
+5. `print` becomes `sys.stdout.write` (legal via 4), removing T201 with no waiver.
+6. the wholesale `.claude/hooks/**` ruff `extend-exclude` is DROPPED and replaced by a NARROW
+   per-file-ignore for what genuinely remains — so `BLE001` stays LIVE. Skipping this makes the
+   marker a dead directive and `find_ruff_backstop_gaps` correctly still errors.
+
+### 🧠 SIX FINDINGS WORTH CARRYING FORWARD
+
+1. **Three sessions validated this design against the wrong authority.** Each checked the CHECK'S
+   OWN TEST SUITE and the consumers' ruff config comments; none opened the ratified spec, which
+   names this exact situation. When a design grants a wholesale exemption, read the spec clause
+   governing that exemption FIRST. A per-repo config comment is not a contract.
+2. **`no_except_outside_io.main()` MASKS real offenders.** It evaluates `find_ruff_backstop_gaps`
+   and `return 1`s on any gap BEFORE the block that logs position offenses. So in every repo with
+   a backstop gap, genuine broad catches are computed, counted in the info line, and never logged.
+   The seventeenth session's "zero genuine broad catches" came from reading the error stream; the
+   truth was SEVEN. Always replay `main()`'s own loop to unmask.
+3. **A behavior-preserving refactor of a guard hook must be MEASURED, not asserted.** The harness
+   used here diffs pre- and post-conversion stdout+exit across 15–17 cases (footguns blocked
+   through `mise exec --` and in later `&&` segments, legitimate commands allowed, fail-open on
+   malformed JSON / empty stdin / non-Bash tool). It is cheap and it is what makes the conversion
+   reviewable. Keep it.
+4. **Two repos have real test suites for the footgun guard** — `livespec` (`tests/claude/hooks/`)
+   and `livespec-orchestrator-beads-fabro` (`tests/hooks/`) — and BOTH assert `main()` itself
+   raises `SystemExit`. That is an implementation detail the conforming shape moves to the
+   module-level `raise SystemExit(main())`; the helper becomes `assert guard.main() == 0`, which
+   keeps the always-exit-0 contract under test. Coverage, not test failure, is what surfaced it in
+   `livespec`.
+5. **A worktree cut from a stale primary silently reintroduces the thing you just reverted.** The
+   orchestrator conversion worktree was branched before its revert PR merged, so the census read
+   `io_trees` as still holding the hook trees. `git fetch` + rebase onto `origin/master` fixed it.
+   Refresh the primary IMMEDIATELY before `worktree add`, not just after a merge.
+6. **`§"Section"` citations are banned in source and tests**, enforced by
+   `doctor-no-spec-section-citation-in-code` — heading-level citations rot on rename. Cite the spec
+   FILE and paraphrase the rule.
+
+### 🔁 THE ONE DELIBERATE BEHAVIOR CHANGE
+
+`livespec-orchestrator-beads-fabro`'s `codex_yolo_reapply.py` carried a PER-FILE bulkhead so one
+bad cached file could not abort the rest. That per-iteration exemption is WITHDRAWN by the spec's
+supervisor-discipline rules — a loop that swallows a bug and re-enters "presents as supervising
+while enforcing nothing". The helper is gone; `main()` carries the sole marked boundary. The hook
+stays fail-open (exit 0, session never wedged) but no longer processes later files after a DEFECT.
+Expected failures were already narrow at their own seams, so anything reaching the boundary is a
+bug. Its test was rewritten to assert the property that actually survives, and `_SKIPPED` deleted
+rather than left describing behavior that no longer exists.
+
+### 📌 SCOPE LINE HELD DELIBERATELY — a real gap, NOT smuggled into this sweep
+
+Line 114 ALSO requires `dry-python/returns` vendored under `_vendor/` and product logic composed on
+the Result/IOResult railway. **Three repos vendor no `returns` at all** (`livespec-dev-tooling`,
+`livespec-overseer`, `livespec-runtime`), and `livespec-dev-tooling`'s ENTIRE package is
+returns-free while passing every check — `check-rop-pipeline-shape` only asserts that
+`@rop_pipeline`-decorated classes have one public method, so "on the railway" is not mechanically
+enforced as "imports returns". That gap is real and FLEET-WIDE and needs its own epic. What this
+session fixed is the exemption the spec names and the marker/position/backstop the checks mechanize.
+
+### 📊 CROSS-TENANT STATUS — verified this session
+
+| Item | Tenant | Status |
+|---|---|---|
+| `livespec-dev-tooling-hev1` (EPIC) + 6 children | various | ✅ CLOSED, then its design REVERTED — read `i532`'s journal, not the epic |
+| `livespec-dev-tooling-bv81` | livespec-dev-tooling | **open (P1)** — the anti-regression guard check |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — **unblocked; fleet is conforming** |
+| `livespec-dev-tooling-z4qi` | livespec-dev-tooling | open (P2) — blocked by `s22c5z` |
+| `livespec-dev-tooling-r5m` / `-u4xw` / `-jjb` | livespec-dev-tooling | open — unchanged |
+
+### 🛑 SESSION STATE
+
+- **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped; all six repos
+  clean on `master`. **Re-check before acting; this line expired the moment it was written.**
+- **Foreign worktrees — DO NOT REAP.** livespec: `ci-concurrency-group`,
+  `fabro-handoff-ci-capacity`, `phase0-selfhosted-shadow-lane`. livespec-dev-tooling:
+  `cap-test-parallelism`, `ci-concurrency-group`, `docs/archive-fleet-plan-lifecycle-thread`,
+  `fix-except-check-breadth-aware`, `fix/generated-block-comment-syntax`. livespec-overseer:
+  `regen-spq-charter`, `supervisor-charter-hardening`. livespec-runtime: `cap-test-parallelism`,
+  `ci-concurrency-group`. livespec-orchestrator-git-jsonl: `ci-concurrency-group`.
+  livespec-orchestrator-beads-fabro: five `janitor-*` detached worktrees plus
+  `orchestrator-selfhosted-cutover`. **Run `git worktree list` before reaping anything.**
+- **One transient CI red seen and re-run to green**: `livespec-orchestrator-git-jsonl` master CI
+  failed on `error sending request for url` during `uv` install — the check never ran. Re-run,
+  green. Do not mistake this class for a real failure, and do not skip the gate for it.
+- **`just check` in a FRESH WORKTREE** still needs `just install-worktree-pack`, then
+  `git checkout -- .livespec.jsonc` (the installer mutates that TRACKED file), plus `uv sync`.
+
+### 🧾 MECHANICAL LESSONS THAT STILL APPLY
+
+- `bd comment "…"` in **zsh** command-substitutes backticks. **Route long journal text through a
+  file** and pass it as `"$(cat file)"`.
+- **zsh does not word-split an unquoted `$VAR`** — `set -- $spec` in a `for` loop silently yields
+  one argument. Wrap such loops in `bash -c '…'`, or use `xargs`.
+- Beads refuses an epic as a blocker (*"tasks can only block other tasks, not epics"*). Use
+  `bd dep relate` and state the ordering in prose.
+- A cross-tenant epic cannot use `--parent`; enumerate the child ids in a comment on the epic, or
+  the set is unrecoverable.
+- **Do not arm auto-merge while still verifying.**
+
+---
+
+## (HISTORY) 🔔 STATE AS OF 2026-07-27 (SEVENTEENTH session) — SUPERSEDED by the EIGHTEENTH-session section above; its `io_trees` design is WRONG
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
