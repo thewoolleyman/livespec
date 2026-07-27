@@ -23,8 +23,8 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Thirteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, across five repos and four independent operators
+## Fourteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14 on 2026-07-27, across five repos and four independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -251,9 +251,73 @@ and treat a green obtained on a dirty tree with untracked files as provisional.
 cheap habit is `git add -A` first, then run the gate — the same tree the commit
 will carry is the only tree whose green means anything.
 
+### 14. Distrusting a signal you never checked — and paying for it destructively
+
+THE INVERSE OF EVERY INSTANCE ABOVE, and worth the entry precisely because it
+inverts them. The other thirteen are a green signal wrongly TRUSTED. This one is a
+signal wrongly DISTRUSTED: an agent decided a check's output could not be
+believed unless the repo's config were first mutated, and the mutation was both
+unnecessary and lossy.
+
+`check-file-lloc` reports over-ceiling files at `error` severity in a repo that
+declares `source_trees`, and at `warning` severity in one that does not. To take a
+reading "as it would really be", three consecutive sessions in `livespec-overseer`
+edited the TRACKED `pyproject.toml` — setting `source_trees = ["overseer"]` and
+`covered_trees = ["overseer"]` — ran the check, then reverted.
+
+**The premise was false. Arming those keys cannot change which files are
+measured.** The universe comes from `config.resolve_check_universe()`, which is
+`git ls-files '*.py'` filtered by exactly two keys — `tests_tree_prefix` and
+`neutral_hook_body_path`. `source_trees` and `covered_trees` are not consulted in
+resolving it at all. They change how a finding is CLASSIFIED, never what is
+walked. Measured both ways in `livespec-overseer`: 84 files armed, 84 files
+unarmed, identical set.
+
+So every LLOC number those sessions wanted was already available with no edit at
+all, and the sessions that mutated config were not getting a truer reading than
+the one they already had.
+
+THE COST WAS NOT THEORETICAL. The revert step destroyed real work TWICE:
+
+- `git checkout -- pyproject.toml`, used to undo the temporary arming, also
+  discarded an unrelated edit made in the same file during the same session;
+- a `str.replace` on `source_trees = []` silently rewrote the long explanatory
+  COMMENT above the key, because the comment quoted the same string.
+
+Both were recovered only because someone re-diffed afterwards and noticed. A
+destructive, lossy workaround was being paid, repeatedly, for a problem that did
+not exist.
+
+WHY IT SURVIVED THREE SESSIONS: the technique WORKED. The armed run did print the
+error-severity output the agent wanted to see, so the reading looked like it had
+required the mutation to obtain. Nothing ever contradicted the premise, because
+nobody ran the check unarmed and compared. This is the file's own test applied to
+a *dis*trusted signal — "could the unarmed source have shown this?" was never
+asked, and the answer was yes all along.
+
+**Counter-move:** before mutating any tracked config to make a check report
+differently, READ the check's universe-resolution path and establish what the key
+you are about to set actually controls. A key that selects SEVERITY does not need
+to be set to obtain a measurement; only a key that selects the UNIVERSE does. Take
+the census directly instead:
+
+```python
+from livespec_dev_tooling.checks.file_lloc import _count_lloc, resolve_check_universe
+root, files = resolve_check_universe()
+rows = sorted(((_count_lloc(source=(root / p).read_text()), p) for p in files), reverse=True)
+```
+
+And the general form, which outlives this particular check: **a destructive
+technique that appears to work is not evidence it was needed.** If a measurement
+requires mutating tracked state, that is a claim about the tool worth verifying in
+the tool's source before paying for it — the mutation costs nothing to skip and
+can cost real work to perform. When a temporary edit to a tracked file genuinely
+is unavoidable, revert it BY LINE and re-diff, never with a whole-file
+`git checkout --` that cannot distinguish your temporary edit from your real one.
+
 ## Why this file exists in livespec CORE
 
-The thirteen instances span FIVE repositories — `livespec`,
+The fourteen instances span FIVE repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro` and `livespec-overseer` — and core owns
 fleet-level facts. A lesson filed only in one tenant would not be read
