@@ -141,20 +141,9 @@ scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.cons
 # once the overseer folder reaches conformance (overseer-productization
 # Gate E). `pure_trees` stays gated on the mutation staging-tree
 # construction (livespec-mutreal.1).
-#
-# `.claude/hooks` joined `io_trees` on 2026-07-27 (`livespec-kawi`, child of the
-# fleet epic `livespec-dev-tooling-hev1`). It is a SECOND boundary tree, not an
-# extension of the package's `io/`: hook scripts are fail-open boundary code
-# whose blind catches and direct prints are the contract, not a smell — the same
-# fact the ruff `extend-exclude` below already records. The tree sits outside
-# `source_trees`, so the railway checks do not reach it today; they will once
-# `livespec-dev-tooling-i532` derives their universe from the git index, and the
-# blind `except Exception` in `livespec_footgun_guard.py` would then be reported
-# as an offense. Declaring the role now is what keeps this repo green through
-# that migration.
 dataclasses_tree = ".claude-plugin/scripts/livespec/schemas/dataclasses"
 source_trees = [".claude-plugin/scripts/livespec"]
-io_trees = [".claude-plugin/scripts/livespec/io", ".claude/hooks"]
+io_trees = [".claude-plugin/scripts/livespec/io"]
 
 # e9j Wave-1 B-core — declare EVERY remaining structural role key explicitly,
 # ending core's reliance on the absent-block fallback (which stopped applying
