@@ -1,30 +1,35 @@
-# rop-sweep-fleet-policy — the `overseer-bg2` epic is CLOSED and the LLOC ceiling is unconditional fleet-wide
+# rop-sweep-fleet-policy — the `overseer-bg2` epic is CLOSED; `i532` is measured and its design corrected
 
 ## 🔔 STATE AS OF 2026-07-27 (SEVENTEENTH session) — READ THIS SECTION FIRST; everything below it is HISTORY
 
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
 
-### ▶️ START HERE — nothing is in flight; the `bg2` track is DONE
+### ▶️ START HERE — nothing is in flight; pick up at `i532`
 
-Every PR this session opened is merged and every worktree it created is reaped. **The entire
-`overseer-bg2` epic closed (10/10), and with it every item the sixteenth session's START HERE
-list named.** There is no queued work left on this track. In priority order, what remains:
+Seven PRs merged, every worktree reaped, all three repos clean on `master` and green. **The
+entire `overseer-bg2` epic closed (10/10)**, and with it every item the sixteenth session's
+START HERE list named. In priority order, what remains:
 
-1. **`livespec-dev-tooling-z4qi`** (NEW, P2) — a transient App-token miss blinds every
-   fleet-conformance row and reds master on a no-op commit. Observed live this session and
-   confirmed a flake by re-run. **Read its "DO NOT fix this by demoting blind rows" clause
-   before touching it** — failing-loud on a blind row is a deliberate recent ruling.
-2. **`livespec-dev-tooling-i532`** (P2) — derive the ROP-check universe from the git index.
-   Its worst-case repo is now measured at ZERO (see below), so its risk assessment changed.
+1. **`livespec-dev-tooling-i532`** — derive the ROP-check universe from the git index. This is
+   the most advanced item and the one to take first. It is **fully measured, and one wrong
+   design has already been built and reverted** — read BOTH journal comments on the item before
+   writing any code. The corrected design and the exact per-repo remediation list are there.
+   **The next step is NOT the check change**: it is a cross-repo epic adding hook trees to
+   `io_trees` in six repos, which must land FIRST or those repos red.
+2. **`livespec-dev-tooling-z4qi`** (P2) — the transient App-token CI red. Root-caused this
+   session (token WAS minted; reads rejected immediately, not rate-limited). Now typed as
+   **blocked by `livespec-dev-tooling-s22c5z`**, which must land first. **Do NOT fix it by
+   demoting blind rows** — failing loud on a blind row is a deliberate recent ruling.
 3. **`livespec-dev-tooling-u4xw`**, **`-jjb`**, **Group B** (`tljy`, `3q2c`) — unchanged.
-4. **Sibling `uv.lock` drift** — `livespec-dev-tooling-r5m` now carries the exact working
-   fix; it is a one-line copy. `livespec-runtime` has the same gap and no item.
+4. **Sibling `uv.lock` drift** — `livespec-dev-tooling-r5m` carries the exact working fix; it
+   is a one-line copy with the package name swapped. `livespec-runtime` has the same gap and
+   no item.
 
-**Do not re-derive any count in this file** — but note the measurement hazard is now GONE;
-see "the arming dance was never necessary" below.
+**Do not re-derive any count in this file.** The old measurement hazard is retired — see
+"the arming dance" below.
 
-### ✅ SIX PRs MERGED, FIVE ITEMS + ONE EPIC CLOSED
+### ✅ SEVEN PRs MERGED, FIVE ITEMS + ONE EPIC CLOSED
 
 | PR | Repo | What |
 |---|---|---|
@@ -34,6 +39,7 @@ see "the arming dance was never necessary" below.
 | #183 | livespec-overseer | **arm enforcement** + pin v0.54.27 — closes `overseer-bg2.4` |
 | #184 | livespec-overseer | release-please updates `uv.lock` — closes `overseer-bg2.10` |
 | #716 | livespec-dev-tooling | **retire the `file_lloc_hard_gate` opt-in** — closes `426a` |
+| #1791 | livespec | instance 14 of `.ai/verifying-against-the-right-source.md` |
 
 Closed: `overseer-hfx`, `overseer-bg2.9`, `overseer-bg2.4`, `overseer-bg2.10`,
 `livespec-dev-tooling-2prg`, `livespec-dev-tooling-426a`, and the **`overseer-bg2` epic**.
@@ -42,22 +48,58 @@ Closed: `overseer-hfx`, `overseer-bg2.9`, `overseer-bg2.4`, `overseer-bg2.10`,
 
 **`livespec-overseer` is ARMED.** `source_trees = ["overseer"]`, `covered_trees = ["overseer"]`,
 `file_lloc_hard_gate = true`, full `just check` 61/61 green. The blast radius `bg2.4` demanded be
-counted first was **zero** — no exemption, no severity change, no per-file carve-out.
+counted first was **zero** — no exemption, no severity change, no per-file carve-out. `io_trees`
+and `supervisor_entry_files` are now HONEST declared-empties: with the loop-iteration catch
+deleted there is no boundary exemption left to declare.
 
-**The 250-LLOC ceiling is now unconditional in EVERY governed repo.** `426a` retired the opt-in,
+**The 250-LLOC ceiling is unconditional in EVERY governed repo.** `426a` retired the opt-in,
 `config.load_file_lloc_hard_gate`, the `_LEGACY_HARDFAIL_TREES` classifier, and the
 `newly_covered` / `phase="0-warn"` bucket. Verified against all nine repos before landing: every
 one exits 0 with zero hard offenders. The retired key is **inert, not an error** — eight repos
 still carry the line, deliberately, so no coordinated flag-day edit was needed.
 
-### 🔑 THE ARMING DANCE WAS NEVER NECESSARY — this retires a hazard three sessions hit
+### 🛑 `i532` — MEASURED, IMPLEMENTED, AND DELIBERATELY REVERTED. READ THIS BEFORE CODING.
 
-Sessions have been temporarily arming `source_trees`/`covered_trees` in a **tracked**
-`pyproject.toml` to take an LLOC reading, and that revert twice destroyed real edits.
+Two journal comments on the item carry the detail. The summary a fresh reader needs:
 
-**`resolve_check_universe()` returns the SAME file set armed or unarmed** — the universe is
-git-derived; arming changes SEVERITY only (verified on livespec-overseer: 84 files either way).
-A package-wide census needs **no config mutation at all**:
+**The census is DONE, all nine repos**, run through each check's OWN `main()` with only the
+universe substituted. `no_raise_outside_io`: **zero offenses fleet-wide**.
+`no_except_outside_io`: 12 findings across 6 repos, **all one class** — the "excluded from Ruff;
+BLE001 backstop is absent" meta-finding, every one in a deliberately ruff-excluded tree. **Zero
+genuine broad catches, zero domain raises.**
+
+**A design was built and reverted, and the reason generalises.** Excluding files that match the
+consumer's ruff `extend-exclude` covered every finding and looked like the `h65n` precedent —
+until `no_except`'s own suite refuted it. `test_..._rejects_ruff_excluded_inspected_file` encodes
+that an inspected-but-ruff-excluded file IS an error, because the BLE001 backstop is absent.
+Making exclusion mean "not inspected" inverts it and lets any repo drop ROP coverage with one
+`extend-exclude` line — closing the `source_trees = []` dodge by opening an `extend-exclude`
+dodge, which the item forbids outright. Nothing was pushed; the branch is deleted.
+
+**The corrected design**, which satisfies every constraint the item states:
+- boundary code (`.claude/hooks/**`, `.claude-plugin/hooks/**`) → declare in **`io_trees`**, the
+  architectural role key the item insists stays a declaration, and which already grants exactly
+  the right wholesale exemption. This keeps `find_ruff_backstop_gaps` load-bearing.
+- non-first-party fixture trees (`orchestrator-image/e2e-skeleton/**`) → the universe's own
+  first-party filter, beside `templates/`.
+
+**So the per-repo remediation the item predicted DOES exist** — I was wrong to write earlier that
+"the sequencing collapses". It collapses for VIOLATIONS (still zero), not for DECLARATIONS: six
+repos need an `io_trees` addition, one also needs the skeleton tree handled. Land that epic
+FIRST, then migrate the two checks.
+
+**Scope correction that still stands:** `public_api_result_typed` reads **`pure_trees`**, not
+`source_trees`, and skips `_`-prefixed modules. It is untouched by this migration and its
+`pure_trees` arming is separately gated on `livespec-mutreal.1`. The item's real scope is **two**
+checks, not three.
+
+### 🔑 THE ARMING DANCE WAS NEVER NECESSARY — now instance 14
+
+Sessions were arming `source_trees`/`covered_trees` in a **tracked** `pyproject.toml` to take an
+LLOC reading; that revert twice destroyed real edits. Verified structurally:
+`resolve_check_universe()` is `git ls-files '*.py'` filtered by exactly `tests_tree_prefix` and
+`neutral_hook_body_path` — **neither `source_trees` nor `covered_trees` is consulted**. A
+package-wide census needs no config mutation:
 
 ```python
 from livespec_dev_tooling.checks.file_lloc import _count_lloc, resolve_check_universe
@@ -65,34 +107,32 @@ root, files = resolve_check_universe()
 rows = sorted(((_count_lloc(source=(root / p).read_text()), p) for p in files), reverse=True)
 ```
 
-Arming is now only ever needed to make a check FAIL, never to measure it.
+**But note the asymmetry, because it decides how to measure the ROP checks:** for `file_lloc`,
+`source_trees` selects SEVERITY, so no mutation is needed. For the railway checks it selects the
+UNIVERSE. Measure those by running the check's own `main()` with `iter_py_files` substituted —
+never by mutating config, and never by reimplementing its finding logic (see below).
 
-### 🧠 FOUR FINDINGS WORTH CARRYING FORWARD
+### 🧠 FIVE FINDINGS WORTH CARRYING FORWARD
 
 1. **A mechanical conversion can push its own siblings over a ceiling.** `bg2.9`'s keyword-only
-   expansion re-wrapped call sites and pushed THREE files past ceilings `bg2.3` had already
-   cleared — one over the HARD ceiling. Per-file measurement never showed it; a package-wide
-   census did. **After any mechanical conversion, re-measure the whole package before arming a
-   gate against it.**
-
-2. **An "unfixable" list can hide a real defect.** `2prg` stated of its 12 residual offenders
-   that "NONE CAN BE FIXED IN THE CONSUMER". Eleven could not. The twelfth was a *positional*
-   double of the repo's OWN keyword-only `run_daemon`, misclassified with the stdlib doubles. It
-   surfaced only by **building** the exemption and asking what evidence made each one
-   externally-fixed. An exemption keyed to the looser reading ("is monkeypatched") would have
-   swallowed it while reporting the acceptance met.
-
-3. **The obvious jsonpath for `uv.lock` is a SILENT no-op.** The candidate this file carried,
-   `$.package[?(@.name=='...')].version`, matches nothing: release-please's toml updater wraps
-   every scalar as `{start, end, value}`, so `@.name` is an object. The working form is
-   **`@.name.value`**. On no match the updater logs "No entries modified" at warn and returns the
-   content unchanged — it reports success while doing nothing. Landing it unverified would have
-   closed `bg2.10` with the drift still live.
-
-4. **A green-looking signal read off the wrong source, twice more.** Reading `uv.lock` from the
-   *working tree* showed every repo clean — because any `uv run`/`uv sync` silently regenerates
-   it. Only `git show origin/master:uv.lock` is honest. And a `grep -m1` for a config key matched
-   *comment lines* in three repos, reporting them as configured when they were not.
+   expansion pushed THREE files past ceilings `bg2.3` had cleared — one over the HARD ceiling.
+   Per-file measurement never showed it; a package-wide census did.
+2. **An "unfixable" list can hide a real defect.** `2prg` said "NONE CAN BE FIXED IN THE
+   CONSUMER" of its 12 offenders. Eleven could not; the twelfth was a positional double of the
+   repo's OWN keyword-only function. It surfaced only by BUILDING the exemption and asking what
+   evidence made each one externally-fixed.
+3. **The obvious `uv.lock` jsonpath is a SILENT no-op.** `$.package[?(@.name=='…')].version`
+   matches nothing — release-please's toml parser wraps scalars as `{start,end,value}`, so
+   `@.name` is an object. The working form is **`@.name.value`**. On no match it logs "No
+   entries modified" and returns unchanged content: success reported, nothing done.
+4. **Do not measure a check by rewriting it.** My first `i532` census reimplemented the finding
+   logic and reported `except=0` everywhere. A positive control revealed
+   `_find_offending_suppress_lines` has a different signature than assumed and my own
+   `except TypeError` swallowed the call. Run the check's `main()`; substitute only the universe.
+5. **Wrong-source reads bit twice more.** `uv.lock` read from a working tree that `uv run` had
+   silently regenerated showed every repo clean; and a `grep -m1` for a config key matched
+   COMMENT lines in three repos. Anchor on `^\s*<key>\s*=`, and read committed state via
+   `git show origin/master:<path>`.
 
 ### 📌 CROSS-TENANT STATUS — verified this session
 
@@ -103,45 +143,43 @@ Arming is now only ever needed to make a check FAIL, never to measure it.
 | `livespec-dev-tooling-2prg` | livespec-dev-tooling | ✅ CLOSED — released v0.54.27 |
 | `livespec-dev-tooling-426a` | livespec-dev-tooling | ✅ CLOSED — released v0.54.28 |
 | `livespec-driver-claude-jzy` | livespec-driver-claude | ✅ CLOSED (PR #296) |
-| `livespec-dev-tooling-z4qi` | livespec-dev-tooling | **NEW** (P2) — the conformance flake |
-| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — worst case now measured at 0 |
-| `livespec-dev-tooling-r5m` | livespec-dev-tooling | open — now carries the working fix |
+| `livespec-dev-tooling-i532` | livespec-dev-tooling | open (P2) — **measured; design corrected** |
+| `livespec-dev-tooling-z4qi` | livespec-dev-tooling | open (P2) — **blocked by `s22c5z`** |
+| `livespec-dev-tooling-r5m` | livespec-dev-tooling | open — carries the working `uv.lock` fix |
 | `livespec-dev-tooling-u4xw` / `-jjb` | livespec-dev-tooling | open — unchanged |
 
 ### 🛑 SESSION STATE
 
 - **NOTHING IS IN FLIGHT.** Every worktree and branch this session created is reaped; all three
-  repos clean on `master` and in sync.
-- **Master CI green on all three**, including a `livespec-dev-tooling` failure this session
-  **investigated, re-run, and confirmed transient** (filed as `z4qi`). **Re-check before acting;
+  repos clean on `master` and in sync. No background processes were left running.
+- **Master CI green on all three.** One `livespec-dev-tooling` failure this session was
+  investigated, re-run, and confirmed transient (filed as `z4qi`). **Re-check before acting;
   this line expired the moment it was written.**
 - **Foreign worktrees — DO NOT REAP.** livespec-overseer: `regen-spq-charter`,
   `supervisor-charter-hardening`. livespec-dev-tooling: `cap-test-parallelism`,
-  `ci-concurrency-group`, `docs/archive-fleet-plan-lifecycle-thread`,
-  `fix-except-check-breadth-aware`, `fix/generated-block-comment-syntax`, detached
-  `tag-v0.54.24`. **This list has changed within a single session before — run
-  `git worktree list` in each repo before reaping anything.**
-- **Another session is live in `livespec-dev-tooling`**: it advanced master mid-session and holds
-  uncommitted edits to `plan/worktree-location-enforcement/handoff.md`. Left untouched.
+  `ci-concurrency-group`, `fix-except-check-breadth-aware`,
+  `fix/generated-block-comment-syntax`, detached `tag-v0.54.24`. **This list has changed within
+  a single session before — run `git worktree list` in each repo before reaping anything.**
+- **Another session is live in `livespec-dev-tooling`** — it advanced master mid-session and was
+  editing `plan/worktree-location-enforcement/`. Left untouched.
 - **The maintainer's `overseerd` daemon holds OLD modules** — `_supervisor_resume_retry.py`,
-  `test_registry_injection_failsoft.py` and `test_supervisor_r2_fable_hardening.py` are new.
+  `test_registry_injection_failsoft.py`, `test_supervisor_r2_fable_hardening.py` are new.
   Restart it.
 - **`just check` fails in a FRESH WORKTREE** on
   `check-primary-checkout-commit-refuse-hook-installed`. Fix: `just install-worktree-pack`, then
   `git checkout -- .livespec.jsonc` — the installer mutates that TRACKED file. A fresh worktree
   also needs `uv sync`.
 
-### ⚠️ ONE RITUAL TRAP THAT COST A CYCLE
+### ⚠️ TWO RITUAL TRAPS THAT EACH COST A CYCLE
 
-The commit-msg hook enforces **byte-identity of the Red test file** at the Green amend
-(`test-file-checksum-mismatch`). Editing the test after the Red commit — even to rename tests or
-fix docstrings — invalidates it. **Do all test reframing BEFORE the Red commit.** The recovery is
-documented: re-author the Red against the final test bytes with the impl reverted on disk.
-
-Also still true: `livespec-overseer` currently has **no** product-impl prefixes for the ritual
-(`_impl_prefixes_for_current_repo()` derives from `source_trees`) — but **`bg2.4` armed
-`source_trees`, so Red→Green now applies to `overseer/*.py`.** The next production change there
-carries the ritual; prior `refactor:` commits did not.
+- **The Red test file must be BYTE-IDENTICAL at the Green amend** (`test-file-checksum-mismatch`).
+  Editing the test afterwards — even to rename tests or fix docstrings — invalidates it. **Do all
+  test reframing BEFORE the Red commit.** Recovery: re-author the Red against the final test
+  bytes with the impl reverted on disk.
+- **`bg2.4` armed `source_trees` in `livespec-overseer`, so Red→Green NOW APPLIES to
+  `overseer/*.py`.** `_impl_prefixes_for_current_repo()` derives from that key; it returned `()`
+  there earlier, which is why prior `refactor:` commits carried no trailers. The next production
+  change in that repo carries the ritual.
 
 ### 🧾 MECHANICAL LESSONS THAT STILL APPLY
 
@@ -152,11 +190,9 @@ carries the ritual; prior `refactor:` commits did not.
 - Setting `HOME` for a `mise exec` invocation breaks mise. Use the venv interpreter:
   `HOME=/tmp/… ./.venv/bin/python3 -m pytest`.
 - **`git add` before measuring on any changeset that ADDS files** — the checks derive their
-  universe from `git ls-files`, so an untracked file is invisible (instance 13 of
-  `.ai/verifying-against-the-right-source.md`).
+  universe from `git ls-files`, so an untracked file is invisible (instance 13).
 - **Do not arm auto-merge while still verifying** — it beat an amend in the sixteenth session.
-- A **`grep -m1`** for a config key will happily match a COMMENT mentioning that key. Anchor on
-  `^\s*<key>\s*=`.
+- A **`grep -m1`** for a config key will match a COMMENT mentioning it. Anchor on `^\s*<key>\s*=`.
 
 ---
 
