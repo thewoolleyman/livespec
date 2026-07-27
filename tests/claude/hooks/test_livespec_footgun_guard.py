@@ -57,11 +57,16 @@ def _run(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> str:
-    """Drive `main()` with `payload` on stdin; return whatever it prints."""
+    """Drive `main()` with `payload` on stdin; return whatever it writes.
+
+    `main()` RETURNS its exit code rather than calling `sys.exit` itself —
+    the module-level `raise SystemExit(main())` is what turns that into the
+    process exit. Asserting the returned code keeps the exit contract under
+    test (always 0, fail-open) while dropping the assertion that `main` is
+    the thing that terminates, which was an implementation detail.
+    """
     monkeypatch.setattr(GUARD.sys, "stdin", io.StringIO(payload))
-    with pytest.raises(SystemExit) as exc:
-        GUARD.main()
-    assert exc.value.code == 0
+    assert GUARD.main() == 0
     return capsys.readouterr().out
 
 
