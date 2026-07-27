@@ -28,6 +28,7 @@
 - check-global-writes
 - check-handoff-dispatch-routing
 - check-heading-coverage
+- check-hook-trees-not-io-exempt
 - check-keyword-only-args
 - check-local-memory-drift-audit
 - check-main-guard
