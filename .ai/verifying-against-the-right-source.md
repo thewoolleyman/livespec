@@ -315,9 +315,48 @@ can cost real work to perform. When a temporary edit to a tracked file genuinely
 is unavoidable, revert it BY LINE and re-diff, never with a whole-file
 `git checkout --` that cannot distinguish your temporary edit from your real one.
 
+### 15. A check that EXITED EARLY reports a clean stream, not a clean result
+
+`no_except_outside_io` evaluated `find_ruff_backstop_gaps` first and
+`return 1`-ed on any gap — BEFORE the block that logs position offenses. So in
+every repo carrying a gap, real broad catches were computed, counted in the
+`files_inspected` / `offenses` info line, and then never logged. The check
+exited non-zero, so it LOOKED like it worked; the offenses it had already found
+simply never reached the error stream a reviewer and a CI log actually read.
+
+A fleet census read that stream and concluded **"zero genuine broad catches,
+zero domain raises"** across all nine repos. There were **seven**, every one
+hiding behind a gap. The wrong number was journalled on the work-item and acted
+on — it was the evidence for a design that then had to be reverted from six
+repositories.
+
+This is the family the whole file is about, one layer in: not a green read off
+the wrong REPO or the wrong REF, but a green read off a stream the check
+ABANDONED before it finished. The source was right. The check stopped talking
+partway through, and silence after an early return is indistinguishable from
+silence after a clean pass.
+
+The tell was available and was missed twice: the check's own info line said
+`"offenses": 1` while its error stream named none. A summary count that
+disagrees with the itemised output is the signal, and it is worth looking for
+precisely because a check that exits non-zero does not feel like a check that
+is hiding something.
+
+**Counter-move:** when a check can fail for more than one reason, never read
+only the first failure it decides to report — read its structured COUNTS too,
+and reconcile them against the items it listed. When measuring with a check
+rather than merely running it, replay its own loop rather than trusting `main()`
+to have finished: an unmasking pass that re-runs the finding logic against the
+same universe is cheap, and it is what turned "zero" into "seven" here. And when
+you find such an early return, FIX it — report every failure kind in one run —
+because the next reader will trust the stream exactly as you did. (Fixed in
+`livespec-dev-tooling` PR #727, with a regression test whose fixture carries a
+backstop gap AND a position offense in different files, because asserting only
+the exit code passes against the defect.)
+
 ## Why this file exists in livespec CORE
 
-The fourteen instances span FIVE repositories — `livespec`,
+The fifteen instances span FIVE repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro` and `livespec-overseer` — and core owns
 fleet-level facts. A lesson filed only in one tenant would not be read
