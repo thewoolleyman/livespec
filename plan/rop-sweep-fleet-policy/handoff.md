@@ -5,6 +5,38 @@
 Verify each fact from the ledger / GitHub before acting — status is READ, never trusted from
 prose. Live-state claims expire in minutes, this section included.
 
+### ▶️ START HERE — this thread is COMPLETE; its only remaining action is to ARCHIVE it
+
+You have been handed this file as your whole prompt. Read this block first and act on it; the rest
+of this section is the RECORD of how the thread finished, not a worklist.
+
+**Step 1 — verify, do not trust this prose.** Live-state claims expire in minutes. Confirm before
+acting on anything below:
+
+```bash
+cd /data/projects/livespec-dev-tooling && /usr/local/bin/with-livespec-env.sh -- bd show livespec-dev-tooling-i532 | head -3
+gh run list --repo thewoolleyman/livespec --workflow CI --branch master --limit 1 --json conclusion
+git -C /data/projects/livespec status --short --branch
+```
+
+Expect `i532` CLOSED, master CI green, and a clean `master`. **If any of that is false, the thread
+is NOT complete — stop and re-derive the true state before archiving anything.**
+
+**Step 2 — if verification holds, ARCHIVE this thread.** Its objective is met and it owns no
+pending work. Archiving is the codified close for a finished plan thread; leaving a completed
+thread live invites a future session to "resume" work that does not exist. Use the orchestrator's
+plan surface (`/livespec-orchestrator-beads-fabro:plan`) rather than hand-moving files, so the
+ledger epic and the thread store stay consistent.
+
+**Step 3 — do NOT start the open items below as if they were this thread's continuation.** They
+were filed BY this thread and are owned by their own ids now. In particular
+`livespec-dev-tooling-8o8e` **must not be implemented without a maintainer decision first** — its
+own first job is that decision, and starting code on it would repeat exactly the failure this
+thread spent a session undoing (building on an unexamined premise). Surface it; do not act on it.
+
+**If you were dispatched with a DIFFERENT instruction than "continue the rop-sweep thread"**, follow
+that instruction instead — this file is the thread's record, not a claim on your session.
+
 ### ✅ WHAT THIS THREAD SET OUT TO DO, AND DID
 
 `livespec-dev-tooling-i532` is **CLOSED**. Both ROP checks derive their universe from the git
