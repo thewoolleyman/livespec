@@ -151,9 +151,28 @@ io_trees = [".claude-plugin/scripts/livespec/io"]
 # A role core GENUINELY HAS is declared with its REAL value — the literal path
 # constants dev-tooling's `_livespec_core_config()` carried as core's historical
 # layout — so re-arming the previously no-opping checks is a pure severity
-# restoration, verified behavior-neutral by a green `just check`. A role core
-# LACKS is declared explicitly empty (list `[]`, scalar `""`) with a reason,
-# so no key is left to silently fall back.
+# restoration, verified behavior-neutral by a green `just check`.
+#
+# HOW A ROLE CORE LACKS IS DECLARED (updated for livespec-dev-tooling-8o8e.1;
+# the original wording here said "declared explicitly empty (list `[]`, scalar
+# `""`) with a reason", which is no longer correct for the union keys):
+#
+# The five UNION keys — `pure_trees`, `target_dirs`, `source_tree_prefixes`,
+# `dataclasses_tree`, `neutral_hook_body_path` — are the ones whose value IS a
+# check's scan universe, so an empty value made that check scan NOTHING and exit
+# 0. `[]` / `""` there meant two incompatible things at once — "the concept does
+# not apply to core" versus "it applies and is switched off" — which is why
+# core's own `pure_trees` needed a spelling that says WHICH. Each of the five now
+# carries a real value or exactly ONE blessed variant (`not_applicable`,
+# `superseded_by`, `unarmed_until`, `convention_not_adopted`), with its reason in
+# the PARSED VALUE rather than in a comment no checker can read. A bare `[]` /
+# `""` on those five parses to `LegacyAmbiguousEmpty` and WARNs today; it becomes
+# a hard `ConfigParseError` once the fleet has migrated.
+#
+# Every OTHER role key keeps a bare `[]` as a LEGITIMATE spelling. Those are
+# exemption / severity predicates whose consuming checks derive the universe from
+# `resolve_check_universe()`, so an empty value makes them STRICTER, never
+# blinder. Either way no key is left to silently fall back.
 commands_trees = [".claude-plugin/scripts/livespec/commands"]
 # The PreToolUse guard hook is a supervisor entry artifact: its `main()` carries
 # the ONE fail-open boundary catch SPECIFICATION/non-functional-requirements.md
@@ -196,8 +215,18 @@ mirror_pairings = [
     { source_tree = ".claude-plugin/scripts/bin", test_tree = "tests/bin" },
     { source_tree = "dev-tooling/checks", test_tree = "tests/dev-tooling/checks" },
 ]
-pure_trees = []  # gated on livespec-mutreal.1 (mutation staging-tree not yet productized)
-neutral_hook_body_path = ""  # core installs no neutral shared hook body (the Drivers do)
+# UNARMED, not not-applicable — and the distinction is the whole point of the union
+# (livespec-dev-tooling-8o8e.1). Core GENUINELY HAS a pure parse/validate layer; the
+# concept applies here and is deliberately switched off pending named work, so this
+# declares meaning (B) and carries the blocking ledger id in the PARSED VALUE. Reading
+# `[]` as "core has no pure tree" would be false, and collapsing this to
+# `not_applicable` because it reads tidier would re-create the exact ambiguity the
+# union removed — in the repo that owns the spec.
+pure_trees = { unarmed_until = "livespec-mutreal.1" }
+# NOT APPLICABLE: core installs no neutral shared hook body — the Drivers do
+# (livespec-driver-claude and livespec-driver-codex ship the byte-identical
+# no-shadow-ledger body between them). Nothing here for the check to police.
+neutral_hook_body_path = { not_applicable = "core installs no neutral shared hook body (the Drivers do)" }
 
 destructive_cli_allowlist = []
 # Repo-root-relative path prefixes the `tests_no_subprocess_spawn` check
