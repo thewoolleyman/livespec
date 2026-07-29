@@ -25,4 +25,4 @@ permissions:
 
 jobs:
   release-park:
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-park.yml@v1.6.0
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-park.yml@v1.7.0
