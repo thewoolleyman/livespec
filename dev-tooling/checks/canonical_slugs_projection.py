@@ -49,8 +49,16 @@ from pathlib import Path
 _VENDOR_DIR = Path(__file__).resolve().parents[2] / ".claude-plugin" / "scripts" / "_vendor"
 if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
+# Same sys.path idiom `behavior_scenario_link.py` uses to reach `spec_clauses`,
+# pointed at this check's OWN directory. A bare sibling import resolves only when the
+# check is RUN as a script (then `sys.path[0]` is already this directory) — and this
+# module is ALSO loaded via `spec_from_file_location` by its test, where it is not.
+_CHECKS_DIR = Path(__file__).resolve().parent
+if str(_CHECKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_CHECKS_DIR))
 
 import structlog  # noqa: E402  — vendor-path-aware import after sys.path insert.
+from _canonical_slug_shape import slugs_from_either_shape  # noqa: E402  — dev-tooling path.
 
 __all__: list[str] = []
 
@@ -114,14 +122,44 @@ def _parse_committed_slugs(*, yaml_path: Path) -> tuple[str, ...]:
     return tuple(slugs)
 
 
-def _canonical_slugs() -> tuple[str, ...]:
+def _canonical_slugs() -> tuple[str, ...] | None:
+    """The canonical slug set under EITHER substrate return shape; None if unavailable.
+
+    `canonical_check_slugs` is converting to `IOResult`
+    (`livespec-dev-tooling-vzwa`), and the pin that delivers it moves without anyone
+    deciding. `slugs_from_either_shape` reads both, so this check is correct before,
+    during and after the conversion — and survives a REVERT of the pin, which a
+    sequenced fix would not.
+
+    ⛔ None IS NOT DEGRADED TO `()` BY EITHER CALLER, and that is the whole point.
+    An empty expected set compares EQUAL to an empty committed projection, so the
+    drift gate would report agreement over a source of truth it could not read —
+    the fail-open the conversion exists to remove, reintroduced in the consumer.
+    Both callers therefore report and exit non-zero.
+    """
     from livespec_dev_tooling.canonical_checks import canonical_check_slugs
 
-    return canonical_check_slugs()
+    return slugs_from_either_shape(value=canonical_check_slugs())
+
+
+def _log_unavailable(*, log: structlog.stdlib.BoundLogger) -> int:
+    """Report an unreadable source of truth and fail. Never returns 0."""
+    log.error(
+        "livespec_dev_tooling.canonical_checks could not enumerate the checks package",
+        check_id="canonical-slugs-projection-source-unavailable",
+        hint=(
+            "the canonical-slug source of truth is unreadable, so the projection "
+            "cannot be verified or regenerated; an empty slug set is NOT a valid "
+            "substitute because it compares equal to an empty committed file"
+        ),
+    )
+    return 1
 
 
 def _write_projection(*, log: structlog.stdlib.BoundLogger, cwd: Path) -> int:
     slugs = _canonical_slugs()
+    if slugs is None:
+        return _log_unavailable(log=log)
     yaml_path = cwd / _YAML_REL
     yaml_path.parent.mkdir(parents=True, exist_ok=True)
     _ = yaml_path.write_text(_render_yaml(slugs=slugs), encoding="utf-8")
@@ -145,6 +183,8 @@ def _verify_projection(*, log: structlog.stdlib.BoundLogger, cwd: Path) -> int:
         )
         return 1
     expected = _canonical_slugs()
+    if expected is None:
+        return _log_unavailable(log=log)
     committed = _parse_committed_slugs(yaml_path=yaml_path)
     if committed == expected:
         log.info(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import structlog
@@ -42,7 +43,18 @@ def _expected_canonical_slugs(*, repo_root: Path) -> tuple[str, ...] | None:
         from livespec_dev_tooling.canonical_checks import canonical_check_slugs
     except ImportError:  # pragma: no cover — transitional pin-bump path; see docstring.
         return None
-    return canonical_check_slugs()
+    # `canonical_check_slugs` is converting to `IOResult`
+    # (`livespec-dev-tooling-vzwa`); read BOTH shapes so the pin can move in
+    # either direction. A failure track arrives here as None and joins the
+    # existing substrate-absent path — which this caller already handles — rather
+    # than as `()`, which it would compare against the stamped targets and report
+    # as agreement.
+    _checks_dir = str(Path(__file__).resolve().parent)
+    if _checks_dir not in sys.path:
+        sys.path.insert(0, _checks_dir)
+    from _canonical_slug_shape import slugs_from_either_shape
+
+    return slugs_from_either_shape(value=canonical_check_slugs())
 
 
 def _extract_stamped_targets(*, justfile_text: str) -> tuple[str, ...]:

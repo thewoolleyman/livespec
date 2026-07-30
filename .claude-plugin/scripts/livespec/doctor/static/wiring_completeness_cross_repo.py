@@ -83,6 +83,7 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     filter_sibling_targets,
     interpret_justfile_text,
     make_finding,
+    slugs_from_either_shape,
 )
 from livespec.doctor.static._wiring_completeness_resolve import _resolve_sibling_justfile
 from livespec.errors import LivespecError
@@ -159,7 +160,13 @@ def _resolve_canonical_slugs() -> tuple[str, ...] | None:
         from livespec_dev_tooling.canonical_checks import canonical_check_slugs
     except ModuleNotFoundError:
         return None
-    return canonical_check_slugs()
+    # `canonical_check_slugs` is converting to `IOResult`
+    # (`livespec-dev-tooling-vzwa`). Read BOTH shapes so the pin is free to move in
+    # either direction. A failure track arrives as None and joins the existing
+    # substrate-unavailable path below, which SKIPS with a named finding — never as
+    # `()`, which this check would read as "the fleet has no canonical checks" and
+    # report every sibling fully wired.
+    return slugs_from_either_shape(value=canonical_check_slugs())
 
 
 def _evaluate_manifest(
