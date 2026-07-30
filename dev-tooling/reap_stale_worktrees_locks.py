@@ -1,4 +1,9 @@
-"""Lock parsing helpers for reap_stale_worktrees."""
+"""Lock parsing helpers for reap_stale_worktrees.
+
+Kept separate from the reaper action layer so porcelain parsing and
+lock-reason PID extraction stay directly testable without mutating git
+worktrees.
+"""
 
 from __future__ import annotations
 
