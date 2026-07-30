@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/thewoolleyman/livespec/compare/v0.20.2...v0.21.0) (2026-07-30)
+
+
+### Features
+
+* **checks:** read canonical_check_slugs under EITHER return shape, before it converts ([5cbd27b](https://github.com/thewoolleyman/livespec/commit/5cbd27b9ef50c2e0e0cbf9ab2c70fbf386c7ad14))
+
 ## [0.20.2](https://github.com/thewoolleyman/livespec/compare/v0.20.1...v0.20.2) (2026-07-24)
 
 
