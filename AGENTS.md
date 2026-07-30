@@ -352,8 +352,12 @@ current branch's own worktree, use the repo's reaper entry point
 backend also needs host-level runtime that bootstrap canNOT provision. A fresh
 clone connects to its beads tenant only when all of the following are present:
 
-- **`bd` CLI, pinned v1.0.5**, at `/usr/local/bin/bd`, with `LIVESPEC_BD_PATH`
-  pointing at it (the impl-beads wrappers shell out to `$LIVESPEC_BD_PATH`).
+- **`bd` CLI, pinned v1.0.5**, through the public lifecycle-guard entry point
+  at `/usr/local/bin/bd`. A repo's mise config MUST NOT declare or install
+  `bd`: an activated mise tool or regenerated shim can shadow that policy
+  boundary. When `LIVESPEC_BD_PATH` is set it MUST point at
+  `/usr/local/bin/bd`; otherwise `bd` on `PATH` MUST resolve there. Normal
+  ledger callers MUST NOT invoke the guard's private delegate executable.
 - **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. The
   fleet tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`

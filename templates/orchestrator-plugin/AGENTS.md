@@ -230,8 +230,11 @@ fleet dolt-server — NOT JSONL files. Installing the plugin does NOT provision
 the backend; a clone connects to its tenant only when ALL of the following are
 present:
 
-- **`bd` CLI, pinned**, at an absolute path (NEVER the mise shim), with
-  `LIVESPEC_BD_PATH` pointing at it.
+- **`bd` CLI, pinned**, through the host's public lifecycle-guard entry point.
+  This repo's mise config MUST NOT declare or install `bd`. When
+  `LIVESPEC_BD_PATH` is set it MUST name the public guard; otherwise `bd` on
+  `PATH` MUST resolve to that guard. Normal callers MUST NOT invoke the guard's
+  private delegate executable.
 - **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. Fleet
   tenants force TCP (not the unix socket); `.beads/config.yaml` carries `dolt.*`
   host/port keys with NO `socket` key.

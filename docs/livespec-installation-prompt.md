@@ -781,8 +781,9 @@ included — walks exactly these steps.
 
 4. **Provision the work-items tenant (`bd` / Dolt).** The beads backend
    needs host-level runtime that plugin installation does NOT provision:
-   the `bd` CLI (pinned v1.0.5) with `LIVESPEC_BD_PATH` pointing at it, a
-   running Dolt `sql-server` reachable over TCP (the fleet reference is
+   the `bd` CLI (pinned v1.0.5) through the host's public lifecycle-guard
+   entry point (`/usr/local/bin/bd` on the fleet reference host), a running
+   Dolt `sql-server` reachable over TCP (the fleet reference is
    `127.0.0.1:3307`), a per-tenant SQL user + DB-scoped grant (the
    isolation boundary — password distinctness is NOT the boundary), and
    the `.beads/` pointer files in the repo: a committed `config.yaml`
@@ -792,6 +793,10 @@ included — walks exactly these steps.
    own tenant-provisioning documentation and the Beads runtime-
    prerequisites procedure it points to; do NOT run `bd init` inside a
    primary checkout or worktree (it auto-commits and clobbers `.beads/`).
+   The repository's mise config MUST NOT declare or install `bd`. When
+   `LIVESPEC_BD_PATH` is set it MUST name the public guard; otherwise `bd`
+   on `PATH` MUST resolve to that guard. Normal callers MUST NOT invoke the
+   guard's private delegate executable.
    Idempotency probe: `bd list` (under the credential wrapper) returns
    the ledger without a "no beads database found" error.
 
