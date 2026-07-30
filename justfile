@@ -289,6 +289,7 @@ check:
         check-coverage
         check-doctor-static
         check-format
+        check-gh-feature-surfaces
         check-imports-architecture
         check-lint
         check-no-renderer-vendoring
@@ -729,6 +730,9 @@ check-cli-explicit-project-root:
 
 check-codex-no-repo-local-adapters:
     uv run python3 dev-tooling/checks/codex_no_repo_local_adapters.py
+
+check-gh-feature-surfaces:
+    uv run python3 dev-tooling/gh_feature_surfaces.py
 
 # Renderer non-vendoring gate (SPECIFICATION/constraints.md
 # §"Renderer non-vendoring"): scans pyproject.toml dependency

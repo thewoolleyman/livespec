@@ -210,10 +210,12 @@ source_tree_prefixes = [
 # fourth `_livespec_core_config()` pairing (`livespec_dev_tooling/checks`) is
 # omitted — that tree belongs to the consumed dev-tooling package, not core,
 # so declaring it would trip `source_trees_scoped_to_consumer`'s exists check.
+# Core's own dev-tooling tree is paired at the root so top-level tools and
+# `checks/` members resolve through the same mirror transform.
 mirror_pairings = [
     { source_tree = ".claude-plugin/scripts/livespec", test_tree = "tests/livespec" },
     { source_tree = ".claude-plugin/scripts/bin", test_tree = "tests/bin" },
-    { source_tree = "dev-tooling/checks", test_tree = "tests/dev-tooling/checks" },
+    { source_tree = "dev-tooling", test_tree = "tests/dev-tooling" },
 ]
 # UNARMED, not not-applicable — and the distinction is the whole point of the union
 # (livespec-dev-tooling-8o8e.1). Core GENUINELY HAS a pure parse/validate layer; the
@@ -428,6 +430,9 @@ ban-relative-imports = "all"
 # argv lists. Same S603/S607/S404 carve-out shape as the peer
 # mutating tool above.
 "dev-tooling/reap_stale_worktrees.py" = ["S603", "S607", "S404"]
+# gh_feature_surfaces.py probes local gh help/flag parsing with fixed
+# argv lists only; the command is hermetic and never contacts GitHub.
+"dev-tooling/gh_feature_surfaces.py" = ["S603", "S607", "S404"]
 # same rationale as the `tests/**.py` carveout above for S101,
 # PLR2004, PT018, S105, S108, and TRY003 — see that entry for the
 # per-category reasoning; it is not repeated here. Three additions are
