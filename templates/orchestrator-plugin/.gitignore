@@ -12,3 +12,7 @@
 /dev-tooling/branch-protection.sh
 /dev-tooling/worktree.just
 /dev-tooling/branch-protection.just
+
+# Playwright MCP browser-tool scratch (page snapshots, console logs) —
+# per-session, never durable state.
+.playwright-mcp/
