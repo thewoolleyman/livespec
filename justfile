@@ -359,6 +359,30 @@ check-static:
     uv run ruff check .
     uv run pyright
 
+# Factory-boundary guard used by dispatcher janitor scripts. Factory branches
+# must not carry workflow edits; when a task truly needs one, the maintainer
+# lands that diff outside the factory path.
+check-no-workflow-edits:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    base_ref=origin/master
+    if ! git rev-parse --verify --quiet "${base_ref}" >/dev/null; then
+        base_ref=master
+    fi
+    {
+        git diff --name-only "${base_ref}...HEAD" -- .github/workflows
+        git diff --name-only --cached -- .github/workflows
+        git diff --name-only -- .github/workflows
+        git ls-files --others --exclude-standard -- .github/workflows
+    } | sort -u > /tmp/livespec-workflow-edits.$$
+    if [[ -s /tmp/livespec-workflow-edits.$$ ]]; then
+        echo "ERROR: factory branches must not modify .github/workflows/ files:" >&2
+        sed 's/^/  - /' /tmp/livespec-workflow-edits.$$ >&2
+        rm -f /tmp/livespec-workflow-edits.$$
+        exit 1
+    fi
+    rm -f /tmp/livespec-workflow-edits.$$
+
 # `changed-files` — print the changed `.py` set this branch touches,
 # repo-root-relative, one path per line, sorted + de-duplicated
 # (work-item livespec-dev-tooling-7us.9). The set is the UNION of two
