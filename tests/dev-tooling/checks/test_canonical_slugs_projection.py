@@ -183,3 +183,43 @@ def test_committed_yaml_matches_source_of_truth() -> None:
         "the committed templates/orchestrator-plugin/canonical-slugs.yml has drifted from "
         "livespec_dev_tooling.canonical_checks; run `just stamp-canonical-slugs`"
     )
+
+
+def test_an_unavailable_source_of_truth_fails_both_modes_rather_than_comparing_empty(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure track from the substrate FAILS; it never becomes an empty slug set.
+
+    `canonical_check_slugs` is converting to `IOResult`
+    (`livespec-dev-tooling-vzwa`). The dangerous outcome is not a crash — it is
+    agreement: an empty expected set compares EQUAL to an empty committed file, so
+    the drift gate would report OK over a source of truth it could not read. Both
+    modes must therefore report and exit non-zero, and this pins both because the
+    write path and the verify path reach the substrate independently.
+    """
+    import livespec_dev_tooling.canonical_checks as substrate
+    from returns.io import IOFailure
+
+    monkeypatch.setattr(
+        substrate, "canonical_check_slugs", lambda: IOFailure("checks package unreadable")
+    )
+    module = _load_module()
+
+    yaml_path = tmp_path / _YAML_REL
+    yaml_path.parent.mkdir(parents=True, exist_ok=True)
+    _ = yaml_path.write_text("", encoding="utf-8")
+
+    log = module._configure_logger()  # pyright: ignore[reportAttributeAccessIssue]  # noqa: SLF001
+    verify_exit = module._verify_projection(log=log, cwd=tmp_path)  # pyright: ignore[reportAttributeAccessIssue]  # noqa: SLF001
+    write_exit = module._write_projection(log=log, cwd=tmp_path)  # pyright: ignore[reportAttributeAccessIssue]  # noqa: SLF001
+
+    assert verify_exit == 1, (
+        "an unreadable source of truth must FAIL verify, not compare equal to the "
+        f"empty committed file; got {verify_exit}"
+    )
+    assert (
+        write_exit == 1
+    ), f"write mode must refuse to stamp an unavailable slug set; got {write_exit}"
+    assert (
+        yaml_path.read_text(encoding="utf-8") == ""
+    ), "write mode must not have overwritten the projection with an empty set"

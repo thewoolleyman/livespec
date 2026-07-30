@@ -2010,3 +2010,54 @@ def test_fetch_justfile_from_github_forces_explicit_get_method(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_slugs_from_either_shape_reads_a_bare_tuple() -> None:
+    """Today's pin: a bare tuple from `canonical_check_slugs()` passes through."""
+    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+        slugs_from_either_shape,
+    )
+
+    assert slugs_from_either_shape(value=("check-a", "check-b")) == ("check-a", "check-b")
+
+
+def test_slugs_from_either_shape_unwraps_an_io_success_to_its_value() -> None:
+    """Post-conversion, and this is the LOAD-BEARING assertion.
+
+    Not "it returned something" — that is what the `dx8l` bug also satisfied. This
+    fails if a caller reaches for `.unwrap()` without `unsafe_perform_io`, because
+    `tuple(IO(...))` succeeds and yields a tuple holding the IO container.
+    """
+    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+        slugs_from_either_shape,
+    )
+
+    assert slugs_from_either_shape(value=IOSuccess(("check-a",))) == ("check-a",)
+
+
+def test_slugs_from_either_shape_maps_a_failure_to_none_not_an_empty_set() -> None:
+    """A failure track is UNAVAILABLE, never an empty slug set.
+
+    `()` would make this check report every sibling fully wired against a fleet it
+    could not enumerate — the fail-open `livespec-dev-tooling-vzwa` removes. And
+    `bool(IOFailure(...))` is True, so a truthiness guard would have passed it
+    through: the discrimination has to be on type.
+    """
+    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+        slugs_from_either_shape,
+    )
+    from returns.io import IOFailure
+
+    failure = IOFailure("checks package unreadable")
+    assert bool(failure) is True
+    assert slugs_from_either_shape(value=failure) is None
+
+
+def test_slugs_from_either_shape_treats_an_unknown_shape_as_unavailable() -> None:
+    """Doubt maps to None — the strict direction for a fleet-wide slug set."""
+    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
+        slugs_from_either_shape,
+    )
+
+    assert slugs_from_either_shape(value="check-a") is None
+    assert slugs_from_either_shape(value=None) is None
