@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/thewoolleyman/livespec/compare/v0.21.0...v0.21.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* enforce gh feature surface compatibility ([a9aae00](https://github.com/thewoolleyman/livespec/commit/a9aae00aa69552d758c32cbd56d0ed2d036351e3))
+
 ## [0.21.0](https://github.com/thewoolleyman/livespec/compare/v0.20.2...v0.21.0) (2026-07-30)
 
 
