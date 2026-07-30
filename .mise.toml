@@ -1,11 +1,9 @@
 # Livespec developer-tooling pins — non-Python binaries only.
 #
-# Authority: (v024) PLAN_TO_BOOTSTRAP_SPECIFICATION_AND_REPO.md Phase 1
-# (initial pins). The `bd` (beads) pin was removed by the Phase D.10
-# cutover when livespec-core's tracking moved to livespec-impl-plaintext;
-# beads invariants in SPECIFICATION/non-functional-requirements.md
-# §Contracts §"Toolchain pins" are spec-drift that will be revised in a
-# follow-up propose-change cycle.
+# Authority: SPECIFICATION/non-functional-requirements.md
+# §Contracts §"Toolchain pins". `bd` is deliberately absent: beads-backed
+# repos use the host-provisioned lifecycle-guarded entry point, and a
+# project-local mise declaration could shadow that policy boundary.
 #
 # Python and every Python dev package are managed by uv via
 # pyproject.toml's [project.requires-python] (Python interpreter pin)
