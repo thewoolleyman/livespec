@@ -131,7 +131,7 @@ jobs:
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
     steps:
       - name: Checkout (full history — no shallow)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: mise trust + install (baked tools — install is a no-op)

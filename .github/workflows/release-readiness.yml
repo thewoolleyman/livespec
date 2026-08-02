@@ -44,10 +44,10 @@ jobs:
           - check-no-lloc-soft-warnings
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install pinned binaries via mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
 
       - name: Install Python dev deps via uv
         run: uv sync --all-groups
@@ -65,7 +65,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Export release-readiness run telemetry to Honeycomb
         env:

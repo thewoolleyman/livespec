@@ -53,7 +53,7 @@ jobs:
       py_changed: ${{ steps.detect.outputs.py_changed }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Need the base ref reachable for the PR diff below.
           fetch-depth: 0
@@ -193,7 +193,7 @@ jobs:
 
       - name: Checkout
         if: needs.setup.outputs.py_changed == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # GitHub-hosted routing keeps the baked `container:` image, so the
       # workspace is checked out as the runner uid (1001) on the host while
@@ -337,7 +337,7 @@ jobs:
           - check-skill-invocation-paths
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Full history for ALL matrix entries: the
           # check-red-green-replay range validation enumerates
@@ -470,7 +470,7 @@ jobs:
       # semantics are unchanged (.ai/ci-gate-discipline.md).
       - name: Upload check output on failure (durable diagnostic capture)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.target }}-failure-attempt-${{ github.run_attempt }}
           path: |
@@ -497,7 +497,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Export CI run telemetry to Honeycomb (closed-loop verified)
         env:
