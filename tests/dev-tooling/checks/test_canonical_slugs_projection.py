@@ -52,9 +52,10 @@ def _load_module() -> object:
 
 
 def _canonical_slugs() -> tuple[str, ...]:
-    from livespec_dev_tooling.canonical_checks import canonical_check_slugs
-
-    return canonical_check_slugs()
+    module = _load_module()
+    slugs = module._canonical_slugs()  # noqa: SLF001
+    assert slugs is not None, "the installed canonical-slug source must be readable"
+    return slugs
 
 
 def test_verify_passes_against_real_committed_projection() -> None:

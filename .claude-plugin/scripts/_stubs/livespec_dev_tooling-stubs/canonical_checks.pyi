@@ -5,6 +5,8 @@ module. Source of truth at
 livespec-dev-tooling/src/livespec_dev_tooling/canonical_checks.py.
 """
 
+from returns.io import IOResult
+
 __all__ = ["canonical_check_slugs"]
 
-def canonical_check_slugs() -> tuple[str, ...]: ...
+def canonical_check_slugs() -> tuple[str, ...] | IOResult[tuple[str, ...], object]: ...
