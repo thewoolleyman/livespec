@@ -12,7 +12,7 @@
 #
 # Auth model:
 #   - Uses a GitHub App installation token instead of GITHUB_TOKEN.
-#   - actions/create-github-app-token@v1 mints a fresh token at
+#   - actions/create-github-app-token@v3 mints a fresh token at
 #     runtime (lasts ~1 hour, discarded after the run).
 #   - Required repo secrets: APP_ID, APP_PRIVATE_KEY (managed via
 #     `gh secret set`).
@@ -76,9 +76,9 @@ jobs:
     steps:
       - name: Mint App installation token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ '{{' }} secrets.APP_ID {{ '}}' }}
+          client-id: ${{ '{{' }} secrets.APP_ID {{ '}}' }}
           private-key: ${{ '{{' }} secrets.APP_PRIVATE_KEY {{ '}}' }}
 
       - name: "Enable auto-merge (rebase) on PR #${{ '{{' }} github.event.pull_request.number {{ '}}' }}"
