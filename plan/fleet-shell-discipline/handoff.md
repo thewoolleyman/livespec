@@ -136,13 +136,15 @@ zero dependencies and zero dependents.
 
 - Prior checkpoint PR `livespec` #1913 is merged; its branch and worktree were
   removed and the primary checkout was refreshed clean to `origin/master`.
-- This checkpoint is being carried on branch
-  `docs/fleet-shell-checkpoint-1`. Its draft PR number is filled in by the next
-  checkpoint commit before the PR is marked ready. Treat this line as a
-  timestamped transport record, not live forge state.
-- The only helper, `handoff_cold_read`, completed with PASS: a fresh reader could
-  execute the handoff, found no dangling reference, confirmed Dispatcher/Fabro
-  routing, and changed no files. No helper remains active.
+- At `2026-08-02T23:12:32Z`, this checkpoint is carried on branch
+  `docs/fleet-shell-checkpoint-1` in draft PR `livespec` #1914. Treat this as a
+  timestamped transport record, not live forge state; the worker must verify the
+  PR from the forge before acting on it.
+- Two fresh-reader helpers have completed with PASS and changed no files.
+  `handoff_cold_read` validated the first durable handoff; `checkpoint_cold_read`
+  validated this refreshed checkpoint, including all six ordered read-first
+  artifacts, exact resume commands, resolved design rules, Dispatcher/Fabro
+  routing, and terminal verification requirements. No helper remains active.
 
 ## Exact next commands and operation selections
 
