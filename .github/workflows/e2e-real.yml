@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Require ANTHROPIC_API_KEY_LIVESPEC_E2E
         env:
@@ -58,9 +58,10 @@ jobs:
           echo "ANTHROPIC_API_KEY_LIVESPEC_E2E is set (length=${#ANTHROPIC_API_KEY_LIVESPEC_E2E})."
 
       - name: Setup Node.js (for claude CLI)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
+          package-manager-cache: false
 
       - name: Install Claude Code CLI
         run: |
@@ -68,7 +69,7 @@ jobs:
           claude --version
 
       - name: Install pinned binaries via mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
 
       - name: Install Python dev deps via uv
         run: uv sync --all-groups
