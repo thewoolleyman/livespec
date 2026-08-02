@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/thewoolleyman/livespec/compare/v0.21.1...v0.21.2) (2026-08-02)
+
+
+### Reverts
+
+* restore livespec-dev-tooling v1.13.21 ([fd00251](https://github.com/thewoolleyman/livespec/commit/fd00251e2f0d260b4a703d6bf747f2eefe7a4c47))
+
 ## [0.21.1](https://github.com/thewoolleyman/livespec/compare/v0.21.0...v0.21.1) (2026-07-30)
 
 
