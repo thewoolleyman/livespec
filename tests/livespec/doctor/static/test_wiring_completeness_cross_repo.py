@@ -60,6 +60,8 @@ from __future__ import annotations
 
 import base64
 import builtins
+import importlib
+import importlib.util
 import json
 import subprocess
 from pathlib import Path
@@ -2012,13 +2014,20 @@ def test_fetch_justfile_from_github_forces_explicit_get_method(
     assert result == IOSuccess(expected)
 
 
+def _slugs_from_either_shape(value: object) -> tuple[str, ...] | None:
+    """Load the shape reader from its deliberately small boundary module."""
+    module_name = "livespec.doctor.static._wiring_completeness_slug_shape"
+    module_spec = importlib.util.find_spec(module_name)
+    assert module_spec is not None, f"{module_name} must remain a dedicated module"
+    module = importlib.import_module(module_name)
+    reader: Any = module.slugs_from_either_shape
+    assert callable(reader)
+    return reader(value=value)
+
+
 def test_slugs_from_either_shape_reads_a_bare_tuple() -> None:
     """Today's pin: a bare tuple from `canonical_check_slugs()` passes through."""
-    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
-        slugs_from_either_shape,
-    )
-
-    assert slugs_from_either_shape(value=("check-a", "check-b")) == ("check-a", "check-b")
+    assert _slugs_from_either_shape(("check-a", "check-b")) == ("check-a", "check-b")
 
 
 def test_slugs_from_either_shape_unwraps_an_io_success_to_its_value() -> None:
@@ -2028,11 +2037,7 @@ def test_slugs_from_either_shape_unwraps_an_io_success_to_its_value() -> None:
     fails if a caller reaches for `.unwrap()` without `unsafe_perform_io`, because
     `tuple(IO(...))` succeeds and yields a tuple holding the IO container.
     """
-    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
-        slugs_from_either_shape,
-    )
-
-    assert slugs_from_either_shape(value=IOSuccess(("check-a",))) == ("check-a",)
+    assert _slugs_from_either_shape(IOSuccess(("check-a",))) == ("check-a",)
 
 
 def test_slugs_from_either_shape_maps_a_failure_to_none_not_an_empty_set() -> None:
@@ -2043,21 +2048,14 @@ def test_slugs_from_either_shape_maps_a_failure_to_none_not_an_empty_set() -> No
     `bool(IOFailure(...))` is True, so a truthiness guard would have passed it
     through: the discrimination has to be on type.
     """
-    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
-        slugs_from_either_shape,
-    )
     from returns.io import IOFailure
 
     failure = IOFailure("checks package unreadable")
     assert bool(failure) is True
-    assert slugs_from_either_shape(value=failure) is None
+    assert _slugs_from_either_shape(failure) is None
 
 
 def test_slugs_from_either_shape_treats_an_unknown_shape_as_unavailable() -> None:
     """Doubt maps to None — the strict direction for a fleet-wide slug set."""
-    from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
-        slugs_from_either_shape,
-    )
-
-    assert slugs_from_either_shape(value="check-a") is None
-    assert slugs_from_either_shape(value=None) is None
+    assert _slugs_from_either_shape("check-a") is None
+    assert _slugs_from_either_shape(None) is None
