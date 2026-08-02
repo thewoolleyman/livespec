@@ -83,9 +83,9 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     filter_sibling_targets,
     interpret_justfile_text,
     make_finding,
-    slugs_from_either_shape,
 )
 from livespec.doctor.static._wiring_completeness_resolve import _resolve_sibling_justfile
+from livespec.doctor.static._wiring_completeness_slug_shape import slugs_from_either_shape
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.parse import jsonc

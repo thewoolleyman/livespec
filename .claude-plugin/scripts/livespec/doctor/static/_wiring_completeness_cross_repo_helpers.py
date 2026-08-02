@@ -63,7 +63,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple
 
 from returns.result import Success, safe
 
@@ -379,49 +379,3 @@ def build_aggregate_finding(
             'livespec-dev-tooling").'
         ),
     )
-
-
-def slugs_from_either_shape(*, value: object) -> tuple[str, ...] | None:
-    """The canonical slug set from a bare tuple OR an `IOResult`; None if unavailable.
-
-    `livespec_dev_tooling.canonical_checks.canonical_check_slugs` is converting from
-    `tuple[str, ...]` to `IOResult` (`livespec-dev-tooling-vzwa`), and the pin-bump
-    fan-out delivers that within minutes of the release with nobody deciding. Reading
-    BOTH shapes keeps this check correct before, during and after — and across a
-    REVERT of the pin, which a sequenced fix would not survive.
-
-    ⛔ THE DISCRIMINATION IS ON TYPE, AND EVERY INTUITIVE GUARD IS WRONG.
-    `bool(IOFailure(...))` is True and an `IOFailure` is not None, so a truthiness
-    test, its negation, and an `is None` test all silently STOP GUARDING rather than
-    fail — `livespec-dev-tooling-dx8l`, which turned a sibling's master RED.
-
-    ⛔ AND A FAILURE MAPS TO None, NEVER TO `()`. The caller reads None as
-    "substrate unavailable" and SKIPS with a named finding; it would read `()` as
-    "the fleet has no canonical checks" and report every sibling fully wired. That
-    is the fail-open the conversion exists to remove.
-
-    NOT SHARED WITH `dev-tooling/checks/_canonical_slug_shape.py`, and that is
-    deliberate rather than an oversight: this module must import under BARE `python3`
-    (the `python3 bin/doctor_static.py` plugin flow), where neither
-    `livespec_dev_tooling` nor `returns` is importable at all. A shared module would
-    have to live in one of those two trees and could not be reached from the other.
-    Hence the lazy `returns` import below — in an environment without it, the value
-    can only ever have been the tuple the first branch already returned.
-    """
-    if isinstance(value, tuple):
-        # Today's pin. `tuple(...)` re-wraps so a caller cannot mutate a shared
-        # object, and `str(...)` per element makes the annotation honest at
-        # runtime rather than only to the type checker.
-        return tuple(str(slug) for slug in cast("tuple[object, ...]", value))
-    try:
-        from returns.io import IOSuccess
-        from returns.unsafe import unsafe_perform_io
-    except ModuleNotFoundError:  # pragma: no cover — bare-python3 plugin flow.
-        return None
-    if not isinstance(value, IOSuccess):
-        return None
-    # `unsafe_perform_io` is NOT ceremony: `IOResult.unwrap()` returns `IO[T]`, and
-    # `tuple(IO(("a","b")))` SUCCEEDS — yielding a tuple holding the IO container,
-    # after which every slug comparison misses and nothing raises.
-    unwrapped = cast("tuple[object, ...]", unsafe_perform_io(value.unwrap()))
-    return tuple(str(slug) for slug in unwrapped)
