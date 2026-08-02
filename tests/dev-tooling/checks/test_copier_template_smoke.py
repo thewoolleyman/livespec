@@ -27,6 +27,53 @@ __all__: list[str] = []
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _COPIER_TEMPLATE_SMOKE = _REPO_ROOT / "dev-tooling" / "checks" / "copier_template_smoke.py"
+_TEMPLATE_ROOT = _REPO_ROOT / "templates" / "orchestrator-plugin"
+
+
+def test_generated_auto_merge_uses_current_github_app_token_action(*, tmp_path: Path) -> None:
+    """Generated consumers use the Node 24 App-token action and its v3 input name."""
+    target = tmp_path / "rendered"
+    answers = (
+        "plugin_short_name=smoketest",
+        "plugin_full_name=livespec-impl-smoketest",
+        "plugin_description=Smoke-test fixture plugin",
+        "plugin_namespace=livespec-impl-smoketest",
+        "author_name=Smoke Test",
+        "author_email=smoke@example.invalid",
+        "github_owner=thewoolleyman",
+        "github_repo=livespec-impl-smoketest",
+        "python_version=3.13",
+        "livespec_release_tag=v0.1.0",
+    )
+    data_args = [item for answer in answers for item in ("--data", answer)]
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "copier",
+            "copy",
+            "--defaults",
+            "--trust",
+            "--vcs-ref=HEAD",
+            *data_args,
+            str(_TEMPLATE_ROOT),
+            str(target),
+        ],
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (
+        result.returncode == 0
+    ), f"copier render failed: stdout={result.stdout!r} stderr={result.stderr!r}"
+    workflow = (target / ".github/workflows/auto-enable-merge.yml").read_text(encoding="utf-8")
+    assert "uses: actions/create-github-app-token@v3" in workflow
+    assert "client-id: ${{ secrets.APP_ID }}" in workflow
+    assert "create-github-app-token@v1" not in workflow
+    assert "app-id: ${{ secrets.APP_ID }}" not in workflow
 
 
 def test_smoke_check_passes_against_real_template() -> None:
