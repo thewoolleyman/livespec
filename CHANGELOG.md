@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.4](https://github.com/thewoolleyman/livespec/compare/v0.21.3...v0.21.4) (2026-08-02)
+
+
+### Bug Fixes
+
+* restore release-gate LLOC headroom ([b09c618](https://github.com/thewoolleyman/livespec/commit/b09c6180ab4e2c096db18876ae737431694e2c22))
+
 ## [0.21.3](https://github.com/thewoolleyman/livespec/compare/v0.21.2...v0.21.3) (2026-08-02)
 
 
