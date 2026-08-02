@@ -163,20 +163,36 @@ variable under `-u` is a footgun — the same class of care this thread is about
    argument. Both read as passes. Any tooling this thread ships must be tested in
    the shell it will actually run under.
 
-## Relationship to the livespec-dev-tooling thread — NEEDS RECONCILIATION
+## Relationship to the livespec-dev-tooling thread — DECIDED 2026-08-02
 
-A sibling thread was opened hours earlier at maintainer direction:
-`livespec-dev-tooling` `plan/fleet-shell-quality-enforcement/`, anchored by epic
-**`livespec-dev-tooling-42t4az`**, carrying the same triggering defect and the
-same shellcheck measurements. It predates requirements 2 and 3.
+A sibling thread exists: `livespec-dev-tooling`
+`plan/fleet-shell-quality-enforcement/`, epic **`livespec-dev-tooling-42t4az`**,
+carrying the same triggering defect and the same shellcheck measurements. It
+predates requirements 2 and 3.
 
-The subjects overlap almost entirely. **This is flagged rather than resolved**,
-because which thread owns the work is a maintainer call. The natural split, if a
-split is wanted: this thread owns the *convention and its enforcement design*
-(it is the reference repo, and the un-propagated `bc5c9bce` fix is the evidence
-that conventions belong here), while `livespec-dev-tooling` owns *shipping the
-check module* the fleet consumes by pin. The alternative is to close 42t4az into
-this one. Not decided here.
+**The maintainer decided the split, and NEITHER thread closes.** They divide by
+what each repo is for:
+
+| thread | owns |
+|---|---|
+| **this one** (`livespec`, `livespec-hhu5pn`) | **the convention and its enforcement design** — what the rule IS, which set-options suit which script, how a deliberate deviation is declared so a gate can tell it from an accident, and whether interpolated bash in recipes is forbidden outright or narrowly |
+| `livespec-dev-tooling` (`42t4az`) | **building and shipping the check** — shellcheck adoption, the severity floor or baseline, the module itself, and its arrival in every consumer by pin bump |
+
+**Why that split rather than an arbitrary one.** This repo already fixed the
+triggering defect once — `bc5c9bce`, 2026-07-01, with the diagnosis written into
+the recipe as a comment — and **the fix never propagated** to the five repos
+carrying the same shape. A convention that lives only in the reference repo's own
+code does not travel; a check that ships by pin does. So the reference repo owns
+what the rule says, and the tooling repo owns the mechanism that carries it.
+
+**The cost, stated because it is the real risk of not closing one:** two live
+threads on one subject drift unless the boundary is written into both. It is
+written into both, here and on each epic. If a piece of work does not obviously
+belong to "what the rule is" or "how the rule ships", raise it rather than filing
+it in whichever thread is closer to hand.
+
+Cross-references are read-only in both directions; neither thread stores the
+other's status.
 
 ## Related records, cited read-only
 
