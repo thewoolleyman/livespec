@@ -223,10 +223,10 @@ def _setup_sibling_clone_with_raw_justfile(
 
 
 def _get_canonical_slugs() -> tuple[str, ...]:
-    """Read the canonical slug tuple from livespec_dev_tooling at test time."""
-    from livespec_dev_tooling.canonical_checks import canonical_check_slugs
-
-    return canonical_check_slugs()
+    """Read canonical slugs through the production dual-shape boundary."""
+    slugs = wiring_completeness_cross_repo._resolve_canonical_slugs()  # noqa: SLF001
+    assert slugs is not None, "the installed canonical-slug source must be readable"
+    return slugs
 
 
 def _completed(*, stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[str]:

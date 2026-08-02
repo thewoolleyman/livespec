@@ -5,10 +5,12 @@ Type stubs for the installed `livespec_dev_tooling` package.
 Upstream (livespec-dev-tooling) does not ship a `py.typed` marker
 yet, so pyright treats every import as untyped (`Unknown`) under
 strict-mode `reportMissingTypeStubs`. These stubs declare the
-minimal public surface livespec consumes (today: the single
-`canonical_check_slugs() -> tuple[str, ...]` function from
-`livespec_dev_tooling.canonical_checks`) so the type checker has
-a typed shape to flow against.
+minimal public surface livespec consumes: the single
+`canonical_check_slugs()` function from
+`livespec_dev_tooling.canonical_checks`. Its local declaration retains the
+temporary `tuple[str, ...] | IOResult[tuple[str, ...], object]` compatibility
+union so callers must handle both the pre-conversion pin and the current railway
+shape while a server-side pin revert remains part of the CI-repair procedure.
 
 Scope rules (mirrors the sibling `fastjsonschema-stubs/` carve-out):
 
@@ -21,12 +23,10 @@ Scope rules (mirrors the sibling `fastjsonschema-stubs/` carve-out):
 
 Consumers:
 
-- `dev-tooling/copier_extensions/canonical_checks.py` (the copier
-  Jinja extension that stamps the canonical aggregate at
-  `copier copy` time).
-- `dev-tooling/checks/copier_template_smoke.py` (the smoke check
-  that verifies the stamped aggregate matches the source-of-truth
-  list).
+- `dev-tooling/checks/canonical_slugs_projection.py` (the projection
+  writer and verifier).
+- `dev-tooling/checks/copier_template_smoke_canonical.py` (the smoke
+  check's canonical-source reader).
 - `.claude-plugin/scripts/livespec/doctor/static/wiring_completeness_cross_repo.py`
   (the cross-repo backstop doctor invariant that walks every
   registered sibling's justfile aggregate and fires fail on any
