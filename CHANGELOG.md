@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.3](https://github.com/thewoolleyman/livespec/compare/v0.21.2...v0.21.3) (2026-08-02)
+
+
+### Reverts
+
+* restore last-green dev-tooling v1.8.4 ([0970429](https://github.com/thewoolleyman/livespec/commit/09704291e9aad834d29339f03ee9e0c4c2356c4c))
+
 ## [0.21.2](https://github.com/thewoolleyman/livespec/compare/v0.21.1...v0.21.2) (2026-08-02)
 
 
