@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.22.0](https://github.com/thewoolleyman/livespec/compare/v0.21.5...v0.22.0) (2026-08-03)
+
+
+### Features
+
+* add spec governance registry ([13b7e34](https://github.com/thewoolleyman/livespec/commit/13b7e341f4c46d61bff7f6d9f4a0b8a29a4a3f50))
+
+
+### Bug Fixes
+
+* preserve spec governance config JSON ([986542e](https://github.com/thewoolleyman/livespec/commit/986542e186c5537a2e86d3ebcc62ddfff01e27bb))
+
 ## [0.21.5](https://github.com/thewoolleyman/livespec/compare/v0.21.4...v0.21.5) (2026-08-03)
 
 
