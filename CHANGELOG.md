@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/thewoolleyman/livespec/compare/v0.22.0...v0.23.0) (2026-08-03)
+
+
+### Features
+
+* enforce revise ratification evidence ([4fd88cc](https://github.com/thewoolleyman/livespec/commit/4fd88cc71d30ea9a79f3bcb5fa1d797cb0071e01))
+
 ## [0.22.0](https://github.com/thewoolleyman/livespec/compare/v0.21.5...v0.22.0) (2026-08-03)
 
 
