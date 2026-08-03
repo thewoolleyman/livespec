@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from livespec.spec_governance.config import SpecGovernanceConfig
+from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, SpecGovernanceConfig
+from livespec.spec_governance.registry import CONFIG_KEYS
 
 __all__: list[str] = [
     "DoctorContext",
@@ -23,6 +24,12 @@ __all__: list[str] = [
 ]
 
 Source = Literal["hard-floor", "invocation", "proposal", "global", "default"]
+_DOCTOR_DISPOSITIONS = frozenset(
+    disposition
+    for row in CONFIG_KEYS
+    if row.key == "doctor_dispositions"
+    for disposition in row.allowed_values
+)
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -128,6 +135,8 @@ def effective_doctor_disposition(
     """Resolve doctor disposition with hard floors before any map lookup."""
     if context.design_record_blocked:
         return _input(reason="design-record contradiction or absence requires input")
+    if DOCTOR_CHECK_ID_PATTERN.fullmatch(check_id) is None:
+        return _input(source="default", reason="doctor check id is invalid")
     if context.invocation_disposition is not None:
         selected = context.invocation_disposition
         source: Source = "invocation"
@@ -136,9 +145,11 @@ def effective_doctor_disposition(
         source = "global" if selected is not None else "default"
     if selected is None:
         return _input(source=source, reason="no executable disposition is mapped")
+    if selected not in _DOCTOR_DISPOSITIONS:
+        return _input(source=source, reason="doctor disposition is invalid")
     failed_reason = _doctor_execution_failure_reason(context=context)
     if failed_reason is not None:
-        return _input(reason=failed_reason)
+        return _input(source=source, reason=failed_reason)
     return EffectivePolicy(
         value=selected,
         source=source,

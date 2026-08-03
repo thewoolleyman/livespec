@@ -115,6 +115,47 @@ def test_doctor_disposition_precedence_and_predicate() -> None:
     assert floor.source == "hard-floor"
 
 
+def test_doctor_accepts_only_canonical_ids_and_allowed_dispositions() -> None:
+    config = SpecGovernanceConfig(doctor_dispositions={"doctor-a": "defer"})
+
+    invalid_id = effective_doctor_disposition(
+        config=config,
+        check_id="not-a-doctor-id",
+        context=DoctorContext(invocation_disposition="dismiss"),
+    )
+    invalid_invocation = effective_doctor_disposition(
+        config=config,
+        check_id="doctor-a",
+        context=DoctorContext(invocation_disposition="nope"),
+    )
+    allowed = [
+        effective_doctor_disposition(
+            config=SpecGovernanceConfig(doctor_dispositions={"doctor-a": verb}),
+            check_id="doctor-a",
+            context=DoctorContext(),
+        )
+        for verb in (
+            "fix-now",
+            "capture-as-work-item",
+            "propose-change",
+            "defer",
+            "dismiss",
+        )
+    ]
+
+    assert invalid_id.requires_input
+    assert invalid_id.value is None
+    assert invalid_invocation.source == "invocation"
+    assert invalid_invocation.requires_input
+    assert [policy.value for policy in allowed] == [
+        "fix-now",
+        "capture-as-work-item",
+        "propose-change",
+        "defer",
+        "dismiss",
+    ]
+
+
 def test_doctor_executability_failures_do_not_fall_through() -> None:
     config = SpecGovernanceConfig(doctor_dispositions={"doctor-a": "fix-now"})
     policy = effective_doctor_disposition(
@@ -133,6 +174,7 @@ def test_doctor_executability_failures_do_not_fall_through() -> None:
     assert policy.value is None
     assert policy.requires_input
     assert no_consent.requires_input
+    assert no_consent.source == "global"
     assert journal_failed.requires_input
     assert execution_failed.requires_input
 

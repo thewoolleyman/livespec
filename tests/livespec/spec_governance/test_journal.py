@@ -67,6 +67,8 @@ def test_rejects_raw_message_fields(*, tmp_path: Path) -> None:
 def test_rejects_malformed_unreadable_unknown_and_missing_events(*, tmp_path: Path) -> None:
     malformed = tmp_path / "bad.json"
     malformed.write_text("{", encoding="utf-8")
+    non_object = tmp_path / "list.json"
+    non_object.write_text("[]", encoding="utf-8")
     unknown = tmp_path / "unknown.json"
     unknown.write_text('{"event_type": "unknown"}', encoding="utf-8")
     missing = tmp_path / "missing.json"
@@ -76,6 +78,7 @@ def test_rejects_malformed_unreadable_unknown_and_missing_events(*, tmp_path: Pa
         append_journal_event(project_root=tmp_path, event_path=tmp_path / "nope"), str
     )
     assert isinstance(append_journal_event(project_root=tmp_path, event_path=malformed), str)
+    assert isinstance(append_journal_event(project_root=tmp_path, event_path=non_object), str)
     assert isinstance(append_journal_event(project_root=tmp_path, event_path=unknown), str)
     assert isinstance(append_journal_event(project_root=tmp_path, event_path=missing), str)
 
@@ -155,6 +158,20 @@ def test_rejects_invalid_common_authoring_doctor_and_ratification_fields(
             "outcome": "deferred",
         },
     )
+    invalid_doctor_verb = _event_file(
+        tmp_path=tmp_path,
+        name="doctor-bad-verb.json",
+        event={
+            "event_type": "doctor_disposition",
+            "check_id": "doctor-x",
+            "spec_root": "SPECIFICATION",
+            "finding_message_digest": "b" * 64,
+            "selected_verb": "nope",
+            "governing_key": "doctor_dispositions",
+            "effective_source": "global",
+            "outcome": "deferred",
+        },
+    )
     invalid_ratification = _event_file(
         tmp_path=tmp_path,
         name="ratification-bad.json",
@@ -184,6 +201,10 @@ def test_rejects_invalid_common_authoring_doctor_and_ratification_fields(
         str,
     )
     assert isinstance(append_journal_event(project_root=tmp_path, event_path=invalid_doctor), str)
+    assert isinstance(
+        append_journal_event(project_root=tmp_path, event_path=invalid_doctor_verb),
+        str,
+    )
     assert isinstance(
         append_journal_event(project_root=tmp_path, event_path=invalid_ratification),
         str,

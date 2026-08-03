@@ -21,6 +21,13 @@ _JOURNAL_PATH = Path("tmp") / "livespec-spec-governance-journal.jsonl"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _SOURCE_VALUES = {"hard-floor", "invocation", "proposal", "global", "default"}
 _OUTCOME_VALUES = {"consumed", "spawned", "selected", "blocked", "failed", "dismissed", "deferred"}
+_DOCTOR_VERB_VALUES = {
+    "fix-now",
+    "capture-as-work-item",
+    "propose-change",
+    "defer",
+    "dismiss",
+}
 _RAW_FIELD_DENYLIST = {"intent", "topic", "target", "message", "input_envelope", "finding_message"}
 
 
@@ -132,6 +139,8 @@ def _validate_doctor(*, event: dict[str, Any]) -> str | None:
         return "doctor check_id is invalid"
     if not _digest(value=event.get("finding_message_digest")):
         return "finding_message_digest must be lowercase sha256 hex"
+    if event["selected_verb"] not in _DOCTOR_VERB_VALUES:
+        return "doctor selected_verb is invalid"
     return None
 
 

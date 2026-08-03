@@ -69,3 +69,17 @@ def test_dialogue_runs_before_exit_3_and_for_warn_findings() -> None:
     prose = _prose()
     assert "Exit 3" in prose, "the dialogue's run-before-abort timing must reference Exit 3"
     assert "warn" in prose, "the dialogue must state it runs for warn findings too"
+
+
+def test_defaulted_dispositions_journal_before_mutation_and_never_fall_back() -> None:
+    prose = _prose()
+    assert "invocation-scoped disposition envelope" in prose
+    assert "global `doctor_dispositions`" in prose
+    assert "before executing the selected disposition" in prose
+    assert "MUST NOT try a different disposition" in prose
+    assert "requires_doctor_disposition_input" in prose
+
+
+def test_propose_change_threads_hint_and_spec_target() -> None:
+    prose = _prose()
+    assert "`proposed_change_hint` and `spec_target`" in prose
