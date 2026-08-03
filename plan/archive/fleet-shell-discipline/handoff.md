@@ -93,9 +93,10 @@ state before using the counts as current corpus data.
   green.
 - Every worker-owned proposal, revise, and archive worktree and local branch
   named above was removed after merge, and the primary checkout was refreshed
-  clean to `origin/master`. The only branch/PR created to refresh this record is
-  the current documentation transport; its final merge evidence is recorded by
-  the forge and worker-status milestone rather than treated as plan state.
+  clean to `origin/master`. PR #1928 transports this v188 evidence refresh from
+  branch `docs/fleet-shell-discipline-v188-evidence`; its forge record is
+  authoritative for merge metadata, and no branch or PR is treated as plan
+  state.
 
 The two cold-read helpers completed with PASS and changed no files. No helper,
 factory dispatch, or plan-owned background process remains active.
