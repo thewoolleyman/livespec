@@ -17,7 +17,7 @@ read-only.
 - Supervised tmux session, exact name: `rop-sweep-fleet-policy`
 
   ```bash
-  tmux has-session -t rop-sweep-fleet-policy
+  tmux has-session -t '=rop-sweep-fleet-policy:'
   ```
 
 - The supervised session is really a live agent session: its pane's process
@@ -28,14 +28,14 @@ read-only.
   was found (claude vs codex); the drive mechanics differ.
 
   ```bash
-  pane_pid=$(tmux list-panes -t rop-sweep-fleet-policy -F '#{pane_pid}' | head -1)
+  pane_pid=$(tmux list-panes -t '=rop-sweep-fleet-policy:' -F '#{pane_pid}' | head -1)
   pstree -p "$pane_pid" | grep -oE "claude|codex" | sort -u
   ```
 
 - Supervisor tmux session, exact name: `rop-sweep-fleet-policy-supervisor`
 
   ```bash
-  tmux has-session -t rop-sweep-fleet-policy-supervisor
+  tmux has-session -t '=rop-sweep-fleet-policy-supervisor:'
   ```
 
 - Target repository present: `/data/projects/livespec` (livespec core), with
