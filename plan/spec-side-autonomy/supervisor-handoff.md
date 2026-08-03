@@ -128,22 +128,29 @@ report a different generator where there is one and the same.
 - The ledger anchor is epic `livespec-jvdvx4` in the `livespec` tenant. The
   design record is `plan/spec-side-autonomy/research/brainstorm.md`; it is
   historical design evidence, not a status ledger. Read status from the ledger.
-- **The two lanes are independent, and Lane A never blocks Lane B.** Lane A is
-  the three open values calls, which gate Increments 2 and 3 ONLY. Lane B is
-  Increment 1, the no-doctrine-change levers, which proceeds with no values
-  call resolved. An unanswered values call is therefore never a thread-wide
-  blocked state: stand down on the Increment 2/3 action only, and drive Lane B.
-- The three values calls are maintainer-owned and are asked ONE AT A TIME, each
-  with its recommendation first, per `AGENTS.md` §"When to ask, proceed, or
-  self-resolve". Do not batch them into a single picker, and do not resolve one
-  by inference from another. They are: whether the drift-doctrine sentence is
-  amendable at all and if so only to the consensus tier; whether the groom cut
-  ever leaves the maintainer's hands; and where the consensus-tier definition
-  lives.
+- **Lane A is CLOSED as of 2026-08-03. Do not re-ask its three values calls.**
+  All three are resolved and recorded in `plan/spec-side-autonomy/handoff.md`
+  §"Lane A — CLOSED" and `research/brainstorm.md` §"Values calls — ALL THREE
+  RESOLVED 2026-08-03". Re-opening them requires a fresh maintainer decision,
+  not a re-ask. The lane-independence rule it used to carry still holds for any
+  FUTURE maintainer-owned call: such a call gates only the increment that needs
+  it, never the whole thread, so stand down on that action alone and keep
+  driving everything else.
+- The resolved decisions bind later increments and are not recommendations:
+  drift acceptance is amendable to the consensus tier ONLY, through a DEDICATED
+  `spec_governance.drift_acceptance_mode` key (`human | consensus`, default
+  `human`, opt-in), never through `revise_decision_mode` and never to
+  `delegated`; the groom cut may be automated last, consensus-gated, with
+  slice-size ceilings and a regroom cap as required rails; the consensus-tier
+  definition lives in livespec core and is implemented by
+  `livespec-orchestrator-beads-fabro` and `livespec-overseer`.
 - **Class (c) doctrine floors are the checks this thread must not weaken.**
   Drift acceptance, the groom cut, and the truly-unresolvable set may not be
   touched by any config key without a ratified spec amendment, and any such
-  amendment is Increment 3, gated on Lane A. The shared protocol's "never
+  amendment is Increment 3. Lane A unblocked those amendments in principle, but
+  Increment 3 stays blocked in practice until the consensus panel exists, and
+  the `drift_acceptance_mode` key must not ship armed-able before it does. The
+  shared protocol's "never
   REMOVE, WEAKEN, or SKIP an existing check" applies here to doctrine sentences,
   not only to executable checks — a proposal that relaxes one of these is a
   reversal of a safety guarantee and reaches the maintainer.
