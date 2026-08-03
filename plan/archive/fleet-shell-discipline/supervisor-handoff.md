@@ -1,5 +1,9 @@
 # Supervisor Handoff - fleet-shell-discipline
 
+**Archived 2026-08-03.** This is the historical supervisor-to-worker launch
+record. The worker completed the thread; read `handoff.md` in this directory
+for terminal evidence and do not execute the launch instructions below.
+
 ## Shared Protocol
 
 Read `.ai/supervisor-protocol.md` before driving. Validate this binder together

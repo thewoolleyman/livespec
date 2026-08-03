@@ -1,5 +1,10 @@
 # fleet-shell-discipline — why this shape
 
+**Archived 2026-08-03.** This file preserves the measurements and reasoning at
+thread formation. Statements below that describe questions as open or either
+epic as live are historical; the resolved outcome and terminal evidence are in
+`handoff.md`, and the convention is ratified in livespec history `v187`.
+
 **Owning repo:** `livespec` — the fleet's reference repo and the home of the
 conventions the family follows. Placed here by maintainer direction
 2026-08-02.
