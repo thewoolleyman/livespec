@@ -17,6 +17,7 @@ resolves the main spec root as <project_root>/SPECIFICATION/ by default.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess  # documented integration-test usage
@@ -258,6 +259,11 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
             "decision": "accept",
             "rationale": f"Auto-accepted by E2E mock harness for topic: {topic}",
             "resulting_files": [],
+            "ratification_review": "manual-spawn",
+            "ratification_evidence": _ratification_evidence(
+                proposal_stem=topic,
+                resulting_files=[],
+            ),
         }
         for topic in topics
     ]
@@ -286,6 +292,37 @@ def doctor_static(*, project_root: Path) -> subprocess.CompletedProcess[str]:
         ],
         cwd=project_root,
     )
+
+
+def _canonical_digest(*, resulting_files: list[dict[str, str]]) -> str:
+    digest = hashlib.sha256()
+    for entry in resulting_files:
+        path_bytes = entry["path"].encode("utf-8")
+        content_bytes = entry["content"].encode("utf-8")
+        digest.update(str(len(path_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(path_bytes)
+        digest.update(str(len(content_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(content_bytes)
+    return digest.hexdigest()
+
+
+def _ratification_evidence(
+    *,
+    proposal_stem: str,
+    resulting_files: list[dict[str, str]],
+) -> dict[str, object]:
+    return {
+        "reviewer_identity": "fable",
+        "reviewer_model": "fable",
+        "separate_reviewer": True,
+        "read_only": True,
+        "reviewed_at": "2026-08-03T12:34:56Z",
+        "verdict": "NO BLOCKERS",
+        "proposal_stem": proposal_stem,
+        "content_digest": _canonical_digest(resulting_files=resulting_files),
+    }
 
 
 def prune_history(*, project_root: Path) -> subprocess.CompletedProcess[str]:

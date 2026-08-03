@@ -8,6 +8,7 @@ fixes it; second doctor invocation exits 0.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess  # documented integration-test usage
 import sys
@@ -134,13 +135,19 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     )
     assert propose_result.returncode == 0, f"propose-change failed: {propose_result.stderr!r}"
 
+    resulting_files = [{"path": "spec.md", "content": _FIXED_SPEC_CONTENT}]
     revise_payload: dict[str, object] = {
         "decisions": [
             {
                 "proposal_topic": "fix-shall-case",
                 "decision": "accept",
                 "rationale": "Accepted: fix mixed-case Shall to uppercase SHALL.",
-                "resulting_files": [{"path": "spec.md", "content": _FIXED_SPEC_CONTENT}],
+                "resulting_files": resulting_files,
+                "ratification_review": "manual-spawn",
+                "ratification_evidence": _ratification_evidence(
+                    proposal_stem="fix-shall-case",
+                    resulting_files=resulting_files,
+                ),
             }
         ]
     }
@@ -174,3 +181,30 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
     assert (
         doctor_good.returncode == 0
     ), f"doctor_static should pass after fix; stdout={doctor_good.stdout!r}"
+
+
+def _ratification_evidence(
+    *,
+    proposal_stem: str,
+    resulting_files: list[dict[str, str]],
+) -> dict[str, object]:
+    digest = hashlib.sha256()
+    for entry in resulting_files:
+        path_bytes = entry["path"].encode("utf-8")
+        content_bytes = entry["content"].encode("utf-8")
+        digest.update(str(len(path_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(path_bytes)
+        digest.update(str(len(content_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(content_bytes)
+    return {
+        "reviewer_identity": "fable",
+        "reviewer_model": "fable",
+        "separate_reviewer": True,
+        "read_only": True,
+        "reviewed_at": "2026-08-03T12:34:56Z",
+        "verdict": "NO BLOCKERS",
+        "proposal_stem": proposal_stem,
+        "content_digest": digest.hexdigest(),
+    }

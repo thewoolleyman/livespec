@@ -39,6 +39,58 @@
             "type": "string",
             "description": "Required when decision == 'modify'; the LLM's drafted modifications. Ignored otherwise."
           },
+          "ratification_review": {
+            "type": "string",
+            "enum": ["manual-spawn", "auto-spawn"],
+            "description": "Effective independent ratification-review initiation mode for accept/modify decisions. Reject decisions omit this field."
+          },
+          "ratification_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reviewer_identity",
+              "reviewer_model",
+              "separate_reviewer",
+              "read_only",
+              "reviewed_at",
+              "verdict",
+              "proposal_stem",
+              "content_digest"
+            ],
+            "properties": {
+              "reviewer_identity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reviewer_model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "separate_reviewer": {
+                "type": "boolean",
+                "const": true
+              },
+              "read_only": {
+                "type": "boolean",
+                "const": true
+              },
+              "reviewed_at": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              "verdict": {
+                "type": "string",
+                "const": "NO BLOCKERS"
+              },
+              "proposal_stem": {
+                "type": "string"
+              },
+              "content_digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
           "resulting_files": {
             "type": "array",
             "description": "When decision == 'accept' or 'modify', the spec files to update + their new content. Empty / omitted when decision == 'reject'.",
