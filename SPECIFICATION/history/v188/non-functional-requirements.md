@@ -347,9 +347,9 @@ The enforcement suite is **invocation-surface-agnostic**. Every check is a `just
 The canonical target inventory is maintained as tracked static data. The `just check` recipe MUST contain one direct command line that passes that inventory to the shared aggregate runner supplied through `livespec-dev-tooling`; it MUST NOT duplicate the inventory or the runner's control flow in the justfile. The runner invokes every selected target sequentially through `just`, continues after a target fails, and exits non-zero if any target failed. Key groupings represented by the inventory:
 
 - **Per-commit aggregate (`just check`):** selects every check below through the tracked inventory and delegates their execution to the shared aggregate runner.
-- **Standard per-commit checks:** `check-lint`, `check-format`, `check-types`, `check-complexity`, `check-imports-architecture`, `check-private-calls`, `check-global-writes`, `check-rop-pipeline-shape`, `check-supervisor-discipline`, `check-no-raise-outside-io`, `check-no-except-outside-io`, `check-public-api-result-typed`, `check-schema-dataclass-pairing`, `check-main-guard`, `check-wrapper-shape`, `check-keyword-only-args`, `check-match-keyword-only`, `check-no-inheritance`, `check-assert-never-exhaustiveness`, `check-newtype-domain-primitives`, `check-all-declared`, `check-no-write-direct`, `check-pbt-coverage-pure-modules`, `check-claude-md-coverage`, `check-heading-coverage`, `check-no-todo-registry` (rejecting any `test: "TODO"` entry whose `work_item` is absent or empty), `check-vendor-manifest`, `check-no-direct-tool-invocation`, `check-tools`, `check-coverage`, `check-doctor-static`, `e2e-test-claude-code-mock`, `check-prompts`.
+- **Standard per-commit checks:** `check-lint`, `check-format`, `check-types`, `check-complexity`, `check-imports-architecture`, `check-private-calls`, `check-global-writes`, `check-rop-pipeline-shape`, `check-supervisor-discipline`, `check-no-raise-outside-io`, `check-no-except-outside-io`, `check-public-api-result-typed`, `check-schema-dataclass-pairing`, `check-main-guard`, `check-wrapper-shape`, `check-keyword-only-args`, `check-match-keyword-only`, `check-no-inheritance`, `check-assert-never-exhaustiveness`, `check-newtype-domain-primitives`, `check-all-declared`, `check-no-write-direct`, `check-pbt-coverage-pure-modules`, `check-claude-md-coverage`, `check-heading-coverage`, `check-vendor-manifest`, `check-no-direct-tool-invocation`, `check-tools`, `check-coverage`, `check-doctor-static`, `e2e-test-claude-code-mock`, `check-prompts`.
 - **Alternate-cadence targets (NOT in `just check`):** `e2e-test-claude-code-real` (requires `ANTHROPIC_API_KEY`; runs on merge-queue, master push, and `workflow_dispatch`).
-- **Release-gate targets (release-tag CI only; NOT in `just check`):** `check-mutation` (mutmut; ≥80% kill rate on `parse/` + `validate/`); the release mode of `check-no-todo-registry` (rejecting an unowned TODO and, where the configured tracker makes liveness mechanically checkable, one whose named `work_item` is closed or nonexistent). An owned live TODO does not block an unrelated release.
+- **Release-gate targets (release-tag CI only; NOT in `just check`):** `check-mutation` (mutmut; ≥80% kill rate on `parse/` + `validate/`); `check-no-todo-registry` (rejects any `test: "TODO"` entry in `tests/heading-coverage.json`).
 - **Mutating targets (opt-in, not in CI):** `just fmt` (`ruff format`), `just lint-fix` (`ruff check --fix`), `just vendor-update <lib>`.
 
 **Invocation surfaces:**
@@ -357,8 +357,6 @@ The canonical target inventory is maintained as tracked static data. The `just c
 - **Pre-commit and pre-push (local):** `lefthook.yml` runs `just check`.
 - **CI (GitHub Actions):** one job per check via a matrix strategy with `fail-fast: false`, each calling `just <target>`. The `jdx/mise-action@v2` step installs pinned tools.
 - **Manual (developer at the shell):** `just <target>` — same targets hooks and CI use.
-
-**GitHub-hosted-only fleet posture.** While this posture is active, every fleet repository's merge-gating CI executes on GitHub-hosted runners and ordinary CI does not depend on a self-hosted runner label. Self-hosted-only auxiliary workflows remain administratively disabled instead of accumulating queued jobs. The shared factory host carries no resident CI supervisor, listener pool, runner-liveness timer, or runner-cache timer; this rule does not disable the host's Fabro, Dolt, Dispatcher, or other factory machinery. Reactivating fleet self-hosted CI requires a later spec revision and separately provisioned capacity, rather than an implicit repository-variable deletion or service restart. This decision supersedes the local-hot-runner rollout recorded by `livespec-3lev` and its Phase 0/2/3 children for the duration of this posture.
 
 **Doctor static-phase coverage.** The `check-doctor-static` target MUST run doctor's deterministic static phase (`bin/doctor_static.py`) against the main `SPECIFICATION/` tree AND every sub-spec under `SPECIFICATION/templates/<name>/`, exiting non-zero (exit 3) on any `fail`-status finding from any tree. The target MUST be part of `just check` — invocation-surface-agnostic per the rule above, so it runs identically from lefthook pre-push, CI, and manual developer invocation. The LLM-driven objective and subjective phases are OUT of scope for this target: they require LLM judgment, produce non-deterministic output, and remain interactive-only via the `/livespec:doctor` skill's post-step phase per `spec.md` §"Sub-command lifecycle". The pre-step / post-step doctor invocations carried by individual `/livespec:*` wrappers remain in place per the existing sub-command lifecycle contract; the `check-doctor-static` target is a coverage backstop, not a replacement.
 
@@ -1175,8 +1173,6 @@ The rule pairs with two companion mechanisms, realizing the same NFR-rule + boot
 
 **GitHub App permission set.** A conforming automation App — the fleet's `livespec-pr-bot` and every adopter's own App alike — MUST hold the repository permissions the automated paths require: `Contents: Read and write`, `Pull requests: Read and write`, and `Workflows: Read and write`. The workflows grant is load-bearing: GitHub structurally rejects any App push that creates or updates a file under `.github/workflows/` without it, silently capping the factory's reach (discovered as livespec-2ef0.1). Permissions beyond this set SHOULD NOT be granted (least privilege); the App MUST be installed only on the repos its tenant owns (the fleet App on fleet repos only; an adopter's App on that adopter's repos only).
 
-**GitHub App request budget.** A conforming automation App's request budget is a FINITE SHARED RESOURCE, not an ambient capability: GitHub meters an App installation's REST (`core`) and GraphQL (`graphql`) primary rate limits as separate hourly buckets scoped to the installation, so every repo an App is installed on draws on the same buckets and any one consumer can starve all the others. The fleet's own installation is therefore shared across all members listed in `.livespec-fleet-manifest.jsonc`, and an adopter's App is shared across that adopter's repos. A conforming tenant MUST record installation rate-limit state — at minimum `used`, `remaining`, and `reset` per bucket — on a recurring basis to a durable local signal, so a later exhaustion is diagnosable from the recorded burn curve after the hourly window has rolled. The sampling endpoint (`GET /rate_limit`) does not itself consume budget. Automated GitHub paths MUST distinguish primary-budget exhaustion (a `403` with `x-ratelimit-remaining: 0` and the exhausted `x-ratelimit-resource`) from a permissions or authentication failure and from a secondary rate limit; reporting exhaustion as a generic credential error is non-conforming. Consumers that do not require the App identity — notably public toolchain release-metadata fetches — SHOULD run unauthenticated rather than spend installation budget.
-
 **Tenant credential set.** A tenant's `credential_wrapper` MUST inject the COMPLETE credential set its automated paths consume: the GitHub App pair (`GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY`; plus `GITHUB_APP_INSTALLATION_ID` when the App holds more than one installation), the tenant's work-items store secret (e.g. `BEADS_DOLT_PASSWORD`), and the dispatch engine's LLM credential (today `CLAUDE_CODE_OAUTH_TOKEN` for the Claude Code engine). Each consuming seam MUST fail closed with an actionable diagnostic naming any missing variable; adopter onboarding is complete only when the full set resolves through the adopter's OWN wrapper (fleet = adopter #0, no shared fallback).
 
 **Scoped transient-materialization rule.** Where a consumer's interface physically cannot read environment variables (config-file-only interfaces), a run-scoped projection — generated from the environment at invocation time and removed when the run ends — is permitted; standing copies remain PROHIBITED.
@@ -1228,28 +1224,6 @@ The Codex Driver surface MUST preserve every destructive-command control from th
 ## Scenarios
 
 Contributor-facing Gherkin scenarios — the analogue of `scenarios.md`'s role for the user-facing surface. Each scenario uses the gherkin-blank-line convention (one step per paragraph, no fenced code blocks) so every step renders as its own Markdown paragraph.
-
-### Scenario: A fleet pull request uses hosted CI without occupying the factory host
-
-Given a pull request targets a fleet repository whose hosted-only posture is active
-
-When its required CI gate runs
-
-Then every merge-gating job executes on GitHub-hosted capacity
-
-And no CI listener or worker process is resident on the shared factory host
-
-And the Fabro, Dolt, and Dispatcher machinery remains available on that host
-
-### Scenario: GitHub App budget exhaustion remains diagnosable after refill
-
-Given multiple repositories share one automation App installation
-
-When the installation's primary request bucket is exhausted and later refills
-
-Then the durable rate-limit signal retains the bucket's used, remaining, and reset history
-
-And an automated caller diagnoses primary exhaustion separately from permission, authentication, and secondary-limit failures
 
 ### Scenario: Codex help maps through the project adapter to core prose
 

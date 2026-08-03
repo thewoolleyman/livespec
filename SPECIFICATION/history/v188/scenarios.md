@@ -59,13 +59,6 @@ Scenario: Revise after a single-proposal propose-change
   And snapshots the post-revise live spec into `<spec-target>/history/v002/`
   And the post-step doctor static phase emits zero `fail` findings
   And the wrapper exits 0
-
-Scenario: Revise owns a deferred heading-coverage test
-  Given an accepted proposal adds a `##` heading whose covering test cannot land yet
-  When the revise flow assembles the resulting `tests/heading-coverage.json` entry with `test: "TODO"`
-  Then it files a covering-test work-item through the configured work-item capture seam
-  And stamps the returned id into the entry's non-empty `work_item` field
-  And an unowned TODO entry is rejected before it can land on master
 ```
 
 ## Happy-path doctor

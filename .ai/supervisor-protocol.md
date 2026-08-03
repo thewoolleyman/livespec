@@ -57,6 +57,18 @@ that it landed, then send Enter separately. Never use a one-shot form that
 passes the text and `Enter` in the same `send-keys` call. Idle plus queued input
 means stuck, not idle.
 
+A large paste ARRIVES IN CHUNKS OVER SECONDS, so the verify step must wait for
+the composer to stop changing. Read the pane twice with a pause between and
+compare; only a byte count that is STABLE across two reads is the real one. A
+single read taken immediately after `paste-buffer` is a snapshot of a partial
+delivery, and editing keys sent on the strength of it land in the middle of the
+remaining stream and corrupt the composer.
+
+Prefer to avoid the problem entirely: write a long brief to a file under the
+thread's `runtime_dir` and send a SHORT instruction naming that path. A
+one-line file reference is delivered atomically, verifies in one read, and
+leaves a durable copy of the brief that survives a composer reset.
+
 Do not tell the worker to write `ready` unless the overseer daemon has opened a
 supervision round for it. A bare `ready` outside a round cannot restart the
 worker because no injection stamp exists for the declaration to certify
@@ -211,4 +223,29 @@ Corrections to this shared supervisor role belong here. Regeneration must
 preserve this section byte-for-byte, including spelling, punctuation, code
 formatting, blank lines, and ordering.
 
-No role-level corrections have been recorded in this repository.
+C1. A large paste into a Codex worker's composer arrives in CHUNKS over
+several seconds, and I misread the first chunk as a truncation. Measured
+2026-08-03 driving the `spec-side-autonomy` worker: `tmux show-buffer | wc -c`
+reported the full 5213 bytes, while the pane read taken immediately after
+`paste-buffer` showed `[Pasted Content 3064 chars]`. Roughly two seconds later
+a second token brought it to 4086, and about six seconds after that a third
+reached 5108. Nothing had been truncated; the delivery was still in flight.
+
+Acting on that first reading is what did the damage. I sent `C-u` to clear what
+I believed was a truncated paste, and it was consumed as input to the still
+arriving stream rather than as a kill-line; two `BSpace` keys then produced a
+THIRD paste token instead of deleting anything. The composer ended up holding
+three chunks plus my stray keystrokes, in a state no read could untangle. A
+single `C-c` cleared it, and the worker survived — but the recovery was luck,
+not method, and a `C-c` sent twice would have killed a live agent session.
+
+The correction is in two parts, both now in "How to inspect and drive". Verify
+a paste only after the composer's size is stable across two spaced reads.
+Better, do not paste long briefs at all: write the brief to a file under
+`runtime_dir` and send a one-line instruction naming the path. That is what
+finally worked here, and it is atomic, verifiable in one read, and leaves a
+durable copy the worker can re-read after any composer reset.
+
+The general lesson is the one this protocol already states in another form: an
+in-flight process read once is not a measurement. I applied that rule to
+ledgers and gates and did not apply it to a text box.

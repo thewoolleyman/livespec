@@ -17,24 +17,28 @@ READ from the ledger (`list-work-items` / `next`), never stored here.
    three-class gate inventory, the `spec_governance` lever family with
    its unconditional floors, the three increments with their per-repo
    landing map, the `dispatcher.*` pattern checklist to mirror, and
-   the three open values calls.
+   the three values calls with their 2026-08-03 resolutions.
 
 ## Next action
 
 Two independent lanes; neither waits on the other:
 
-**Lane A — values calls (gates Increments 2–3 ONLY).** Resolve the
-three open values calls recorded in `research/brainstorm.md` §"Open
-values calls" with the maintainer — one at a time, each with a
-recommendation first, per `AGENTS.md` §"When to ask, proceed, or
-self-resolve":
+**Lane A — CLOSED 2026-08-03.** All three values calls are resolved;
+the decisions are recorded in `research/brainstorm.md` §"Values calls —
+ALL THREE RESOLVED 2026-08-03" and are ratified inputs to Increments 2
+and 3, not re-openable without a fresh maintainer decision:
 
-1. whether the drift-doctrine sentence (`SPECIFICATION/spec.md`,
-   "Drift's human gate is load-bearing doctrine") is amendable at all,
-   and if so only to the consensus tier;
-2. whether the groom cut ever leaves the maintainer's hands;
-3. where the consensus-tier definition lives (livespec core vs.
-   `livespec-orchestrator-beads-fabro`).
+1. the drift-doctrine sentence IS amendable, to the consensus tier only,
+   via a DEDICATED `spec_governance.drift_acceptance_mode` key
+   (`human | consensus`, default `human`, opt-in, Increment 3);
+   `delegated` is never legal for drift, and the key must not ship
+   armed-able before the consensus panel exists;
+2. the groom cut MAY leave the maintainer's hands, but automated last,
+   consensus-gated, with slice-size ceilings and a regroom cap as
+   required rails;
+3. the consensus-tier definition lives in livespec core;
+   `livespec-orchestrator-beads-fabro` and `livespec-overseer`
+   implement it.
 
 **Lane B — Increment 1 (no doctrine change; proceed without Lane A).**
 Draft Increment 1 (the no-doctrine-change levers) as
@@ -66,7 +70,15 @@ Dispatcher drain — never inline in a planning session.
 - Class (c) gates (drift acceptance, the groom cut, the
   truly-unresolvable set) are doctrine floors: no config key may touch
   them without a ratified spec amendment, and any such amendment is
-  Increment 3, gated on the values calls above.
+  Increment 3. The values calls that gated those amendments are now
+  RESOLVED (see "Lane A — CLOSED" above), so Increment 3 is unblocked
+  in principle — but it remains blocked in practice until the consensus
+  panel exists, and the `drift_acceptance_mode` key must not ship
+  armed-able before it does.
+- Increment 3's truly-unresolvable-set amendment in
+  `livespec-orchestrator-beads-fabro` is PARTIAL, not wholesale: the
+  groom cut may move behind the consensus tier, and drift acceptance
+  moves only to `consensus` — never to a single delegated model.
 - The orchestrator `drive` contract's refusal of spec-side action-ids
   is deliberately preserved; the foreman is the spec-side executor.
 - Cross-repo pieces land as one epic with per-repo child work-items
