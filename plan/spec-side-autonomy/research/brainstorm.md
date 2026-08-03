@@ -296,22 +296,57 @@ Distilled from `livespec-orchestrator-beads-fabro`
    override, the design-floor exemption, and
    all-defaults-arm-nothing.
 
-## Open values calls (maintainer-owned; unresolved as of 2026-08-03)
+## Values calls — ALL THREE RESOLVED 2026-08-03
+
+Calls 1 and 2 were put to the maintainer after an independent review
+judged them genuinely maintainer-owned rather than determinable from
+existing doctrine; call 3 was self-resolved on that same review's
+OBVIOUS-ADOPT verdict. The decisions below are ratified inputs to
+Increments 2 and 3 — not recommendations, and not re-openable without
+a fresh maintainer decision.
 
 1. **Does the drift-doctrine sentence get amended at all?**
-   Recommendation: yes, but only to the consensus tier (never plain
-   `delegated`), only opt-in per repo, only at Increment 3 — the
-   sentence is the fleet's deepest safety commitment and the panel +
-   journal + opt-in is the minimum honest mechanism for revising it.
-2. **Does the groom cut ever leave the maintainer's hands?** The
-   maintainer's own design-record quote is the reason it is gated.
-   Recommendation: automate it LAST, behind the same consensus tier,
-   with slice-size ceilings and a regroom cap as hard rails — and
-   "never" is a reasonable answer.
-3. **Where does the consensus-tier DEFINITION live** — livespec core
-   (both planes cite it) vs. `livespec-orchestrator-beads-fabro`
-   (where the foreman thread currently scopes it)? Lean: core-defined,
-   orchestrator/overseer-implemented. Deserves its own design pass
+   **RESOLVED — YES, consensus tier only, via a DEDICATED key.**
+   Add `spec_governance.drift_acceptance_mode` with values
+   `human | consensus`, defaulting to `human`, opt-in per repo,
+   requiring the unanimous cross-vendor panel, at Increment 3. Amend the
+   drift-doctrine sentence in `SPECIFICATION/spec.md` to "only humans or
+   a ratified consensus process accept it".
+
+   Hard limits: `delegated` is NEVER a legal value — a single model may
+   not accept drift. The key is DEDICATED: drift acceptance must never
+   be reachable through `revise_decision_mode`, and the drift floor
+   resolves BEFORE that lever. Default is `human`; an adopter opts in
+   deliberately. The key must not ship armed-able before the consensus
+   panel actually exists.
+
+   Rationale the maintainer gave: a dedicated, separately-armed setting
+   is a STRONGER safety design than a hard-coded floor, because it
+   defaults safe, is auditable per repo, and cannot be flipped as a side
+   effect of the general revise lever.
+
+   Scope note: drift DETECTION was never gated. `capture-spec-drift`
+   already files drift unattended and the doctrine explicitly blesses
+   that machine path. Only ACCEPTANCE was ever human-gated, and it is
+   acceptance this decision governs.
+
+2. **Does the groom cut ever leave the maintainer's hands?**
+   **RESOLVED — YES, but automated LAST and consensus-gated.** Only
+   after Increments 1–2 land, only behind the same consensus tier, and
+   only with slice-size ceilings plus a regroom cap as REQUIRED rails,
+   not optional ones. `livespec-orchestrator-beads-fabro`
+   `SPECIFICATION/contracts.md` §"Grooming and slice-size calibration"
+   is amendable at Increment 3 for the cut only.
+
+3. **Where does the consensus-tier DEFINITION live?**
+   **RESOLVED — core-defined, orchestrator/overseer-implemented.**
+   `livespec-orchestrator-beads-fabro` `SPECIFICATION/spec.md`
+   §"Terminology" already adopts core's glossary verbatim and states
+   that plugin-local terms "extend the upstream glossary, never
+   contradict it" — the same shape as this question. Reinforced by
+   `.ai/no-circular-dependency.md`: the tier must serve ONE panel across
+   both planes, so the only non-circular home for the shared definition
+   is the upstream repo both planes already cite. Deserves its own design pass
    before Increment 3.
 
 ## Cross-links
