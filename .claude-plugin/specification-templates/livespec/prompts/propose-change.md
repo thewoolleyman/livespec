@@ -8,10 +8,16 @@
 
 ## Inputs
 
-- `<intent>` — the proposed-change intent (freeform user text from
-  `propose-change/SKILL.md` dialogue).
-- `<topic>` — the canonical kebab-case topic identifier (already
-  user-validated by SKILL.md prose).
+- `<intent>` — the proposed-change intent, either freeform user
+  text from the propose-change dialogue or the exact non-empty
+  `intent` supplied by a complete invocation envelope.
+- `<topic>` — the topic identifier supplied by dialogue or by a
+  complete invocation envelope; prose and prompt layers MUST NOT
+  canonicalize it before the wrapper.
+- Optional alignment steering context — one relationship per
+  surfaced in-flight item, captured from dialogue, supplied by a
+  complete invocation envelope, or safely resolved as compatible
+  default alignment by operation prose.
 - `input_context.spec_target` — the active spec tree path (under
   `<spec-target>/`, resolved by the wrapper via `--spec-target`
   or the default `.livespec.jsonc`-walking behavior). Per v018 Q1,

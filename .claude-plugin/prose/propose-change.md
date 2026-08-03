@@ -141,6 +141,40 @@ contract.
 `HelpRequested` supervisor path; help text goes to stdout and
 exit code is `0` (NOT an error).
 
+### Invocation envelope
+
+An upstream supervising caller or attended Driver session MAY
+supply a spec-governance invocation envelope to this prose. The
+envelope is an LLM-layer input only. It MAY carry
+`mode: interactive | batch`, `spec_target`, `intent`, `topic`,
+and per-in-flight-item `relationship` values
+(`align`, `modify-to-accommodate`, or `supersede`). It MUST NOT
+be passed to `bin/propose_change.py`, serialized into the
+`--findings-json` payload, or copied into the resulting
+proposed-change file.
+
+Before any mutating wrapper invocation, resolve the envelope
+against the `spec_governance` policy rules from
+`SPECIFICATION/spec.md` §"Spec-governance policy settings":
+internally contradictory input, ambiguity, design-record
+conflict, or a resolved `batch` mode with missing required fields
+escalates immediately and leaves the spec tree unchanged. In
+batch mode, `intent` and `topic` MUST both be non-empty. For each
+in-flight item surfaced by the survey, the envelope MUST supply
+one relationship unless `effective_in_flight_alignment` resolves
+to `default-align` for compatible work with no conflict.
+`default-align` MAY satisfy only compatible alignment; it MUST NOT
+mask genuine conflict, partial supersession, or full supersession.
+
+For every automatically-consumed complete envelope, compute the
+deterministic envelope digest and append a digest-only
+`authoring_auto_consumption` journal event through
+`spec_governance.py` before Step 8 invokes `bin/propose_change.py`.
+If the journal append fails, escalate before mutation and do not
+invoke the wrapper. The journal event carries metadata and
+`input_envelope_digest`, never raw `intent`, `topic`, `target`,
+or the raw envelope body.
+
 ## Steps
 
 1. **Resolve the active template.** Run the template-resolution
@@ -235,9 +269,17 @@ exit code is `0` (NOT an error).
    The captured alignment intent feeds the propose-change
    template prompt as steering context for the authoring
    dialogue (Step 5); it is NOT serialized into the
-   resulting proposed-change findings JSON. When Step 2.5
-   surfaced zero items (or the survey was fully degraded),
-   skip this step.
+   resulting proposed-change findings JSON. When a complete
+   invocation envelope has already supplied a relationship for
+   an item, or `effective_in_flight_alignment` safely resolves
+   compatible work to `default-align`, do not ask for that
+   item's relationship again; thread the supplied or resolved
+   relationship into Step 5 as steering context. When the
+   envelope omits a required relationship, asks to modify or
+   supersede an item, conflicts with the surfaced item, or the
+   item is only partially compatible, escalate before mutation.
+   When Step 2.5 surfaced zero items (or the survey was fully
+   degraded), skip this step.
 
 ### Authoring discipline — three splits every proposal MUST respect
 
@@ -277,23 +319,32 @@ consumer inherits belongs in core. A core-targeted proposal
 describing a specific tool's internals MUST be redirected to that
 tool's repo.
 
-3. **Capture user intent.** Ask the user: "What change do you
+3. **Capture user intent.** Ask the user only when no complete
+   invocation envelope has supplied non-empty `intent`: "What
+   change do you
    want to propose? Describe the intent — what should the spec
    say differently, and why." Capture free-text intent. The
    propose-change prompt consumes this alongside the current
-   spec content.
+   spec content. A supplied `intent` answers exactly this
+   question and suppresses only this question; interactive mode
+   still asks every other unanswered authoring question.
 
-4. **Capture topic hint.** Ask the user: "What short topic
+4. **Capture topic hint.** Ask the user only when no complete
+   invocation envelope has supplied non-empty `topic`: "What short topic
    should this proposal use? (a few words; the CLI will
    canonicalize to lowercase-kebab-case and truncate to 64
    characters)." Capture free-text. Do NOT pre-canonicalize on
    the prose side — the single-canonicalization invariant
    requires every `topic` derivation to route through the
    CLI's shared canonicalization. Pass the hint verbatim as
-   the `<topic>` positional argument.
+   the `<topic>` positional argument. A supplied `topic`
+   answers exactly this question and suppresses only this
+   question; do not re-ask it unless it is empty, ambiguous, or
+   contradictory.
 
 5. **Generate findings JSON.** Run the propose-change prompt
-   against the user-described intent, including any
+   against the user-described or envelope-supplied intent,
+   including any
    alignment intent captured in Step 2.6 as steering
    context (so the authored proposal aligns with,
    accommodates, or supersedes the surfaced in-flight
@@ -329,6 +380,9 @@ tool's repo.
    argv (forwarding `--author`, `--reserve-suffix`,
    `--spec-target`, `--project-root`, `--skip-pre-check` /
    `--run-pre-check` as applicable). Capture the exit code.
+   Do not forward the invocation envelope, envelope digest,
+   relationship metadata, or any spec-governance journal event
+   path to the Python wrapper.
    The CLI canonicalizes the topic, validates the payload
    internally, runs pre-step doctor static (unless skipped),
    writes the file, and runs post-step doctor static. The

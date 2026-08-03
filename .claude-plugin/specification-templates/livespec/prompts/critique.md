@@ -16,9 +16,12 @@
   enumeration of files that exist in the spec target at
   invocation time (e.g.,
   `["SPECIFICATION/spec.md", "SPECIFICATION/contracts.md", ...]`).
-- Optional `<critique-steering-intent>` — user-provided guidance
-  scoping the critique (e.g., "focus on contracts.md and
-  scenarios.md").
+- Optional `<critique-steering-intent>` / `target` — exact
+  critique scope from the dialogue or from a complete invocation
+  envelope's non-empty `target` field (e.g., "focus on
+  contracts.md and scenarios.md"). When supplied by envelope,
+  consume it as the critique target; do not reinterpret it as a
+  broader search request.
 - The reference document at the template root,
   `livespec-nlspec-spec.md`, for NLSpec discipline.
 
