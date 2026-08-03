@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spec_governance_config.schema.json",
+  "title": "spec_governance_config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "propose_change_mode": { "enum": ["interactive", "batch"] },
+    "critique_mode": { "enum": ["interactive", "batch"] },
+    "in_flight_alignment": { "enum": ["prompt", "default-align"] },
+    "doctor_dispositions": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": ["fix-now", "capture-as-work-item", "propose-change", "defer", "dismiss"]
+      }
+    },
+    "ratification_review": { "enum": ["manual-spawn", "auto-spawn"] },
+    "ratification_reviewer_model": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._/-]+$"
+    }
+  }
+}

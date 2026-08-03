@@ -295,6 +295,7 @@ check:
         check-no-renderer-vendoring
         check-prompts
         check-schema-dataclass-pairing
+        check-spec-governance-manifest
         check-types
         e2e-test-claude-code-mock
     )
@@ -652,6 +653,9 @@ check-public-api-result-typed:
 
 check-schema-dataclass-pairing:
     uv run python3 dev-tooling/checks/schema_dataclass_pairing.py
+
+check-spec-governance-manifest:
+    uv run python3 dev-tooling/checks/spec_governance_manifest.py
 
 check-main-guard:
     uv run python -m livespec_dev_tooling.checks.main_guard

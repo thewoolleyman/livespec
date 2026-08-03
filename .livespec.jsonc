@@ -5,6 +5,9 @@
 {
   "template": "livespec",
   "spec_root": "SPECIFICATION",
+  "spec_governance": {
+    "ratification_reviewer_model": "fable"
+  },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
   // plugin-resolution concern (concern #2), read by livespec-dev-tooling's
   // check-plugin-resolution Verifier (SPECIFICATION/non-functional-requirements.md
