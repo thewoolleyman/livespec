@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/thewoolleyman/livespec/compare/v0.24.0...v0.24.1) (2026-08-03)
+
+
+### Bug Fixes
+
+* resolve doctor disposition defaults ([c6341b9](https://github.com/thewoolleyman/livespec/commit/c6341b9a41ebecf27576ca90c44edef7c532f20c))
+
 ## [0.24.0](https://github.com/thewoolleyman/livespec/compare/v0.23.0...v0.24.0) (2026-08-03)
 
 
