@@ -30,6 +30,9 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
+from returns.io import IOFailure, IOResult, IOSuccess
+from returns.unsafe import unsafe_perform_io
+
 from livespec_runtime.github_auth.config import GithubAppConfig
 from livespec_runtime.github_auth.errors import GithubAppAuthError
 from livespec_runtime.github_auth.signing import (
@@ -56,15 +59,20 @@ _USER_AGENT = "livespec-runtime-github-auth"
 
 
 class SignRs256(Protocol):
-    """RS256 signer seam (production: `signing.sign_rs256_with_openssl`)."""
+    """RS256 signer seam (production: `signing.sign_rs256_with_openssl`).
 
-    def __call__(self, *, signing_input: str, pem: str) -> bytes: ...
+    ⛔ THE PROTOCOL AND ITS IMPLEMENTATION CANNOT BE SPLIT. Changing the
+    signer's return type IS changing this protocol, and a tree part-way
+    through that change does not type-check.
+    """
+
+    def __call__(self, *, signing_input: str, pem: str) -> IOResult[bytes, GithubAppAuthError]: ...
 
 
 class HttpJson(Protocol):
     """JWT-authenticated GitHub REST call seam returning parsed JSON."""
 
-    def __call__(self, *, url: str, jwt: str) -> Any: ...
+    def __call__(self, *, url: str, jwt: str) -> IOResult[Any, GithubAppAuthError]: ...
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -76,7 +84,7 @@ class MintSeams:
     http_post: HttpJson
 
 
-def _request_json(*, url: str, jwt: str, method: str) -> Any:
+def _request_json(*, url: str, jwt: str, method: str) -> IOResult[Any, GithubAppAuthError]:
     """JWT-authenticated GitHub REST call → parsed JSON.
 
     Refuses non-https URLs before any request leaves the process. An
@@ -84,10 +92,13 @@ def _request_json(*, url: str, jwt: str, method: str) -> Any:
     or a transport error is an EXPECTED failure → `GithubAppAuthError`.
     """
     if not url.startswith("https://"):
-        raise GithubAppAuthError(
-            detail=(
-                f"refusing non-https GitHub API URL {url!r}; " "set GITHUB_API_URL to an https root"
-            ),
+        return IOFailure(
+            GithubAppAuthError(
+                detail=(
+                    f"refusing non-https GitHub API URL {url!r}; "
+                    "set GITHUB_API_URL to an https root"
+                ),
+            )
         )
     request = urllib.request.Request(  # noqa: S310 — https-only enforced above; fixed scheme.
         url,
@@ -103,17 +114,18 @@ def _request_json(*, url: str, jwt: str, method: str) -> Any:
     )
     try:
         with urllib.request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:  # noqa: S310 — https-only enforced above.
-            return json.load(response)
+            decoded: Any = json.load(response)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise GithubAppAuthError(detail=f"GitHub App API call to {url} failed: {exc}") from exc
+        return IOFailure(GithubAppAuthError(detail=f"GitHub App API call to {url} failed: {exc}"))
+    return IOSuccess(decoded)
 
 
-def http_get_json(*, url: str, jwt: str) -> Any:
+def http_get_json(*, url: str, jwt: str) -> IOResult[Any, GithubAppAuthError]:
     """Production HTTP GET seam (JWT-authenticated)."""
     return _request_json(url=url, jwt=jwt, method="GET")
 
 
-def http_post_json(*, url: str, jwt: str) -> Any:
+def http_post_json(*, url: str, jwt: str) -> IOResult[Any, GithubAppAuthError]:
     """Production HTTP POST seam (JWT-authenticated)."""
     return _request_json(url=url, jwt=jwt, method="POST")
 
@@ -127,7 +139,7 @@ DEFAULT_MINT_SEAMS = MintSeams(
 
 def resolve_installation_id(
     *, api_url: str, jwt: str, installation_id: str | None, http_get: HttpJson
-) -> str:
+) -> IOResult[str, GithubAppAuthError]:
     """Return the installation id: the pinned one, else the App's sole install.
 
     Discovery is deliberately strict: anything other than exactly one
@@ -135,29 +147,36 @@ def resolve_installation_id(
     pinning `GITHUB_APP_INSTALLATION_ID`.
     """
     if installation_id is not None and installation_id != "":
-        return installation_id
-    payload = http_get(url=f"{api_url}/app/installations", jwt=jwt)
+        return IOSuccess(installation_id)
+    listed = http_get(url=f"{api_url}/app/installations", jwt=jwt)
+    if isinstance(listed, IOFailure):
+        return listed
+    payload = unsafe_perform_io(listed.unwrap())
     if not isinstance(payload, list):
-        raise GithubAppAuthError(
-            detail=(
-                "the App /installations API did not return a list; "
-                "set GITHUB_APP_INSTALLATION_ID to pin the installation to mint for"
-            ),
+        return IOFailure(
+            GithubAppAuthError(
+                detail=(
+                    "the App /installations API did not return a list; "
+                    "set GITHUB_APP_INSTALLATION_ID to pin the installation to mint for"
+                ),
+            )
         )
     installations = cast("list[object]", payload)
     if len(installations) != 1:
-        raise GithubAppAuthError(
-            detail=(
-                f"the App has {len(installations)} installations; set "
-                "GITHUB_APP_INSTALLATION_ID to pin the one to mint for"
-            ),
+        return IOFailure(
+            GithubAppAuthError(
+                detail=(
+                    f"the App has {len(installations)} installations; set "
+                    "GITHUB_APP_INSTALLATION_ID to pin the one to mint for"
+                ),
+            )
         )
-    return str(cast("dict[str, Any]", installations[0])["id"])
+    return IOSuccess(str(cast("dict[str, Any]", installations[0])["id"]))
 
 
 def mint_installation_token(
     *, config: GithubAppConfig, issued_at: int, seams: MintSeams = DEFAULT_MINT_SEAMS
-) -> str:
+) -> IOResult[str, GithubAppAuthError]:
     """Mint and return a GitHub App installation token (the railway entry point).
 
     Composes the pure JWT assembly with the injected signer + HTTP
@@ -167,33 +186,67 @@ def mint_installation_token(
     propagate as built-ins. The returned token is ephemeral: use it,
     never persist it at rest.
     """
+    gap = _credential_gap(config=config)
+    if gap is not None:
+        return IOFailure(gap)
+    signing_input = jwt_signing_input(app_id=config.app_id, issued_at=issued_at)
+    signed = seams.sign(signing_input=signing_input, pem=normalize_pem(raw=config.private_key_pem))
+    if isinstance(signed, IOFailure):
+        return signed
+    jwt = f"{signing_input}.{b64url(raw=unsafe_perform_io(signed.unwrap()))}"
+    return _token_for_installation(config=config, jwt=jwt, seams=seams)
+
+
+def _credential_gap(*, config: GithubAppConfig) -> GithubAppAuthError | None:
+    """The fail-closed credential precondition, or `None` when both are present.
+
+    ⛔ `GithubAppAuthError | None` HERE IS A LEGITIMATE ABSENCE, NOT A
+    HAND-ROLLED FAILURE TRACK: `None` means "no gap", the ordinary answer.
+    The failure this reports rides the caller's `IOResult` one line up.
+    """
     if config.app_id == "":
-        raise GithubAppAuthError(
+        return GithubAppAuthError(
             detail="GITHUB_APP_ID is empty; the tenant's credential_wrapper must inject it",
         )
     if config.private_key_pem == "":
-        raise GithubAppAuthError(
+        return GithubAppAuthError(
             detail="GITHUB_PRIVATE_KEY is empty; the tenant's credential_wrapper must inject it",
         )
-    signing_input = jwt_signing_input(app_id=config.app_id, issued_at=issued_at)
-    signature = seams.sign(
-        signing_input=signing_input, pem=normalize_pem(raw=config.private_key_pem)
-    )
-    jwt = f"{signing_input}.{b64url(raw=signature)}"
-    resolved = resolve_installation_id(
+    return None
+
+
+def _token_for_installation(
+    *, config: GithubAppConfig, jwt: str, seams: MintSeams
+) -> IOResult[str, GithubAppAuthError]:
+    """Resolve the installation and POST for its token, given a signed App JWT.
+
+    Split from `mint_installation_token` so neither carries the other's
+    branches: that one owns the credential precondition and the signature,
+    this one owns the two API calls and what their answers must contain.
+    """
+    identified = resolve_installation_id(
         api_url=config.api_url,
         jwt=jwt,
         installation_id=config.installation_id,
         http_get=seams.http_get,
     )
-    minted = seams.http_post(
+    if isinstance(identified, IOFailure):
+        return identified
+    resolved = unsafe_perform_io(identified.unwrap())
+    posted = seams.http_post(
         url=f"{config.api_url}/app/installations/{resolved}/access_tokens", jwt=jwt
     )
+    if isinstance(posted, IOFailure):
+        return posted
+    minted = unsafe_perform_io(posted.unwrap())
     token = cast("dict[str, Any]", minted).get("token") if isinstance(minted, dict) else None
     if not isinstance(token, str) or token == "":
-        raise GithubAppAuthError(
-            detail=(
-                f"installation {resolved} returned no access token; " "verify the App's permissions"
-            ),
+        return IOFailure(
+            GithubAppAuthError(
+                detail=(
+                    f"installation {resolved} returned no access token; "
+                    "verify the App's permissions"
+                ),
+            )
         )
-    return token
+    return IOSuccess(token)

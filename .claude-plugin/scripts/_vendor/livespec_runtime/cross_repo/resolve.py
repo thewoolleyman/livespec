@@ -35,10 +35,12 @@ Resolution semantics:
 
 from collections.abc import Callable
 
+from returns.io import IOFailure, IOResult
+from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec_runtime.cross_repo.providers import github as gh_provider
-from livespec_runtime.cross_repo.retry import retry_with_backoff
+from livespec_runtime.cross_repo.retry import RetryExhausted, retry_with_backoff
 from livespec_runtime.cross_repo.types import (
     BranchDependency,
     CrossRepoManifest,
@@ -112,14 +114,15 @@ def _resolve_pull_request(
     target = manifest.targets.get(repo)
     if target is None:
         return RefStatus.UNKNOWN
-    state = retry_with_backoff(
+    answered = retry_with_backoff(
         fn=lambda: gh_provider.query_pull_request_state(
             github_url=target.github_url,
             number=number,
         ),
     )
-    if state is None:
+    if isinstance(answered, IOFailure):
         return RefStatus.UNKNOWN
+    state = unsafe_perform_io(answered.unwrap())
     if state in ("MERGED", "CLOSED"):
         return RefStatus.CLOSED
     return RefStatus.OPEN
@@ -134,23 +137,40 @@ def _resolve_branch(
     target = manifest.targets.get(repo)
     if target is None:
         return RefStatus.UNKNOWN
-    exists = retry_with_backoff(
+    probed = retry_with_backoff(
         fn=lambda: gh_provider.branch_exists_on_remote(
             github_url=target.github_url,
             name=name,
         ),
     )
+    exists = _answer(outcome=probed)
     if exists is None:
         return RefStatus.UNKNOWN
     if not exists:
         return RefStatus.CLOSED
-    merged = retry_with_backoff(
+    compared = retry_with_backoff(
         fn=lambda: gh_provider.branch_merged_into_default(
             github_url=target.github_url,
             name=name,
             default_branch=target.default_branch,
         ),
     )
+    merged = _answer(outcome=compared)
     if merged is None:
         return RefStatus.UNKNOWN
     return RefStatus.CLOSED if merged else RefStatus.OPEN
+
+
+def _answer(*, outcome: IOResult[bool, RetryExhausted]) -> bool | None:
+    """The boolean a probe settled on, or `None` when it never settled.
+
+    ⛔ THIS `bool | None` IS A LEGITIMATE ABSENCE, NOT THE `T | None`
+    THIS SEAM REMOVED. `retry_with_backoff` used to return `T | None`
+    where `None` stood in for a FAILURE that carried no reason. Here the
+    failure has already been reported with its reason on the railway,
+    and `None` means only "no answer" — the exact thing the domain
+    models as `RefStatus.UNKNOWN` one line up.
+    """
+    if isinstance(outcome, IOFailure):
+        return None
+    return unsafe_perform_io(outcome.unwrap())
