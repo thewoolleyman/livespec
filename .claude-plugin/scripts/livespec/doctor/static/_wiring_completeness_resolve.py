@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from returns.io import IOResult
 
@@ -17,14 +17,26 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
 from livespec.errors import LivespecError
 from livespec.io import proc
 
-__all__: list[str] = ["_resolve_sibling_justfile"]
+__all__: list[str] = ["ResolvedCheckSource", "_resolve_sibling_check_source"]
 
 
-def _read_justfile_from_local_clone(
+_INVENTORY_PATH = "check-targets.txt"
+_JUSTFILE_PATH = "justfile"
+
+
+class ResolvedCheckSource(NamedTuple):
+    """A sibling's selected aggregate source and its committed text."""
+
+    kind: str
+    text: str
+
+
+def _read_file_from_local_clone(
     *,
     local_clone: Path,
+    repo_path: str,
 ) -> IOResult[str | None, LivespecError]:
-    """Read `<local_clone>`'s justfile from the git database at HEAD.
+    """Read a sibling file from the local clone's git database at HEAD.
 
     Uses `git -C <local_clone> show HEAD:justfile` rather than a
     direct filesystem read. The git db is the canonical source of
@@ -41,7 +53,7 @@ def _read_justfile_from_local_clone(
       - `local_clone` exists but isn't a git directory (no `.git`
         and not a bare repo): `git -C` exits 128 with `fatal: not
         a git repository`.
-      - `HEAD:justfile` doesn't exist (deleted from master or
+      - `HEAD:<repo_path>` doesn't exist (deleted from master or
         never present): `git show` exits 128 with `fatal: path
         'justfile' does not exist in 'HEAD'`.
       - Any other git failure (e.g., corrupted repo): non-zero
@@ -58,19 +70,20 @@ def _read_justfile_from_local_clone(
         "-C",
         str(local_clone),
         "show",
-        "HEAD:justfile",
+        f"HEAD:{repo_path}",
     ]
     return proc.run_subprocess(argv=argv, cwd=None).map(
         lambda completed: (completed.stdout if completed.returncode == 0 else None),
     )
 
 
-def _fetch_justfile_from_github(
+def _fetch_file_from_github(
     *,
     identity: GithubRepoIdentity,
     default_branch: str,
+    repo_path: str,
 ) -> IOResult[str | None, LivespecError]:
-    """Fetch `<repo>/justfile` at `default_branch` via the GitHub API.
+    """Fetch a sibling file at `default_branch` via the GitHub API.
 
     Uses `gh api --method GET repos/<owner>/<name>/contents/justfile
     -f ref=<branch>` and base64-decodes the returned `content`
@@ -81,7 +94,7 @@ def _fetch_justfile_from_github(
     argv = [
         "gh",
         "api",
-        f"repos/{identity.owner}/{identity.name}/contents/justfile",
+        f"repos/{identity.owner}/{identity.name}/contents/{repo_path}",
         # `--method GET` is load-bearing: `gh api` flips its default
         # method to POST whenever a `-f` field flag is present, and
         # POST on the contents endpoint is the create-file call
@@ -104,8 +117,8 @@ def _fetch_justfile_from_github(
 def _resolve_via_github(
     *,
     target: dict[str, Any],
-) -> IOResult[str | None, LivespecError]:
-    """Resolve a sibling's justfile via the GitHub Contents API (Path B)."""
+) -> IOResult[ResolvedCheckSource | None, LivespecError]:
+    """Resolve inventory-first aggregate wiring via GitHub (Path B)."""
     github_url = target.get("github_url")
     if not isinstance(github_url, str):
         return IOResult.from_value(None)
@@ -114,21 +127,41 @@ def _resolve_via_github(
         return IOResult.from_value(None)
     default_branch_raw = target.get("default_branch", "master")
     default_branch = default_branch_raw if isinstance(default_branch_raw, str) else "master"
-    return _fetch_justfile_from_github(identity=identity, default_branch=default_branch)
+    return _fetch_file_from_github(
+        identity=identity,
+        default_branch=default_branch,
+        repo_path=_INVENTORY_PATH,
+    ).bind(
+        lambda inventory_text: (
+            IOResult.from_value(ResolvedCheckSource("inventory", inventory_text))
+            if inventory_text is not None
+            else _fetch_file_from_github(
+                identity=identity,
+                default_branch=default_branch,
+                repo_path=_JUSTFILE_PATH,
+            ).map(
+                lambda justfile_text: (
+                    ResolvedCheckSource("justfile", justfile_text)
+                    if justfile_text is not None
+                    else None
+                ),
+            )
+        ),
+    )
 
 
-def _resolve_sibling_justfile(
+def _resolve_sibling_check_source(
     *,
     sibling_slug: str,
     target: dict[str, Any],
-) -> IOResult[str | None, LivespecError]:
-    """Resolve a single sibling's justfile text via local-clone-then-GitHub.
+) -> IOResult[ResolvedCheckSource | None, LivespecError]:
+    """Resolve a sibling's inventory-first aggregate source over both paths.
 
-    Returns `IOSuccess(<text>)` when the justfile was successfully
-    read by either path; `IOSuccess(None)` when neither path
-    succeeded.
+    `check-targets.txt` takes precedence whenever present, matching
+    the producer's own completeness checks. A missing inventory
+    falls back to the existing `targets=(...)` justfile source.
 
-    Path A: `git -C <local_clone> show HEAD:justfile`. The effective
+    Path A reads `HEAD:check-targets.txt`, then `HEAD:justfile`. The effective
     `local_clone` is resolved via
     `resolve_effective_local_clone` so the
     `LIVESPEC_SIBLING_CLONES_ROOT` env-var override is honored (the
@@ -138,8 +171,7 @@ def _resolve_sibling_justfile(
     `IOSuccess(None)` and the railway falls through to Path B
     below.
 
-    Path B: `gh api repos/<owner>/<name>/contents/justfile?ref=<branch>`
-    with base64-decoding.
+    Path B repeats the same precedence through the GitHub Contents API.
     """
     effective_local_clone = resolve_effective_local_clone(
         sibling_slug=sibling_slug,
@@ -147,11 +179,23 @@ def _resolve_sibling_justfile(
     )
     if effective_local_clone is not None:
         local_clone = Path(effective_local_clone)
-        return _read_justfile_from_local_clone(local_clone=local_clone).bind(
-            lambda local_text: (
-                IOResult.from_value(local_text)
-                if local_text is not None
-                else _resolve_via_github(target=target)
+        return _read_file_from_local_clone(
+            local_clone=local_clone,
+            repo_path=_INVENTORY_PATH,
+        ).bind(
+            lambda inventory_text: (
+                IOResult.from_value(ResolvedCheckSource("inventory", inventory_text))
+                if inventory_text is not None
+                else _read_file_from_local_clone(
+                    local_clone=local_clone,
+                    repo_path=_JUSTFILE_PATH,
+                ).bind(
+                    lambda justfile_text: (
+                        IOResult.from_value(ResolvedCheckSource("justfile", justfile_text))
+                        if justfile_text is not None
+                        else _resolve_via_github(target=target)
+                    ),
+                )
             ),
         )
     return _resolve_via_github(target=target)

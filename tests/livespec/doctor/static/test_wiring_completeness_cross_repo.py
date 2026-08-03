@@ -138,6 +138,13 @@ def _make_justfile_text(*, slugs: tuple[str, ...]) -> str:
     )
 
 
+def _make_check_targets_text(*, slugs: tuple[str, ...]) -> str:
+    """Build the tracked inventory consumed by a delegated `check` recipe."""
+    return "# Canonical check inventory for `just check`.\n" + "".join(
+        f"{slug}\n" for slug in slugs
+    )
+
+
 def _setup_project(*, tmp_path: Path) -> tuple[Path, Path]:
     """Create a project_root + spec_root pair under `tmp_path`."""
     project_root = tmp_path / "project"
@@ -224,6 +231,44 @@ def _setup_sibling_clone_with_raw_justfile(
     return clone
 
 
+def _setup_sibling_clone_with_inventory(
+    *,
+    tmp_path: Path,
+    slug: str,
+    slugs: tuple[str, ...],
+) -> Path:
+    """Commit a delegated justfile and its load-bearing target inventory."""
+    clone = _setup_sibling_clone_with_raw_justfile(
+        tmp_path=tmp_path,
+        slug=slug,
+        justfile_text="check:\n    scripts/just/check.sh\n",
+    )
+    _ = (clone / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=slugs), encoding="utf-8"
+    )
+    _ = subprocess.run(
+        ["git", "add", "check-targets.txt"],
+        cwd=clone,
+        check=True,
+    )
+    _ = subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--quiet",
+            "--amend",
+            "--no-edit",
+        ],
+        cwd=clone,
+        check=True,
+    )
+    return clone
+
+
 def _get_canonical_slugs() -> tuple[str, ...]:
     """Read canonical slugs through the production dual-shape boundary."""
     slugs = wiring_completeness_cross_repo._resolve_canonical_slugs()  # noqa: SLF001
@@ -256,6 +301,9 @@ def _install_gh_fake(
     *,
     monkeypatch: pytest.MonkeyPatch,
     response_by_owner_name: dict[tuple[str, str], subprocess.CompletedProcess[str]],
+    inventory_response_by_owner_name: (
+        dict[tuple[str, str], subprocess.CompletedProcess[str]] | None
+    ) = None,
 ) -> None:
     """Install a fake `livespec.io.proc.run_subprocess` for gh-api calls.
 
@@ -306,8 +354,14 @@ def _install_gh_fake(
         segments = contents_arg.split("/")
         owner = segments[1]
         name = segments[2]
-        if (owner, name) in response_by_owner_name:
-            return IOResult.from_value(response_by_owner_name[(owner, name)])
+        path = segments[-1]
+        responses = (
+            inventory_response_by_owner_name
+            if path == "check-targets.txt"
+            else response_by_owner_name
+        )
+        if responses is not None and (owner, name) in responses:
+            return IOResult.from_value(responses[(owner, name)])
         return IOResult.from_value(_completed(stdout="", returncode=1))
 
     monkeypatch.setattr(io_proc, "run_subprocess", fake_run_subprocess)
@@ -346,6 +400,133 @@ def test_passes_when_every_sibling_wires_full_canonical_set(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_path_a_reads_delegated_check_targets_inventory(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Path A reads committed `check-targets.txt` before parsing the justfile."""
+    canonical = _get_canonical_slugs()
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    sibling_clone = _setup_sibling_clone_with_inventory(
+        tmp_path=tmp_path,
+        slug="sibling-a",
+        slugs=canonical,
+    )
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(sibling_clone),
+                "default_branch": "master",
+            },
+        },
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    finding = wiring_completeness_cross_repo.run(ctx=ctx)
+
+    assert finding == IOSuccess(
+        Finding(
+            check_id="doctor-wiring-completeness-cross-repo",
+            status="pass",
+            message=(
+                "wiring-completeness-cross-repo: every registered sibling's "
+                "`check` aggregate wires every canonical slug"
+            ),
+            path=None,
+            line=None,
+            spec_root=str(spec_root),
+        )
+    )
+
+
+def test_path_b_reads_delegated_check_targets_inventory(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Path B queries `contents/check-targets.txt` before the justfile fallback."""
+    canonical = _get_canonical_slugs()
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "default_branch": "master",
+            },
+        },
+    )
+    _install_gh_fake(
+        monkeypatch=monkeypatch,
+        response_by_owner_name={
+            ("example", "sibling-a"): _completed(
+                stdout=_gh_contents_payload(justfile_text="check:\n    scripts/just/check.sh\n")
+            ),
+        },
+        inventory_response_by_owner_name={
+            ("example", "sibling-a"): _completed(
+                stdout=_gh_contents_payload(justfile_text=_make_check_targets_text(slugs=canonical))
+            ),
+        },
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    finding = wiring_completeness_cross_repo.run(ctx=ctx)
+
+    assert finding == IOSuccess(
+        Finding(
+            check_id="doctor-wiring-completeness-cross-repo",
+            status="pass",
+            message=(
+                "wiring-completeness-cross-repo: every registered sibling's "
+                "`check` aggregate wires every canonical slug"
+            ),
+            path=None,
+            line=None,
+            spec_root=str(spec_root),
+        )
+    )
+
+
+def test_check_targets_inventory_still_reports_missing_slug(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A present inventory remains non-vacuous and reports an omitted target."""
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
+    sibling_slugs = tuple(slug for slug in canonical if slug != dropped)
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    sibling_clone = _setup_sibling_clone_with_inventory(
+        tmp_path=tmp_path,
+        slug="sibling-a",
+        slugs=sibling_slugs,
+    )
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(sibling_clone),
+            },
+        },
+    )
+
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    io_result = wiring_completeness_cross_repo.run(ctx=ctx)
+    from returns.unsafe import unsafe_perform_io
+
+    inner = unsafe_perform_io(io_result)
+    from returns.result import Success
+
+    assert isinstance(inner, Success)
+    finding = inner.unwrap()
+    assert finding.status == "fail"
+    assert f"sibling-a→{dropped}" in finding.message
 
 
 def test_planning_only_targets_are_not_checked_for_wiring_completeness(
@@ -1947,22 +2128,19 @@ def test_env_var_override_makes_path_a_resolve_via_env_root(
     assert result == IOSuccess(expected)
 
 
-def test_fetch_justfile_from_github_forces_explicit_get_method(
+def test_fetch_check_sources_from_github_force_explicit_get_method(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Path B's `gh api` argv MUST carry an explicit GET method pin.
+    """Both Path B inventory/fallback requests carry an explicit GET method pin.
 
     `gh api <endpoint> -f key=value` switches the default HTTP
     method from GET to POST whenever a field flag is present;
-    `POST /repos/<owner>/<name>/contents/justfile` is the
-    create-file endpoint and answers 404, so the fallback silently
-    failed on every invocation (masked for as long as Path A's
-    local clone resolved). The argv MUST pin the method with an
-    adjacent `--method GET` pair, and the contents endpoint MUST
-    stay at argv[2] (the position the gh fake in this suite — and
-    any consumer matching on it — indexes).
+    `POST /repos/<owner>/<name>/contents/<path>` is the create-file
+    endpoint and answers 404. Both the preferred inventory request
+    and the justfile fallback MUST pin GET, with each endpoint at
+    argv[2] (the position the gh fake in this suite indexes).
     """
     canonical = _get_canonical_slugs()
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
@@ -1985,6 +2163,8 @@ def test_fetch_justfile_from_github_forces_explicit_get_method(
     ) -> IOResult[subprocess.CompletedProcess[str], Any]:
         _ = cwd
         captured.append(argv)
+        if argv[2].endswith("/check-targets.txt"):
+            return IOResult.from_value(_completed(stdout="", returncode=1))
         return IOResult.from_value(
             _completed(stdout=_gh_contents_payload(justfile_text=justfile_text)),
         )
@@ -1992,14 +2172,16 @@ def test_fetch_justfile_from_github_forces_explicit_get_method(
     monkeypatch.setattr(io_proc, "run_subprocess", fake_run_subprocess)
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     result = wiring_completeness_cross_repo.run(ctx=ctx)
-    assert captured, "gh api was never invoked"
-    argv = captured[0]
-    assert argv[0] == "gh"
-    assert argv[1] == "api"
-    assert argv[2] == "repos/example/sibling-a/contents/justfile"
-    assert "--method" in argv, f"argv lacks an explicit method pin: {argv}"
-    method_index = argv.index("--method")
-    assert argv[method_index + 1] == "GET", f"method is not GET: {argv}"
+    assert [argv[2] for argv in captured] == [
+        "repos/example/sibling-a/contents/check-targets.txt",
+        "repos/example/sibling-a/contents/justfile",
+    ]
+    for argv in captured:
+        assert argv[0] == "gh"
+        assert argv[1] == "api"
+        assert "--method" in argv, f"argv lacks an explicit method pin: {argv}"
+        method_index = argv.index("--method")
+        assert argv[method_index + 1] == "GET", f"method is not GET: {argv}"
     expected = Finding(
         check_id="doctor-wiring-completeness-cross-repo",
         status="pass",

@@ -81,11 +81,11 @@ from livespec.context import DoctorContext
 from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     build_aggregate_finding,
     filter_sibling_targets,
-    interpret_justfile_text,
     make_finding,
 )
-from livespec.doctor.static._wiring_completeness_resolve import _resolve_sibling_justfile
+from livespec.doctor.static._wiring_completeness_resolve import _resolve_sibling_check_source
 from livespec.doctor.static._wiring_completeness_slug_shape import slugs_from_either_shape
+from livespec.doctor.static._wiring_completeness_source import interpret_check_source
 from livespec.errors import LivespecError
 from livespec.io import fs
 from livespec.parse import jsonc
@@ -105,11 +105,12 @@ def _evaluate_sibling(
     canonical_slugs: tuple[str, ...],
 ) -> IOResult[list[tuple[str, str]], LivespecError]:
     """Compute (sibling, missing-slug) pairs for one sibling on the IO track."""
-    return _resolve_sibling_justfile(sibling_slug=sibling_slug, target=target).bind(
-        lambda justfile_text: IOResult.from_value(
-            interpret_justfile_text(
+    return _resolve_sibling_check_source(sibling_slug=sibling_slug, target=target).bind(
+        lambda source: IOResult.from_value(
+            interpret_check_source(
                 sibling_slug=sibling_slug,
-                justfile_text=justfile_text,
+                source_kind=(source.kind if source is not None else "justfile"),
+                source_text=(source.text if source is not None else None),
                 canonical_slugs=canonical_slugs,
             ),
         ),
