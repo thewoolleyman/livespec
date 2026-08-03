@@ -14,7 +14,10 @@ Read these in order before acting:
 2. `SPECIFICATION/non-functional-requirements.md` §“Self-hosted CI runner host requirements” and its two conforming-host/fallback scenarios
 3. `/data/projects/homelab/plan/05-hetzner-fleet-member/handoff.md`
 4. `/data/projects/homelab/plan/07-build-substrate/handoff.md`
-5. The relevant repository instructions in each repository's `AGENTS.md`, then their referenced credential, verification, CI-gate, work-item, and worktree guidance before touching those topics
+5. `/data/projects/livespec/AGENTS.md`
+6. `/data/projects/homelab/AGENTS.md`
+
+The named first action is read-only. Before any later mutation, load the exact topic guidance required by those two instruction files; in particular, do not touch credentials, CI gates, work-items, specifications, timed evidence, worktrees, or host deployment from remembered conventions.
 
 Do not use archived plan placement as delivery evidence. Homelab epic `hl-6uldtn` is reopened and delivery-active; its active thread is `plan/05-hetzner-fleet-member/`. Thread07 already owns the host build/CI substrate. Never create a competing homelab plan or contact the host from this thread.
 
