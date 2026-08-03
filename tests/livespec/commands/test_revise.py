@@ -8,6 +8,7 @@ per-proposal `decisions[]` in payload order, write paired
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -157,6 +158,36 @@ def _write_valid_revise_payload(*, tmp_path: Path) -> Path:
     payload_path = tmp_path / "revise.json"
     _ = payload_path.write_text(json.dumps(payload_dict), encoding="utf-8")
     return payload_path
+
+
+def _canonical_digest(*, resulting_files: list[dict[str, str]]) -> str:
+    digest = hashlib.sha256()
+    for entry in resulting_files:
+        path_bytes = entry["path"].encode("utf-8")
+        content_bytes = entry["content"].encode("utf-8")
+        digest.update(str(len(path_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(path_bytes)
+        digest.update(str(len(content_bytes)).encode("ascii"))
+        digest.update(b":")
+        digest.update(content_bytes)
+    return digest.hexdigest()
+
+
+def _ratification_evidence(
+    *,
+    resulting_files: list[dict[str, str]],
+) -> dict[str, object]:
+    return {
+        "reviewer_identity": "fable",
+        "reviewer_model": "fable",
+        "separate_reviewer": True,
+        "read_only": True,
+        "reviewed_at": "2026-08-03T12:34:56Z",
+        "verdict": "NO BLOCKERS",
+        "proposal_stem": "demo",
+        "content_digest": _canonical_digest(resulting_files=resulting_files),
+    }
 
 
 def test_revise_main_returns_zero_when_revise_file_readable(
@@ -640,6 +671,7 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
     _ = proposed_md.write_text("## Proposal: demo\n", encoding="utf-8")
     payload_path = tmp_path / "revise.json"
     new_spec_content = "# Spec v2\nNew content.\n"
+    resulting_files = [{"path": "spec.md", "content": new_spec_content}]
     _ = payload_path.write_text(
         json.dumps(
             {
@@ -648,9 +680,11 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
                         "proposal_topic": "demo",
                         "decision": "accept",
                         "rationale": "Looks good.",
-                        "resulting_files": [
-                            {"path": "spec.md", "content": new_spec_content},
-                        ],
+                        "resulting_files": resulting_files,
+                        "ratification_review": "manual-spawn",
+                        "ratification_evidence": _ratification_evidence(
+                            resulting_files=resulting_files,
+                        ),
                     },
                 ],
             },
@@ -667,6 +701,99 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
     )
     assert exit_code == 0
     assert spec_md.read_text(encoding="utf-8") == new_spec_content
+
+
+def test_revise_main_rejects_accept_without_ratification_evidence_before_write(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Accept/modify decisions require independent review evidence before mutation."""
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    spec_md = spec_target / "spec.md"
+    original = "# Spec v1\nOld content.\n"
+    _ = spec_md.write_text(original, encoding="utf-8")
+    _ = (proposed_changes / "demo.md").write_text("## Proposal: demo\n", encoding="utf-8")
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Looks good.",
+                        "resulting_files": [{"path": "spec.md", "content": "# Spec v2\n"}],
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+
+    assert exit_code == 4
+    assert spec_md.read_text(encoding="utf-8") == original
+    assert not (spec_target / "history" / "v002").exists()
+
+
+def test_revise_main_rejects_digest_mismatched_ratification_evidence_before_write(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Ratification evidence is bound to the exact final resulting-files bytes."""
+    spec_target = tmp_path / "spec-root"
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir(parents=True)
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    spec_md = spec_target / "spec.md"
+    original = "# Spec v1\nOld content.\n"
+    _ = spec_md.write_text(original, encoding="utf-8")
+    _ = (proposed_changes / "demo.md").write_text("## Proposal: demo\n", encoding="utf-8")
+    resulting_files = [{"path": "spec.md", "content": "# Spec v2\n"}]
+    evidence = _ratification_evidence(resulting_files=resulting_files)
+    evidence["content_digest"] = "0" * 64
+    payload_path = tmp_path / "revise.json"
+    _ = payload_path.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "accept",
+                        "rationale": "Looks good.",
+                        "resulting_files": resulting_files,
+                        "ratification_review": "auto-spawn",
+                        "ratification_evidence": evidence,
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(payload_path),
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+
+    assert exit_code == 4
+    assert spec_md.read_text(encoding="utf-8") == original
+    assert not (spec_target / "history" / "v002").exists()
 
 
 def _git_init_with_user(*, cwd: Path, name: str, email: str) -> None:
@@ -791,6 +918,7 @@ def test_revise_main_emits_modifications_section_for_modify_decision(
     )
     _ = (spec_target / "spec.md").write_text("old content\n", encoding="utf-8")
     payload_path = tmp_path / "revise.json"
+    resulting_files = [{"path": "spec.md", "content": "modified content"}]
     _ = payload_path.write_text(
         json.dumps(
             {
@@ -800,9 +928,11 @@ def test_revise_main_emits_modifications_section_for_modify_decision(
                         "decision": "modify",
                         "rationale": "Mostly OK.",
                         "modifications": "Tightened the wording on paragraph 2.",
-                        "resulting_files": [
-                            {"path": "spec.md", "content": "modified content"},
-                        ],
+                        "resulting_files": resulting_files,
+                        "ratification_review": "auto-spawn",
+                        "ratification_evidence": _ratification_evidence(
+                            resulting_files=resulting_files,
+                        ),
                     },
                 ],
             },
@@ -854,6 +984,7 @@ def test_revise_main_emits_resulting_changes_section_for_accept_decision(
     )
     _ = (spec_target / "spec.md").write_text("old content\n", encoding="utf-8")
     payload_path = tmp_path / "revise.json"
+    resulting_files = [{"path": "spec.md", "content": "new content"}]
     _ = payload_path.write_text(
         json.dumps(
             {
@@ -862,9 +993,11 @@ def test_revise_main_emits_resulting_changes_section_for_accept_decision(
                         "proposal_topic": "demo",
                         "decision": "accept",
                         "rationale": "Looks good.",
-                        "resulting_files": [
-                            {"path": "spec.md", "content": "new content"},
-                        ],
+                        "resulting_files": resulting_files,
+                        "ratification_review": "manual-spawn",
+                        "ratification_evidence": _ratification_evidence(
+                            resulting_files=resulting_files,
+                        ),
                     },
                 ],
             },
@@ -884,6 +1017,11 @@ def test_revise_main_emits_resulting_changes_section_for_accept_decision(
     text = revision_md.read_text(encoding="utf-8")
     assert "## Resulting Changes" in text
     assert "spec.md" in text
+    assert "## Ratification Review" in text
+    assert "reviewer_model: fable" in text
+    assert "reviewer_identity: fable" in text
+    assert "verdict: NO BLOCKERS" in text
+    assert "content_digest:" in text
 
 
 def test_revise_main_resolves_cli_author_flag_into_author_llm(
@@ -1236,6 +1374,7 @@ def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_d
     proposed_md = proposed_changes / "demo.md"
     _ = proposed_md.write_text("## Proposal: demo\n", encoding="utf-8")
     new_spec_content = "# Spec v2\nNew content.\n"
+    resulting_files = [{"path": "spec.md", "content": new_spec_content}]
     payload_path = tmp_path / "revise.json"
     _ = payload_path.write_text(
         json.dumps(
@@ -1245,9 +1384,11 @@ def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_d
                         "proposal_topic": "demo",
                         "decision": "accept",
                         "rationale": "Looks good.",
-                        "resulting_files": [
-                            {"path": "spec.md", "content": new_spec_content},
-                        ],
+                        "resulting_files": resulting_files,
+                        "ratification_review": "manual-spawn",
+                        "ratification_evidence": _ratification_evidence(
+                            resulting_files=resulting_files,
+                        ),
                     },
                 ],
             },

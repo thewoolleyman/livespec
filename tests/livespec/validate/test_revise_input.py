@@ -76,6 +76,71 @@ def test_validate_revise_input_returns_success_with_dataclass_for_valid_payload(
     assert result == Success(expected)
 
 
+def test_validate_revise_input_accepts_ratification_evidence_fields() -> None:
+    """The revise wire schema admits exact-byte ratification evidence."""
+    schema = _SCHEMA
+    evidence = {
+        "reviewer_identity": "fable",
+        "reviewer_model": "fable",
+        "separate_reviewer": True,
+        "read_only": True,
+        "reviewed_at": "2026-08-03T12:34:56Z",
+        "verdict": "NO BLOCKERS",
+        "proposal_stem": "demo",
+        "content_digest": "a" * 64,
+    }
+    payload: dict[str, object] = {
+        "decisions": [
+            {
+                "proposal_topic": "demo",
+                "decision": "accept",
+                "rationale": "Demo rationale.",
+                "resulting_files": [{"path": "spec.md", "content": "new"}],
+                "ratification_review": "auto-spawn",
+                "ratification_evidence": evidence,
+            },
+        ],
+    }
+
+    result = revise_input.validate_revise_input(payload=payload, schema=schema)
+
+    match result:
+        case Success(value):
+            assert value.decisions[0]["ratification_evidence"] == evidence
+        case _:
+            msg = f"expected Success(RevisionInput), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_revise_input_rejects_malformed_ratification_evidence() -> None:
+    schema = _SCHEMA
+    payload: dict[str, object] = {
+        "decisions": [
+            {
+                "proposal_topic": "demo",
+                "decision": "accept",
+                "rationale": "Demo rationale.",
+                "resulting_files": [{"path": "spec.md", "content": "new"}],
+                "ratification_review": "auto-spawn",
+                "ratification_evidence": {
+                    "reviewer_identity": "fable",
+                    "reviewer_model": "fable",
+                    "separate_reviewer": False,
+                    "read_only": True,
+                    "reviewed_at": "2026-08-03T12:34:56Z",
+                    "verdict": "NO BLOCKERS",
+                    "proposal_stem": "demo",
+                    "content_digest": "a" * 64,
+                },
+            },
+        ],
+    }
+
+    result = revise_input.validate_revise_input(payload=payload, schema=schema)
+
+    assert isinstance(result, Failure)
+
+
 def test_validate_revise_input_returns_failure_on_schema_violation() -> None:
     """A schema-violating payload returns Failure(ValidationError).
 

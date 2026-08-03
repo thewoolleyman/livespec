@@ -64,6 +64,12 @@ from livespec.commands._revise_railway_emits import (
 from livespec.commands._revise_railway_emits import (
     _process_decisions,
 )
+from livespec.commands._revise_ratification import (
+    _canonical_ratification_digest as _canonical_ratification_digest,
+)
+from livespec.commands._revise_ratification import (
+    _validate_ratification_reviews,
+)
 from livespec.commands._revise_validation import (
     _iter_proposal_topics as _iter_proposal_topics,
 )
@@ -193,6 +199,12 @@ def main(*, argv: list[str] | None = None) -> int:
                 lambda revise_input: _validate_resulting_files(
                     revise_input=revise_input,
                     spec_target=_resolve_spec_target(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda revise_input: _validate_ratification_reviews(
+                    revise_input=revise_input,
+                    project_root=_resolve_project_root(namespace=namespace),
                 ),
             )
             .bind(

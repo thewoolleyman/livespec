@@ -128,6 +128,7 @@ def _compose_revision_body(
         sections.append(f"\n## Modifications\n\n{modifications}\n")
     if decision_value in ("accept", "modify"):
         sections.append(_compose_resulting_changes_section(decision=decision))
+        sections.append(_compose_ratification_review_section(decision=decision))
     if decision_value == "reject":
         sections.append(
             "\n## Rejection Notes\n\n"
@@ -156,3 +157,22 @@ def _compose_resulting_changes_section(*, decision: dict[str, object]) -> str:
                 files_lines.append(f"- {path_value}")
     files_text = "\n".join(files_lines) if files_lines else "(none)"
     return f"\n## Resulting Changes\n\n{files_text}\n"
+
+
+def _compose_ratification_review_section(*, decision: dict[str, object]) -> str:
+    evidence = decision.get("ratification_evidence", {})
+    mode = str(decision.get("ratification_review", ""))
+    if not isinstance(evidence, dict):
+        return "\n## Ratification Review\n\n(none)\n"
+    lines = [
+        f"ratification_review: {mode}",
+        f"reviewer_model: {evidence.get('reviewer_model', '')}",
+        f"reviewer_identity: {evidence.get('reviewer_identity', '')}",
+        f"separate_reviewer: {evidence.get('separate_reviewer', '')}",
+        f"read_only: {evidence.get('read_only', '')}",
+        f"reviewed_at: {evidence.get('reviewed_at', '')}",
+        f"verdict: {evidence.get('verdict', '')}",
+        f"proposal_stem: {evidence.get('proposal_stem', '')}",
+        f"content_digest: {evidence.get('content_digest', '')}",
+    ]
+    return "\n## Ratification Review\n\n" + "\n".join(lines) + "\n"

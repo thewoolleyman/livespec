@@ -351,6 +351,36 @@ and exit code is `0` (NOT an error).
      confirms; the converged content lands in the
      decision's `modifications` field and updated
      `resulting_files[]`.
+   - For every `accept` or `modify` decision, obtain
+     independent ratification-review evidence for the
+     exact final `resulting_files[]` bytes BEFORE assembling
+     the payload. The independent-review floor is
+     unconditional: `manual-spawn` and `auto-spawn` differ
+     only in who initiates the review, not in whether the
+     evidence is required. Resolve the effective
+     `ratification_review` mode from
+     `.livespec.jsonc`'s `spec_governance.ratification_review`
+     safe default (`manual-spawn`) unless the proposed-change
+     front matter carries `ratification_review_policy`, in
+     which case the proposal override wins. In `auto-spawn`,
+     initiate a separate designated read-only Fable reviewer
+     using the configured
+     `spec_governance.ratification_reviewer_model`; in
+     `manual-spawn`, prompt the maintainer to provide the
+     same evidence from an independent reviewer. The driver
+     may spawn or ask; the Python revise CLI MUST only
+     validate evidence and MUST NOT spawn an agent.
+     Evidence proceeds only when it carries reviewer model,
+     reviewer identity, separate-reviewer and read-only
+     declarations, UTC-seconds timestamp, literal verdict
+     `NO BLOCKERS`, the proposal stem, and the canonical
+     length-prefixed SHA-256 digest of the final
+     `resulting_files[]` bytes. Any blocker verdict,
+     reviewer mismatch/unavailability, stale/malformed or
+     digest-mismatched evidence, journal failure, or
+     design-record floor escalates before the revise CLI is
+     invoked. `reject` decisions need no ratification
+     evidence.
    - The user MAY at any per-proposal turn toggle
      "delegate remaining proposals to the LLM." Once
      set, this toggle applies to **all remaining
@@ -408,6 +438,10 @@ and exit code is `0` (NOT an error).
      proposed-change file, each with `proposal_topic`,
      `decision`, `rationale`, optional `modifications`
      (required semantically when `decision == "modify"`),
+     optional `ratification_review` and
+     `ratification_evidence` (required semantically when
+     `decision` is `accept` or `modify`; omitted for
+     `reject`),
      and optional `resulting_files[]` of
      `{path, content}` pairs (for `accept` / `modify`).
    The steering intent from step 4 is consumed by the
@@ -579,6 +613,13 @@ On exit 0, the CLI has:
 
 - Validated the `--revise-json` payload against
   `revise_input.schema.json`.
+- Validated ratification evidence for every `accept` or
+  `modify` decision before any spec/history writes. The CLI
+  checks the configured reviewer model when available, the
+  separate/read-only declarations, UTC-seconds timestamp,
+  literal `NO BLOCKERS` verdict, proposal stem, and the
+  canonical length-prefixed SHA-256 digest of the final
+  `resulting_files[]` bytes. The CLI never spawns a reviewer.
 - Resolved `author_llm` via the four-step precedence and
   `author_human` via `livespec.io.git.get_git_user()`.
 - Run pre-step doctor static (unless skipped).
@@ -621,7 +662,11 @@ On exit 0, the CLI has:
   and design-record authority"),
   `## Modifications` (required when `decision == "modify"`),
   `## Resulting Changes` (required when `decision` is
-  `accept` or `modify`), and `## Rejection Notes`
+  `accept` or `modify`), `## Ratification Review`
+  (required when `decision` is `accept` or `modify`, recording
+  reviewer model, reviewer identity, separate/read-only
+  declarations, review timestamp, verdict, proposal stem, and
+  content digest), and `## Rejection Notes`
   (required when `decision == "reject"`).
 - **Filename stem vs. front-matter `topic` distinction
   (v017 Q7).** The filename stem carries any `-N`
