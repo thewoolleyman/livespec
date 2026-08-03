@@ -18,7 +18,18 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {"gap_id": "gap-ytl62uy7", "scenario": "Error path \u2014 authoring batch input requires attention"},
+      {"gap_id": "gap-2mek6prd", "scenario": "Error path \u2014 authoring batch input requires attention"},
+      {"gap_id": "gap-mudyrsqa", "scenario": "Error path \u2014 doctor disposition requires attention"},
+      {"gap_id": "gap-q2uk6bpo", "scenario": "Error path \u2014 ratification review blocks mutation"},
+      {"gap_id": "gap-5tgcahd4", "scenario": "Error path \u2014 ratification review blocks mutation"},
+      {"gap_id": "gap-mr4orx26", "scenario": "Happy-path revise"},
+      {"gap_id": "gap-o5v54ydj", "scenario": "Error path \u2014 ratification review blocks mutation"},
+      {"gap_id": "gap-ojnyaqyl", "scenario": "Happy-path propose-change"},
+      {"gap_id": "gap-t6lfhqqn", "scenario": "Error path \u2014 authoring batch input requires attention"}
+    ]
   },
   {
     "heading": "## Template manifest",
@@ -72,7 +83,10 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.livespec.doctor.static.test_revision_to_proposed_change_pairing",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {"gap_id": "gap-gxkihm6a", "scenario": "Happy-path revise"}
+    ]
   },
   {
     "heading": "## Non-goals",
@@ -103,7 +117,10 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {"gap_id": "gap-a7rnd225", "scenario": "Error path \u2014 authoring batch input requires attention"}
+    ]
   },
   {
     "heading": "## Lifecycle exit-code table",
@@ -213,7 +230,10 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
-    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md \u00a7\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring."
+    "reason": "Phase 8 item 2 cycle 2 migration of python-skill-script-style-requirements.md \u00a7\"Non-interactive execution\" into constraints.md. Real test pending release-gate test wiring.",
+    "clauses": [
+      {"gap_id": "gap-a4jx6uxw", "scenario": "Error path \u2014 authoring batch input requires attention"}
+    ]
   },
   {
     "heading": "## Python runtime constraint",
@@ -289,6 +309,30 @@
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Error path \u2014 authoring batch input requires attention",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "work_item": "livespec-jvdvx4"
+  },
+  {
+    "heading": "## Error path \u2014 doctor disposition requires attention",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "work_item": "livespec-jvdvx4"
+  },
+  {
+    "heading": "## Error path \u2014 ratification review blocks mutation",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "work_item": "livespec-jvdvx4"
   },
   {
     "heading": "## Error path 1 \u2014 propose-change against a non-existent spec target",
@@ -451,14 +495,27 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
     "test": "tests.prompts.livespec.test_seed",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {"gap_id": "gap-zexnvqaa", "scenario": "Error path \u2014 authoring batch input requires attention"},
+      {"gap_id": "gap-tltgw6xy", "scenario": "Happy-path doctor"},
+      {"gap_id": "gap-gqdyhkiv", "scenario": "Error path \u2014 authoring batch input requires attention"},
+      {"gap_id": "gap-iec7r7cx", "scenario": "Error path \u2014 ratification review blocks mutation"},
+      {"gap_id": "gap-tflwj5ff", "scenario": "Happy-path revise"},
+      {"gap_id": "gap-cb3vsmi2", "scenario": "Error path \u2014 ratification review blocks mutation"}
+    ]
   },
   {
     "heading": "## Sub-command lifecycle mechanics",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
     "test": "tests.prompts.livespec.test_seed",
-    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+    "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
+    "clauses": [
+      {"gap_id": "gap-wijsmr3x", "scenario": "Error path \u2014 authoring batch input requires attention"},
+      {"gap_id": "gap-rxpdij76", "scenario": "Error path \u2014 doctor disposition requires attention"},
+      {"gap_id": "gap-xhi4rtrw", "scenario": "Error path \u2014 ratification review blocks mutation"}
+    ]
   },
   {
     "heading": "## Reference discipline",
@@ -471,7 +528,15 @@
     "heading": "## Doctor per-finding disposition dialogue",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "tests.test_doctor_disposition_prose.test_disposition_menu_lists_five_canonical_options_in_order"
+    "test": "tests.test_doctor_disposition_prose.test_disposition_menu_lists_five_canonical_options_in_order",
+    "clauses": [
+      {"gap_id": "gap-clbnaum7", "scenario": "Error path \u2014 doctor disposition requires attention"},
+      {"gap_id": "gap-qgith7l4", "scenario": "Happy-path doctor"},
+      {"gap_id": "gap-tlyg5qf4", "scenario": "Happy-path doctor"},
+      {"gap_id": "gap-2x7u6a54", "scenario": "Error path \u2014 doctor disposition requires attention"},
+      {"gap_id": "gap-y32olw5s", "scenario": "Error path \u2014 doctor disposition requires attention"},
+      {"gap_id": "gap-w6g2nvz4", "scenario": "Happy-path doctor"}
+    ]
   },
   {
     "heading": "## Fleet agent-instruction core",
@@ -499,6 +564,9 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "test": "tests.test_intent_preservation_lockstep.test_spec_section_carries_the_four_intent_preservation_rules",
-    "reason": "Ratified at v159 (intent-preservation-and-design-record-authority). The lockstep guard mechanically enforces the section + operational-prose co-update contract; the section's LLM-behavioral clauses land clauses[] scenario links via the documented behavior_scenario_link warn-tier backlog per the ratified proposal."
+    "reason": "Ratified at v159 (intent-preservation-and-design-record-authority). The lockstep guard mechanically enforces the section + operational-prose co-update contract; the section's LLM-behavioral clauses land clauses[] scenario links via the documented behavior_scenario_link warn-tier backlog per the ratified proposal.",
+    "clauses": [
+      {"gap_id": "gap-4dxzzn5o", "scenario": "Error path \u2014 ratification review blocks mutation"}
+    ]
   }
 ]
