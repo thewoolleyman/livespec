@@ -21,6 +21,9 @@ threads, no asyncio, per this library's process-boundary constraints
 import time
 from collections.abc import Callable
 
+from returns.io import IOFailure
+from returns.unsafe import unsafe_perform_io
+
 from livespec_runtime.github_auth.config import GithubAppConfig
 from livespec_runtime.github_auth.mint import (
     DEFAULT_MINT_SEAMS,
@@ -63,13 +66,26 @@ class InstallationTokenProvider:
         Callers never handle expiry: any access at or past the refresh
         horizon mints a fresh token first. Mint failures raise
         `GithubAppAuthError` (fail-closed; no fallback credential).
+
+        ⛔ THE RAILWAY TERMINATES HERE, RE-RAISING THE EXACT ERROR THE MINT
+        PUT ON THE FAILURE TRACK. Not `unwrap()`: that raises
+        `UnwrapFailedError`, and the boundary this class presents is a
+        `GithubAppAuthError` that `livespec-orchestrator-beads-fabro`
+        IMPORTS AND CATCHES (`commands/_dispatcher_io.py`,
+        `_dispatcher_self_update.py`), as does this library's own
+        credential helper. Converting the mint to a railway must not
+        change what a consumer catches, so the type and the detail cross
+        this boundary unchanged.
         """
         now = self._clock()
         if self._token is None or now >= self._refresh_at:
-            self._token = mint_installation_token(
+            minted = mint_installation_token(
                 config=self._config,
                 issued_at=int(now),
                 seams=self._seams,
             )
+            if isinstance(minted, IOFailure):
+                raise unsafe_perform_io(minted.failure())
+            self._token = unsafe_perform_io(minted.unwrap())
             self._refresh_at = now + TOKEN_REFRESH_SECONDS
         return self._token

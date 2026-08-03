@@ -8,8 +8,11 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import cast
 
+from returns.io import IOFailure, IOResult, IOSuccess
+from returns.unsafe import unsafe_perform_io
+
 from livespec_runtime.hygiene_scan_context import git, quote_path, worktrees
-from livespec_runtime.hygiene_scan_types import ScanContext
+from livespec_runtime.hygiene_scan_types import CommandUnavailable, ScanContext
 from livespec_runtime.hygiene_scan_worktrees import head_is_merged
 from livespec_runtime.needs_attention import HygieneScanFinding
 
@@ -23,14 +26,19 @@ __all__: list[str] = [
 GH_PR_FIELDS = "number,headRefName,updatedAt,title,url"
 
 
-def primary_health_findings(*, context: ScanContext) -> list[HygieneScanFinding]:
+def primary_health_findings(
+    *, context: ScanContext
+) -> IOResult[list[HygieneScanFinding], CommandUnavailable]:
     findings: list[HygieneScanFinding] = []
     primary = str(context.primary_path)
-    status = git(
+    probed = git(
         repo_path=context.primary_path,
         argv=["status", "--porcelain"],
         runner=context.runner,
     )
+    if isinstance(probed, IOFailure):
+        return probed
+    status = unsafe_perform_io(probed.unwrap())
     if status.returncode == 0 and status.stdout != "":
         findings.append(
             HygieneScanFinding(
@@ -42,17 +50,20 @@ def primary_health_findings(*, context: ScanContext) -> list[HygieneScanFinding]
                 urgency="medium",
             )
         )
-    branch_result = git(
+    named = git(
         repo_path=context.primary_path,
         argv=["symbolic-ref", "--quiet", "--short", "HEAD"],
         runner=context.runner,
     )
+    if isinstance(named, IOFailure):
+        return named
+    branch_result = unsafe_perform_io(named.unwrap())
     branch = branch_result.stdout.strip()
     if branch_result.returncode != 0:
         findings.append(primary_detached_finding(context=context))
     elif branch != context.default_branch:
         findings.append(primary_off_default_finding(context=context, branch=branch))
-    return findings
+    return IOSuccess(findings)
 
 
 def primary_detached_finding(*, context: ScanContext) -> HygieneScanFinding:
@@ -85,24 +96,37 @@ def primary_off_default_finding(*, context: ScanContext, branch: str) -> Hygiene
     )
 
 
-def stale_branch_findings(*, context: ScanContext) -> list[HygieneScanFinding]:
+def stale_branch_findings(
+    *, context: ScanContext
+) -> IOResult[list[HygieneScanFinding], CommandUnavailable]:
+    listed = worktrees(context=context)
+    if isinstance(listed, IOFailure):
+        return listed
     worktree_branches = frozenset(
-        worktree.branch for worktree in worktrees(context=context) if worktree.branch is not None
+        worktree.branch
+        for worktree in unsafe_perform_io(listed.unwrap())
+        if worktree.branch is not None
     )
     findings: list[HygieneScanFinding] = []
-    result = git(
+    probed = git(
         repo_path=context.primary_path,
         argv=["for-each-ref", "--format=%(refname:short)%00%(objectname)", "refs/heads"],
         runner=context.runner,
     )
+    if isinstance(probed, IOFailure):
+        return probed
+    result = unsafe_perform_io(probed.unwrap())
     if result.returncode != 0:
-        return findings
+        return IOSuccess(findings)
     for branch, head in branch_rows(output=result.stdout):
         if branch == context.default_branch or branch in worktree_branches:
             continue
-        if head_is_merged(context=context, head=head):
+        merged = head_is_merged(context=context, head=head)
+        if isinstance(merged, IOFailure):
+            return merged
+        if unsafe_perform_io(merged.unwrap()):
             findings.append(stale_branch_finding(context=context, branch=branch))
-    return findings
+    return IOSuccess(findings)
 
 
 def branch_rows(*, output: str) -> list[tuple[str, str]]:
@@ -125,26 +149,36 @@ def stale_branch_finding(*, context: ScanContext, branch: str) -> HygieneScanFin
     )
 
 
-def stale_pr_findings(*, context: ScanContext) -> list[HygieneScanFinding]:
+def stale_pr_findings(
+    *, context: ScanContext
+) -> IOResult[list[HygieneScanFinding], CommandUnavailable]:
     argv = ["pr", "list", "--state", "open", "--json", GH_PR_FIELDS]
-    origin = git(
+    configured = git(
         repo_path=context.primary_path,
         argv=["config", "--get", "remote.origin.url"],
         runner=context.runner,
-    ).stdout.strip()
+    )
+    if isinstance(configured, IOFailure):
+        return configured
+    origin = unsafe_perform_io(configured.unwrap()).stdout.strip()
     if origin != "":
         argv.extend(["--repo", origin])
-    result = context.runner(argv=["gh", *argv], cwd=context.primary_path)
+    listed = context.runner(argv=["gh", *argv], cwd=context.primary_path)
+    if isinstance(listed, IOFailure):
+        return listed
+    result = unsafe_perform_io(listed.unwrap())
     if result.returncode != 0:
-        return []
+        return IOSuccess([])
     try:
         payload: object = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return []
+        return IOSuccess([])
     if not isinstance(payload, list):
-        return []
+        return IOSuccess([])
     entries = cast(list[object], payload)
-    return [finding for entry in entries for finding in pr_finding(context=context, entry=entry)]
+    return IOSuccess(
+        [finding for entry in entries for finding in pr_finding(context=context, entry=entry)]
+    )
 
 
 def pr_finding(*, context: ScanContext, entry: object) -> tuple[HygieneScanFinding, ...]:

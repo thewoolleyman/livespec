@@ -22,6 +22,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from returns.io import IOFailure, IOResult, IOSuccess
+
 from livespec_runtime.github_auth.errors import GithubAppAuthError
 
 __all__: list[str] = [
@@ -77,14 +79,21 @@ def normalize_pem(*, raw: str) -> str:
     return f"{begin}\n{wrapped}\n{end}\n"
 
 
-def sign_rs256_with_openssl(*, signing_input: str, pem: str) -> bytes:
+def sign_rs256_with_openssl(*, signing_input: str, pem: str) -> IOResult[bytes, GithubAppAuthError]:
     """Production signer: RS256 over `signing_input` with the App private key.
 
     openssl reads the key from a file, so the PEM is written to a
     mode-600 temp file and removed immediately after the sign — the
     durable secret never persists beyond this scoped temp file. A key
     openssl cannot load is an EXPECTED misconfiguration →
-    `GithubAppAuthError` with an actionable diagnostic.
+    `GithubAppAuthError` with an actionable diagnostic, now carried on
+    the failure track rather than raised, so the `SignRs256` seam's own
+    signature says it can fail.
+
+    ⚠️ THE TEMP-FILE REMOVAL STAYS IN A `finally`, AND MUST. The railway
+    governs how the ANSWER travels; it does not govern the durable
+    secret's lifetime. An early return on the failure track would leave
+    the key on disk if the cleanup rode the success path only.
     """
     handle = tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False)  # noqa: SIM115 — must outlive the with-scope so openssl can read it; removed in the finally.
     key_path = Path(handle.name)
@@ -101,11 +110,13 @@ def sign_rs256_with_openssl(*, signing_input: str, pem: str) -> bytes:
     finally:
         key_path.unlink()
     if completed.returncode != 0:
-        raise GithubAppAuthError(
-            detail=(
-                f"openssl could not sign with the App private key (exit "
-                f"{completed.returncode}); verify GITHUB_PRIVATE_KEY holds the App's "
-                "PEM private key as injected by the tenant's credential_wrapper"
-            ),
+        return IOFailure(
+            GithubAppAuthError(
+                detail=(
+                    f"openssl could not sign with the App private key (exit "
+                    f"{completed.returncode}); verify GITHUB_PRIVATE_KEY holds the App's "
+                    "PEM private key as injected by the tenant's credential_wrapper"
+                ),
+            )
         )
-    return completed.stdout
+    return IOSuccess(completed.stdout)
