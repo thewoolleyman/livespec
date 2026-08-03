@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.5](https://github.com/thewoolleyman/livespec/compare/v0.21.4...v0.21.5) (2026-08-03)
+
+
+### Bug Fixes
+
+* **ci:** gate release token on rate budget ([3d2f5ff](https://github.com/thewoolleyman/livespec/commit/3d2f5ff2c05c8d65a2f1f719777b17a42f8d6b49))
+
 ## [0.21.4](https://github.com/thewoolleyman/livespec/compare/v0.21.3...v0.21.4) (2026-08-02)
 
 
