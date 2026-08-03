@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/thewoolleyman/livespec/compare/v0.23.0...v0.24.0) (2026-08-03)
+
+
+### Features
+
+* thread authoring invocation envelopes ([25e0b3a](https://github.com/thewoolleyman/livespec/commit/25e0b3a077b5f9bb3f15ec31e0108bd78e2a0584))
+
 ## [0.23.0](https://github.com/thewoolleyman/livespec/compare/v0.22.0...v0.23.0) (2026-08-03)
 
 
