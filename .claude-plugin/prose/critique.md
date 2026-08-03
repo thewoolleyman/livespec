@@ -112,6 +112,35 @@ LLM-driven-phase contract.
 `HelpRequested` supervisor path; help text goes to stdout
 and exit code is `0` (NOT an error).
 
+### Invocation envelope
+
+An upstream supervising caller or attended Driver session MAY
+supply a spec-governance invocation envelope to this prose. The
+envelope is an LLM-layer input only. It MAY carry
+`mode: interactive | batch`, `spec_target`, and `target`. It
+MUST NOT be passed to `bin/critique.py`, serialized into the
+`--findings-json` payload, or copied into the resulting
+critique-style proposed-change file.
+
+Before any mutating wrapper invocation, resolve the envelope
+against the `spec_governance` policy rules from
+`SPECIFICATION/spec.md` §"Spec-governance policy settings":
+internally contradictory input, ambiguity, design-record
+conflict, or a resolved `batch` mode with missing required fields
+escalates immediately and leaves the spec tree unchanged.
+Effective batch mode MUST carry a non-empty `target`, using this
+exact field name because it answers Step 3's critique-target
+question.
+
+For every automatically-consumed complete envelope, compute the
+deterministic envelope digest and append a digest-only
+`authoring_auto_consumption` journal event through
+`spec_governance.py` before Step 7 invokes `bin/critique.py`. If
+the journal append fails, escalate before mutation and do not
+invoke the wrapper. The journal event carries metadata and
+`input_envelope_digest`, never raw `intent`, `topic`, `target`,
+or the raw envelope body.
+
 ## Steps
 
 1. **Resolve the active template.** Run the template-resolution
@@ -130,14 +159,21 @@ and exit code is `0` (NOT an error).
    CLI, then read the prompt file) and works uniformly for
    built-in and custom templates.
 
-3. **Capture critique target.** Ask the user: "What do you
+3. **Capture critique target.** Ask the user only when no complete
+   invocation envelope has supplied non-empty `target`: "What do you
    want critiqued? Describe the spec area, contract, or
    pending proposed-change you want to surface findings
    against." Capture free-text intent. The critique prompt
-   consumes this alongside the current spec content.
+   consumes this exact target alongside the current spec content.
+   A supplied `target` answers exactly this question and suppresses
+   only this question; interactive mode still asks every other
+   unanswered question. Do not re-ask it unless it is empty,
+   ambiguous, contradictory, or conflicts with a cited design
+   record.
 
 4. **Generate findings JSON.** Run the critique prompt
-   against the user-described target. The prompt MUST emit
+   against the user-described or envelope-supplied target. The
+   prompt MUST emit
    JSON conforming to `proposal_findings.schema.json`:
    top-level `findings[]` array, each entry carrying
    `name`, `target_spec_files`, `summary`, `motivation`,
@@ -179,7 +215,10 @@ and exit code is `0` (NOT an error).
    config with `--findings-json <tempfile> [flags]` and
    explicit argv (forwarding `--author`, `--spec-target`,
    `--project-root`, `--skip-pre-check` / `--run-pre-check`
-   as applicable). Capture the exit code. The CLI internally
+   as applicable). Capture the exit code. Do not forward the
+   invocation envelope, envelope digest, target metadata, or any
+   spec-governance journal event path to the Python wrapper. The
+   CLI internally
    delegates to `propose_change.run()` with the un-slugged
    resolved-author stem as the topic hint AND
    `--reserve-suffix=-critique`, so propose-change's v016 P3

@@ -9,9 +9,16 @@
 
 ## Inputs
 
-- `<intent>` — the proposed-change intent (freeform text from
-  `propose-change/SKILL.md` dialogue).
-- `<topic>` — the canonical kebab-case topic identifier.
+- `<intent>` — the proposed-change intent, either freeform text
+  from the propose-change dialogue or the exact non-empty
+  `intent` supplied by a complete invocation envelope.
+- `<topic>` — the topic identifier supplied by dialogue or by a
+  complete invocation envelope; prose and prompt layers MUST NOT
+  canonicalize it before the wrapper.
+- Optional alignment steering context — one relationship per
+  surfaced in-flight item, captured from dialogue, supplied by a
+  complete invocation envelope, or safely resolved as compatible
+  default alignment by operation prose.
 - `input_context.spec_target` — the active spec target. For the
   `minimal` template this is always `"./"` (the project root)
   per the template's `spec_root: "./"` declaration.

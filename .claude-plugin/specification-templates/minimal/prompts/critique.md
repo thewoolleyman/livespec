@@ -10,8 +10,11 @@
 - The active `SPECIFICATION.md` at the project root.
 - `input_context.spec_target` — always `"./"` for the minimal
   template (per `spec_root: "./"`).
-- Optional `<critique-steering-intent>` — user-provided
-  guidance scoping the critique.
+- Optional `<critique-steering-intent>` / `target` — exact
+  critique scope from the dialogue or from a complete invocation
+  envelope's non-empty `target` field. When supplied by envelope,
+  consume it as the critique target; do not reinterpret it as a
+  broader search request.
 
 ## Catalogue contract (`SPECIFICATION/templates/minimal/contracts.md`)
 
