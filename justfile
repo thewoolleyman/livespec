@@ -254,6 +254,7 @@ check:
         check-required-role-keys-declared
         check-rop-pipeline-shape
         check-self-hosted-routing
+        check-shell-quality
         check-skill-invocation-paths
         check-source-trees-scoped-to-consumer
         check-supervisor-discipline
@@ -1160,3 +1161,6 @@ check-required-role-keys-declared:
 
 check-hook-trees-not-io-exempt:
     uv run python -m livespec_dev_tooling.checks.hook_trees_not_io_exempt
+
+check-shell-quality:
+    uv run python -m livespec_dev_tooling.checks.shell_quality
