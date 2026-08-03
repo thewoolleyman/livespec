@@ -79,6 +79,22 @@ precedence chain in §"Skip control" below.
 `HelpRequested` supervisor path; help text goes to stdout and
 exit code is `0` (NOT an error).
 
+The LLM layer may also receive an invocation-scoped disposition envelope
+for doctor findings. The envelope is an object map from canonical
+`doctor-*` finding `check_id` to exactly one of
+`fix-now`, `capture-as-work-item`, `propose-change`, `defer`, or
+`dismiss`. It is never passed to the doctor CLI. For each finding,
+resolve it through the shared `effective_doctor_disposition` /
+`requires_doctor_disposition_input` policy shape after all hard human
+floors: valid invocation-scoped entries win over the global
+`doctor_dispositions` map in `.livespec.jsonc`; valid global entries win
+over the safe unmapped default; invalid entries are ignored at entry
+granularity and MUST NOT poison valid siblings. Unmapped check ids,
+invalid check ids, invalid verbs, unavailable selected verbs, absent
+capture consent, journal failure, and selected-action failure leave the
+finding undisposed, set `requires_doctor_disposition_input`, and MUST NOT
+try a different disposition.
+
 ## Steps
 
 ### Static phase
@@ -251,7 +267,10 @@ dialogue MUST also run for static-phase `warn` findings
 11. For every non-`pass` finding accumulated across the
     static phase and Steps 6, 7, 9, 10 — in `spec_root`-grouped
     order matching how the static-phase findings were
-    surfaced — present the user with:
+    surfaced — first resolve any invocation-scoped or global
+    disposition through the effective-policy predicate above.
+    Findings whose predicate remains true require human input:
+    present the user with:
 
     - The finding's `check_id`, `spec_root`, optional
       `path`, and `message`.
@@ -290,6 +309,44 @@ dialogue MUST also run for static-phase `warn` findings
          MAY surface again on the next invocation, where the
          user dismisses again or chooses a different
          disposition.
+
+12. For a finding with a resolved disposition whose
+    `requires_doctor_disposition_input` predicate is false, execute ONLY
+    the selected verb. Do not ask for a second choice and do not fall
+    through to any alternate verb if the selected action cannot complete;
+    before executing the selected disposition, invoke the configured
+    spec-governance control CLI's journal append surface with a
+    `doctor_disposition` event that records the finding identity
+    (`check_id`, `spec_root`, optional `path`, optional `line`), the
+    SHA-256 digest of the finding `message`, the selected verb, the
+    governing key (`doctor_dispositions`), the effective source
+    (`invocation` or `global`), and the intended outcome or failure. If
+    the journal append fails, leave the finding undisposed, surface that
+    `requires_doctor_disposition_input` is true, and return control to
+    the user.
+
+    - `fix-now` may run only when the corrective action is mechanically
+      available under the menu contract. If it is not, leave the finding
+      undisposed and require input.
+    - `capture-as-work-item` may route only through the active
+      orchestrator's configured interactive front end, and only after
+      invocation-scoped consent for that store-write boundary. Doctor
+      MUST NOT write the orchestrator's store directly and MUST NOT
+      grant its executor spec-side authority.
+    - `propose-change` invokes the `critique` operation against the
+      originating tree and threads `proposed_change_hint` and
+      `spec_target` into that operation: the hint is the
+      user-described change body, and the spec target is the tree whose
+      `spec_root` surfaced the finding.
+    - `defer` records a `deferred` journal outcome and takes no durable
+      mutation.
+    - `dismiss` records a `dismissed` journal outcome and takes no
+      durable mutation.
+
+    If any selected action fails after the journal event is recorded,
+    surface the failure, leave the finding undisposed, set
+    `requires_doctor_disposition_input`, and MUST NOT try a different
+    disposition.
 
 ## Skip control
 
