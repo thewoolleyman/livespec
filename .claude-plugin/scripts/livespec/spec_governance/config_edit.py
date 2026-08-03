@@ -117,15 +117,20 @@ def _replace_existing_block(*, text: str, rendered: str) -> str:
     end = _matching_brace(text=text, start=brace)
     if brace < 0 or end < 0:
         return "existing spec_governance block is malformed"
+    replacement_start = key_start
+    if "{" in text[key_start:start]:
+        replacement_start = start
     line_end = end + 1
+    trailing_comma = ""
     if line_end < len(text) and text[line_end] == ",":
+        trailing_comma = ","
         line_end += 1
-    return f"{text[:key_start]}{rendered}{text[line_end:]}"
+    return f"{text[:replacement_start]}{rendered}{trailing_comma}{text[line_end:]}"
 
 
 def _render_block(*, block: dict[str, Any]) -> str:
     payload = json.dumps({"spec_governance": block}, indent=2, sort_keys=True)
-    return ",\n".join(payload.splitlines()[1:-1])
+    return "\n".join(payload.splitlines()[1:-1])
 
 
 def _insert_block(*, text: str, rendered: str) -> str:
