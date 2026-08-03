@@ -1,0 +1,44 @@
+[
+  {
+    "key": "propose_change_mode",
+    "value_type": "enum",
+    "safe_default": "interactive",
+    "per_proposal_override": null,
+    "allowed_values": ["interactive", "batch"]
+  },
+  {
+    "key": "critique_mode",
+    "value_type": "enum",
+    "safe_default": "interactive",
+    "per_proposal_override": null,
+    "allowed_values": ["interactive", "batch"]
+  },
+  {
+    "key": "in_flight_alignment",
+    "value_type": "enum",
+    "safe_default": "prompt",
+    "per_proposal_override": null,
+    "allowed_values": ["prompt", "default-align"]
+  },
+  {
+    "key": "doctor_dispositions",
+    "value_type": "map",
+    "safe_default": {},
+    "per_proposal_override": null,
+    "allowed_values": ["fix-now", "capture-as-work-item", "propose-change", "defer", "dismiss"]
+  },
+  {
+    "key": "ratification_review",
+    "value_type": "enum",
+    "safe_default": "manual-spawn",
+    "per_proposal_override": "ratification_review_policy",
+    "allowed_values": ["manual-spawn", "auto-spawn"]
+  },
+  {
+    "key": "ratification_reviewer_model",
+    "value_type": "string",
+    "safe_default": null,
+    "per_proposal_override": null,
+    "allowed_values": []
+  }
+]
