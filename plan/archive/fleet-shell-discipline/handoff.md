@@ -71,11 +71,12 @@ state before using the counts as current corpus data.
 - PR #1918 ratified history `v187` at `3fbe9fb0` with all CI checks green.
 - The proposal and revise worktrees and local branches were removed after
   their merges, and the primary checkout was refreshed to `origin/master`.
-- The archive transport uses branch `docs/archive-fleet-shell-discipline` in
-  worktree `/home/ubuntu/.worktrees/livespec/docs/archive-fleet-shell-discipline`.
-  Its PR number and merge commit are recorded by the forge and worker-status
-  milestone when the archive merges; after merge this worktree and branch are
-  removed and the primary checkout is refreshed clean.
+- The archive transport is PR #1921 from branch
+  `docs/archive-fleet-shell-discipline`, authored in worktree
+  `/home/ubuntu/.worktrees/livespec/docs/archive-fleet-shell-discipline`. At
+  this record's commit the PR is open pending CI; the merge commit is recorded
+  by the forge and worker-status milestone when it lands. After merge this
+  worktree and branch are removed and the primary checkout is refreshed clean.
 
 The two cold-read helpers completed with PASS and changed no files. No helper,
 factory dispatch, or plan-owned background process remains active.
