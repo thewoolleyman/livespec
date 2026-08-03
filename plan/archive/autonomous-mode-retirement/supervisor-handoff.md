@@ -232,8 +232,8 @@ Send work with:
 
 ```bash
 MSG=$(tr -d '\n' < /path/to/msg.txt)
-/usr/bin/tmux send-keys -t autonomous-mode-retirement -l "$MSG"
-sleep 1; /usr/bin/tmux send-keys -t autonomous-mode-retirement Enter
+/usr/bin/tmux send-keys -t '=autonomous-mode-retirement:' -l "$MSG"
+sleep 1; /usr/bin/tmux send-keys -t '=autonomous-mode-retirement:' Enter
 ```
 
 Gotchas, all hit for real:
