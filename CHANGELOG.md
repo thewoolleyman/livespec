@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/thewoolleyman/livespec/compare/v0.24.1...v0.24.2) (2026-08-03)
+
+
+### Bug Fixes
+
+* resolve delegated check target inventories ([cb793f9](https://github.com/thewoolleyman/livespec/commit/cb793f9a9d3b932f27a79107a0ab5c7f4cd9b22a))
+
 ## [0.24.1](https://github.com/thewoolleyman/livespec/compare/v0.24.0...v0.24.1) (2026-08-03)
 
 
