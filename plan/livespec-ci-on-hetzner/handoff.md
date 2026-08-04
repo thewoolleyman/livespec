@@ -46,18 +46,42 @@ gh pr list --repo thewoolleyman/livespec --state open --limit 100 --json number,
 
 Verify each command saw its intended input and retain raw output beside any derived count. Then re-measure the slices from the ledger and resume the first genuinely unblocked one; the table below records the cut, not live status.
 
-## Resume state — where the previous session stopped (2026-08-04)
+## Resume state — 2026-08-04, after the fleet fail-open sweep
 
-**Exactly one slice is actionable: re-dispatch `livespec-dev-tooling-3otdg4` (attempt 4).** Everything else in this epic is either closed or gated on `hetzner-prod` fleet admission. Its spec is already correct — three attempts of hard-won corrections are baked into the item — so do NOT re-draft it. Read the item's `description` and `notes` first; they are cheaper to read than to rediscover.
+**`livespec-dev-tooling-3otdg4` is IMPLEMENTED and its PR is open but deliberately unmerged.** livespec-dev-tooling [#1274](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1274) carries commit `1108bd1`, `just check` green at 66/66, with both `TDD-Red-*` and `TDD-Green-*` trailer blocks. Auto-merge is NOT armed. What remains is a maintainer decision, recorded under "The open decision" below.
+
+**Attempt 4 failed like none of the first three**, then the work moved in-session. The dispatch died twice at `ACP turn failed: ACP protocol error` inside the Implement stage, before touching the task at all — an agent-runtime failure, not a spec failure, and a fifth dispatch through the same runtime had no reason to survive it. The handoff's pre-authorized fallback was taken: implemented in-session under Red-Green-Replay. The parked run was force-removed and the item reassigned off `fabro`.
+
+**A measurement changed the shape of the work.** The item's groomed scope claimed the fail-open assertion would be "a genuine no-op in every fleet repo", so the fan-out could not redden siblings. Measured across all 13 repos in `.livespec-fleet-manifest.jsonc`, that was FALSE: six carried the fail-open fallback and five of those also run the check, so landing it first would have reddened five repositories — enforcement-before-adoption, the named cause of revert-worthy breakage in `.ai/ci-gate-discipline.md`. The maintainer chose to repair first.
+
+**That sweep is done.** Epic `livespec-zmys` with six per-repo children, all merged: `livespec-runtime` [#472](https://github.com/thewoolleyman/livespec-runtime/pull/472), `livespec-driver-claude` [#417](https://github.com/thewoolleyman/livespec-driver-claude/pull/417), `livespec-driver-codex` [#397](https://github.com/thewoolleyman/livespec-driver-codex/pull/397), `livespec-orchestrator-git-jsonl` [#550](https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/550), `livespec-overseer` [#698](https://github.com/thewoolleyman/livespec-overseer/pull/698), `livespec-console-beads-fabro` [#640](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/640). A fleet-wide re-measure returns ZERO remaining self-hosted `runs-on` fallbacks, and the same query returns 3 on the pre-repair trees so the zero is fail-capable. `livespec-orchestrator-beads-fabro` was excluded with reason, verified at byte level: its only three occurrences are `#`-comments and comments are stripped before parsing.
+
+### The open decision — do not merge #1274 without settling it
+
+The sweep incidentally surfaced a **pre-existing fleet-red state**, filed as `livespec-dev-tooling-irtt` (P0, ready). Three repos' master CI is red — `livespec-runtime`, `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro` — all failing `check-public-api-result-typed`.
+
+Root cause, established rather than inferred: `check-public-api-result-typed` used to sit behind the `pure_trees` role-absence gate. The `pure-trees-scan-universe-decoupled` work removed that gate DELIBERATELY, shipping with its own design document, and un-shadowing those detectors was a stated benefit rather than a side effect. All three red repos declare `pure_trees = { not_applicable = … }`, so the check had never actually run there; un-gating it scanned their whole public API for the first time and found dozens of long-standing violations. The fan-out then bumped `livespec-runtime` from `v1.17.1` straight to `v1.18.9` in one step — so the break lies somewhere in that range, not necessarily in `v1.18.9` itself. Causation is nailed at the consumer end: that repo's last green master run has `check-public-api-result-typed` RUNNING AND PASSING, and the very next commit is the pin bump and the first red.
+
+The remedy is a genuine maintainer call and was deliberately NOT self-resolved, because `.ai/ci-gate-discipline.md`'s literal remedy (revert-and-reland) would revert a deliberate architectural improvement. Either the un-gating is reverted and re-landed behind adoption, or the three consumers adopt it. Whichever is chosen, no lever, env var, carve-out, or severity demotion — `li-4x3a45` is the recorded wontfix on exactly that.
+
+A second defect was split out as `livespec-dev-tooling-zi29` (P1, ready), because the revert does not close it and closing the satisfying half would ship it silently: a zero-`.py` PR skips the Python matrix via `detect-py-changes`, so its `ci-green` reports green while the master push runs the full aggregate and goes red. PRs keep merging onto a red master and nobody is told. That mechanism is why this fleet-red went unnoticed for hours. Its acceptance requires the positive control FIRST — a real zero-`.py` PR green at `ci-green` paired with the master-push aggregate failing at the same tree.
+
+### If a future session must dispatch this item anyway
 
 Its dispatch command, after the preflight below:
 
 ```bash
-PR=$(ls -d /home/ubuntu/.claude/plugins/cache/livespec-orchestrator-beads-fabro/livespec-orchestrator-beads-fabro/*/ | tail -1)
+PR=$(python3 -c 'import json,pathlib;d=json.loads((pathlib.Path.home()/".claude/plugins/installed_plugins.json").read_text());print(next(e["installPath"] for e in d["plugins"]["livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro"] if e.get("projectPath")=="/data/projects/livespec-dev-tooling"))')
 cd /data/projects/livespec-dev-tooling && /usr/local/bin/with-livespec-env.sh -- \
-  python3 "${PR}scripts/bin/drive.py" --repo /data/projects/livespec-dev-tooling \
+  python3 "${PR}/scripts/bin/drive.py" --repo /data/projects/livespec-dev-tooling \
   --action impl:livespec-dev-tooling-3otdg4 --json
 ```
+
+The earlier form of this command resolved the plugin root with
+`ls -d …/*/ | tail -1`, which sorts lexically rather than by build date and
+selected a stale Jul-15 build out of 125 cache directories. The replacement
+reads the install record. See `.ai/dispatcher-drain-operations.md`
+§"Resolve the plugin root from the install record, never with `ls … | tail -1`".
 
 **Preflight, all four, before dispatching** — each of these actually bit a previous attempt:
 
@@ -84,7 +108,7 @@ Re-measure every id. “Blocked by” is the ledger edge; a cross-tenant blocker
 | Id | Repo | Tier | Blocked by | Slice |
 |---|---|---|---|---|
 | `livespec-teasvm` | `livespec` | maintainer-side | — | Fail-closed gating routing + retire archived-pool workflow residue — **CLOSED 2026-08-04**, PR [#1970](https://github.com/thewoolleyman/livespec/pull/1970), merged `29b7e5ca` |
-| `livespec-dev-tooling-3otdg4` | `livespec-dev-tooling` | **factory** | `livespec-teasvm` | Close the routing guard's label blind spot + hosted fail-closed assertion — **READY, the one actionable slice**; 3 attempts failed, see Resume state |
+| `livespec-dev-tooling-3otdg4` | `livespec-dev-tooling` | factory → **in-session** | `livespec-teasvm`, then epic `livespec-zmys` | Close the routing guard's label blind spot + hosted fail-closed assertion — **IMPLEMENTED**, PR [#1274](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1274) open and unmerged; 4 dispatches failed, see Resume state |
 | `livespec-uyfggr` | `livespec` | maintainer-side | `livespec-teasvm` | Bring forge state to the v192 baseline + fork-exclusion drift detector — **CLOSED 2026-08-04**, PR [#1985](https://github.com/thewoolleyman/livespec/pull/1985) |
 | `livespec-hhx4gl` | `livespec` | maintainer-side | — | Retire the Phase-0 `ci-runner` installation from the shared factory host — **CLOSED 2026-08-04** |
 | `livespec-3on57g` | `livespec` | maintainer-side | `livespec-uyfggr`, `livespec-dev-tooling-3otdg4` | Adopt the dedicated Hetzner label + liveness/freshness observation |
