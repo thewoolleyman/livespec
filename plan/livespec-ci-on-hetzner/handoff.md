@@ -53,14 +53,22 @@ Re-measure every id. “Blocked by” is the ledger edge; a cross-tenant blocker
 | Id | Repo | Tier | Blocked by | Slice |
 |---|---|---|---|---|
 | `livespec-teasvm` | `livespec` | maintainer-side | — | Fail-closed gating routing + retire archived-pool workflow residue — **CLOSED 2026-08-04**, PR [#1970](https://github.com/thewoolleyman/livespec/pull/1970), merged `29b7e5ca` |
-| `livespec-dev-tooling-3otdg4` | `livespec-dev-tooling` | **factory** | `livespec-teasvm` | Close the routing guard's label blind spot + hosted fail-closed assertion |
-| `livespec-uyfggr` | `livespec` | maintainer-side | `livespec-teasvm` | Bring forge state to the v192 baseline + fork-exclusion drift detector |
-| `livespec-hhx4gl` | `livespec` | maintainer-side | — | Retire the Phase-0 `ci-runner` installation from the shared factory host |
+| `livespec-dev-tooling-3otdg4` | `livespec-dev-tooling` | **factory** | `livespec-teasvm` | Close the routing guard's label blind spot + hosted fail-closed assertion — **IN THE FACTORY**, attempt 3 |
+| `livespec-uyfggr` | `livespec` | maintainer-side | `livespec-teasvm` | Bring forge state to the v192 baseline + fork-exclusion drift detector — **CLOSED 2026-08-04**, PR [#1985](https://github.com/thewoolleyman/livespec/pull/1985) |
+| `livespec-hhx4gl` | `livespec` | maintainer-side | — | Retire the Phase-0 `ci-runner` installation from the shared factory host — **CLOSED 2026-08-04** |
 | `livespec-3on57g` | `livespec` | maintainer-side | `livespec-uyfggr`, `livespec-dev-tooling-3otdg4` | Adopt the dedicated Hetzner label + liveness/freshness observation |
 | `livespec-7wvyo7` | `livespec` | maintainer-side | `livespec-3on57g` | Live one-job exercise on server 3039451 |
 | `livespec-q7sfu6` | `livespec` | maintainer-side | `livespec-7wvyo7` | Prove the hosted fallback, then restore the intended posture |
 
 `livespec-dev-tooling-3otdg4` lives in the **`livespec-dev-tooling`** tenant, not this one. The groom minted it as `livespec-qheazr` with this repo's prefix; `bd create` refused that foreign prefix at the target tenant, so it was refiled under a native id and `livespec-3on57g`'s reference was rewritten to match. That orchestrator defect is `bd-ib-a8zi` in `livespec-orchestrator-beads-fabro`, with this recurrence recorded on it. If a future groom emits a cross-repo slice, expect the same failure and apply the same fix — **never** `bd create --force`, which would plant a foreign-prefix id in a sibling tenant permanently.
+
+**Three of the four non-Hetzner slices are closed.** Only the factory slice remains, and it has taken three dispatch attempts. Read its ledger notes before touching it — they carry the confirmed defect from attempt 1 and the dispatch hazards from attempt 2, both of which are cheaper to read than to rediscover. Two general dispatch hazards found here are written up in `.ai/dispatcher-drain-operations.md`.
+
+## Also opened by this thread
+
+`livespec-opwqmy` (bug, `ready`, `admission:manual`) — `systemctl preset-all --dry-run` silently applies presets host-wide. It was named as the negative control in `livespec-hhx4gl`'s own acceptance and fired on the shared factory host on 2026-08-04, enabling 49 units. `--dry-run` is documented as supported by only eleven verbs and `preset-all` is not among them, while `systemctl --help` advertises the flag with no caveat. 46 of the 49 symlinks were reverted; `ssh.service` and the `sshd.service` alias were deliberately left enabled because a lockout on a remote host is not recoverable. The item is `admission:manual` so no drain can pick up host work. Evidence: `tmp/overseer/livespec-ci-on-hetzner/preset-all-incident-20260804.txt` and `preset-revert-set.txt`.
+
+The durable lesson generalizes past this thread: **a control is not a control until it has been made to fail on demand.** `livespec-hhx4gl`'s original acceptance trusted a command because its name and its `--help` line implied a behavior nobody had tested, and the same session's dispatch spec enumerated input cases instead of constraining behavior, missing a crash that every stated control would have passed.
 
 ## Ownership boundary
 
