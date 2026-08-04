@@ -1,109 +1,119 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-03 at session wrap-up
+## Resume state — written 2026-08-04 at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. The detailed supervisor record is at
 `/data/projects/livespec/tmp/overseer/spec-side-autonomy/.supervisor-state`
 (gitignored, same host, read by the cold-open boot block); the briefs that drove
-this work are `brief-01` through `brief-10` in that same directory.
+this work are `brief-01` through `brief-21` in that same directory.
 
-### Increment 1 — COMPLETE, MERGED, AND RELEASED
+### Increments 1 and 2 — BOTH COMPLETE, MERGED, RELEASED, AND EXERCISED
 
-Ratified as `SPECIFICATION/history/v190`, then built factory-side as four
-slices, all merged:
+Increment 1 ratified as `history/v190`, built as four slices (`livespec-rvduou`
+PR 1939, `livespec-mrxwbr` PR 1942, `livespec-d2f5pf` PR 1949, `livespec-p4pcxv`
+PR 1944), released in **v0.24.1**. Fleet deployment is COMPLETE: all five
+siblings pin v0.24.1, and all four slice merges are ancestors of that tag.
 
-| slice | work-item | PR |
-|---|---|---|
-| A — `spec_governance` registry, resolvers, control CLI, journal | `livespec-rvduou` | 1939 |
-| B — `ratification_review` auto-spawn | `livespec-mrxwbr` | 1942 |
-| C — `doctor_dispositions` | `livespec-d2f5pf` | 1949 |
-| D — intent/topic threading, non-interactive modes | `livespec-p4pcxv` | 1944 |
+Increment 2 ratified as `history/v193` (PR **1978**, merge `98300b9f`) and then
+IMPLEMENTED as two slices: `livespec-jvdvx4.3` (control surface, PR **1980**)
+and `livespec-jvdvx4.4` (resolver, floors, predicate, journal event). Verified
+on `origin/master`, not merely reported: `spec_governance/policy.py`,
+`spec_governance/revise_decision.py` and `commands/_revise_decision.py` all
+exist, and `requires_revise_decision_input` is CONSUMED at
+`_revise_decision.py:74` rather than re-derived, as the contract requires.
 
-Released in **v0.24.1**, verified by ancestry (slice C's merge sha is an
-ancestor of the tag). Six config keys ship, ALL at safe defaults that arm
-nothing. Exercised live end-to-end: report, arm, refuse-invalid, clear, with
-JSONC comments preserved (46 before and after three edits).
+Exercised live on a SCRATCH project root (never the primary — a dirty primary
+poisons the next dispatch's sandbox base): arm `global:delegated` applied;
+`global:yolo` REFUSED with the allowlist error (this refusal is the positive
+control — without it the passing edits prove nothing); `clear` returned
+effective to `manual`; JSONC comments 46 before and 46 after.
 
-`spec_pr_merge` was REJECTED from Increment 1 after three consecutive BLOCKERS
-reviews and relocated to `livespec-bhammf` (blocked, needs-human) carrying both
-blocker texts verbatim and the `--proposal-stem` vs `--base-ref` transport fix.
+`--show-effective` now reports **7 keys**, ALL at safe defaults arming nothing.
+The only declared key in this repo is `ratification_reviewer_model: fable`.
 
-### Increment 2 — IN FLIGHT, correctly gated
+`livespec-jvdvx4.1` — the ratification-digest conformance bug — is FIXED and
+closed (PR **1974**, merge `066a29fb`). The shipped
+`_canonical_ratification_digest` now binds `LP(P)` FIRST, frames every length as
+`len(x).to_bytes(8, "big")`, and sorts entries by raw path bytes. That closed a
+real replay hole and was a hard predecessor of the v193 ratification.
 
-Proposal `spec-governance-revise-decision-mode` is filed as PR **1948**
-(proposal-only, explicitly non-ratifying). The independent Fable review returned
-**BLOCKERS** — three findings: the revise digest framing, a missing durable
-revision-record audit clause in candidate contracts.md, and an unqualified
-human-gated overview retained in candidate spec.md. A blocker is NEVER
-self-waived; the worker is resolving them and must obtain a NO-BLOCKERS verdict
-before any revise. Worker worktree: `spec/ratify-spec-governance-increment-2`.
-PR **1961** carries the worker's own handoff of this blocker.
+### Increment 3 — BLOCKED, and the blocker is WORSE than previously recorded
 
-### Increment 3 — BLOCKED ON AN EXTERNAL DEPENDENCY, not on this thread
+Do NOT edit the drift-doctrine sentence in `SPECIFICATION/spec.md`.
 
-The maintainer AUTHORIZED the drift amendment (consensus tier only, dedicated
-`drift_acceptance_mode` key, never `delegated`, default `human`, opt-in) and
-authorized automating the groom cut last behind the same tier with slice-size
-ceilings and a regroom cap. The MECHANISM does not exist: the cross-vendor
-unanimous consensus panel is built by `livespec-overseer`'s `plan/foreman`
-thread in its Phase C. Do not attempt Increment 3 until that panel ships. Do NOT
-edit the drift-doctrine sentence at `SPECIFICATION/spec.md` before then.
+The prior handoff said Increment 3 waits on `livespec-overseer`'s `plan/foreman`
+thread Phase C. That is now WRONG in a way that matters: the foreman thread is
+**ARCHIVED** at `plan/archive/foreman/`, and its own record states the epic
+`overseer-z5fo4y` is closed with all eleven children closed, that **v1 is phases
+A+B only**, and that "Phases C–E (consensus, gate-driving, federation) were
+never in v1 and remain separate future scope." No live thread carries the
+consensus panel, and no consensus implementation exists in `livespec_overseer/`.
+
+Worse, `livespec-overseer`'s OWN `SPECIFICATION/spec.md` ratifies that "Until a
+consensus-decision policy is ratified in this specification, every action
+classified by the governing orchestrator contract as a human valve is
+report-only for the foreman." So the foreman is built and running but
+structurally forbidden from driving any valve, and no core config lever changes
+that.
+
+Distance to full autonomy, in dependency order: (3) ratify a consensus-decision
+policy in `livespec-overseer`'s spec — NOT STARTED; (4) build the cross-vendor
+consensus panel — NOT STARTED, greenfield; (5) then Increment 3 here. Gates 1
+and 2 are done; everything livespec core can contribute is shipped.
 
 ### Open ledger items under epic `livespec-jvdvx4`
 
+- `livespec-jvdvx4.2` — backlog. The six (now seven) `spec_governance` keys are
+  INVISIBLE: absent from `templates/orchestrator-plugin/.livespec.jsonc.jinja`
+  entirely, and absent from every fleet repo's `.livespec.jsonc` except
+  `livespec`'s own. Maintainer-raised. The item requires DERIVING the commented
+  block from the shipped manifest plus a check asserting template↔manifest
+  agreement, so Increment 3's `drift_acceptance_mode` cannot re-introduce the
+  drift. Independent of everything else; dispatch whenever.
 - `livespec-bhammf` — blocked, needs-human. The relocated `spec_pr_merge`
-  redesign. Not Increment 1 work; do not treat it as unfinished business.
-- `livespec-jvdvx4.1` — was `active` at wrap-up. A REAL conformance defect I
-  filed and independently verified: the shipped `_canonical_ratification_digest`
-  omits `LP(P)`, uses decimal-colon framing instead of uint64 big-endian, and
-  never sorts `resulting_files[]` — all three contrary to the v190 contract at
-  `SPECIFICATION/contracts.md` §"Ratification-review evidence". It shipped green
-  because its tests round-trip the implementation against itself and never
-  assert the byte framing. Consequence: without `LP(P)` the digest does not bind
-  the reviewed PROPOSAL at all, so a NO-BLOCKERS review of one proposal can be
-  replayed against another that yields the same resulting files.
-
-### Fleet deployment — PARTIAL, verify before declaring done
-
-A pin that merely moved is not a pin that carries this work. Measured at
-wrap-up:
-
-    livespec-orchestrator-beads-fabro  v0.24.1   carries Increment 1
-    livespec-overseer                  v0.24.1   carries Increment 1
-    livespec-dev-tooling               v0.24.1   carries Increment 1
-    livespec-driver-claude             v0.22.0   LAGS
-    livespec-driver-codex              v0.23.0   LAGS
-
-The fan-out is automatic (`release-dispatch.yml` → `bump-pin-from-dispatch.yml`,
-guarded by `pin-freshness.yml`) and PRs were open for the laggards. Confirm each
-sibling reaches a tag >= v0.24.1 before calling deployment complete. Increment 1
-needs NO sibling CODE changes — the levers are entirely core-owned, so the pin
-bump is the whole deployment.
+  redesign. Not Increment 1/2 work; do not treat it as unfinished business.
 
 ### Standing hazards for whoever resumes
 
-- **Concurrent sessions are ratifying into this same repo.** Master moved v190 →
-  v192 during one session. A revise `resulting_files[]` entry REPLACES THE
-  ENTIRE FILE, so a splice computed against a stale read silently reverts
-  another session's change and git reports NO CONFLICT. Re-fetch and re-derive
-  every entry from fresh bytes immediately before applying.
-- **A codex worker drains its input queue only at turn end.** Instructions
-  accumulate against a world-state that may not survive until they are read. One
-  queued order would have corrupted v190 had it landed minutes later. VOID a
-  stale queue; never append to it.
-- **Keep every dispatchable work-item description under ~1500 characters**, with
-  provenance in journal notes. A 7196-char item implemented its whole change and
-  then died mid-publish, losing an hour.
-- **Filed factory defect** `bd-ib-3ftj` in `livespec-orchestrator-beads-fabro`:
-  the dispatcher staleness gate cannot identify a codex plugin-cache root, so
-  every codex-host dispatch silently skips its plugin-currency check.
+- **Concurrent sessions ratify into this repo.** Master moved v190 → v193 and
+  many commits during one session. A revise `resulting_files[]` entry REPLACES
+  THE ENTIRE FILE, so a splice computed against stale bytes silently reverts
+  another session's change and git reports NO CONFLICT. Re-derive every entry
+  from freshly fetched bytes immediately before applying.
+- **The overseer does NOT restart this repo's codex workers.** Two separate
+  defects, both measured. First, a worker writing `tmp/overseer/<topic>/
+  .overseer-state` RELATIVELY writes it inside whatever worktree it is cd-ed
+  into, and worktree cleanup destroys it; the daemon reads the ABSOLUTE
+  canonical path, gets nothing, and fails closed. Tell workers the absolute
+  path. Second, even after a valid fresh `ready` was consumed, the codex process
+  was NOT replaced (same pid, >1 day old). Leading suspect: the track's
+  `pinned_session_id` is null and restart routes to `codex resume <id>`. The
+  context recoveries you will observe are codex SELF-COMPACTION, not restarts —
+  which is why workers keep losing orientation and must be re-briefed from
+  files. NOT YET FILED against `livespec-overseer`; worth filing.
+- **Do not nudge a worker that has declared `ready`.** Every nudge puts it back
+  to `working` and preempts any restart. This supervisor did that repeatedly.
+- **Factory capacity is unreliable.** Two FOREIGN idle sandboxes
+  (`overseer-z5fo4y.4`, `livespec-dev-tooling-mvvr3f`) held the entire host cap
+  for 20+ hours running only `sleep infinity`. They are NOT ours — never stop or
+  reap them. When the factory is saturated, building a ready slice directly on
+  the worker via Red-Green-Replay is the sanctioned fallback; PRs 1963, 1974,
+  1980 and slice B all landed that way.
+- **Keep dispatchable descriptions near ~1500 characters**, provenance in
+  journal notes. A 7196-char item once died mid-publish and lost an hour.
+- **`gh` REST quota is exhaustible.** `check-master-ci-green` correctly FAILS
+  CLOSED at 5000/5000 and blocked a Green amend for ~10 minutes. That is the
+  gate working; wait for the reset, never bypass.
 
 ### Next concrete action
 
-Drive Increment 2 to NO-BLOCKERS and ratify it. Then verify the two lagging
-Driver pins reach >= v0.24.1. Do not archive `plan/spec-side-autonomy/` — the
-thread spans three increments and Increment 3 remains open on a named external
+Nothing in livespec core is pending for spec-side autonomy. Pick up
+`livespec-jvdvx4.2` (template + fleet backfill of the commented key block), and
+raise gates 3–4 with the maintainer: opening a `livespec-overseer` thread for
+the consensus-decision policy and panel is the ONLY remaining path to full
+autonomy, and nothing currently carries it. Do not archive
+`plan/spec-side-autonomy/` — Increment 3 remains open on that named external
 dependency.
 
 ## Shared Protocol
