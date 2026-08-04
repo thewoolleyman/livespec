@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/thewoolleyman/livespec/compare/v0.24.3...v0.25.0) (2026-08-04)
+
+
+### Features
+
+* add revise decision mode controls ([2ffebf1](https://github.com/thewoolleyman/livespec/commit/2ffebf1b0744e07a5c385c5be25b475bb1dfbd75))
+
 ## [0.24.3](https://github.com/thewoolleyman/livespec/compare/v0.24.2...v0.24.3) (2026-08-04)
 
 
