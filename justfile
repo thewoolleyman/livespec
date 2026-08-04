@@ -296,6 +296,7 @@ check:
         check-prompts
         check-schema-dataclass-pairing
         check-spec-governance-manifest
+        check-spec-governance-template
         check-types
         e2e-test-claude-code-mock
     )
@@ -656,6 +657,9 @@ check-schema-dataclass-pairing:
 
 check-spec-governance-manifest:
     uv run python3 dev-tooling/checks/spec_governance_manifest.py
+
+check-spec-governance-template:
+    uv run python3 dev-tooling/checks/spec_governance_template.py
 
 check-main-guard:
     uv run python -m livespec_dev_tooling.checks.main_guard

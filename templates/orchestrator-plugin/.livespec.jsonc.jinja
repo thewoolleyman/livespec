@@ -30,6 +30,34 @@
     "codex":  { "status": "supported", "canonical_command": "{{ plugin_namespace }}:next" }
   }
 
+  // Optional — spec_governance: policy levers for livespec's spec-side
+  // operations. The commented defaults below are derived from the shipped
+  // spec-governance manifest; leaving this block commented arms nothing, so
+  // every operation uses the same safe defaults it would use with no
+  // spec_governance block at all.
+  // To enable any key, add the block as a real key above (a comma after the
+  // `harnesses` block) and keep only the entries this repo intentionally
+  // overrides:
+  //   "spec_governance": {
+  //     // propose_change_mode (enum; allowed: "interactive", "batch")
+  //     "propose_change_mode": "interactive",
+  //     // critique_mode (enum; allowed: "interactive", "batch")
+  //     "critique_mode": "interactive",
+  //     // in_flight_alignment (enum; allowed: "prompt", "default-align")
+  //     "in_flight_alignment": "prompt",
+  //     // doctor_dispositions (map; allowed values: "fix-now",
+  //     // "capture-as-work-item", "propose-change", "defer", "dismiss")
+  //     "doctor_dispositions": {},
+  //     // revise_decision_mode (enum; allowed: "manual", "delegated",
+  //     // "consensus"; per-proposal override: decision_policy)
+  //     "revise_decision_mode": "manual",
+  //     // ratification_review (enum; allowed: "manual-spawn", "auto-spawn";
+  //     // per-proposal override: ratification_review_policy)
+  //     "ratification_review": "manual-spawn",
+  //     // ratification_reviewer_model (string; no enumerated allowed values)
+  //     "ratification_reviewer_model": null
+  //   }
+  //
   // Optional — credential_wrapper: the credential-injection wrapper for this
   // repo's secret-backed tooling (the beads tenant password, API tokens). A
   // JSON array of literal argv tokens naming a conforming wrapper CLI plus its
