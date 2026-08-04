@@ -8,7 +8,9 @@ import re
 from pathlib import Path
 from typing import Any, cast
 
-from returns.io import IOResult
+from returns.io import IOResult, impure_safe
+from returns.result import Failure, Result
+from returns.unsafe import unsafe_perform_io
 
 from livespec.errors import LivespecError, ValidationError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
@@ -36,32 +38,48 @@ _REQUIRED_EVIDENCE = frozenset(
 )
 
 
-def _canonical_ratification_digest(*, decision: dict[str, object]) -> str:
-    """Digest final resulting-files bytes with unambiguous length prefixes."""
+def _canonical_ratification_digest(
+    *,
+    decision: dict[str, object],
+    proposal_bytes: bytes = b"",
+) -> str:
+    """Digest proposal and sorted resulting-file bytes with uint64-BE framing."""
     digest = hashlib.sha256()
+    digest.update(_length_prefixed(value=proposal_bytes))
     resulting_files = decision.get("resulting_files", [])
     if not isinstance(resulting_files, list):
         return digest.hexdigest()
     entries = cast(list[object], resulting_files)
+    encoded_entries: list[tuple[bytes, bytes]] = []
     for raw_entry in entries:
         if not isinstance(raw_entry, dict):
             continue
         entry = cast(dict[str, object], raw_entry)
         path_bytes = str(entry.get("path", "")).encode("utf-8")
         content_bytes = str(entry.get("content", "")).encode("utf-8")
-        digest.update(str(len(path_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(path_bytes)
-        digest.update(str(len(content_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(content_bytes)
+        encoded_entries.append((path_bytes, content_bytes))
+    for path_bytes, content_bytes in sorted(encoded_entries, key=lambda item: item[0]):
+        digest.update(_length_prefixed(value=path_bytes))
+        digest.update(_length_prefixed(value=content_bytes))
     return digest.hexdigest()
+
+
+def _length_prefixed(*, value: bytes) -> bytes:
+    """Prefix bytes with their unsigned 64-bit big-endian length."""
+    return len(value).to_bytes(8, "big") + value
+
+
+@impure_safe(exceptions=(OSError,))
+def _read_proposal_bytes(*, path: Path) -> bytes:
+    """Read proposal bytes without text decoding or newline normalization."""
+    return path.read_bytes()
 
 
 def _validate_ratification_reviews(
     *,
     revise_input: RevisionInput,
     project_root: Path,
+    spec_target: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
     """Require schema-valid no-blockers evidence for every accept/modify decision."""
     reviewer_model = _configured_reviewer_model(project_root=project_root)
@@ -69,7 +87,11 @@ def _validate_ratification_reviews(
         decision_value = str(decision.get("decision", ""))
         if decision_value == "reject":
             continue
-        error = _validate_decision_review(decision=decision, reviewer_model=reviewer_model)
+        error = _validate_decision_review(
+            decision=decision,
+            reviewer_model=reviewer_model,
+            spec_target=spec_target,
+        )
         if error is not None:
             return IOResult.from_failure(ValidationError(error))
     return IOResult.from_value(revise_input)
@@ -88,6 +110,7 @@ def _validate_decision_review(
     *,
     decision: dict[str, object],
     reviewer_model: str | None,
+    spec_target: Path,
 ) -> str | None:
     mode = decision.get("ratification_review")
     if mode not in _REVIEW_MODES:
@@ -100,6 +123,7 @@ def _validate_decision_review(
         decision=decision,
         evidence=narrowed_evidence,
         reviewer_model=reviewer_model,
+        spec_target=spec_target,
     )
 
 
@@ -108,6 +132,7 @@ def _validate_evidence(
     decision: dict[str, object],
     evidence: dict[Any, Any],
     reviewer_model: str | None,
+    spec_target: Path,
 ) -> str | None:
     missing = sorted(_REQUIRED_EVIDENCE.difference(str(key) for key in evidence))
     if missing:
@@ -118,7 +143,6 @@ def _validate_evidence(
         _timestamp_error,
         _verdict_error,
         _proposal_stem_error,
-        _digest_error,
     ):
         error = validator(
             decision=decision,
@@ -127,7 +151,12 @@ def _validate_evidence(
         )
         if error is not None:
             return error
-    return None
+    return _digest_error(
+        decision=decision,
+        evidence=evidence,
+        reviewer_model=reviewer_model,
+        spec_target=spec_target,
+    )
 
 
 def _reviewer_error(
@@ -200,11 +229,28 @@ def _digest_error(
     decision: dict[str, object],
     evidence: dict[Any, Any],
     reviewer_model: str | None,
+    spec_target: Path,
 ) -> str | None:
     _ = reviewer_model
     digest = evidence.get("content_digest")
     if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
         return "revise: ratification content_digest must be lowercase sha256 hex"
-    if digest != _canonical_ratification_digest(decision=decision):
+    proposal_stem = cast(str, evidence["proposal_stem"])
+    proposal_path = spec_target / "proposed_changes" / f"{proposal_stem}.md"
+    proposal_result = cast(
+        Result[bytes, OSError],
+        unsafe_perform_io(
+            _read_proposal_bytes(path=proposal_path),  # pyright: ignore[reportArgumentType]
+        ),
+    )
+    if isinstance(proposal_result, Failure):
+        error = proposal_result.failure()
+        return f"revise: ratification proposal cannot be read at {proposal_path}: {error}"
+    proposal_bytes = proposal_result.unwrap()
+    canonical = _canonical_ratification_digest(
+        decision=decision,
+        proposal_bytes=proposal_bytes,
+    )
+    if digest != canonical:
         return "revise: ratification content_digest does not match final bytes"
     return None
