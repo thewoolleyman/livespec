@@ -1,9 +1,10 @@
 # spec-side-autonomy — handoff
 
-Resume at the Increment 2 Slice B boundary. This is the authoritative state as
-of 2026-08-04T06:36Z. Increment 2 is ratified, and its control-surface Slice A
-is implemented and landed. Do not resume stale candidate/review/revise briefs,
-recreate their worktrees, or redo Slice A.
+Resume Slice B `livespec-jvdvx4.4` at its prepared Red-commit gate. This is the
+authoritative state as of 2026-08-04T06:58Z. Increment 2 is ratified and Slice A
+is landed; Slice B has a genuine staged Red but no commit because the mandatory
+master-CI-green gate halted it. Do not recreate the worktree, redo Slice A, or
+start Green before Red commits honestly.
 
 Before any ledger operation, read `AGENTS.md`, `.ai/agent-disciplines.md`, and
 `.ai/beads-gaps-workarounds.md`, then use the installed orchestrator skill for
@@ -57,14 +58,72 @@ print secret values.
 - The Slice A feature worktree and local/remote branches are removed. Primary
   and `origin/master` are clean and equal at the merge SHA above.
 
-## Next action — Slice B boundary
+## Slice B prepared state
 
-Slice B `livespec-jvdvx4.4` is separate work. Do not infer authorization from
-Slice A, redispatch Slice A, or begin Increment 3. On restart, inspect the
-current ledger state for `livespec-jvdvx4.4` under the configured credential
-wrapper and follow the next explicit supervisor brief. Preserve Slice A's
-landed control surface and its safe-default behavior while implementing the
-resolver/floors/predicate/journal scope only when directed.
+- Brief 21 is the active build brief. The installed orchestrator `implement`
+  procedure and repo TDD/worktree disciplines were read in full. The in-session
+  exception is **supervisor-directed because the factory is unavailable at its
+  WIP cap**; it is not maintainer-directed, and closure must say so accurately.
+- A wrapper-batched ledger read confirmed `livespec-jvdvx4.4` is open,
+  freeform, parented to `livespec-jvdvx4`, and unblocked by completed Slice A.
+  The user's build instruction selected the `completed` disposition and is
+  closure-write consent after verified delivery.
+- Owned worktree:
+  `/home/ubuntu/.worktrees/livespec/feat/revise-decision-resolver`
+  on branch `feat/revise-decision-resolver`, based at
+  `d2501bc950fd4194b4788b6b3f5ffbbb5d275b73`.
+- The ignored worktree pack is installed there and the installer's tracked
+  `.livespec.jsonc` change was restored. Do not reinstall unless a gate reports
+  it absent.
+- Exactly one file is staged:
+  `tests/livespec/spec_governance/test_effective.py`. It adds four focused
+  resolver/predicate tests covering all four hard floors, file-scoped override
+  precedence and malformed-to-manual fallback, strict two-signal delegated
+  agreement, unavailable consensus, and journal failure. With implementation
+  untouched it fails genuinely at four `hasattr` assertions because
+  `effective_revise_decision_mode` does not exist. The hook reformatted and
+  restaged only this test file.
+- The Red commit attempt used subject
+  `feat: enforce revise decision ownership` and was rejected before commit by
+  `check-master-ci-green`. There is no Red commit, implementation change, push,
+  PR, or ledger mutation.
+- The blocking master run is GitHub Actions run `30885217109` for master SHA
+  `d2501bc950fd4194b4788b6b3f5ffbbb5d275b73`. Its
+  `check-ci-matrix-completeness` job timed out downloading
+  `typing-extensions==4.15.0` after five retries during `uv sync`; `ci-green`
+  failed as the aggregate consequence. The preceding master runs were green.
+  This is an external dependency-download failure, not a Red-test failure.
+
+## Next action — finish Red, then Green
+
+Read Brief 21 again, then inspect the latest master CI state read-only. Do not
+add or use any escape gate and do not retry while `check-master-ci-green` still
+reports red. Once a fresh/rerun master CI is green, resume in the existing owned
+worktree and commit the already-staged test with:
+
+`mise exec -- git commit -m 'feat: enforce revise decision ownership'`
+
+Do not alter the test bytes between Red and Green. After the Red commit succeeds,
+append the Red milestone, implement only Slice B, and Green-amend with
+`mise exec -- git commit --amend --no-edit`. The intended bounded seam is the
+existing `spec_governance.effective` resolver/predicate, digest-only journal
+validation, and a pre-mutation revise enforcement stage that consumes the
+predicate. Preserve these acceptance boundaries:
+
+- malformed/wrong-typed/unknown `decision_policy` silently resolves to manual;
+- every design-record, review, and drift floor escalates before configuration;
+- delegated proceeds only with exact-byte no-blockers review **and** delegated
+  decider acceptance; disagreement escalates;
+- consensus evidence is unavailable today and always escalates—build no panel;
+- every automated `revise_decision` event is digest-only and appends before
+  mutation; an induced append failure must prevent `_process_decisions`;
+- defaults arm nothing, and review evidence/drift authority remain unchanged.
+
+Then run the focused tests and full `just check`, push through hooks, open the
+PR, wait for all forge checks, rebase-merge, refresh primary, close
+`livespec-jvdvx4.4` with clause-by-clause evidence and the accurate
+supervisor/factory-cap exception, clean only the owned branch/worktree, and
+record every required milestone in `worker-status.log`.
 
 ## Increment 3 boundary
 
