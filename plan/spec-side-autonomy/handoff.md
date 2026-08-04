@@ -1,125 +1,155 @@
 # spec-side-autonomy — handoff
 
-Resume the Increment 2 doctrine amendment. Read
-`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-13-resume-increment-2.md`
-and then
-`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-14-worktree-pack.md`
-in full before acting. This file is the authoritative resume state as of
-2026-08-04T01:43Z; do not infer state from an old transcript.
+Resume the Increment 2 doctrine amendment from the independent-review blocker
+below. This is the authoritative state as of 2026-08-04T04:07Z. Do not resume
+from an earlier brief or transcript. Read `AGENTS.md` §"Independent Fable review
+before every ratification", `.ai/spec-proposal-review.md`, and
+`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-17-review-and-revise.md`
+before acting.
 
 **Ledger anchor:** livespec epic `livespec-jvdvx4`.
 
 ## Current state
 
-- Increment 1 is complete. Slices A/B/D merged as PRs #1939, #1942,
-  and #1944. Slice C was supervisor-owned and merged as PR #1949. Never
-  touch or redispatch Slice C.
-- Increment 2's proposal-only PR #1948 is merged. The only pending
-  proposal is expected to be
-  `SPECIFICATION/proposed_changes/spec-governance-revise-decision-mode.md`,
-  but re-enumerate the live queue immediately before revise.
-- Handoff PR #1961 was rebased after the compatibility repair and merged as
-  `11bd1b72`; follow-up handoff PR #1967 rebase-merged as
-  `6e7736afaeda16cd27455c3108a52885b158e233`. The pre-existing dirty
-  `plan/spec-side-autonomy/supervisor-handoff.md` remains untouched.
-- The live spec remains v192. Railway landed as v191. Any eventual Increment
-  2 ratification is v193 only if no newer ratification lands first; fetch and
-  re-enumerate immediately before revise.
-- The ratification worktree is
+- Increment 1 is complete. Core slices A/B/C/D merged as PRs #1939, #1942,
+  #1949, and #1944. Do not redispatch them.
+- Increment 2's proposal-only PR #1948 is merged. At the last fresh enumeration,
+  the only in-flight proposal was
+  `SPECIFICATION/proposed_changes/spec-governance-revise-decision-mode.md`.
+  Re-enumerate every spec-target queue immediately before revise.
+- The hard digest predecessor `livespec-jvdvx4.1` is CLOSED. Its repair passed
+  Red-Green-Replay and the full local/forge matrices, then PR #1974
+  rebase-merged onto livespec master as
+  `066a29fbb204b4be2e2e3ab56e73053ec52bb646`. Do not redo it.
+- The owned ratification worktree is
   `/home/ubuntu/.worktrees/livespec/spec/ratify-spec-governance-increment-2`
-  on branch `spec/ratify-spec-governance-increment-2`, freshly re-derived from
-  forge `origin/master` `6e7736afaeda16cd27455c3108a52885b158e233`.
-  It deliberately has four uncommitted candidate files and nothing else:
-  `SPECIFICATION/spec.md`, `contracts.md`, `constraints.md`, and
-  `scenarios.md` (71 insertions, 8 deletions).
-- Brief 15 discarded the old full-file candidates, moved the branch itself to
-  that exact origin SHA, and rebuilt all four edits against those fresh
-  predecessor bytes. The corrected candidate fixes both doctrine-text
-  blockers: it makes the durable revision-record audit clause a `MUST`; makes
-  the overview policy-governed
-  with human default/floors; states delegated/manual-spawn interaction and
-  revise prose ownership; covers delegated plus consensus override; and uses
-  the exact `revise_decision` journal token. H2 headings are unchanged and
-  the Increment 3 drift-doctrine sentence remains byte-identical.
-- The ratification worktree's ignored worktree pack is currently absent.
-  Before any hook-backed validation there, run
-  `mise exec -- just install-worktree-pack`, then immediately run
-  `mise exec -- git checkout -- .livespec.jsonc`; confirm the tracked config
-  is clean. The old candidate digest `5792ffc...` is stale and must not be used
-  as evidence. No review, revise, ratification, candidate commit, or candidate
-  push was performed.
+  on branch `spec/ratify-spec-governance-increment-2`. Its HEAD and derivation
+  base are exact fetched `origin/master`
+  `6dab6033a2ea428409049b1d3daf19b18841033d`.
+- Exactly four candidate files are deliberately uncommitted there:
+  `SPECIFICATION/spec.md`, `contracts.md`, `constraints.md`, and `scenarios.md`.
+  They were discarded and re-derived from the fresh base before review. The
+  diff is 71 insertions / 8 deletions; every H2 set is unchanged; the paragraph
+  beginning `**Drift's human gate is load-bearing doctrine.**` is byte-identical
+  to base; no Increment-3 doctrine was touched.
+- The exact pre-review digest was
+  `39198f3099d54ff20541251626151388c49a128c1b1808fcae6ff5721dfe7a5b`,
+  computed as uint64-BE LP(raw proposal bytes) first, then the four full-file
+  entries sorted by unsigned UTF-8 path bytes. It is evidence for the BLOCKERS
+  review only and MUST NOT be reused after any candidate edit or re-derivation.
+- No revise, ratification version, candidate commit, candidate push, or
+  ratification PR has occurred. The live spec remained v192 at the last check;
+  derive the next version from fresh history rather than assuming v193.
 
-## Active blocker — digest repair still precedes review
+## Active blocker — routed, never self-waived
 
-The producer/core compatibility outage is over. livespec-dev-tooling PR #1212
-and livespec core parser PR #1963 are merged, and the cross-repo gate is green.
-Do NOT redo either change and do not touch the dev-tooling fallout items.
+A separate read-only `fable` model was spawned with the exact candidate bytes.
+It independently reproduced the digest, verified that the three former blockers
+are fixed, and returned literal `VERDICT: BLOCKERS`.
 
-The digest doctrine in the re-derived candidate correctly preserves raw
-proposal bytes first, unsigned-64-bit big-endian length prefixes, and unsigned
-UTF-8 bytewise path ordering. The remaining ratification blocker is the
-implementation mismatch. On fresh core master,
-`.claude-plugin/scripts/livespec/commands/_revise_ratification.py` still hashes
-decimal-ASCII length framing, omits the
-raw proposal bytes, and does not sort paths by unsigned UTF-8 bytes; that cannot
-validate the ratified `LP(P)` + uint64-BE + bytewise-path contract in candidate
-`contracts.md`. The doctrine candidate must not weaken that contract.
+The sole blocker is mechanical. Two new design-record citations use the
+section-reference form against a same-repo `plan/` file:
 
-Use the existing repair child `livespec-jvdvx4.1` under epic
-`livespec-jvdvx4`; its dispatch-sized description is preserved at
-`tmp/overseer/spec-side-autonomy/digest-repair-description.md`. Two historical
-factory runs failed before Red commit and delivered no branch/PR/merge:
-`01KZ4BMPE617AKNYHSNFA6BB9G` and `01KZ4CC86BBZZWYAMJ8BG8ZMAD`.
-Re-read the current ledger item through the sanctioned driver before acting;
-do not duplicate the item or assume its old stale claim still has the same
-state. Resolve/requeue only through the documented orchestrator surface, then
-dispatch that same item exactly once now that the compatibility gate is green.
+- candidate `SPECIFICATION/spec.md`, the `Delegated revise is stronger than
+  manual revise` paragraph; and
+- candidate `SPECIFICATION/contracts.md`, the `decision_policy` wire-surface
+  paragraph.
 
-## Resume sequence
+Both append
+`§"Proposed design — a core-owned \`spec_governance\` lever family"` to
+`plan/spec-side-autonomy/research/brainstorm.md`. The ratified
+`doctor-no-cross-spec-reference` check resolves section citations only against
+same-tree spec headings or allowlisted sibling-spec headings. Fable ran
+doctor-static on the exact tree: it failed at `contracts.md` and independently
+confirmed the `spec.md` citation is the same second violation. These bytes are
+therefore not cleanly ratifiable.
 
-1. Read the installed `livespec-orchestrator-beads-fabro:drive` skill from the
-   current plugin catalog and `.ai/beads-gaps-workarounds.md` completely. The
-   prior session's guessed versioned skill path was absent; resolve the current
-   catalog path rather than assuming `0.49.10` is materialized locally.
-2. Batch-read the current ledger state for `livespec-jvdvx4.1`, repair any
-   terminal stale claim only through the sanctioned surface, and dispatch that
-   same item exactly once. Do not create a replacement item and do not rerun
-   core parser PR #1963.
-3. Wait for the digest repair to merge. Fetch livespec master, then refresh the
-   owned ratification worktree onto the new master while preserving exactly the
-   four uncommitted candidate files. Recheck that only those four spec files
-   differ and that the Increment-3 drift-doctrine sentence remains byte-exact.
-4. Install the ratification worktree's ignored worktree pack and revert the
-   installer-only `.livespec.jsonc` edit. Run
-   `mise exec -- just check-pre-commit-doc-only`, recompute the canonical proposal+resulting-files
-   digest from the freshly fetched bytes, and update the existing read-only
-   review brief at
-   `tmp/overseer/spec-side-autonomy/reviews/revise-decision-mode-v192-corrected.md`
-   for the new base and exact bytes.
-5. Spawn a fresh, separate Fable-model READ-ONLY adversarial reviewer. It must
-   independently verify the three prior blockers plus every criterion in the
-   review brief and end with literal `VERDICT: NO BLOCKERS`. Any blocker routes
-   to the maintainer with a recommended fix; never self-waive it.
-6. Immediately before revise, fetch again and re-derive every full-file
-   `resulting_files[]` entry from those fresh bytes. Re-enumerate every proposal
-   queue, ensure only `spec-governance-revise-decision-mode.md` is consumed,
-   and run the required stale-branch precondition. Drive `livespec:revise` with
-   matching evidence and `--post-step-doctor`; do not touch the Increment-3
-   drift-doctrine sentence. Commit, push, open the ratification PR, wait for
-   checks, rebase-merge, refresh master, and clean the worktree/branch.
-7. Only after core ratifies, file—but do not implement or dispatch—the
-   orchestrator child that retires the needs-attention revise lane when the
-   shared predicate is false. Its 1447-byte draft and notes are at
-   `tmp/overseer/spec-side-autonomy/increment-2-orchestrator-slice-description.md`
-   and `increment-2-orchestrator-slice-notes.md`; replace version/PR
-   placeholders with final values and parent it to `livespec-jvdvx4`.
+**Recommended fix, awaiting supervisor authorization:** retain the bare
+repo-plus-path citations in both sentences and remove only the two `§"…"`
+suffixes. Do not add an external-reference allowlist entry: that registry is for
+sibling `SPECIFICATION/` headings, not a same-repo plan heading. After any fix,
+the old digest and review are stale; recompute and obtain a fresh independent
+Fable review. Brief 17 says a blocker routes to the supervisor with its
+recommended fix rather than being silently fixed and re-reviewed, so do not
+apply it until the supervisor explicitly directs continuation.
+
+## What the blocker review already verified
+
+- Digest mechanics match the ratified candidate contract and shipped code:
+  proposal bytes first, unsigned uint64 big-endian framing, unsigned UTF-8
+  bytewise path ordering, and proposal lookup/read failure before mutation.
+- The former durable-audit blocker is fixed: candidate `contracts.md` requires
+  the paired revision record to preserve decision mode/source and delegated or
+  consensus evidence with `MUST`.
+- The former overview blocker is fixed: the loop is policy-governed and
+  human-gated by default and at every doctrine floor.
+- All four unconditional first branches remain human-only: cited design-record
+  contradiction, absent/unreachable design record, every ratification-review
+  blocker, and drift origin. Consensus arms nothing until its separately
+  ratified tier/evidence exists.
+- Topic and filename stem match; no heading-coverage co-edit is owed; the
+  proposal queue held only this proposal; the orchestrator executor exclusion
+  and independent-review floor remain intact.
+
+Fable also recorded non-blocking concerns to preserve during the next review:
+
+1. The proposal says the durable revision-record audit clause `SHOULD` preserve
+   evidence, while the corrected candidate intentionally strengthens it to
+   `MUST`; drive the eventual revise as `modify`, not plain `accept`, and record
+   that strengthening in `## Modifications`.
+2. The audit-field home is not named; an implementation follow-up should
+   standardize it, plausibly under `## Ratification Review`.
+3. Increment-scoped drift sentences must be swept deliberately by Increment 3.
+4. The predicate enumeration omits the proposal's explicit word `mismatched`,
+   although the exact-valid-mode condition and constraints preserve safety.
+5. The orchestrator needs-attention human lane remains correct under the manual
+   safe default; its retirement is the post-ratification sibling follow-up.
+
+## Resume sequence after authorization
+
+1. Fetch livespec `origin/master`. If it moved from `6dab6033`, discard the four
+   full-file candidates and re-derive the entire 71/8 semantic change from the
+   new predecessor bytes; never splice stale full-file content. If it did not
+   move, apply only the authorized two-suffix correction.
+2. Confirm only the four candidate files differ, all H2 sets remain unchanged,
+   and the Increment-3 drift paragraph remains byte-identical.
+3. Install the owned worktree's ignored pack with
+   `mise exec -- just install-worktree-pack`, immediately restore the installer
+   edit with `mise exec -- git checkout -- .livespec.jsonc`, and verify config
+   is clean. Run doctor-static and `mise exec -- just check-pre-commit-doc-only`.
+   Never use `--no-verify`; halt on any hook/gate failure.
+4. Recompute the canonical proposal-plus-resulting-files digest from the exact
+   final bytes. Update the Fable packet for the new base/digest and spawn a fresh,
+   separate read-only Fable-model reviewer. A literal `NO BLOCKERS` verdict is
+   mandatory and never self-waived; report any blocker rather than silently
+   iterating again.
+5. Only after `NO BLOCKERS`, fetch again. If master moved, re-derive and obtain
+   another review because every full-file byte and digest may have changed.
+   Run the required stale-`spec/*`-branch precondition and re-enumerate queues.
+6. Assemble exactly one revise decision with
+   `proposal_topic: spec-governance-revise-decision-mode`, decision `modify`,
+   the `MUST` strengthening recorded in `modifications`, the four exact
+   `resulting_files[]`, and fresh matching Fable evidence. Invoke the config-named
+   revise CLI with `--post-step-doctor`; follow the complete `livespec:revise`
+   post-step contract. Do not touch the Increment-3 drift-doctrine sentence.
+7. Commit only the governed revise output, push, open the ratification PR, wait
+   for the complete forge matrix, rebase-merge, refresh primary master, and
+   remove the ratification worktree/branch.
+8. Only after core ratifies, file—but do not implement or dispatch—the
+   orchestrator child that retires its needs-attention revise lane when the
+   shared predicate is false. Its draft and notes remain under
+   `tmp/overseer/spec-side-autonomy/`; replace version/PR placeholders and
+   parent it to `livespec-jvdvx4`.
 
 ## Standing constraints
 
-- Increment 2 is doctrine-sensitive: every Brief 09 clause is load-bearing.
-- Never pass `--no-verify`; use the worktree → PR → rebase-merge → cleanup
-  protocol. Do not commit at a primary checkout.
-- Do not mutate unrelated ledger items, admission labels, branches, or
-  supervisor-owned work. Do not kill the livespec-overseer tmux daemon.
+- Increment 2 is doctrine-sensitive; every four-floor and exact-byte clause is
+  load-bearing.
+- All tracked edits stay in dedicated worktrees. Never edit or commit tracked
+  files in `/data/projects/livespec`.
+- Never pass `--no-verify`; use worktree → PR → rebase-merge → primary refresh
+  → cleanup.
+- Never touch another session's worktree, branch, sandbox, ledger item, or
+  admission label. Never kill the acting overseer daemon.
 - The detailed milestone trail is
   `tmp/overseer/spec-side-autonomy/worker-status.log`.
