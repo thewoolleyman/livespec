@@ -93,9 +93,18 @@ back through the `bd` CLI using `bd show --json --include-comments`,
   each sequential entry remains separate.
 - **Read / query ergonomics:** Good for timeline reads, limited for field
   queries. `bd show --json --include-comments` and `bd comments <id> --json`
-  both return full comment bodies and preserve entry boundaries. The simple
-  `bd query` language does not expose comment-body search, and `bd search
-  "Research context excerpt"` returned no rows for the comment-only bead.
+  both return full comment bodies and preserve entry boundaries. `bd search
+  "Research context excerpt"` returned no rows for the comment-only bead — a
+  true observation, but on its own an INVALID inference: `bd search` text
+  queries are title-and-ID scoped, so the same command also returns no rows
+  for content sitting in a DESCRIPTION, and an empty result from it proves
+  nothing about comments. The corrected evidence (independent review,
+  2026-08-04, bd 1.0.5): `bd search <title-word> --desc-contains <marker>`
+  finds planted description content but not a comment-only marker, and
+  `bd query 'comments="..."'` fails with an explicit `unknown field: comments`
+  — a definitive rejection rather than an empty result. The conclusion is
+  unchanged: comment bodies are not reachable through `bd query` or
+  `bd search`.
 
 ## Recommendation
 
@@ -113,3 +122,29 @@ through `bd query` in Beads 1.1.2. Store any machine-queryable handoff metadata
 outside the prose body, for example in labels or metadata on the plan epic or
 in a short index comment convention, and use `bd comments <epic-id> --json` as
 the authoritative handoff read path.
+
+## Addendum — independent review verification (2026-08-04)
+
+The independent adversarial review required for research deliverables
+re-derived this spike's claims against the fleet's CURRENT pin,
+`bd version 1.0.5 (6a3f515ce)` at the guarded `/usr/local/bin/bd`, on an
+embedded scratch ledger outside every checkout:
+
+- **The recommendation carries NO version condition.** Every capability it
+  depends on — `bd comments add <id> --file`, exact long-prose round-trip,
+  per-entry boundaries with author/timestamp metadata, and
+  `bd show --json --include-comments` — is present and verified on 1.0.5 as
+  well as the 1.1.2 this spike probed.
+- **The round-trip envelope is verified to 133,457 bytes**, digest-exact
+  (SHA-256), not merely the 34 KB probed above. Three sequential comments of
+  38,518 / 42 / 133,457 bytes read back as three separately addressable
+  entries, each byte-exact.
+- **Search-evidence repair:** the `bd search` sentence under "Comments" above
+  was corrected by that review. On 1.0.5 the query-language limitation is an
+  explicit `unknown field: comments` rejection — firmer ground than the empty
+  search result originally cited, which a title-and-ID-scoped `bd search`
+  would have returned even for indexed content.
+- **Embedded-init flag parity:** 1.0.5 needed only
+  `bd init --non-interactive --prefix <p>`; the 1.1.2 flags `--skip-agents`,
+  `--skip-hooks`, and `--sandbox` do not exist / were not needed on 1.0.5.
+  Comment entry ids are UUIDs on 1.0.5.
