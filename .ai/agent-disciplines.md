@@ -10,7 +10,7 @@ rule and the overseer / long-running-coordinator discipline.
 ## Session-end standing-handoff path rule
 
 When a session advanced a **standing-handoff track** — a refresh-each-session
-handoff, i.e. a plan thread's `plan/<topic>/handoff.md` — the session's closing
+handoff, i.e. a plan's `plan/<topic>/handoff.md` — the session's closing
 recap MUST end by printing the exact handoff path **verbatim, as the LAST line
 of the recap** (nothing after it):
 
@@ -35,7 +35,7 @@ ledger state it points at) before printing the handoff path.
 
 ## Planning-lane continuation rule
 
-A plan thread's handoff is executable coordination, not a suggestion to stop.
+A plan's handoff is executable coordination, not a suggestion to stop.
 When a resumed handoff names a next action, execute that action automatically
 unless the user explicitly asked only for status, review, or analysis. This
 includes chaining to another livespec-orchestrator operation such as `groom`,
@@ -43,8 +43,8 @@ includes chaining to another livespec-orchestrator operation such as `groom`,
 
 Do not stop merely because a handoff file was refreshed, validated, committed,
 or merged. Keep going until the active operation is genuinely blocked, the
-thread closes, the work reaches a handoff-rotation boundary, or the user's
-newest message redirects the session. For a planning thread, `groom` stays in
+plan closes, the work reaches a handoff-rotation boundary, or the user's
+newest message redirects the session. For a plan, `groom` stays in
 the maintainer-side planning lane and is not factory-dispatched; ready
 implementation work that `groom` produces is what routes to the factory.
 
@@ -112,7 +112,7 @@ for every other session too, until it recovers.
   The same applies to multi-item detail fetches — loop inside a single wrapper
   invocation rather than wrapping each command.
 - **Never narrate into the ledger.** Comments that restate what a session did,
-  or record reasoning already captured in a plan thread or commit message, cost
+  or record reasoning already captured in a plan or commit message, cost
   quota and add nothing a reader needs. Comment when you are recording evidence,
   a correction, or a decision — not to leave a trail.
 
@@ -196,7 +196,7 @@ multi-session coordination, whatever drives it.
 ## Tracked-session discipline — the overseer wrap-up contract
 
 This binds YOU when your session is a **track** supervised by the overseer daemon
-(`.claude/skills/overseer/`) — i.e. you are running a plan thread and a wrap-up
+(`.claude/skills/overseer/`) — i.e. you are running a plan and a wrap-up
 message is pasted into your pane at a context threshold. It is the other half of
 the contract; the daemon's half is `marker-protocol.md`.
 

@@ -97,9 +97,9 @@ prior art.
 
 ### 6. A directory listing cannot distinguish "never existed" from "deleted"
 
-A supervisor checked whether a plan thread existed, found the path absent from a
+A supervisor checked whether a plan existed, found the path absent from a
 directory listing, and issued the directive "it does not exist active or
-archived; you were pointed at a handoff that was never written." The thread DID
+archived; you were pointed at a handoff that was never written." The plan DID
 exist — it had been removed by a `git rm` an hour earlier and was restored
 shortly after. Obeyed literally, that directive would have abandoned a 253-line
 handoff holding findings recorded nowhere else.
@@ -118,10 +118,10 @@ shows the pattern reaching the person REVIEWING the work as readily as the perso
 doing it — which is the strongest available argument that it is environmental
 rather than a matter of individual care.
 
-### 7. An archived plan thread moves every path it owns
+### 7. An archived plan moves every path it owns
 
 A fleet audit checked whether four confirmation artifacts existed, searched the
-LIVE thread path (`plan/<topic>/`), found nothing, and concluded the dispatches
+LIVE plan path (`plan/<topic>/`), found nothing, and concluded the dispatches
 that would have produced them never ran. It then reported a work-item as wrongly
 parked in the `acceptance` lane.
 

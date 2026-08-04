@@ -653,6 +653,12 @@ existing file):
   use it in any prose, document, work-item, commit, or report; always write
   "Definition-of-Ready". (Quoting pre-existing text verbatim for mechanical
   replacement targeting is the only exception.)
+- **Call the planning artifact a "plan"** — the two-word term "plan thread" is
+  BANNED (maintainer-declared 2026-08-04: two words for one thing, agent-coined,
+  never approved). Never use it in new prose, documents, work-items, commits, or
+  reports; always write "plan". Quoting pre-existing text verbatim for
+  mechanical replacement targeting is the only exception. Frozen `archive/` and
+  `history/` trees keep the old term.
 - **Maintainer-facing documents must explain their own notation.** Define
   every symbol before or beside its first use (an arrow, a column, a tally),
   make headings match their content (a list titled "the 7 X" must contain

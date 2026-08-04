@@ -9,7 +9,7 @@ that has no other home — the session-end standing-handoff print rule.
 ## Session-end standing-handoff print rule
 
 When a session advanced a **standing-handoff track** — a refresh-each-session
-handoff, i.e. a plan thread's `plan/<topic>/handoff.md` — the session's closing
+handoff, i.e. a plan's `plan/<topic>/handoff.md` — the session's closing
 recap MUST end by printing the exact resume command **verbatim, as the LAST
 line of the recap** (nothing after it):
 
