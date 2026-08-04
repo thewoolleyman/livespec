@@ -23,8 +23,9 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Fourteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14 on 2026-07-27, across five repos and four independent operators
+## Sixteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, across five repos and
+## four independent operators
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -354,9 +355,53 @@ because the next reader will trust the stream exactly as you did. (Fixed in
 backstop gap AND a position offense in different files, because asserting only
 the exit code passes against the defect.)
 
+### 16. A REQUIRED check reporting SUCCESS may have skipped its own step
+
+Five fleet repositories sat with red `master` CI for hours while pull requests
+kept merging into them, and every merged PR's required `ci-green` was honestly
+green. Nothing was misconfigured and no gate had been weakened.
+
+The mechanism is one layer below instance 9. There, a job's status was read as
+health. Here the JOB status is not merely a weak proxy — it is affirmatively
+wrong, because the job ran and reported `success` having executed none of its
+real steps. On `livespec-overseer` PR #698, job `check-public-api-result-typed`:
+
+    Skip when no .py changes            success   <- the whole story
+    Checkout                            skipped
+    Install Python dev deps via uv      skipped
+    just check-public-api-result-typed  skipped   <- the check NEVER RAN
+    JOB CONCLUSION                      success
+
+The same job on the master push at the SAME merge commit ran the check and
+FAILED. A zero-`.py` changeset takes a deliberate "skip" step that SUCCEEDS,
+every real step is `if:`-skipped, and a REQUIRED context therefore certifies
+nothing while presenting as a check that passed. It does not even report
+`skipped`, which an observer might have noticed.
+
+Four hypotheses were eliminated by measurement before the real one was found,
+each of which had felt obvious: a pin difference across the rebase-merge (the
+pin was identical at both commits), a container-image difference (identical tag,
+and the two runs started six seconds apart), universe scoping in the recipe (the
+justfile recipe is a bare module invocation), and a stale base — master gaining
+violating code between the PR run and the merge — which died when the checker
+was run against BOTH trees in throwaway worktrees and reported the same 123
+violations in each. The answer was never in the trees; it was in which STEPS ran.
+
+**Counter-move:** for a required check, read STEP conclusions, not the job
+conclusion. `gh run view <id> --json jobs` carries `.jobs[].steps[]`, and the
+question to ask is not "did this job pass" but "did the step that runs the check
+execute". A green required context whose command step is `skipped` is a check
+that CANNOT FAIL — the same defect as a check that cannot pass, which this file
+names elsewhere. When a subsetting optimisation exists to skip work, the design
+obligation is that a skipped verification must not be indistinguishable from a
+successful one: report a non-success outcome, or make the aggregate distinguish
+"ran and passed" from "did not run". (Tracked as `livespec-dev-tooling-zi29`,
+filed separately from the regression it concealed precisely so that fixing the
+regression could not close it.)
+
 ## Why this file exists in livespec CORE
 
-The fifteen instances span FIVE repositories — `livespec`,
+The sixteen instances span FIVE repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro` and `livespec-overseer` — and core owns
 fleet-level facts. A lesson filed only in one tenant would not be read
