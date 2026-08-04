@@ -1,9 +1,11 @@
 # spec-side-autonomy — handoff
 
 Resume the Increment 2 doctrine amendment. Read
-`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-09-increment-2.md`
+`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-13-resume-increment-2.md`
+and then
+`/data/projects/livespec/tmp/overseer/spec-side-autonomy/brief-14-worktree-pack.md`
 in full before acting. This file is the authoritative resume state as of
-2026-08-03; do not infer state from an old transcript.
+2026-08-04T01:43Z; do not infer state from an old transcript.
 
 **Ledger anchor:** livespec epic `livespec-jvdvx4`.
 
@@ -16,82 +18,90 @@ in full before acting. This file is the authoritative resume state as of
   proposal is expected to be
   `SPECIFICATION/proposed_changes/spec-governance-revise-decision-mode.md`,
   but re-enumerate the live queue immediately before revise.
-- The livespec primary checkout is clean at v192 commit `73cf2dbc`
-  (`chore(spec): ratify self-hosted CI runner host requirements as v192`).
-  Railway landed as v191. Any eventual Increment 2 ratification is v193
-  only if no newer ratification lands first.
+- Handoff PR #1961 was rebased after the compatibility repair, passed the
+  complete fresh forge matrix, and rebase-merged as `11bd1b72`. The primary
+  checkout was fast-forwarded to that SHA and its completed handoff worktree
+  and branch were removed. The pre-existing dirty
+  `plan/spec-side-autonomy/supervisor-handoff.md` remains untouched.
+- The live spec remains v192. Railway landed as v191. Any eventual Increment
+  2 ratification is v193 only if no newer ratification lands first; fetch and
+  re-enumerate immediately before revise.
 - The ratification worktree is
   `/home/ubuntu/.worktrees/livespec/spec/ratify-spec-governance-increment-2`
-  on branch `spec/ratify-spec-governance-increment-2`, based on v192.
+  on branch `spec/ratify-spec-governance-increment-2`, refreshed to current
+  master `11bd1b72`.
   It deliberately has four uncommitted candidate files and nothing else:
   `SPECIFICATION/spec.md`, `contracts.md`, `constraints.md`, and
   `scenarios.md` (71 insertions, 8 deletions).
-- The corrected candidate fixes all earlier content blockers: it adds the
+- The corrected candidate fixes both doctrine-text blockers: it adds the
   durable revision-record audit clause; makes the overview policy-governed
   with human default/floors; states delegated/manual-spawn interaction and
   revise prose ownership; covers delegated plus consensus override; and uses
   the exact `revise_decision` journal token. H2 headings are unchanged and
   the Increment 3 drift-doctrine sentence remains byte-identical.
-- The doc-only gate passed before the final tiny journal-token wording edit.
-  Rerun it before review. The old candidate digest
-  `5792ffc...` is stale and must not be used as evidence.
+- The ratification worktree's ignored worktree pack is currently absent.
+  Before any hook-backed validation there, run
+  `mise exec -- just install-worktree-pack`, then immediately run
+  `mise exec -- git checkout -- .livespec.jsonc`; confirm the tracked config
+  is clean. The old candidate digest `5792ffc...` is stale and must not be used
+  as evidence.
 
-## Active blocker — do not dispatch again yet
+## Active blocker — digest repair still precedes review
 
-The first independent exact-byte review found that the current revise digest
-implementation violates the ratified v190 LP(P)/uint64-BE/bytewise-path
-contract. The existing repair child is `livespec-jvdvx4.1` under epic
-`livespec-jvdvx4`. Its dispatch-sized description (1483 bytes) is preserved at
-`tmp/overseer/spec-side-autonomy/digest-repair-description.md`.
+The producer/core compatibility outage is over. livespec-dev-tooling PR #1212
+and livespec core parser PR #1963 are merged, and the cross-repo gate is green.
+Do NOT redo either change and do not touch the dev-tooling fallout items.
 
-Two factory runs failed before Red commit, with no branch, PR, or merge:
+The remaining ratification blocker is the original v190 digest mismatch. On
+fresh core master, `.claude-plugin/scripts/livespec/commands/_revise_ratification.py`
+still hashes decimal-ASCII length framing, omits the
+raw proposal bytes, and does not sort paths by unsigned UTF-8 bytes; that cannot
+validate the ratified `LP(P)` + uint64-BE + bytewise-path contract in candidate
+`contracts.md`. The doctrine candidate must not weaken that contract.
 
-- `01KZ4BMPE617AKNYHSNFA6BB9G`
-- `01KZ4CC86BBZZWYAMJ8BG8ZMAD`
-
-The item remains `active`, assignee `fabro`, after terminal failure. Do not
-launch a third run or race the stale claim.
-
-The exact failure, reproduced against fresh origin/master sibling clones, is
-`doctor-wiring-completeness-cross-repo: livespec-dev-tooling→:no-check-recipe`.
-The breaking change is livespec-dev-tooling PR #1179 / commit
-`20a43f85cad2eb6fc6ad1d2b04f506a31f82e305`, which replaced the directly
-enumerable `justfile` `check:` aggregate with `scripts/just/check.sh` before
-core's ratified checker could consume that shape. The host checkout looked
-green only because `/data/projects/livespec-dev-tooling` was stale; a fresh
-origin clone fails.
-
-Per `.ai/ci-gate-discipline.md`, do not add a lever, bypass, or warning
-demotion. The recommended world-gate repair is a full server-side revert of
-livespec-dev-tooling PR #1179, followed by a separately ordered re-land once
-core supports the new shape. Supervisor authorization for that cross-repo
-revert was requested but had not arrived when this session wound down. Obtain
-or consume an explicit maintainer decision before mutating that repo.
+Use the existing repair child `livespec-jvdvx4.1` under epic
+`livespec-jvdvx4`; its dispatch-sized description is preserved at
+`tmp/overseer/spec-side-autonomy/digest-repair-description.md`. Two historical
+factory runs failed before Red commit and delivered no branch/PR/merge:
+`01KZ4BMPE617AKNYHSNFA6BB9G` and `01KZ4CC86BBZZWYAMJ8BG8ZMAD`.
+Re-read the current ledger item through the sanctioned driver before acting;
+do not duplicate the item or assume its old stale claim still has the same
+state. Resolve/requeue only through the documented orchestrator surface, then
+dispatch that same item exactly once now that the compatibility gate is green.
 
 ## Resume sequence
 
-1. Re-read `.ai/ci-gate-discipline.md`. If the maintainer authorizes the
-   recommendation, open and merge a full revert PR for livespec-dev-tooling
-   #1179 and record/file the correctly ordered re-land work. Do not broaden
-   the revert and do not bypass a gate.
-2. Verify a fresh-origin cross-repo check is green. Then repair the stale
-   ledger claim for `livespec-jvdvx4.1` using the sanctioned intake/drive
-   surfaces and dispatch that same item exactly once. Do not duplicate it.
-3. Wait for the digest repair to merge. Fetch livespec master, then update the
-   ratification worktree onto the new master while preserving the four
-   uncommitted candidate files. Recheck that no stale full-file splice reverted
-   v191/v192 and that only those four spec files differ.
-4. Run `mise exec -- just check-pre-commit-doc-only`, recompute the exact
-   candidate digest, and launch a fresh independent Fable exact-byte review
-   using
+1. Read the installed `livespec-orchestrator-beads-fabro:drive` skill from the
+   current plugin catalog and `.ai/beads-gaps-workarounds.md` completely. The
+   prior session's guessed versioned skill path was absent; resolve the current
+   catalog path rather than assuming `0.49.10` is materialized locally.
+2. Batch-read the current ledger state for `livespec-jvdvx4.1`, repair any
+   terminal stale claim only through the sanctioned surface, and dispatch that
+   same item exactly once. Do not create a replacement item and do not rerun
+   core parser PR #1963.
+3. Wait for the digest repair to merge. Fetch livespec master, then refresh the
+   owned ratification worktree onto the new master while preserving exactly the
+   four uncommitted candidate files. Recheck that only those four spec files
+   differ and that the Increment-3 drift-doctrine sentence remains byte-exact.
+4. Install the ratification worktree's ignored worktree pack and revert the
+   installer-only `.livespec.jsonc` edit. Run
+   `mise exec -- just check-pre-commit-doc-only`, recompute the canonical proposal+resulting-files
+   digest from the freshly fetched bytes, and update the existing read-only
+   review brief at
    `tmp/overseer/spec-side-autonomy/reviews/revise-decision-mode-v192-corrected.md`
-   updated for the new base/digest. Ratification requires `VERDICT: NO BLOCKERS`.
-5. Immediately before revise, re-enumerate `proposed_changes/`, ensure the
-   operation consumes only this thread's proposal, and perform the stale-branch
-   check required by Brief 09. Run revise from the fresh master lineage; never
-   use an old full-file payload. Commit, push, open the ratification PR, wait
-   for checks, rebase-merge, refresh master, and clean its worktree/branch.
-6. Only after core ratifies, file—but do not implement or dispatch—the
+   for the new base and exact bytes.
+5. Spawn a fresh, separate Fable-model READ-ONLY adversarial reviewer. It must
+   independently verify the three prior blockers plus every criterion in the
+   review brief and end with literal `VERDICT: NO BLOCKERS`. Any blocker routes
+   to the maintainer with a recommended fix; never self-waive it.
+6. Immediately before revise, fetch again and re-derive every full-file
+   `resulting_files[]` entry from those fresh bytes. Re-enumerate every proposal
+   queue, ensure only `spec-governance-revise-decision-mode.md` is consumed,
+   and run the required stale-branch precondition. Drive `livespec:revise` with
+   matching evidence and `--post-step-doctor`; do not touch the Increment-3
+   drift-doctrine sentence. Commit, push, open the ratification PR, wait for
+   checks, rebase-merge, refresh master, and clean the worktree/branch.
+7. Only after core ratifies, file—but do not implement or dispatch—the
    orchestrator child that retires the needs-attention revise lane when the
    shared predicate is false. Its 1447-byte draft and notes are at
    `tmp/overseer/spec-side-autonomy/increment-2-orchestrator-slice-description.md`
