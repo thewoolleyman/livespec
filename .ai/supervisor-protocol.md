@@ -249,3 +249,43 @@ durable copy the worker can re-read after any composer reset.
 The general lesson is the one this protocol already states in another form: an
 in-flight process read once is not a measurement. I applied that rule to
 ledgers and gates and did not apply it to a text box.
+
+C2. C1's stability rule is necessary but NOT sufficient, and I walked into the
+gap it left. I sent a ~1050-char instruction as a paste and applied C1 by
+comparing the PASTE-TOKEN size across two spaced reads. Both reads said
+`[Pasted Content 1020 chars]`, so I judged it stable and pressed Enter. The
+composer then held `[Pasted Content 1020 chars]n file at any time.` — the tail
+of the message had arrived as LITERAL TEXT BESIDE the token while the token's
+self-reported count sat still, and Enter did not submit.
+
+Compare the WHOLE COMPOSER LINE across the two reads, never the token's own
+character count. A token can be stable while text continues to arrive next to
+it.
+
+The deeper point is that C1's second clause already told me not to paste long
+briefs at all — write them to a file under `runtime_dir` and send a one-line
+path reference. I had that rule, wrote it, and skipped it anyway because the
+message felt "short enough". The file-reference path worked first try. A rule
+that only gets applied when the input LOOKS long is not a rule.
+
+C3. I caused a worktree-discipline violation through an instruction, not
+through an edit of my own. A brief told the worker to "update
+`plan/<topic>/handoff.md`" without naming a worktree. The worker's pane cwd IS
+the primary checkout, so an unqualified path resolved there, and the primary was
+left dirty with a modified TRACKED file.
+
+NEVER instruct a worker to edit a TRACKED file without naming the worktree it
+must be edited in. Supervisor-authored paths under the gitignored
+`tmp/overseer/**` are the only safe unqualified writes; every tracked path in a
+brief needs an explicit worktree.
+
+Two things saved this from being worse, and both are the rule going forward.
+First, "clean the tree" must never mean `git checkout --` on unexamined dirty
+tracked files: one of the two dirty files here held the entire `## Resume state`
+block, which existed NOWHERE on origin/master, so discarding it to satisfy a
+cleanliness complaint would have destroyed the thread's cold-open state.
+Relocate, never drop. Second, the primary was BEHIND, so its dirty file sat on a
+stale base while origin/master already carried a newer committed version of the
+same file; copying the working-tree copy over blindly would have REVERTED that
+commit with no git conflict. Diff the dirty working copy against `origin/master`
+BEFORE landing it, and confirm which side is actually newer.
