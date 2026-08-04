@@ -137,7 +137,7 @@ jobs:
     # "green in CI" and "green in sandbox" mean the same environment.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.17.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.19.2
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -275,7 +275,7 @@ jobs:
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.17.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.19.2
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
@@ -296,8 +296,10 @@ jobs:
           - check-local-memory-drift-audit
           - check-no-shadow-ledger-body-typechecks
           - check-plan-thread-anchor-declared
+          - check-plan-thread-no-tombstone
           - check-required-role-keys-declared
           - check-self-hosted-routing
+          - check-shell-quality
           - check-source-trees-scoped-to-consumer
           - check-vendor-manifest
           - check-no-direct-tool-invocation
