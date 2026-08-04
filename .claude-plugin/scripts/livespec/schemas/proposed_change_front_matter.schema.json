@@ -30,6 +30,9 @@
       "pattern": "^([a-z][a-z0-9-]*#)?[a-z][a-z0-9]*(-[a-z0-9]+)*$",
       "description": "Canonical topic of a parent / coordinating-epic proposed change. Format '<repo-short-name>#<topic>' for sibling repos, '<topic>' for local references."
     },
+    "decision_policy": {
+      "description": "Optional per-file revise decision owner. Validation deliberately accepts any value so malformed, wrong-typed, and unknown values can resolve silently to the safe manual mode."
+    },
     "spec_commitments": {
       "type": "object",
       "description": "Optional spec→impl commitment declaration per spec.md §'Proposed-change and revision file formats' → 'Spec→impl commitment declaration'. When present, each impl_followups[] entry declares one impl-side work-item that MUST be filed in the active impl-plugin's store before the propose-change is considered closed; supersedes[] (optional) lists earlier id_hint values whose commitments this propose-change absorbs or revokes.",

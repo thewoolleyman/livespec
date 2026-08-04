@@ -69,6 +69,21 @@ def test_validate_proposed_change_front_matter_returns_success_for_valid_payload
     assert result == Success(expected)
 
 
+def test_decision_policy_preserves_valid_and_malformed_values_without_raising() -> None:
+    base: dict[str, object] = {
+        "topic": "demo",
+        "author": "agent",
+        "created_at": "2026-08-04T00:00:00Z",
+    }
+    for value in ("delegated", "robot", True, 7, None):
+        result = proposed_change_front_matter.validate_proposed_change_front_matter(
+            payload={**base, "decision_policy": value},
+            schema=_SCHEMA,
+        )
+        assert isinstance(result, Success)
+        assert result.unwrap().decision_policy == value
+
+
 def test_validate_proposed_change_front_matter_returns_failure_on_invalid_topic_slug() -> None:
     """A topic that doesn't match the kebab-case pattern returns Failure."""
     schema = _SCHEMA

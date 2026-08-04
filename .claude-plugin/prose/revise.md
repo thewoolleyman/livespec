@@ -346,6 +346,23 @@ and exit code is `0` (NOT an error).
      dialogue ( Step 4 — "Prompt the user for
      confirmation (only for `revise`'s per-proposal
      dialogue)").
+   - **Resolve decision ownership per file.** Resolve
+     `spec_governance.revise_decision_mode` (`manual` safe
+     default) after every design-record, ratification-review,
+     and drift-origin floor. A `decision_policy` key in this
+     proposal's YAML front matter applies only to this file and
+     wins only after those floors. An absent key inherits the
+     valid global value; any malformed, wrong-typed, or unknown
+     value silently resolves to `manual`. `consensus` is an
+     accepted mode but always falls back to explicit human input
+     because no consensus panel exists. Under `delegated`, the
+     exact-byte delegated decision evidence MUST record the
+     proposal stem, canonical content digest, selected decision,
+     decider identity/model, and acceptance, and it proceeds
+     without human input only when the independent review also
+     says `NO BLOCKERS` for those exact bytes. Either signal
+     alone, disagreement, unavailable evidence, or any floor
+     requires explicit per-proposal human confirmation.
    - On `modify`, the LLM drafts the modification and
      iterates with the user in dialogue until the user
      confirms; the converged content lands in the
@@ -442,10 +459,21 @@ and exit code is `0` (NOT an error).
      `ratification_evidence` (required semantically when
      `decision` is `accept` or `modify`; omitted for
      `reject`),
+     optional `revise_decision_context` carrying only floor
+     booleans and `human_decision_confirmed`, and optional
+     `delegated_decision_evidence` carrying decider identity,
+     model, proposal stem, canonical content digest, selected
+     decision, and acceptance,
      and optional `resulting_files[]` of
      `{path, content}` pairs (for `accept` / `modify`).
    The steering intent from step 4 is consumed by the
    prompt but never serialized into the payload.
+   The CLI consumes the shared decision-input predicate; it
+   does not independently re-derive whether the human handoff
+   is live. Before any automated delegated mutation it appends
+   a digest-only `revise_decision` journal event. The event
+   contains no raw proposal or resulting-file content, and any
+   append failure blocks the mutation.
 
 7. **Write payload to temp file.** Write the assembled JSON
    to a temp file. Pass the tempfile path as `--revise-json`

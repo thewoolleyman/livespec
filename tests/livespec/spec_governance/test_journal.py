@@ -5,7 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from livespec.spec_governance.journal import JournalAppend, append_journal_event, digest_json_bytes
+import pytest
+from livespec.spec_governance.journal import (
+    JournalAppend,
+    append_journal_event,
+    append_journal_payload,
+    digest_json_bytes,
+)
 
 __all__: list[str] = []
 
@@ -13,6 +19,90 @@ __all__: list[str] = []
 def test_digest_json_bytes_is_deterministic() -> None:
     assert digest_json_bytes(payload={"b": 1, "a": 2}) == digest_json_bytes(
         payload={"a": 2, "b": 1},
+    )
+
+
+def test_revise_decision_event_is_digest_only_and_io_failure_is_closed(*, tmp_path: Path) -> None:
+    event = {
+        "event_type": "revise_decision",
+        "proposal_stem": "demo",
+        "content_digest": "d" * 64,
+        "effective_mode": "delegated",
+        "effective_source": "global",
+        "selected_decision": "accept",
+        "decider_identity": "delegate",
+        "decider_model": "model",
+        "review_outcome": "NO BLOCKERS",
+        "final_outcome": "proceed",
+        "escalation_reason": "",
+        "outcome": "selected",
+    }
+
+    assert isinstance(
+        append_journal_payload(project_root=tmp_path, event=event),
+        JournalAppend,
+    )
+    assert isinstance(
+        append_journal_payload(
+            project_root=tmp_path,
+            event={**event, "resulting_files": [{"content": "raw"}]},
+        ),
+        str,
+    )
+    blocked_root = tmp_path / "not-a-directory"
+    blocked_root.write_text("x", encoding="utf-8")
+    failed = append_journal_payload(project_root=blocked_root, event=event)
+    assert isinstance(failed, str)
+    assert "append failed" in failed
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("proposal_stem", "Bad"),
+        ("content_digest", "bad"),
+        ("effective_mode", "manual"),
+        ("selected_decision", "unknown"),
+        ("decider_identity", ""),
+        ("decider_model", None),
+        ("review_outcome", ""),
+        ("final_outcome", 7),
+        ("escalation_reason", None),
+    ],
+)
+def test_revise_decision_event_rejects_invalid_fields(
+    *, tmp_path: Path, field: str, value: object
+) -> None:
+    event = {
+        "event_type": "revise_decision",
+        "proposal_stem": "demo",
+        "content_digest": "d" * 64,
+        "effective_mode": "delegated",
+        "effective_source": "global",
+        "selected_decision": "accept",
+        "decider_identity": "delegate",
+        "decider_model": "model",
+        "review_outcome": "NO BLOCKERS",
+        "final_outcome": "proceed",
+        "escalation_reason": "",
+        "outcome": "selected",
+    }
+    event[field] = value
+
+    assert isinstance(append_journal_payload(project_root=tmp_path, event=event), str)
+
+
+def test_revise_decision_event_rejects_missing_required_fields(*, tmp_path: Path) -> None:
+    assert isinstance(
+        append_journal_payload(
+            project_root=tmp_path,
+            event={
+                "event_type": "revise_decision",
+                "effective_source": "global",
+                "outcome": "selected",
+            },
+        ),
+        str,
     )
 
 

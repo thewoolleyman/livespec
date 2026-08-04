@@ -112,6 +112,29 @@ def test_validate_revise_input_accepts_ratification_evidence_fields() -> None:
             raise AssertionError(msg)
 
 
+def test_validate_revise_input_accepts_delegated_decision_evidence() -> None:
+    decision = {
+        "proposal_topic": "demo",
+        "decision": "accept",
+        "rationale": "Demo rationale.",
+        "revise_decision_context": {"human_decision_confirmed": False},
+        "delegated_decision_evidence": {
+            "decider_identity": "delegate",
+            "decider_model": "model",
+            "proposal_stem": "demo",
+            "content_digest": "a" * 64,
+            "selected_decision": "accept",
+            "accepted": True,
+        },
+    }
+    result = revise_input.validate_revise_input(
+        payload={"decisions": [decision]},
+        schema=_SCHEMA,
+    )
+    assert isinstance(result, Success)
+    assert result.unwrap().decisions[0] == decision
+
+
 def test_validate_revise_input_rejects_malformed_ratification_evidence() -> None:
     schema = _SCHEMA
     payload: dict[str, object] = {

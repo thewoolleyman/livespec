@@ -82,6 +82,7 @@ def _raw_validate(
         author=Author(validated["author"]),
         created_at=validated["created_at"],
         parent_proposed_change=validated.get("parent_proposed_change"),
+        decision_policy=validated.get("decision_policy"),
         spec_commitments=_build_spec_commitments(raw=validated.get("spec_commitments")),
     )
 

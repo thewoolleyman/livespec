@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+from livespec.spec_governance import effective as effective_module
 from livespec.spec_governance.config import SpecGovernanceConfig
 from livespec.spec_governance.effective import (
     DoctorContext,
@@ -215,3 +218,133 @@ def test_ratification_blocker_and_global_paths() -> None:
     assert blocked.source == "hard-floor"
     assert global_policy.source == "global"
     assert global_policy.value == "auto-spawn"
+
+
+def test_revise_decision_floors_precede_proposal_and_global_modes() -> None:
+    assert hasattr(effective_module, "effective_revise_decision_mode")
+    from livespec.spec_governance.effective import (
+        ReviseDecisionContext,
+        effective_revise_decision_mode,
+        requires_revise_decision_input,
+    )
+
+    clear = ReviseDecisionContext(
+        proposal_override_present=True,
+        proposal_override="delegated",
+        delegated_decider_accepts=True,
+        decision_evidence_exact=True,
+        review_no_blockers=True,
+        review_evidence_exact=True,
+    )
+    floor_contexts = (
+        replace(clear, design_record_contradiction=True),
+        replace(clear, design_record_unavailable=True),
+        replace(clear, ratification_blocker=True),
+        replace(clear, drift_origin=True),
+    )
+
+    policies = [
+        effective_revise_decision_mode(
+            config=SpecGovernanceConfig(revise_decision_mode="delegated"),
+            context=context,
+        )
+        for context in floor_contexts
+    ]
+
+    assert all(policy.source == "hard-floor" for policy in policies)
+    assert all(requires_revise_decision_input(policy=policy) for policy in policies)
+
+
+def test_revise_decision_override_resolution_is_safe_and_file_scoped() -> None:
+    assert hasattr(effective_module, "effective_revise_decision_mode")
+    from livespec.spec_governance.effective import (
+        ReviseDecisionContext,
+        effective_revise_decision_mode,
+        requires_revise_decision_input,
+    )
+
+    config = SpecGovernanceConfig(revise_decision_mode="delegated")
+    inherited = effective_revise_decision_mode(
+        config=config,
+        context=ReviseDecisionContext(
+            delegated_decider_accepts=True,
+            decision_evidence_exact=True,
+            review_no_blockers=True,
+            review_evidence_exact=True,
+        ),
+    )
+    malformed = [
+        effective_revise_decision_mode(
+            config=config,
+            context=ReviseDecisionContext(
+                proposal_override_present=True,
+                proposal_override=value,
+            ),
+        )
+        for value in (True, 7, "robot", None)
+    ]
+
+    assert inherited.value == "delegated"
+    assert inherited.source == "global"
+    assert not requires_revise_decision_input(policy=inherited)
+    assert all(policy.value == "manual" for policy in malformed)
+    assert all(policy.source == "proposal" for policy in malformed)
+    assert all(requires_revise_decision_input(policy=policy) for policy in malformed)
+
+
+def test_delegated_revise_requires_both_exact_independent_signals() -> None:
+    assert hasattr(effective_module, "effective_revise_decision_mode")
+    from livespec.spec_governance.effective import (
+        ReviseDecisionContext,
+        effective_revise_decision_mode,
+        requires_revise_decision_input,
+    )
+
+    config = SpecGovernanceConfig(revise_decision_mode="delegated")
+    agreed = ReviseDecisionContext(
+        delegated_decider_accepts=True,
+        decision_evidence_exact=True,
+        review_no_blockers=True,
+        review_evidence_exact=True,
+    )
+    disagreements = (
+        replace(agreed, delegated_decider_accepts=False),
+        replace(agreed, decision_evidence_exact=False),
+        replace(agreed, review_no_blockers=False),
+        replace(agreed, review_evidence_exact=False),
+    )
+
+    accepted = effective_revise_decision_mode(config=config, context=agreed)
+    escalated = [
+        effective_revise_decision_mode(config=config, context=context) for context in disagreements
+    ]
+
+    assert not requires_revise_decision_input(policy=accepted)
+    assert all(requires_revise_decision_input(policy=policy) for policy in escalated)
+
+
+def test_consensus_unavailable_and_journal_failure_always_escalate() -> None:
+    assert hasattr(effective_module, "effective_revise_decision_mode")
+    from livespec.spec_governance.effective import (
+        ReviseDecisionContext,
+        effective_revise_decision_mode,
+        requires_revise_decision_input,
+    )
+
+    consensus = effective_revise_decision_mode(
+        config=SpecGovernanceConfig(revise_decision_mode="consensus"),
+        context=ReviseDecisionContext(consensus_evidence_available=True),
+    )
+    journal_failed = effective_revise_decision_mode(
+        config=SpecGovernanceConfig(revise_decision_mode="delegated"),
+        context=ReviseDecisionContext(
+            delegated_decider_accepts=True,
+            decision_evidence_exact=True,
+            review_no_blockers=True,
+            review_evidence_exact=True,
+            journal_ok=False,
+        ),
+    )
+
+    assert requires_revise_decision_input(policy=consensus)
+    assert requires_revise_decision_input(policy=journal_failed)
