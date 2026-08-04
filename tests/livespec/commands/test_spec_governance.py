@@ -52,6 +52,67 @@ def test_show_effective_defaults_project_root_to_cwd(
     assert payload["effective"]["propose_change_mode"] == "interactive"
 
 
+def test_show_effective_reports_every_safe_default(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    exit_code = spec_governance.main(
+        argv=["--project-root", str(tmp_path), "--show-effective"],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["effective"] == {
+        "critique_mode": "interactive",
+        "doctor_dispositions": {},
+        "in_flight_alignment": "prompt",
+        "propose_change_mode": "interactive",
+        "ratification_review": "manual-spawn",
+        "ratification_reviewer_model": None,
+        "revise_decision_mode": "manual",
+    }
+    assert payload["declared"] == {}
+    assert payload["diagnostics"] == ["missing spec_governance block; safe defaults applied"]
+
+
+def test_check_default_block_accepts_matching_consumer_config(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / ".livespec.jsonc"
+    source.write_text(
+        _matching_commented_spec_governance_block(),
+        encoding="utf-8",
+    )
+
+    exit_code = spec_governance.main(argv=["--check-default-block", str(source)])
+
+    assert exit_code == 0
+    assert "spec-governance-default-block-ok" in capsys.readouterr().out
+
+
+def test_check_default_block_rejects_missing_manifest_key(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / ".livespec.jsonc"
+    source.write_text(
+        _matching_commented_spec_governance_block().replace(
+            '  //     "propose_change_mode": "interactive",\n',
+            "",
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = spec_governance.main(argv=["--check-default-block", str(source)])
+
+    assert exit_code == 2
+    assert "spec-governance-default-block-drift" in capsys.readouterr().err
+
+
 def test_action_updates_config_and_emits_changed_path(
     *,
     capsys: pytest.CaptureFixture[str],
@@ -174,3 +235,26 @@ def test_dispatch_rejects_namespace_without_operation() -> None:
     )
 
     assert isinstance(result.failure(), UsageError)
+
+
+def _matching_commented_spec_governance_block() -> str:
+    return (
+        "{\n"
+        '  "template": "livespec"\n'
+        "\n"
+        "  // Optional \u2014 spec_governance: policy levers for livespec's spec-side\n"
+        "  // operations. The commented defaults below are derived from the shipped\n"
+        "  // spec-governance manifest.\n"
+        '  //   "spec_governance": {\n'
+        '  //     "propose_change_mode": "interactive",\n'
+        '  //     "critique_mode": "interactive",\n'
+        '  //     "in_flight_alignment": "prompt",\n'
+        '  //     "doctor_dispositions": {},\n'
+        '  //     "revise_decision_mode": "manual",\n'
+        '  //     "ratification_review": "manual-spawn",\n'
+        '  //     "ratification_reviewer_model": null\n'
+        "  //   }\n"
+        "  //\n"
+        "  // Optional \u2014 credential_wrapper: next block\n"
+        "}\n"
+    )
