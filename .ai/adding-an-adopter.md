@@ -30,7 +30,7 @@ Adding an adopter is TWO jobs in two different places:
    adopter's onboarding in livespec's `plan/` tree, do NOT drive its
    seed from a livespec session, and do NOT substitute fleet-internal
    machinery (the fleet credential wrapper, the core tenant,
-   maintainer plan threads) for the published path.
+   maintainer plans) for the published path.
 
 ## Why this rule exists
 
