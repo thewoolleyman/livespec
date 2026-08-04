@@ -1,10 +1,11 @@
 # spec-side-autonomy — handoff
 
-Resume Slice B `livespec-jvdvx4.4` at its prepared Red-commit gate. This is the
-authoritative state as of 2026-08-04T06:58Z. Increment 2 is ratified and Slice A
-is landed; Slice B has a genuine staged Red but no commit because the mandatory
-master-CI-green gate halted it. Do not recreate the worktree, redo Slice A, or
-start Green before Red commits honestly.
+Resume Slice B `livespec-jvdvx4.4` at its staged Green-amend gate. This is the
+authoritative state as of 2026-08-04T07:34Z. Increment 2 is ratified and Slice A
+is landed; Slice B has an honest Red commit and a fully staged Green
+implementation, but the mandatory hook rejected the Green amend because the
+credentialed GitHub REST API quota was exhausted. Do not recreate the worktree,
+re-author or alter the Red test, unstage the Green tree, or redo Slice A.
 
 Before any ledger operation, read `AGENTS.md`, `.ai/agent-disciplines.md`, and
 `.ai/beads-gaps-workarounds.md`, then use the installed orchestrator skill for
@@ -33,7 +34,8 @@ print secret values.
 - The live proposal queue currently contains only its README. The ratified
   proposal and revision record are under
   `SPECIFICATION/history/v193/proposed_changes/`.
-- Primary `/data/projects/livespec` is clean on `master` at the merged SHA.
+- Primary `/data/projects/livespec` is clean on `master` at
+  `ac502374689222c1b607db3964fbbb7598a390fd`.
   The owned Increment-2 ratification worktree/branch and the old owned
   Increment-1 stale worktree/branch are removed; their remote branches are
   absent. Touch no other session's worktrees.
@@ -58,7 +60,7 @@ print secret values.
 - The Slice A feature worktree and local/remote branches are removed. Primary
   and `origin/master` are clean and equal at the merge SHA above.
 
-## Slice B prepared state
+## Slice B staged Green state
 
 - Brief 21 is the active build brief. The installed orchestrator `implement`
   procedure and repo TDD/worktree disciplines were read in full. The in-session
@@ -68,47 +70,53 @@ print secret values.
   freeform, parented to `livespec-jvdvx4`, and unblocked by completed Slice A.
   The user's build instruction selected the `completed` disposition and is
   closure-write consent after verified delivery.
-- Owned worktree:
-  `/home/ubuntu/.worktrees/livespec/feat/revise-decision-resolver`
-  on branch `feat/revise-decision-resolver`, based at
-  `d2501bc950fd4194b4788b6b3f5ffbbb5d275b73`.
+- Owned worktree is
+  `/home/ubuntu/.worktrees/livespec/feat/revise-decision-resolver` on branch
+  `feat/revise-decision-resolver`. Its Red parent is current master
+  `ac502374689222c1b607db3964fbbb7598a390fd`.
 - The ignored worktree pack is installed there and the installer's tracked
   `.livespec.jsonc` change was restored. Do not reinstall unless a gate reports
   it absent.
-- Exactly one file is staged:
-  `tests/livespec/spec_governance/test_effective.py`. It adds four focused
-  resolver/predicate tests covering all four hard floors, file-scoped override
-  precedence and malformed-to-manual fallback, strict two-signal delegated
-  agreement, unavailable consensus, and journal failure. With implementation
-  untouched it fails genuinely at four `hasattr` assertions because
-  `effective_revise_decision_mode` does not exist. The hook reformatted and
-  restaged only this test file.
-- The Red commit attempt used subject
-  `feat: enforce revise decision ownership` and was rejected before commit by
-  `check-master-ci-green`. There is no Red commit, implementation change, push,
-  PR, or ledger mutation.
-- The blocking master run is GitHub Actions run `30885217109` for master SHA
-  `d2501bc950fd4194b4788b6b3f5ffbbb5d275b73`. Its
-  `check-ci-matrix-completeness` job timed out downloading
-  `typing-extensions==4.15.0` after five retries during `uv sync`; `ci-green`
-  failed as the aggregate consequence. The preceding master runs were green.
-  This is an external dependency-download failure, not a Red-test failure.
+- The honest Red commit is
+  `5a43fbe7efb3a1965f71e45846b1c30b6a6e142c`, subject
+  `feat: enforce revise decision ownership`. It carries the original
+  `TDD-Red-*` trailer block. Its immutable test is
+  `tests/livespec/spec_governance/test_effective.py`, SHA-256
+  `84d7cfcd68f9389cc94309e9726114868cac418de091a47abf8f0b6a517a63fc`.
+  The Red milestone is already in `worker-status.log`.
+- The complete Green implementation and its additional tests/docs/schemas are
+  staged. There are no unstaged tracked changes. The Red test remains committed
+  and byte-identical; do not add it again or change it.
+- The staged implementation adds the effective per-file resolver and shared
+  predicate, safe malformed override handling, strict delegated dual evidence,
+  unavailable-consensus escalation, digest-only `revise_decision` journal
+  validation, and a pre-mutation revise enforcement stage. The induced journal
+  failure test explicitly proves the downstream mutation path remains untouched.
+- Focused tests pass. The full suite passes **1,325 tests with 100.00% line and
+  branch coverage**; formatting, lint, types, architecture, doctor-static, and
+  the remaining repository gates are green.
+- `mise exec -- git commit --amend --no-edit` was attempted with the full Green
+  tree staged. The pre-commit hook rejected it only at
+  `check-master-ci-green`: the credentialed GitHub core REST quota was
+  `5000/5000`, so the gate could not fetch workflow state and correctly failed
+  closed. The reported quota reset is epoch `1785829664`
+  (`2026-08-04T07:47:44Z`). No bypass was used.
+- The branch still points at the Red commit; there are no `TDD-Green-*` trailers,
+  push, PR, or ledger mutation yet. The staged bytes are the resumable source of
+  truth.
 
-## Next action — finish Red, then Green
+## Next action — complete the Green amend
 
-Read Brief 21 again, then inspect the latest master CI state read-only. Do not
-add or use any escape gate and do not retry while `check-master-ci-green` still
-reports red. Once a fresh/rerun master CI is green, resume in the existing owned
-worktree and commit the already-staged test with:
+Read Brief 21 again. After the GitHub REST quota has reset, verify
+`mise exec -- just check-master-ci-green` succeeds, then run exactly this in the
+existing owned worktree:
 
-`mise exec -- git commit -m 'feat: enforce revise decision ownership'`
+`mise exec -- git commit --amend --no-edit`
 
-Do not alter the test bytes between Red and Green. After the Red commit succeeds,
-append the Red milestone, implement only Slice B, and Green-amend with
-`mise exec -- git commit --amend --no-edit`. The intended bounded seam is the
-existing `spec_governance.effective` resolver/predicate, digest-only journal
-validation, and a pre-mutation revise enforcement stage that consumes the
-predicate. Preserve these acceptance boundaries:
+Do not pass a new message, alter the immutable Red test, unstage/restage a
+different tree, or use an escape gate. If the hook fails again, halt and report
+that failure. The staged implementation must continue to preserve these
+acceptance boundaries:
 
 - malformed/wrong-typed/unknown `decision_policy` silently resolves to manual;
 - every design-record, review, and drift floor escalates before configuration;
@@ -119,8 +127,9 @@ predicate. Preserve these acceptance boundaries:
   mutation; an induced append failure must prevent `_process_decisions`;
 - defaults arm nothing, and review evidence/drift authority remain unchanged.
 
-Then run the focused tests and full `just check`, push through hooks, open the
-PR, wait for all forge checks, rebase-merge, refresh primary, close
+After a successful Green amend, verify both Red and Green trailer blocks, append
+the Green milestone, push through hooks, open the PR, wait for all forge checks,
+rebase-merge, refresh primary, close
 `livespec-jvdvx4.4` with clause-by-clause evidence and the accurate
 supervisor/factory-cap exception, clean only the owned branch/worktree, and
 record every required milestone in `worker-status.log`.
