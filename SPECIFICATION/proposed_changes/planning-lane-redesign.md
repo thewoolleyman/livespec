@@ -1,0 +1,62 @@
+---
+topic: planning-lane-redesign
+author: codex-gpt-5
+created_at: 2026-08-04T14:46:03Z
+---
+
+## Proposal: Planning Lane plan store, scoping event, ledger handoffs, archive gate, and vocabulary
+
+### Target specification files
+
+- SPECIFICATION/spec.md
+- SPECIFICATION/contracts.md
+- SPECIFICATION/non-functional-requirements.md
+- SPECIFICATION/scenarios.md
+
+### Summary
+
+Redesign the Planning Lane around a slim write-once `plan/<slug>/` store, an explicit ledger scoping event before implementation children are admitted, append-only ledger comments for non-derivable handoffs, a two-leg archive gate, and the maintainer-approved `plan` vocabulary.
+
+### Motivation
+
+Work item `livespec-zsn2xh.3`, grounded in repo `thewoolleyman/livespec`, `plan/planning-lane-redesign/research/seed-prompt.md`, `brainstorm.md`, `maintainer-rulings.md`, and `bd-long-prose-spike.md`. The foreman post-mortem showed that requirements and deferrals stored only in freeform prose can disappear from ledger-based completion checks, while Markdown handoffs impose a worktree/CI/PR tax exactly when low-context sessions need cheap append-only persistence. The maintainer ruled on 2026-08-04 that mutable planning state belongs in the ledger, that `plan thread` is banned vocabulary except when quoting old text for replacement targeting, and that no gate may presume a fixed seed/research document shape.
+
+### Proposed Changes
+
+Apply the Planning Lane redesign as one coherent spec revision. The resulting text MUST preserve the existing `## Workflow planes and the Planning Lane`, `## Contract + reference implementations architecture`, `## Doctor cross-boundary invariants`, and `#### Planning Lane guidance` headings; it MUST NOT add, remove, or rename any `## ` heading. Therefore `tests/heading-coverage.json` requires NO co-edit for this proposal. If a later ratification modifies this proposal by adding, removing, or renaming an H2, that same revise payload MUST include the corresponding `tests/heading-coverage.json` resulting-file entry.
+
+1. In `SPECIFICATION/spec.md` §"Workflow planes and the Planning Lane", replace the Spec Plane bullet's `durable planning threads under plan/<topic>/` wording with `write-once plan records under plan/<slug>/` wording. The bullet MUST say that core owns `SPECIFICATION/`, the write-once plan records under `plan/<slug>/`, and the `/livespec:*` lifecycle. It MUST NOT use the term `planning thread`.
+
+2. In `SPECIFICATION/spec.md` §"The Planning Lane", replace the two paragraphs that define a planning thread, handoff, and no-shadow-ledger seams with the following contract shape:
+
+- The **Planning Lane** is the Spec-Plane convention for durable, multi-session planning work before work becomes spec, implementation, or research. A **plan** is anchored by a ledger epic and has a write-once git store at `plan/<slug>/`.
+- The plan store MUST contain only write-once research inputs under `plan/<slug>/research/` and exactly one write-once metadata anchor written at plan open. The anchor MUST name the epic id and MUST NOT be updated to mirror children, statuses, handoffs, readiness, or archive state. The plan store MUST NOT contain `handoff.md`, `supervisor-handoff.md`, mutable status files, or any other mutable planning-state document.
+- Freeform research prose remains historical evidence, not the authoritative scope register. Before a plan epic may take implementation children, a scoping event MUST cut every known requirement from the research prose into requirement-carrier children under that epic, including requirements deliberately deferred from the current implementation increment. A requirement MUST NOT exist only in prose after that point.
+- Deferral MUST be represented in the ledger, not prose. The concrete representation SHOULD be an explicit `deferred` disposition on the requirement-carrier child when the active ledger supports that state; otherwise it MAY be a sanctioned ledger label/state applied only through the same admission valve that owns labels moving into implementation-ready states. Agents and maintainers MUST NOT hand-edit admission labels or bypass that valve to mark deferral.
+- Handoffs MUST live on the plan epic as append-only ledger comments, per the `bd` long-prose spike recommendation in repo `thewoolleyman/livespec`, `plan/planning-lane-redesign/research/bd-long-prose-spike.md` for work item `livespec-zsn2xh.1`. The authoritative read path is the ledger comment JSON/timeline read path, not git. Each handoff comment MUST carry only non-derivable content such as rationale, warnings, abandoned attempts, and pointers; derivable state such as child lists, child statuses, PR states, merge state, and readiness MUST be queried fresh from the ledger and git at resume time.
+- The Planning Lane keeps two seams with the Orchestrator Plane: the plan surface reads ledger comments and children to resume work, and ripe work is routed into the ledger through the orchestrator's sanctioned capture/admission surfaces. The redesign MUST NOT introduce direct Spec-Plane writes to orchestrator-private storage outside those surfaces.
+- A plan epic MUST NOT close or archive while any child requirement or implementation item is undisposed. Independently, archive time MUST include a separate adversarial completeness review that reads the plan's research documents against the epic's children and attests that every requirement has a carrier, including deferred requirements. This independent review is a downstream archive gate; it is not performed by propose-change authoring itself.
+- The vocabulary is **plan**. New live prose MUST NOT say `plan thread`, `planning thread`, or `plan-thread` except when quoting old text as an exact replacement target. Frozen `archive/` and `history/` records MAY retain old wording.
+
+3. In the Planning Lane Mermaid diagrams in `SPECIFICATION/spec.md`, update the `planstore` label from `plan/<topic>/` to `plan/<slug>/`; update the `plan` node text from `capture a planning thread in plan/<topic>/ (research + handoff), anchor a ledger epic, route matured pieces` to wording that captures a plan, writes research plus one epic anchor in `plan/<slug>/`, scopes requirements into epic children, and appends handoffs as ledger comments. The diagram MUST NOT imply handoffs live in git.
+
+4. In `SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance", replace the existing paragraphs named `The planning thread`, `The hosted supervision artifact`, `No shadow ledger`, `Handoff self-sufficiency`, and `Archive on epic close` with guidance matching the contract above. The replacement MUST say: `plan/<slug>/research/` is the git home for write-once research; exactly one write-once metadata anchor names the epic id; no git handoff or supervisor handoff file is part of the live plan protocol; mutable planning state and handoff entries live in the ledger; handoff comments carry only non-derivable content; deferral is ledger state on requirement-carrier children; and archive requires both no undisposed children and an independent completeness review of research prose against epic children. The guidance SHOULD name Beads/Dolt comments as the reference ledger surface while leaving non-Beads orchestrators free to realize an equivalent append-only, per-entry, timestamped ledger comment/journal surface.
+
+5. In `SPECIFICATION/contracts.md` §"master-direct-uncommitted-spec-edits", replace the rationale that says a `plan/` handoff may be the only durable record. The updated rationale MUST still warn on uncommitted `plan/` edits and MUST still avoid suggesting discard for `plan/` paths, but its reason MUST be that write-once research or the write-once epic anchor may be unpublished evidence. It MUST NOT describe a live `plan/` handoff as the durable record of a planning thread.
+
+6. In `SPECIFICATION/contracts.md` §"Driver-shipped hooks", revise the Stop plan-persistence WARN and Stop no-shadow-ledger WARN bullets so they no longer instruct agents to persist handoffs as Markdown under `plan/`. The revised hook contract MUST route substantial planning artifacts to either write-once plan research/anchor files when they are research or metadata, or to the active orchestrator plugin's ledger surfaces when they are mutable planning state or handoffs. The no-shadow-ledger hook MAY continue scanning Markdown under `plan/` and `prompts/` for checkbox queues as a hygiene warning, but its narration MUST point to ledger-held plan state and MUST NOT teach `plan/<topic>/handoff.md` as the live convention.
+
+7. In `SPECIFICATION/scenarios.md`, under the existing `## Happy-path doctor` or `## Behavior clause lacking a scenario link is surfaced` heading rather than under a new H2, add scenarios covering the redesigned Planning Lane behavior. The scenarios MUST cover: a plan open writes only research plus one epic anchor; a scoping event cuts freeform research requirements into epic children before implementation children are admitted; a deferred requirement is represented by sanctioned ledger state rather than prose-only deferral; a handoff appends a ledger comment carrying only non-derivable content; an archive attempt is blocked by an undisposed child; and archive requires independent completeness review of research docs against the epic's children. Because these scenarios live under an existing H2, no `tests/heading-coverage.json` entry is added.
+
+8. Drift sweep for contradictions that MUST be rewritten in the same ratification:
+
+- `SPECIFICATION/spec.md` currently says a design record can be `a planning thread`; it MUST be rewritten to say `a plan` or `a planning record`.
+- `SPECIFICATION/spec.md` currently says the Spec Plane owns `durable planning threads under plan/<topic>/`; it MUST be rewritten to `write-once plan records under plan/<slug>/`.
+- `SPECIFICATION/spec.md` currently says a planning thread lives in `plan/<topic>/`, carries durable reasoning plus resumable execution coordination, and may host `plan/<topic>/supervisor-handoff.md`; it MUST be replaced by the slim plan-store and ledger-comments contract above.
+- `SPECIFICATION/spec.md` diagrams currently label `plan/<topic>/` and `research + handoff`; they MUST be updated to `plan/<slug>/` with research plus one epic anchor and ledger-held handoffs.
+- `SPECIFICATION/contracts.md` currently says an uncommitted `plan/` path may be a plan-thread handoff and the only durable record; it MUST be rewritten as described above.
+- `SPECIFICATION/contracts.md` currently routes substantial planning artifacts to `a plan/doc file, or work-items` and defines planning artifacts as `a handoff, or any markdown file under a plan/ or prompts/ directory`; it MUST be rewritten so mutable handoffs route to ledger comments and write-once files remain limited to research/anchor content.
+- `SPECIFICATION/non-functional-requirements.md` currently defines `planning thread`, `handoff.md`, `supervisor-handoff.md`, one resumption point, handoff self-sufficiency, and archive-on-epic-close around git files; those statements MUST be replaced by the redesigned plan, scoping, ledger-comments, and archive-gate guidance.
+- Any live non-frozen prose in `SPECIFICATION/` that says `plan thread`, `planning thread`, `plan-thread`, `plan/<topic>/handoff.md`, or `plan/<topic>/supervisor-handoff.md` MUST be rewritten or deliberately quoted as an OLD replacement target. Frozen `SPECIFICATION/history/` content is not rewritten by this proposal.
+
+9. Downstream implementation notes: ratifying this proposal creates implementation work for the reference orchestrators and console surfaces, including `livespec-orchestrator-beads-fabro`'s `plan` surface, any `list-plan-threads` naming, archive gate implementation, ledger-comment handoff read/write commands, live plan migration, `livespec-orchestrator-git-jsonl` equivalent plan surface, `livespec-overseer` supervision handoff behavior, and `livespec-console-beads-fabro` rendering of ledger-held plan comments with stable URLs. Those implementation items MUST be filed through the active orchestrator after ratification; they are not performed by this proposal.
