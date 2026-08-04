@@ -61,8 +61,8 @@
     // openbrain: first registered adopter (github-app-auth D17, 2026-07-03).
     // Brings its own credential_wrapper (with-openbrain-env.sh) + its own
     // GitHub App (openbrain-pr-bot); pins the concrete livespec release tag.
-    // dolt-server registration DEFERRED until its adopter wiring is driven.
     { "repo": "openbrain", "profile": ["baseline", "orchestrator-plugin"], "posture": "pinned" },
+    { "repo": "dolt-server", "profile": ["baseline", "fleet-infra"], "posture": "released" },
     // resume: greenfield dogfooding app (registered 2026-07-04) — the
     // maintainer's resume, built livespec-first from an empty repo (contrast:
     // openbrain adopted the workflow as an existing brownfield app). Declares
