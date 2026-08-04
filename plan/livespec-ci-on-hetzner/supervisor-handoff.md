@@ -1,0 +1,475 @@
+# Supervisor Handoff - livespec-ci-on-hetzner
+
+## Shared Protocol
+
+Read `.ai/supervisor-protocol.md` before driving. Validate this binder together
+with that shared layer; neither layer is complete by itself.
+
+Regeneration MUST preserve both Corrections sections byte-for-byte:
+
+- `.ai/supervisor-protocol.md` `## Corrections` for role-level corrections.
+- This binder's `## Corrections` for thread-specific corrections.
+
+Preserve spelling, punctuation, code formatting, blank lines, and ordering
+exactly; do not normalize Markdown or code spans. Live thread status is not in
+this binder. Re-measure it from the ledger, the thread's planning records, forge
+artifacts, and the supervisor marker.
+
+Run this cold-open boot block after resolving `supervisor_marker` from the
+Bindings table:
+
+```sh
+test -f ".ai/supervisor-protocol.md" \
+  || { echo "HALT: missing shared supervisor protocol .ai/supervisor-protocol.md"; echo "REMEDY: regenerate the two-layer supervisor handoff before driving"; exit 1; }
+printf '%s\n' "BOOT: read .ai/supervisor-protocol.md, this binder, and the supervisor marker if it exists"
+[ -n "${supervisor_marker:-}" ] \
+  || { echo "HALT: supervisor_marker is unset or empty"; echo "REMEDY: resolve it from this binder's bindings table before running this block — an unset marker makes the read below display NOTHING and still exit 0"; exit 1; }
+if [ ! -f "$supervisor_marker" ]; then
+  printf '%s\n' "NOTE: no supervisor marker at $supervisor_marker yet — nothing to read."
+else
+  marker_lines=$(wc -l < "$supervisor_marker")
+  if [ "$marker_lines" -le 400 ]; then
+    cat "$supervisor_marker"
+  else
+    sed -n '1,160p' "$supervisor_marker"
+    printf '\n*** TRUNCATED: lines 161-%d of %d NOT SHOWN (%d hidden). A claim above may be RETRACTED in the hidden range. Read %s in full before acting on anything above. ***\n\n' \
+      "$((marker_lines - 160))" "$marker_lines" "$((marker_lines - 320))" "$supervisor_marker"
+    sed -n "$((marker_lines - 159)),${marker_lines}p" "$supervisor_marker"
+  fi
+fi
+```
+
+The read is whole-file up to 400 lines and head-and-tail beyond it. The
+truncation notice is mandatory whenever anything is hidden: a constant cap rots
+as an append-only marker grows, a head-only cut can separate a live claim from
+its later retraction, and Corrections land at the end.
+
+## Bindings
+
+Resolve and report these startup bindings before driving. They contain no live
+status, next action, or date-gated behavior.
+
+| Binding | Value |
+|---|---|
+| `repo_primary` | `/data/projects/livespec` |
+| `thread_dir` | `/data/projects/livespec/plan/livespec-ci-on-hetzner` |
+| `topic` | `livespec-ci-on-hetzner` |
+| `worker_session` | `livespec-ci-on-hetzner` |
+| `supervisor_session` | `livespec-ci-on-hetzner-supervisor` |
+| `WORKER_TARGET` | `'=livespec-ci-on-hetzner:'` |
+| `SUPERVISOR_TARGET` | `'=livespec-ci-on-hetzner-supervisor:'` |
+| `runtime_dir` | `/data/projects/livespec/tmp/overseer/livespec-ci-on-hetzner/` |
+| `supervisor_marker` | `/data/projects/livespec/tmp/overseer/livespec-ci-on-hetzner/.supervisor-state` |
+| `wait_channel` | `/data/projects/livespec/tmp/overseer/livespec-ci-on-hetzner/worker-status.log` |
+| `ledger_anchor` | `livespec-h22nve` |
+
+The topic is not repo-qualified. The session-name derivation rule qualifies a
+name only on a genuine cross-repository topic collision, and `livespec-ci-on-hetzner`
+occurs in exactly one repository. The nearby homelab threads
+`05-hetzner-fleet-member` and `12-hetzner-ci-critical-path-overseer` are
+different topics, not collisions with this one.
+
+Placeholder classes declared by this binder:
+
+- Concretely bound: `repo_primary`, `topic`, `worker_session`,
+  `supervisor_session`, and `ledger_anchor`.
+- Composed bindings resolved transitively to the fixed-point values shown in the
+  table: `thread_dir`, `WORKER_TARGET`, `SUPERVISOR_TARGET`, `runtime_dir`,
+  `supervisor_marker`, and `wait_channel`.
+- Runtime slots intentionally left unsubstituted for the supervisor to fill at
+  use time: `<condition-command>`, `<short-slug>`, and `<branch>`.
+- Illustrative placeholders appear only in prose discussing a form, never in a
+  fenced command. In the shared protocol, `<repo-primary>` and `<topic>` describe
+  reusable path shapes, including `plan/<topic>/supervisor-handoff.md`. In this
+  binder's Thread-specific Valves, `impl:<id>` describes the shape of an
+  orchestrator action id and `<unit>` describes a systemd unit-file name. None of
+  these are shell substitutions.
+
+After resolving concrete and composed bindings to the values above, every fenced
+shell command contains no generation-time placeholder. The three named runtime
+slots are deliberate templates and are not generation errors.
+
+## Generator provenance
+
+This charter was produced by the generator recorded below. The prose digest is
+the identity; the plugin, cache ref, and version are human-readable companions.
+Run the check before driving so a refreshed cache cannot silently leave this
+charter on an older generator. This invocation read the Claude plugin cache, so
+the self-check uses that same runtime's cache root.
+
+```sh
+generator_plugin='livespec-overseer'
+generator_ref='3fb2c257cdf1'
+generator_version='0.27.2'
+generator_prose_md5='eaebe06065b3efa0053d6ea5932d52c0'
+cache_root="$HOME/.claude/plugins/cache/$generator_plugin/$generator_plugin"
+generator_prose="$cache_root/$generator_ref/prose/supervise-plan.md"
+if [ ! -d "$cache_root" ]; then
+  printf '%s\n' "UNVERIFIED: no plugin cache at $cache_root, so this is not a host that generates charters and provenance cannot be checked here. Recorded generator: $generator_prose_md5"
+elif [ ! -f "$generator_prose" ]; then
+  echo "HALT: the cache at $cache_root no longer holds ref $generator_ref, so the generator that emitted this charter has been replaced"
+  echo "REMEDY: regenerate this charter with supervise-plan, or re-point generator_ref at the installed ref and re-stamp generator_prose_md5 from it"
+  exit 1
+else
+  installed=$(md5sum "$generator_prose")
+  digest_rc=$?
+  [ "$digest_rc" -eq 0 ] \
+    || { echo "HALT: cannot digest the installed generator prose at $generator_prose"; echo "REMEDY: fix read access before trusting anything this charter says about its own currency"; exit 1; }
+  installed_md5=${installed%% *}
+  [ "$installed_md5" = "$generator_prose_md5" ] \
+    || { echo "HALT: this charter was emitted by generator $generator_prose_md5 but the installed generator is $installed_md5"; echo "REMEDY: regenerate this charter before driving, or re-stamp generator_prose_md5 deliberately after reading what changed between the two"; exit 1; }
+  printf '%s\n' "PASS: charter provenance matches the installed generator ($installed_md5)"
+fi
+```
+
+A missing cache root means provenance cannot be checked on that host and is
+reported as UNVERIFIED without making the committed charter unreadable. An
+existing cache root that no longer contains the recorded ref means the generator
+was replaced and is a HALT. These absence cases are intentionally different.
+
+The recorded ref is the ref INSTALLED for this project at generation time, which
+is not always the ref the skill binding was invoked from. This charter was
+generated in a session whose binding still pointed at the superseded ref
+`373924fc5da9` while `claude plugin update` had already installed `3fb2c257cdf1`
+for `/data/projects/livespec`. Recording the invoking ref would have armed a HALT
+that fires the moment the superseded ref is pruned, reporting a replaced
+generator where the prose never changed. The prose in both refs is byte-identical
+at `eaebe06065b3efa0053d6ea5932d52c0`, which is why the digest — not the ref and
+not the version — is the identity. The version is a companion for the same
+reason: this same prose digest has shipped under several versions.
+
+## Thread-specific Valves
+
+- The ledger anchor is epic `livespec-h22nve` in the `livespec` tenant. The
+  thread's own records are `plan/livespec-ci-on-hetzner/handoff.md` and
+  `plan/livespec-ci-on-hetzner/approach.md`; they carry coordination and decision
+  boundaries, not a parallel work queue. Read status from the ledger.
+- **Run every `bd` call from `/data/projects/livespec`.** The fleet credential
+  wrapper self-heals its tenant secret from the repository it is standing in, so
+  `with-livespec-env.sh -- bd list` issued from the `homelab` tree fails with
+  `Error 1045 (28000): Access denied for user 'homelab'`. A homelab-side session
+  recorded this whole track as UNMEASURABLE on the strength of that error. An
+  access-denied raised from the wrong tree is not a measurement of anything.
+- **The epic is groomed. Do not groom it again.** `livespec-h22nve` is held at
+  `active` rather than `backlog` deliberately, because `groom` refuses any target
+  not at exactly `backlog` and that refusal is what stops a later session
+  re-decomposing the epic into duplicate slices. Do not return it to `backlog`.
+- **Expect to reverse a false clear on the anchor.** `groom` closes an epic as
+  "regroomed out" as its normal final step, which for a plan-thread anchor would
+  archive this thread while none of the completion evidence exists. It was
+  reversed once already in this repository, and twice in `homelab` (`hl-bfwpqb`
+  false-clearing thread 05, `hl-6uldtn` false-clearing thread 07). The structural
+  cause is that the ledger refuses task-blocks-epic edges, so replacement slices
+  cannot inherit the block and the mitigation has to be prose. Re-apply the
+  correction if anything closes the anchor before the completion evidence exists.
+- **Only `livespec-dev-tooling-3otdg4` is factory-dispatchable.** Its acceptance
+  is local and credential-free and it touches no workflow file, so it routes
+  through the orchestrator as `impl:<id>`. Every other livespec slice is
+  maintainer-side, because the factory dispatch credential deliberately withholds
+  the `workflows` grant and a dispatched agent therefore cannot push a branch
+  touching `.github/workflows/`. Drive those in-session through the worktree → PR
+  → merge → cleanup protocol. That slice lives in the `livespec-dev-tooling`
+  tenant, not this one.
+- **Never `bd create --force` for a cross-repo slice.** The groom minted the
+  dev-tooling slice with this repository's prefix as `livespec-qheazr`; the target
+  tenant refused the foreign prefix, and it was refiled under a native id with the
+  referring slice rewritten to match. Forcing would plant a foreign-prefix id in a
+  sibling tenant permanently. The orchestrator defect is `bd-ib-a8zi` in
+  `livespec-orchestrator-beads-fabro`.
+- **Hosted GitHub Actions minutes are paid and scarce.** Exhaust local controls
+  before pushing, let one pushed candidate carry all locally proven work, and
+  never rerun unchanged code merely to see. The live required-job and fallback
+  exercises are factory-ineligible external-state verification and are the
+  expensive ones; budget for them.
+- **`.ai/ci-gate-discipline.md` is load-bearing for every remaining slice.** Never
+  add a lever, env var, flag, or carve-out that lets a commit, push, merge, or
+  dispatch proceed while a CI-green gate reports red, and never demote such a gate
+  to a warning. This is the thread-specific face of the shared protocol's "never
+  REMOVE, WEAKEN, or SKIP an existing check".
+- **`livespec-hhx4gl` mutates the SHARED FACTORY HOST, whose blast radius is
+  fleet-wide.** That host runs Fabro, the Dispatcher, and Dolt — and Dolt backs
+  the beads ledger every repository in this fleet reads, including every homelab
+  thread. Nothing under `/usr/local/lib/ci-runner/` is in git, so back the tree up
+  before deleting: the archive IS the rollback path. The item's own acceptance
+  already requires a negative control (`systemctl preset-all --dry-run` showing
+  nothing that would re-enable a `<unit>` of the removed set) proving the removal
+  is durable rather than merely stopped, and an explicit confirmation that Fabro,
+  Dolt on `127.0.0.1:3307`, and the Dispatcher are healthy and untouched. That
+  confirmation is what distinguishes success from "the units are gone and
+  something else quietly broke"; the removal is not done without it.
+- **`gate-runner` is deliberately out of scope and must stay there.** Whether the
+  factory-host clause reaches the privileged `[self-hosted, livespec-orchestrator]`
+  tier is genuinely unresolved: the Scope carve-out names the Execution-identity,
+  Credential-separation and Event-routing clauses, and the factory-host clause
+  sits in a different section. Refer that reading to
+  `livespec-orchestrator-beads-fabro`'s own specification rather than deciding it
+  here or widening `livespec-hhx4gl`.
+- **The Hetzner-gated slices cannot complete on livespec evidence alone.**
+  `livespec-3on57g`, `livespec-7wvyo7` and `livespec-q7sfu6` all need a
+  self-hosted runner on `hetzner-prod`, which homelab thread 07 (`hl-xuu5j3`) owns
+  downstream of fleet admission (`hl-euzuhb`) and machine provisioning
+  (`hl-wkyeqg`). A healthy box is not an admitted one. beads refuses cross-tenant
+  edges for these, so the precondition is prose-only and blocks nothing
+  mechanically — re-measure it rather than trusting an edge to hold it.
+- **Hetzner/NixOS service realization belongs to homelab thread 07, exclusively.**
+  Supply v192 properties to that owner and consume its measured outputs. Never
+  create a competing homelab plan, contact the host from this thread, or file a
+  duplicate livespec implementation item for host modules or services. Do not
+  hard-code labels, service names, or a fallback mechanism before measuring the
+  host owner's accepted interface.
+- **A homelab freeze does not gate the livespec repository.** The freeze pins
+  `thewoolleyman/homelab` main at an anchor so that a re-install stays cheap;
+  landing `livespec` PRs does not move `homelab` main. Treat "held because of the
+  Hetzner freeze" as a misread unless the specific artifact being held is a
+  `homelab` ref.
+- **A cross-track directive without an expiry is a defect.** The homelab-side
+  coordinator's hold on `livespec-hhx4gl` carried the explicit condition "until
+  the wipe window closes" and was released the moment that condition was met.
+  When accepting any future hold from a peer track, record its stated condition
+  and its expiry in the supervisor marker as an obligation with a `timeout`; a
+  hold whose condition nobody is re-measuring silently becomes a permanent queue
+  item.
+- **Do not revive the archived shared-factory resident listener pool.** A
+  persistent registration is nonconforming even if it runs only one job at a time.
+- Write every repository name in full in maintainer-facing output. This thread
+  cites `livespec-orchestrator-beads-fabro` and `livespec-dev-tooling` constantly,
+  and the bare suffix `beads-fabro` is ambiguous with
+  `livespec-console-beads-fabro`.
+
+## HALT-first preconditions
+
+Expected worker session: `livespec-ci-on-hetzner`.
+
+Expected supervisor session: `livespec-ci-on-hetzner-supervisor`.
+
+Exact target repository: `/data/projects/livespec`.
+
+Run these in order before doing anything else. Stop on the first failure and act
+on its labelled `REMEDY:`.
+
+1. The supervised session exists:
+
+```bash
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+tmux has-session -t "$WORKER_TARGET" \
+  || { echo "HALT: expected worker session 'livespec-ci-on-hetzner'"; echo "REMEDY: ask the maintainer whether to start that worker session"; exit 1; }
+```
+
+2. The supervised session is a live agent session:
+
+```bash
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+pane_pid=$(tmux display-message -p -t "$WORKER_TARGET" '#{pane_pid}')
+[ -n "$pane_pid" ] \
+  || { echo "HALT: empty pane_pid for 'livespec-ci-on-hetzner'"; echo "REMEDY: re-check the exact worker target and stop if it still resolves empty"; exit 1; }
+ps -o pid=,comm=,args= --ppid "$pane_pid" --pid "$pane_pid" -H
+# PASS only if a live `claude` or `codex` process appears in that tree.
+# A lone shell (zsh/bash) with no agent child is a HALT.
+# REMEDY: if no live agent appears, ask the maintainer whether to restart the worker.
+```
+
+Report which live driver was found. A launcher may own the `comm` column while
+the agent name appears only in `args`, so read the full argument vector rather
+than the command name.
+
+3. The supervisor session exists, is a distinct pane, and contains a live agent:
+
+```bash
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+SUPERVISOR_TARGET='=livespec-ci-on-hetzner-supervisor:'
+tmux has-session -t "$SUPERVISOR_TARGET" \
+  || { echo "HALT: expected supervisor session 'livespec-ci-on-hetzner-supervisor'"; echo "REMEDY: switch to the correct supervisor session or ask the maintainer to bootstrap it"; exit 1; }
+pane_pid=$(tmux display-message -p -t "$WORKER_TARGET" '#{pane_pid}')
+supervisor_pane_pid=$(tmux display-message -p -t "$SUPERVISOR_TARGET" '#{pane_pid}')
+[ -n "$supervisor_pane_pid" ] \
+  || { echo "HALT: empty pane_pid for 'livespec-ci-on-hetzner-supervisor'"; echo "REMEDY: re-check the exact supervisor target and stop if it still resolves empty"; exit 1; }
+[ "$supervisor_pane_pid" != "$pane_pid" ] \
+  || { echo "HALT: supervisor and worker resolve to the SAME pane"; echo "REMEDY: re-check both exact targets — a prefix match puts both names on one pane, and the worker's agent then reads as the supervisor's"; exit 1; }
+ps -o pid=,comm=,args= --ppid "$supervisor_pane_pid" --pid "$supervisor_pane_pid" -H
+# PASS only if a live `claude` or `codex` process appears in that tree.
+# A lone shell (zsh/bash) with no agent child is a HALT.
+# REMEDY: if no live agent appears, ask the maintainer to start the agent in that session.
+```
+
+Both pids are resolved inside this block rather than inherited from the previous
+check, so it is self-contained and cannot pass on an unset variable.
+
+4. The plan thread exists inside the absolute target repository:
+
+```bash
+test -d "/data/projects/livespec/plan/livespec-ci-on-hetzner" \
+  || { echo "HALT: missing plan thread /data/projects/livespec/plan/livespec-ci-on-hetzner"; echo "REMEDY: create or choose the correct plan topic before supervising"; exit 1; }
+```
+
+5. The worker pane's resolved cwd is inside the target repository:
+
+```bash
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+pane_cwd=$(tmux display-message -p -t "$WORKER_TARGET" '#{pane_current_path}')
+[ -n "$pane_cwd" ] \
+  || { echo "HALT: empty pane_current_path for 'livespec-ci-on-hetzner'"; echo "REMEDY: re-check the exact worker target and stop if it still resolves empty"; exit 1; }
+case "$(readlink -f -- "$pane_cwd")" in
+  /data/projects/livespec|/data/projects/livespec/*) echo "PASS: $pane_cwd" ;;
+  *) echo "HALT: pane cwd $pane_cwd is outside the target repo"; echo "REMEDY: move the worker into the target repo or start the correct worker session"; exit 1 ;;
+esac
+```
+
+## How to inspect and drive
+
+Re-measure the ledger anchor before carrying forward any filed status or
+acceptance claim:
+
+```sh
+cd /data/projects/livespec
+ledger_anchor='livespec-h22nve'
+# The ledger is a per-repo tenant database, so `bd` needs the fleet credential
+# wrapper WHERE ONE IS INSTALLED — a bare `bd` returns "Access denied" there.
+# DETECTED, never hard-coded: an adopter without the wrapper must still be able
+# to re-measure, and a hard-coded path would only trade one false HALT for
+# another.
+ledger_show() {
+  if command -v with-livespec-env.sh >/dev/null 2>&1; then
+    with-livespec-env.sh -- bd show "$1" --json
+  else
+    bd show "$1" --json
+  fi
+}
+if ! ledger_json="$(ledger_show "$ledger_anchor")"; then
+  echo "HALT: cannot re-measure ledger item '$ledger_anchor'"
+  if command -v with-livespec-env.sh >/dev/null 2>&1; then
+    echo "REMEDY: the credential wrapper WAS used, so ledger access is not the suspect — check the anchor id is real and that this repo's tenant is reachable"
+  else
+    echo "REMEDY: no credential wrapper on PATH, so a BARE 'bd' ran — if this repo's ledger is a tenant database, install/expose the fleet credential wrapper; otherwise check the anchor id"
+  fi
+  exit 1
+fi
+# EXIT STATUS IS NOT EVIDENCE. A tool that exits 0 while printing nothing would
+# let the MEASURED_AT stamp below certify a re-measurement that never happened.
+[ -n "$ledger_json" ] \
+  || { echo "HALT: ledger re-measure for '$ledger_anchor' exited 0 but returned NOTHING"; echo "REMEDY: do not record this as a measurement — an empty success is not a reading; confirm the anchor exists and that the ledger tool is actually reporting"; exit 1; }
+printf '%s\n' "$ledger_json"
+date -u '+MEASURED_AT: %Y-%m-%dT%H:%M:%SZ'
+```
+
+The `cd` is not cosmetic. This wrapper resolves its tenant from the working
+directory, so the same call from a sibling checkout fails access-denied against
+that sibling's tenant name.
+
+The epic's slices carry the per-increment status. Enumerate them from the ledger
+rather than from this binder or from the thread's planning records, which record
+the cut rather than live status.
+
+Capture a status before filtering it, because a pipeline reports only its last
+command:
+
+```sh
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+pane_pid=$(tmux display-message -p -t "$WORKER_TARGET" '#{pane_pid}')
+tmux_rc=$?
+[ "$tmux_rc" -eq 0 ] \
+  || { echo "HALT: tmux pane lookup failed for 'livespec-ci-on-hetzner'"; echo "REMEDY: re-check the exact target before filtering its output"; exit 1; }
+printf '%s\n' "$pane_pid" | head -1
+```
+
+A pipeline whose last command deliberately owns the verdict is fine, for example
+`tmux list-sessions -F '#{session_name}' | grep -Fqx 'livespec-ci-on-hetzner'`.
+
+Inspect read-only:
+
+```sh
+tmux capture-pane -p -t '=livespec-ci-on-hetzner:' -S -40
+```
+
+`-S -40` starts 40 lines back in history and then includes the entire visible
+pane. It is not "the last 40 lines." Do not pipe it to the invalid placeholder
+form `tail -N`.
+
+Send a short instruction as text, verify that it landed, then send Enter in a
+separate call:
+
+```sh
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+tmux send-keys -t "$WORKER_TARGET" -- '<condition-command>'
+tmux capture-pane -p -t "$WORKER_TARGET" | tail -8   # confirm it landed
+tmux send-keys -t "$WORKER_TARGET" Enter             # only after verifying
+```
+
+Prefer a file reference over a paste for anything longer. Write the brief under
+`runtime_dir` and send a one-line instruction naming that path; a one-line
+reference is delivered atomically, verifies in one read, and leaves a durable
+copy that survives a composer reset.
+
+Idle plus queued input means stuck, not idle. Never name a variable `TMUX`, never
+run `tmux kill-server` on the maintainer's socket, and never kill the acting
+overseer daemon in tmux `livespec-overseer:1.1`.
+
+## Never end a turn without an armed re-entry
+
+Arm the wait channel and the pane watcher before ending any turn with the worker
+in flight:
+
+```sh
+wait_channel=/data/projects/livespec/tmp/overseer/livespec-ci-on-hetzner/worker-status.log
+mkdir -p "$(dirname "$wait_channel")"
+: > "$wait_channel"
+# Tell the worker: append one line to "$wait_channel" at every milestone.
+
+WORKER_TARGET='=livespec-ci-on-hetzner:'
+prev="__OVERSEER_NO_CAPTURE_YET__"; stable=0
+for i in $(seq 1 180); do                    # ~60 min ceiling
+  sleep 20
+  pane=$(tmux capture-pane -p -t "$WORKER_TARGET")   # visible only
+  [ -z "$pane" ] && { echo "WAKE: pane unreadable — session may be gone"; exit 0; } # before the diff
+  if printf '%s\n' "$pane" | tail -8 \
+       | grep -qE '^[[:space:]]*Enter to (select|confirm)[[:space:]]*(·.*)?$'; then
+    echo "WAKE: picker open"; exit 0
+  fi
+  if [ "$pane" = "$prev" ]; then stable=$((stable+1)); else stable=0; prev="$pane"; fi
+  if [ "$stable" -ge 3 ]; then echo "WAKE: pane unchanged ~60s — idle"; exit 0; fi
+done
+echo "WAKE: watcher ceiling reached — worker still busy, RE-ARM NOW"
+```
+
+Detect busy by pane change rather than by a status string: a working pane renders
+a spinner whose timer ticks every second, so "unchanged across three 20s polls"
+separates busy from idle without depending on TUI wording. The picker test stays a
+string test but is scoped to the last visible lines and anchored at both ends,
+because a substring scan matches prose that merely quotes `Enter to select` and a
+start-only anchor can match a wrapped continuation line.
+
+Watcher expiry is itself a wake and says `RE-ARM NOW`. Do not replace it with an
+echo of an intention to check later.
+
+This thread's non-pane obligations are the ones that need a condition watcher
+rather than the pane watcher: a livespec PR's merge state, a dispatched
+`impl:<id>` run in the `livespec-dev-tooling` tenant, and the homelab-side
+admission outcomes this thread consumes but does not own. For a PR, read `state`
+for `MERGED` or `CLOSED` before any derived field such as `mergeStateStatus`, and
+wake and report on any unrecognized value rather than treating it as "keep
+waiting."
+
+## Corrections
+
+Thread-specific corrections to this supervisor's own behavior belong here.
+Regeneration must preserve this section byte-for-byte, including spelling,
+punctuation, code formatting, blank lines, and ordering.
+
+C1. I tried to answer the worker's open AskUserQuestion picker by sending my
+answer as `send-keys` text, the way the shared protocol describes sending an
+instruction. The picker CONSUMED the keystrokes as navigation. Nothing appeared
+in any composer, no free-text box opened, and a `capture-pane` taken afterwards
+showed the picker completely unchanged with the cursor still on option 1. Had I
+not read the pane back before pressing Enter, I would have believed a 400-word
+brief had been delivered when not one character of it existed anywhere.
+
+A tmux pane with a picker open is NOT a composer, and "send text, verify, send
+Enter" silently means something different there. The sequence that works: verify
+which option the cursor is on, press Enter to select THAT option, wait for the
+composer to return, and only then send prose as a normal instruction. Selecting
+an option and elaborating afterwards is two steps and cannot be collapsed.
+
+The general rule this thread should carry: the verify step in "send, verify,
+Enter" is not a formality to be skipped when the send looks routine. It is the
+only thing standing between a supervisor and a confidently reported instruction
+that was never delivered. This is the same defect class as an empty result read
+as a finding — silence that looks like success.
