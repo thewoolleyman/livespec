@@ -29,7 +29,14 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-Run a fresh read-only critical-path census before resuming anything. Every recorded number below is point-in-time and several have already moved:
+**Read this paragraph before running anything.** As of 2026-08-04 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is exactly two things:
+
+1. **One maintainer decision**, on the fleet-red P0 `livespec-dev-tooling-irtt`. It is fully diagnosed and the option set is laid out under "The one open decision" below. Nothing else in this thread is blocked by it, but landing further `livespec-dev-tooling` releases while it is open pushes the breakage further into the fleet, so prefer settling it before cutting one.
+2. **An external homelab gate** — `hl-wkyeqg` (provision server 3039451) and `hl-euzuhb` (ratify `hetzner-prod` admission) — which gates the last three slices and which this thread must not touch.
+
+So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the P0 decided, act on that decision. If it shows neither, this thread has nothing to do and you should say so rather than manufacture work.
+
+Run a fresh read-only critical-path census. Every recorded number below is point-in-time and several have already moved:
 
 ```bash
 git -C /data/projects/livespec fetch --prune origin
@@ -44,7 +51,7 @@ gh pr list --repo thewoolleyman/livespec --state open --limit 100 --json number,
 
 `bd` resolves its tenant from the working directory, so a `homelab` query issued from the `livespec` checkout fails with `Access denied for user 'livespec'` — run it from `/data/projects/homelab`.
 
-Verify each command saw its intended input and retain raw output beside any derived count. Then re-measure the slices from the ledger and resume the first genuinely unblocked one; the table below records the cut, not live status.
+Verify each command saw its intended input and retain raw output beside any derived count. Then re-measure the slices from the ledger; the table below records the cut, not live status. Per the paragraph above, expect to find nothing unblocked — confirm that rather than hunt.
 
 ## Resume state — 2026-08-04, after the fleet fail-open sweep
 
@@ -64,11 +71,13 @@ The sweep incidentally surfaced a **pre-existing fleet-red state**, filed as `li
 
 **Root cause, localised to an exact commit by controlled bisect.** `check-public-api-result-typed` used to sit behind the `pure_trees` role-absence gate. Commit `46c5dab` ("scan the first-party universe, not pure_trees") removed that gate DELIBERATELY, shipping with its own design document, and un-shadowing the detectors was a stated benefit rather than a side effect. It first shipped in **`v1.18.8`** — *not* v1.18.9, which is how it presented, because the fan-out bumped consumers `v1.17.1` → `v1.18.9` in one step and they never saw v1.18.8. Proven by holding one consumer tree constant and varying only the checker: `v1.17.1` and `v1.18.7` exit 0 with zero violations, `v1.18.8` and `v1.18.9` exit 1 with eleven. Every affected repo declares `pure_trees` as `not_applicable` or `unarmed_until`, so the check had never actually run there.
 
-**The measurement that reframes the remedy.** The raw violation count is 168, and that number overstates the work: 11 are in TEST files (`livespec-overseer` declares no `tests_tree_prefix`, so the role key falls back to `tests/` while its tests are co-located as `overseer/test_*.py`), and 56 are duplicate hits on byte-identical mirrored copies (`.claude-plugin/overseer/` and `overseer/`, sha256-verified, both tracked, no sync recipe found — so a fix must reach both). **The honest figure is 101 distinct functions**: `livespec-overseer` 56, `livespec-orchestrator-beads-fabro` 17, `livespec` 13, `livespec-runtime` 11, `livespec-orchestrator-git-jsonl` 4. Heuristically ~19 are parse/load/resolve functions that look like genuine `Result` candidates, ~18 are CLI entrypoints that look like a `supervisor_entry_files` config gap, and 64 need a per-function call.
+**The measurement that reframes the remedy.** The raw violation count is 168, and that number overstates the work: 11 are in TEST files (`livespec-overseer` declares no `tests_tree_prefix`, so the role key falls back to `tests/` — that default is NOT vacuous, `tests/` really exists with 75 tracked files, but the repo ALSO keeps 59 test modules co-located directly under `overseer/`, and those are what the check reads as public API), and 56 are duplicate hits on byte-identical mirrored copies (`.claude-plugin/overseer/` and `overseer/`, sha256-verified, both tracked, no sync recipe found — so a fix must reach both). **The honest figure is 101 distinct functions**: `livespec-overseer` 56, `livespec-orchestrator-beads-fabro` 17, `livespec` 13, `livespec-runtime` 11, `livespec-orchestrator-git-jsonl` 4. Heuristically ~19 are parse/load/resolve functions that look like genuine `Result` candidates, ~18 are CLI entrypoints that look like a `supervisor_entry_files` config gap, and 64 need a per-function call.
 
 So the choice is **not** the binary it first appeared to be. A third option exists: keep the un-gating, fix the check's test-tree scoping, let each repo declare the role keys that actually describe it, and treat the genuine residue as ordinary adoption work. The remedy was deliberately NOT self-resolved because reverting would undo a considered architectural improvement, and because the removed gate honoured `unarmed_until` — the blessed spelling that carries a LEDGER ID, used by three of the five affected repos, so the un-gating silently overrode deferrals that had been deliberately recorded. Whichever way it goes: no lever, env var, carve-out, or severity demotion — `li-4x3a45` is the recorded wontfix on exactly that, and enforcement must not precede adoption.
 
 **A second defect was split out as `livespec-dev-tooling-zi29` (P1, ready)**, because the revert does not close it and closing the satisfying half would ship it silently. Its mechanism is established at step level, and it is NOT the "skipped matrix" story it was first filed with: on a zero-`.py` PR the job `check-public-api-result-typed` reports **`success`** while its `Skip when no .py changes` step succeeds and *every* real step — including the one that runs the check — is `skipped`. A REQUIRED context certifies nothing while presenting as a check that passed, and it does not even report `skipped`. That is why five masters could sit red while PRs kept merging. Four rival hypotheses were eliminated by measurement first and are recorded on the item. The trap is now written up as instance 16 in `.ai/verifying-against-the-right-source.md`.
+
+**`zi29` is a cross-repo epic, not a one-repo patch** — measured after that write-up, so it is here and on the item but was not in the original filing. The `Skip when no .py changes` pattern is present in **six of the ten** fleet repos checked (`livespec`, `livespec-dev-tooling`, `livespec-runtime`, `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`, `livespec-overseer`) and absent in four (`livespec-driver-claude`, `livespec-driver-codex`, `livespec-console-beads-fabro`, `homelab`). The producer repo has the hole too, and those six include **all five** repos currently red on `-irtt` — the mechanism and its consequence in the same set, which is exactly why the two items were split. Treat it the way `livespec-zmys` was treated: one epic, per-repo children, adoption before enforcement — because changing what a required context REPORTS is itself an enforcement change.
 
 A third, smaller item is `livespec-dev-tooling-7ix8` (P2, ready): `just bootstrap` splices a `worktree_discipline` default into `.livespec.jsonc` and nothing commits it, so the prescribed first-touch setup leaves every fresh checkout dirty and never converges — which is exactly the `dirty_worktree` precondition the dispatcher preflight exists to clear.
 
@@ -177,6 +186,10 @@ The epic may close only when forge and host artifacts jointly establish all of t
 - withdrawing or disabling the self-hosted route causes the same required gate to complete on GitHub-hosted capacity rather than queue indefinitely;
 - the shared factory host carries no CI listener or worker process;
 - every commissioned tracked change is merged, both primary checkouts are fast-forwarded and clean, worktrees are removed, and remote branches are absent.
+
+**Two of those bullets are already banked, verified independently on 2026-08-04 — re-measure rather than trust, but know they were true once.** The shared factory host carries no CI listener or worker process: no `ci-runner*` or `runner@` unit files remain, `/usr/local/lib/ci-runner/` holds only the four deliberately out-of-scope `gate-runner` scripts, and no listener process exists. And strict outside-collaborator fork approval was read from the forge as `all_external_contributors`, not inferred from prose. Also banked, though not itself a closing bullet: both gating `runs-on` values in this repo's `ci.yml` now fall back to `["ubuntu-latest"]`, the Phase-0 `ci-shadow/*` remote branches are gone, and `ci-selfhosted-shadow.yml` is deleted — each verified with a query shown to be fail-capable.
+
+Everything else on that list is Hetzner-dependent and cannot be discharged until the homelab gate opens.
 
 Closing `livespec-h22nve` archives this thread. Until those observations exist, an archived branch, a green local test, a registered idle runner, or a merged host module is decomposition progress—not delivery.
 
