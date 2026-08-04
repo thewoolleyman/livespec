@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/thewoolleyman/livespec/compare/v0.25.0...v0.26.0) (2026-08-04)
+
+
+### Features
+
+* enforce revise decision ownership ([3a024ad](https://github.com/thewoolleyman/livespec/commit/3a024ad71abe137112c916850d6eb41904f63f68))
+
 ## [0.25.0](https://github.com/thewoolleyman/livespec/compare/v0.24.3...v0.25.0) (2026-08-04)
 
 
