@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Wait for App installation rate budget and mint token
         id: app-token
-        uses: thewoolleyman/livespec-dev-tooling/.github/actions/github-rate-budget-token@v1.17.1
+        uses: thewoolleyman/livespec-dev-tooling/.github/actions/github-rate-budget-token@v1.18.6
         with:
           client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
