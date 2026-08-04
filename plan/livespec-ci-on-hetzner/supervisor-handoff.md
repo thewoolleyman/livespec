@@ -395,14 +395,41 @@ pane. It is not "the last 40 lines." Do not pipe it to the invalid placeholder
 form `tail -N`.
 
 Send a short instruction as text, verify that it landed, then send Enter in a
-separate call:
+separate call. Verify by comparing the COMPOSER REGION across two spaced reads —
+never a `tail -N` of the pane:
 
 ```sh
 WORKER_TARGET='=livespec-ci-on-hetzner:'
+composer() {
+  # The prompt marker is U+276F followed by a NON-BREAKING SPACE (U+00A0), so a
+  # pattern of '^❯ ' with an ordinary space silently matches NOTHING and the
+  # function returns empty. Match the marker alone.
+  tmux capture-pane -p -t "$WORKER_TARGET" | awk '/^❯/{f=1} f&&/^─+/{exit} f{print}'
+}
 tmux send-keys -t "$WORKER_TARGET" -- '<condition-command>'
-tmux capture-pane -p -t "$WORKER_TARGET" | tail -8   # confirm it landed
+a=$(composer); sleep 3; b=$(composer)
+[ -n "$a" ] \
+  || { echo "HALT: composer extraction returned EMPTY — the extractor is broken, not the composer"; echo "REMEDY: print the pane through 'cat -A' and re-derive the marker bytes before trusting any comparison"; exit 1; }
+[ "$a" = "$b" ] \
+  || { echo "HALT: composer still changing — text is mid-delivery"; echo "REMEDY: re-read until two spaced reads match, then send Enter"; exit 1; }
 tmux send-keys -t "$WORKER_TARGET" Enter             # only after verifying
 ```
+
+A `tail -N` comparison CANNOT stabilize while the worker is busy. A working pane
+renders a spinner whose elapsed timer ticks every second, so the tail differs
+between any two reads no matter what the composer is doing, and the check reports
+"not stable" forever while the text has in fact been sitting there complete. That
+is a FALSE NEGATIVE, and it is the mirror of the false positive C2 warns about:
+one blocks a delivered instruction, the other blesses an undelivered one. Measured
+live in this thread — the tail comparison failed repeatedly on text that was
+already complete and unchanging.
+
+The emptiness assertion is not ceremony. The first version of this extractor used
+`'^❯ '` with an ordinary space and returned zero bytes on every read; two empty
+strings compare EQUAL, so without the `-n` test the check would have reported
+STABLE on a composer it had never actually read, and pressed Enter on that basis.
+An extractor that matches nothing is indistinguishable from an empty composer.
+Prove the extractor finds something before trusting what it says about change.
 
 Prefer a file reference over a paste for anything longer. Write the brief under
 `runtime_dir` and send a one-line instruction naming that path; a one-line
