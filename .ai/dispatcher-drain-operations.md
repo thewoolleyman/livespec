@@ -112,6 +112,49 @@ trust the dispatcher's own summary alone. And filter every journal read on the `
 field against an explicit cutoff: the file is re-opened and rewritten, so a
 follow-by-name tail replays its entire history as if live.
 
+## A doubled-curly-brace expression in the DESCRIPTION or NOTES kills the dispatch before any sandbox starts
+
+Fabro expands the workflow's `goal` attribute as a TEMPLATE, and that goal embeds
+the work-item's **description AND its notes**. So a literal GitHub-Actions
+expression in either field — the doubled curly braces around anything containing
+`||` — is parsed as a template expression and aborts the run:
+
+```text
+fabro::template::syntax
+  × template expansion failed in graph attribute `goal`:
+    syntax error: unexpected `|`, expected identifier
+    (… /.fabro/workflows/implement-work-item/workflow.fabro:70)
+```
+
+**Tell it apart from an in-sandbox failure by two signals:** it fails in SECONDS
+rather than minutes, and `fabro_run_id` is `null` because no run was ever
+created. An in-sandbox failure has a real run id and a container you can inspect.
+
+Observed 2026-08-04 on `livespec-dev-tooling-3otdg4`. The offending text was in
+the item's own NOTES, written while recording a previous attempt's finding —
+which is the trap: notes feel like commentary, but the dispatcher ships them to
+the agent as part of the goal.
+
+**Rule: never put doubled curly braces in a description or notes for a
+factory-dispatched item.** Describe the expression in prose instead. This bites
+CI-related items hardest, since GitHub-Actions expressions are exactly that
+shape. Check both fields before dispatching, and make the check demonstrable —
+a grep returning zero proves nothing unless the same pattern is shown matching a
+known-present instance.
+
+## A shell exit code is the last command's status, never the dispatch verdict
+
+The existing rule is "read the run's artifacts, never the process exit alone".
+One concrete shape worth naming, because it is set up to read as success: a
+harness task-completion notification reported **`exit code 0`** while the
+artifact recorded `EXIT=1`, `status: failed`, `merge_sha: null`,
+`pr_number: null`. The zero belonged to the wrapping shell's final `echo`, not
+to `drive`. Any `cmd > log 2>&1; echo "EXIT=$?"` wrapper has this property — the
+notification reports the `echo`.
+
+Read `status` and `merge_sha` out of the JSON result block, then cross-check the
+forge and the ledger. Three sources or you do not have an answer.
+
 ## Size the item BEFORE loop-feeding — the sizing-warn is not advisory
 
 The dispatcher emits `sizing-warn` when a work-item's description exceeds
