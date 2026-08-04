@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/thewoolleyman/livespec/compare/v0.26.0...v0.26.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* guard spec governance template projection ([90d9ac5](https://github.com/thewoolleyman/livespec/commit/90d9ac5ba98abfed1912794fe5facf7f05693801))
+
 ## [0.26.0](https://github.com/thewoolleyman/livespec/compare/v0.25.0...v0.26.0) (2026-08-04)
 
 
