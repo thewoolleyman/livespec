@@ -4,13 +4,35 @@
 # Master pushes bypass the change-detection gate (they always run the full
 # aggregate as the post-merge safety net).
 #
-# The check-python / check-metadata matrices run in the SAME baked image the
-# Fabro sandbox uses, on the local self-hosted runner — so "green in CI" and
-# "green in sandbox" are the same environment (plan/fabro-ci-image-factoring).
-# runs-on resolves from the repo variable CI_RUNNER_LABELS, defaulting to the
-# self-hosted label; set it to '["ubuntu-latest"]' to reroute to GitHub-hosted
-# when the local host is down (the merge-gate fallback). setup / ci-green /
-# export-telemetry stay ubuntu-latest so the gate is reportable host-down.
+# RUNNER ROUTING — FAILS CLOSED TO HOSTED CAPACITY.
+#
+# The check-python / check-metadata matrices resolve runs-on from the repo
+# variable CI_RUNNER_LABELS, defaulting to '["ubuntu-latest"]' when it is
+# absent or empty. That default is the merge-gate safety property, not a
+# convenience: SPECIFICATION/non-functional-requirements.md §"Self-hosted CI
+# runner host requirements" → "Availability MUST NOT become a merge dependency"
+# requires a route back to hosted capacity that needs no specification
+# revision, because §"CI as a merge gate (branch protection)" makes a single
+# all-green gate the sole required check. ci-green needs both matrices, so a
+# matrix job routed to self-hosted capacity that is not there does not FAIL —
+# it sits in `queued`, ci-green never reports, and every merge waits on a check
+# that will not arrive. Defaulting to the self-hosted label made exactly that
+# outcome the behavior of an absent variable.
+#
+# To route gating jobs to a conforming self-hosted host, SET CI_RUNNER_LABELS
+# to that host's label. To return them to hosted capacity, unset it or set it
+# to '["ubuntu-latest"]'. Both directions are repo-variable edits; neither
+# needs a specification revision.
+#
+# The fallback literal is repeated inline at each runs-on rather than
+# single-sourced through a job output, and the three copies (two runs-on plus
+# LIVESPEC_CI_LANE below) MUST stay in lockstep. The repetition is deliberate:
+# the fleet's self-hosted routing guard parses runs-on values STATICALLY, so
+# routing hidden behind `needs.<job>.outputs.*` would read as "this workflow
+# has no self-hosted job" and silently disable the forbidden-trigger check.
+#
+# setup / ci-green / export-telemetry are pinned to ubuntu-latest so the gate
+# stays reportable even when self-hosted capacity is down.
 #
 # Direct tool invocations (ruff, pyright, pytest, python3) in `run:` lines
 # are forbidden by check-no-direct-tool-invocation; every step delegates
@@ -20,11 +42,10 @@ name: CI
 
 # uv occasionally fails when the PyPI file CDN (files.pythonhosted.org)
 # drops a wheel download mid-stream ("broken pipe"). UV_HTTP_RETRIES
-# makes uv retry the fetch in-process instead of failing the job. On the
-# self-hosted lane the matrices' `uv sync` hits the persistent local-disk
-# ~/.cache/uv (a hot dir surviving across ephemeral jobs — NOT actions/cache,
-# which was deleted in the Phase-2 cutover), so an unchanged lock installs
-# from cache and never contacts PyPI at all.
+# makes uv retry the fetch in-process instead of failing the job. A
+# self-hosted lane may serve `uv sync` from a warm on-host ~/.cache/uv, in
+# which case an unchanged lock installs from cache without contacting PyPI;
+# the hosted lane always fetches.
 env:
   UV_HTTP_RETRIES: "5"
   # The plugin-currency staleness gate's severity lever (design D2,
@@ -32,13 +53,18 @@ env:
   # warns on an UNDETERMINABLE currency locally, but CI fails hard on it —
   # confirmed-stale always hard-fails everywhere (livespec-c1k9.3).
   LIVESPEC_CURRENCY_GATE: "fail"
-  # Test-parallelism lane signal read by the justfile's `test_nprocs`
-  # (plan/fabro-ci-image-factoring cont.5). RUNNER_ENVIRONMENT does NOT
-  # propagate into container jobs, so derive the lane from the routing
-  # variable here: GitHub-hosted (CI_RUNNER_LABELS flipped to an ubuntu
-  # label) → `hosted` → pytest -n auto; the self-hosted/local lane → `local`
-  # → -n 25%-of-cores (overridable per host via LIVESPEC_TEST_PARALLELISM).
-  LIVESPEC_CI_LANE: ${{ contains(vars.CI_RUNNER_LABELS, 'ubuntu') && 'hosted' || 'local' }}
+  # Test-parallelism lane signal read by the justfile's `test_nprocs`.
+  # RUNNER_ENVIRONMENT does NOT propagate into container jobs, so the lane is
+  # derived from the routing variable instead: an ubuntu label → `hosted` →
+  # pytest -n auto; a self-hosted label → `local` → -n 25%-of-cores
+  # (overridable per host via LIVESPEC_TEST_PARALLELISM).
+  #
+  # The `|| '["ubuntu-latest"]'` default carries the same fail-closed property
+  # as the runs-on fallbacks above and MUST stay in lockstep with them. Without
+  # it an absent variable yields contains('', 'ubuntu') == false → `local`, so
+  # the lane signal would claim self-hosted on jobs that are in fact routed to
+  # hosted capacity.
+  LIVESPEC_CI_LANE: ${{ contains(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]', 'ubuntu') && 'hosted' || 'local' }}
 
 on:
   pull_request:
@@ -104,11 +130,12 @@ jobs:
   check-python:
     name: ${{ matrix.target }}
     needs: setup
-    # Local self-hosted runner in the baked sandbox image (fallback: set the
-    # CI_RUNNER_LABELS repo variable to '["ubuntu-latest"]'). The container is
-    # the SAME tag the Fabro sandbox runs — that sameness collapses the
-    # green-in-CI / red-in-sandbox drift this epic exists to remove.
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
+    # Routing per the header block: CI_RUNNER_LABELS when set, hosted capacity
+    # when absent. The fallback MUST name a hosted label — see the header for
+    # why an absent variable defaulting to a self-hosted label stalls the sole
+    # required gate. The container is the SAME tag the Fabro sandbox runs, so
+    # "green in CI" and "green in sandbox" mean the same environment.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.17.1
     env:
@@ -204,8 +231,10 @@ jobs:
       # git, so an env-var safe.directory is invisible to it. Write it to the
       # global gitconfig ($HOME/.gitconfig, HOME=/github/home) instead: HOME is
       # preserved across the GIT_* scrub, so EVERY git call — including the
-      # env-scrubbed resolve_repo_root — reads it. No-op on the self-hosted
-      # lane (its persistent workspace already trusts itself).
+      # env-scrubbed resolve_repo_root — reads it. Harmless when the uids
+      # already match; do NOT assume a self-hosted lane makes it unnecessary,
+      # because a conforming host gives each job a FRESH workspace rather than
+      # a persistent one it has already trusted.
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
         if: needs.setup.outputs.py_changed == 'true'
         run: git config --global --add safe.directory '*'
@@ -242,9 +271,9 @@ jobs:
   check-metadata:
     name: ${{ matrix.target }}
     needs: setup
-    # Same baked image + self-hosted routing as check-python (fallback via the
-    # CI_RUNNER_LABELS repo variable).
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["self-hosted","local-ci"]') }}
+    # Same baked image and same routing as check-python; the fallback MUST stay
+    # in lockstep with that job's and with LIVESPEC_CI_LANE.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.17.1
     env:
@@ -352,8 +381,9 @@ jobs:
       # runs git as ROOT over a uid-1001 checkout → "dubious ownership" (exit
       # 128) otherwise. Written to the global gitconfig (HOME=/github/home) so
       # even resolve_repo_root() — which strips all GIT_* env before shelling
-      # git (config.py) — reads it. See check-python for the full rationale.
-      # No-op on the self-hosted lane.
+      # git (config.py) — reads it. See check-python for the full rationale,
+      # including why a self-hosted lane must not be assumed to make it
+      # unnecessary.
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
         run: git config --global --add safe.directory '*'
 
