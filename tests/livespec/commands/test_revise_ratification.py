@@ -20,38 +20,79 @@ __all__: list[str] = []
 _DEFAULT_EVIDENCE = object()
 
 
-def test_canonical_ratification_digest_uses_length_prefixes() -> None:
+def test_canonical_ratification_digest_matches_uint64_be_known_bytes() -> None:
     decision = {
         "resulting_files": [
-            {"path": "a", "content": "bc"},
             {"path": "ab", "content": "c"},
+            {"path": "a", "content": "bc"},
         ],
     }
-    expected = hashlib.sha256(b"1:a2:bc2:ab1:c").hexdigest()
+    expected_bytes = (
+        b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00\x00\x00\x00\x01a"
+        b"\x00\x00\x00\x00\x00\x00\x00\x02bc"
+        b"\x00\x00\x00\x00\x00\x00\x00\x02ab"
+        b"\x00\x00\x00\x00\x00\x00\x00\x01c"
+    )
+    expected = hashlib.sha256(expected_bytes).hexdigest()
 
     assert _canonical_ratification_digest(decision=decision) == expected
 
 
-def test_canonical_ratification_digest_skips_malformed_runtime_shapes() -> None:
-    empty = hashlib.sha256().hexdigest()
+def test_canonical_ratification_digest_is_independent_of_resulting_file_order() -> None:
+    forward = [
+        {"path": "a", "content": "first"},
+        {"path": "z", "content": "last"},
+    ]
 
-    assert _canonical_ratification_digest(decision={"resulting_files": "bad"}) == empty
-    assert _canonical_ratification_digest(decision={"resulting_files": ["bad"]}) == empty
+    assert _canonical_ratification_digest(
+        decision={"resulting_files": forward},
+    ) == _canonical_ratification_digest(
+        decision={"resulting_files": list(reversed(forward))},
+    )
+
+
+def test_canonical_ratification_digest_binds_proposal_bytes() -> None:
+    decision = {"resulting_files": [{"path": "spec.md", "content": "final"}]}
+
+    assert _canonical_ratification_digest(
+        decision=decision,
+        proposal_bytes=b"proposal one\n",
+    ) != _canonical_ratification_digest(
+        decision=decision,
+        proposal_bytes=b"proposal two\n",
+    )
+
+
+def test_canonical_ratification_digest_skips_malformed_runtime_shapes() -> None:
+    empty_proposal = hashlib.sha256(b"\x00" * 8).hexdigest()
+
+    assert _canonical_ratification_digest(decision={"resulting_files": "bad"}) == empty_proposal
+    assert _canonical_ratification_digest(decision={"resulting_files": ["bad"]}) == empty_proposal
 
 
 def test_validate_ratification_reviews_accepts_valid_evidence_with_configured_model(
     *,
     tmp_path: Path,
 ) -> None:
+    proposal_bytes = b"## Proposal: demo\nReview me.\n"
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     (tmp_path / ".livespec.jsonc").write_text(
         '{"spec_governance":{"ratification_reviewer_model":"fable"}}',
         encoding="utf-8",
     )
     resulting_files = [{"path": "spec.md", "content": "new"}]
-    revise_input = _mutating_input(resulting_files=resulting_files)
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+    )
 
     result = unsafe_perform_io(
-        _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
     )
 
     assert result == Success(revise_input)
@@ -61,8 +102,13 @@ def test_validate_ratification_reviews_rejects_non_no_blockers_verdict(
     *,
     tmp_path: Path,
 ) -> None:
+    proposal_bytes = b"proposal\n"
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     resulting_files = [{"path": "spec.md", "content": "new"}]
-    evidence = _evidence(resulting_files=resulting_files)
+    evidence = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+    )
     evidence["verdict"] = "BLOCKERS"
     revise_input = RevisionInput(
         author=None,
@@ -79,7 +125,11 @@ def test_validate_ratification_reviews_rejects_non_no_blockers_verdict(
     )
 
     result = unsafe_perform_io(
-        _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
     )
 
     assert isinstance(result, Failure)
@@ -103,13 +153,26 @@ def test_validate_ratification_reviews_rejects_malformed_evidence_fields(
     field: str,
     value: object,
 ) -> None:
+    proposal_bytes = b"proposal\n"
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     resulting_files = [{"path": "spec.md", "content": "new"}]
-    evidence = _evidence(resulting_files=resulting_files)
+    evidence = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+    )
     evidence[field] = value
-    revise_input = _mutating_input(resulting_files=resulting_files, evidence=evidence)
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=evidence,
+    )
 
     result = unsafe_perform_io(
-        _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
     )
 
     assert isinstance(result, Failure)
@@ -119,16 +182,37 @@ def test_validate_ratification_reviews_rejects_missing_evidence_and_bad_mode(
     *,
     tmp_path: Path,
 ) -> None:
+    proposal_bytes = b"proposal\n"
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     resulting_files = [{"path": "spec.md", "content": "new"}]
-    missing = _evidence(resulting_files=resulting_files)
+    missing = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+    )
     del missing["read_only"]
-    bad_mode = _mutating_input(resulting_files=resulting_files, mode="bad")
-    no_evidence = _mutating_input(resulting_files=resulting_files, evidence=None)
-    missing_field = _mutating_input(resulting_files=resulting_files, evidence=missing)
+    bad_mode = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        mode="bad",
+    )
+    no_evidence = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=None,
+    )
+    missing_field = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=missing,
+    )
 
     for revise_input in (bad_mode, no_evidence, missing_field):
         result = unsafe_perform_io(
-            _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+            _validate_ratification_reviews(
+                revise_input=revise_input,
+                project_root=tmp_path,
+                spec_target=spec_target,
+            ),
         )
         assert isinstance(result, Failure)
 
@@ -137,15 +221,24 @@ def test_validate_ratification_reviews_rejects_configured_model_mismatch(
     *,
     tmp_path: Path,
 ) -> None:
+    proposal_bytes = b"proposal\n"
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     (tmp_path / ".livespec.jsonc").write_text(
         '{"spec_governance":{"ratification_reviewer_model":"other"}}',
         encoding="utf-8",
     )
     resulting_files = [{"path": "spec.md", "content": "new"}]
-    revise_input = _mutating_input(resulting_files=resulting_files)
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+    )
 
     result = unsafe_perform_io(
-        _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
     )
 
     assert isinstance(result, Failure)
@@ -155,6 +248,7 @@ def test_validate_ratification_reviews_allows_reject_without_evidence(
     *,
     tmp_path: Path,
 ) -> None:
+    spec_target = tmp_path / "SPECIFICATION"
     revise_input = RevisionInput(
         author=None,
         decisions=[
@@ -167,7 +261,11 @@ def test_validate_ratification_reviews_allows_reject_without_evidence(
     )
 
     result = unsafe_perform_io(
-        _validate_ratification_reviews(revise_input=revise_input, project_root=tmp_path),
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
     )
 
     assert result == Success(revise_input)
@@ -201,8 +299,63 @@ def test_compose_revision_body_handles_malformed_runtime_evidence_defensively() 
     assert "## Ratification Review\n\n(none)" in body
 
 
-def _evidence(*, resulting_files: list[dict[str, str]]) -> dict[str, object]:
-    decision = {"resulting_files": resulting_files}
+@pytest.mark.parametrize("proposal_exists", [False, True])
+def test_validate_ratification_reviews_fails_closed_when_proposal_cannot_be_read(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    proposal_exists: bool,
+) -> None:
+    proposal_bytes = b"proposal\n"
+    spec_target = tmp_path / "SPECIFICATION"
+    proposal_path = spec_target / "proposed_changes" / "demo.md"
+    if proposal_exists:
+        proposal_path.parent.mkdir(parents=True)
+        proposal_path.write_bytes(proposal_bytes)
+
+        def deny_proposal_read(path: Path) -> bytes:
+            assert path == proposal_path
+            raise PermissionError("proposal unreadable")
+
+        monkeypatch.setattr(Path, "read_bytes", deny_proposal_read)
+
+    resulting_files = [{"path": "spec.md", "content": "new"}]
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+    )
+
+    result = unsafe_perform_io(
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            spec_target=spec_target,
+        ),
+    )
+
+    assert isinstance(result, Failure)
+
+
+def _contract_digest(
+    *,
+    proposal_bytes: bytes,
+    resulting_files: list[dict[str, str]],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(len(proposal_bytes).to_bytes(8, "big"))
+    digest.update(proposal_bytes)
+    for entry in sorted(resulting_files, key=lambda item: item["path"].encode("utf-8")):
+        for value in (entry["path"].encode("utf-8"), entry["content"].encode("utf-8")):
+            digest.update(len(value).to_bytes(8, "big"))
+            digest.update(value)
+    return digest.hexdigest()
+
+
+def _evidence(
+    *,
+    proposal_bytes: bytes,
+    resulting_files: list[dict[str, str]],
+) -> dict[str, object]:
     return {
         "reviewer_identity": "fable",
         "reviewer_model": "fable",
@@ -211,13 +364,25 @@ def _evidence(*, resulting_files: list[dict[str, str]]) -> dict[str, object]:
         "reviewed_at": "2026-08-03T12:34:56Z",
         "verdict": "NO BLOCKERS",
         "proposal_stem": "demo",
-        "content_digest": _canonical_ratification_digest(decision=decision),
+        "content_digest": _contract_digest(
+            proposal_bytes=proposal_bytes,
+            resulting_files=resulting_files,
+        ),
     }
+
+
+def _write_proposal(*, tmp_path: Path, proposal_bytes: bytes) -> Path:
+    spec_target = tmp_path / "SPECIFICATION"
+    proposal_path = spec_target / "proposed_changes" / "demo.md"
+    proposal_path.parent.mkdir(parents=True)
+    proposal_path.write_bytes(proposal_bytes)
+    return spec_target
 
 
 def _mutating_input(
     *,
     resulting_files: list[dict[str, str]],
+    proposal_bytes: bytes,
     mode: str = "auto-spawn",
     evidence: dict[str, object] | None | object = _DEFAULT_EVIDENCE,
 ) -> RevisionInput:
@@ -229,7 +394,10 @@ def _mutating_input(
         "ratification_review": mode,
     }
     if evidence is _DEFAULT_EVIDENCE:
-        decision["ratification_evidence"] = _evidence(resulting_files=resulting_files)
+        decision["ratification_evidence"] = _evidence(
+            proposal_bytes=proposal_bytes,
+            resulting_files=resulting_files,
+        )
     elif evidence is not None:
         decision["ratification_evidence"] = evidence
     return RevisionInput(author=None, decisions=[decision])

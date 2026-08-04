@@ -160,23 +160,25 @@ def _write_valid_revise_payload(*, tmp_path: Path) -> Path:
     return payload_path
 
 
-def _canonical_digest(*, resulting_files: list[dict[str, str]]) -> str:
+def _canonical_digest(
+    *,
+    proposal_bytes: bytes,
+    resulting_files: list[dict[str, str]],
+) -> str:
     digest = hashlib.sha256()
-    for entry in resulting_files:
-        path_bytes = entry["path"].encode("utf-8")
-        content_bytes = entry["content"].encode("utf-8")
-        digest.update(str(len(path_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(path_bytes)
-        digest.update(str(len(content_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(content_bytes)
+    digest.update(len(proposal_bytes).to_bytes(8, "big"))
+    digest.update(proposal_bytes)
+    for entry in sorted(resulting_files, key=lambda item: item["path"].encode("utf-8")):
+        for value in (entry["path"].encode("utf-8"), entry["content"].encode("utf-8")):
+            digest.update(len(value).to_bytes(8, "big"))
+            digest.update(value)
     return digest.hexdigest()
 
 
 def _ratification_evidence(
     *,
     resulting_files: list[dict[str, str]],
+    proposal_bytes: bytes = b"## Proposal: demo\n",
 ) -> dict[str, object]:
     return {
         "reviewer_identity": "fable",
@@ -186,7 +188,10 @@ def _ratification_evidence(
         "reviewed_at": "2026-08-03T12:34:56Z",
         "verdict": "NO BLOCKERS",
         "proposal_stem": "demo",
-        "content_digest": _canonical_digest(resulting_files=resulting_files),
+        "content_digest": _canonical_digest(
+            proposal_bytes=proposal_bytes,
+            resulting_files=resulting_files,
+        ),
     }
 
 

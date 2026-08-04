@@ -146,6 +146,9 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
                 "ratification_review": "manual-spawn",
                 "ratification_evidence": _ratification_evidence(
                     proposal_stem="fix-shall-case",
+                    proposal_bytes=(
+                        tmp_path / "SPECIFICATION" / "proposed_changes" / "fix-shall-case.md"
+                    ).read_bytes(),
                     resulting_files=resulting_files,
                 ),
             }
@@ -186,18 +189,16 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
 def _ratification_evidence(
     *,
     proposal_stem: str,
+    proposal_bytes: bytes,
     resulting_files: list[dict[str, str]],
 ) -> dict[str, object]:
     digest = hashlib.sha256()
-    for entry in resulting_files:
-        path_bytes = entry["path"].encode("utf-8")
-        content_bytes = entry["content"].encode("utf-8")
-        digest.update(str(len(path_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(path_bytes)
-        digest.update(str(len(content_bytes)).encode("ascii"))
-        digest.update(b":")
-        digest.update(content_bytes)
+    digest.update(len(proposal_bytes).to_bytes(8, "big"))
+    digest.update(proposal_bytes)
+    for entry in sorted(resulting_files, key=lambda item: item["path"].encode("utf-8")):
+        for value in (entry["path"].encode("utf-8"), entry["content"].encode("utf-8")):
+            digest.update(len(value).to_bytes(8, "big"))
+            digest.update(value)
     return {
         "reviewer_identity": "fable",
         "reviewer_model": "fable",
