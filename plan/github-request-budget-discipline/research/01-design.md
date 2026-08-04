@@ -242,6 +242,35 @@ not a real flag. It returned nothing for all seven queries, which would have
 supported a confident "no duplicates exist" conclusion and a duplicate filing over
 `livespec-j49m`. The real flag is `--desc-contains`.
 
+## Two obligations recorded here because they were decided but never written down
+
+An adversarial review of the first proposal draft correctly found two normative
+obligations with no support anywhere in this record. Both were real decisions —
+they had been captured only in the epic and the slice descriptions, which are not
+the cited design record. Recording them here so the ratified spec text is
+faithful to a record rather than to the author's memory.
+
+**The reserved budget floor.** Deferrable bulk work MUST be refusable below a
+declared remaining-budget threshold. This is the direct structural fix for the
+triggering incident's actual shape: the harm was not that a prune existed, but
+that it burned the same bucket a time-critical install-anchor verification needed
+in the same window. Pacing alone does not prevent starvation — a correctly paced
+bulk job still drains the bucket, just more slowly. Only a floor keeps capacity
+in reserve for the read that cannot wait. This obligation is compatible with
+`livespec-j49m`'s MEASURE-BEFORE-MITIGATING disposition because the floor is
+enforced by the same chokepoint that performs the measurement; it is not a
+separate mitigation bolted on ahead of the data.
+
+**Concurrency is a ceiling, not a prohibition.** An earlier draft of the spec
+text said mutations "MUST NOT be issued concurrently". That overstates the
+verified fact. GitHub publishes a limit of 100 concurrent requests across REST
+and GraphQL, and its own guidance is to avoid concurrent MUTATING requests
+specifically; neither is an absolute ban on concurrency. The obligation is
+therefore to stay within the published concurrency and per-minute point ceilings,
+which is what the measured facts support. Converting a documented ceiling into an
+absolute prohibition would be the spec asserting something stricter than its
+evidence — the failure mode this record exists to prevent.
+
 ## Deliberately out of scope
 
 - Purchasing or requesting a higher limit — established above as unavailable.
