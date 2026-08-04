@@ -51,6 +51,7 @@
 - check-per-file-coverage
 - check-plan-thread-anchor-declared
 - check-plan-thread-epic-parity
+- check-plan-thread-no-tombstone
 - check-plugin-resolution
 - check-primary-checkout-commit-refuse-hook-installed
 - check-private-calls
@@ -59,6 +60,7 @@
 - check-required-role-keys-declared
 - check-rop-pipeline-shape
 - check-self-hosted-routing
+- check-shell-quality
 - check-skill-invocation-paths
 - check-source-trees-scoped-to-consumer
 - check-supervisor-discipline
