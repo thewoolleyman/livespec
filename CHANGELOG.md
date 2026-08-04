@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/thewoolleyman/livespec/compare/v0.26.1...v0.27.0) (2026-08-04)
+
+
+### Features
+
+* guard spec governance default blocks ([e2f2232](https://github.com/thewoolleyman/livespec/commit/e2f2232d954416629964a4ef2ea2ab4f82a80662))
+
 ## [0.26.1](https://github.com/thewoolleyman/livespec/compare/v0.26.0...v0.26.1) (2026-08-04)
 
 
