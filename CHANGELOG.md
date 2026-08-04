@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.3](https://github.com/thewoolleyman/livespec/compare/v0.24.2...v0.24.3) (2026-08-04)
+
+
+### Bug Fixes
+
+* conform ratification digest framing ([066a29f](https://github.com/thewoolleyman/livespec/commit/066a29fbb204b4be2e2e3ab56e73053ec52bb646))
+
 ## [0.24.2](https://github.com/thewoolleyman/livespec/compare/v0.24.1...v0.24.2) (2026-08-03)
 
 
