@@ -1,173 +1,175 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-04 at session wrap-up
+## Resume state — written 2026-08-04T14:2xZ at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. The detailed supervisor record is at
 `/data/projects/livespec/tmp/overseer/spec-side-autonomy/.supervisor-state`
-(gitignored, same host, read by the cold-open boot block); the briefs that drove
-this work are `brief-01` through `brief-21` in that same directory.
+(gitignored, same host, read by the cold-open boot block). The two adversarial
+review briefs live beside it as `review-brief-A-livespec.md` and
+`review-brief-B-orchestrator.md`; both already carry a `## ROUND 2` section.
 
-### Increments 1 and 2 — BOTH COMPLETE, MERGED, RELEASED, AND EXERCISED
+### The one thing to do next
 
-Increment 1 ratified as `history/v190`, built as four slices (`livespec-rvduou`
-PR 1939, `livespec-mrxwbr` PR 1942, `livespec-d2f5pf` PR 1949, `livespec-p4pcxv`
-PR 1944), released in **v0.24.1**. Fleet deployment is COMPLETE: all five
-siblings pin v0.24.1, and all four slice merges are ancestors of that tag.
+**Run round 3 of the independent adversarial review on BOTH proposals, then
+ratify only on NO BLOCKERS from both.** Rounds 1 and 2 each returned blockers
+(14 then 4). Every single one was verified against live bytes before acting;
+none was overstated. Three rounds in, do NOT assume round 3 is clean.
 
-Increment 2 ratified as `history/v193` (PR **1978**, merge `98300b9f`) and then
-IMPLEMENTED as two slices: `livespec-jvdvx4.3` (control surface, PR **1980**)
-and `livespec-jvdvx4.4` (resolver, floors, predicate, journal event). Verified
-on `origin/master`, not merely reported: `spec_governance/policy.py`,
-`spec_governance/revise_decision.py` and `commands/_revise_decision.py` all
-exist, and `requires_revise_decision_input` is CONSUMED at
-`_revise_decision.py:74` rather than re-derived, as the contract requires.
+Spawn TWO read-only Fable reviewers, cross-pinned (each given the other repo's
+proposal), using the two brief files above — append a `## ROUND 3` section
+naming the round-2 blockers and requiring explicit confirmation of closure.
+**Spawning reviewers needs maintainer authorization; it was granted for rounds
+1-2 and should be re-confirmed.**
 
-Exercised live on a SCRATCH project root (never the primary — a dirty primary
-poisons the next dispatch's sandbox base): arm `global:delegated` applied;
-`global:yolo` REFUSED with the allowlist error (this refusal is the positive
-control — without it the passing edits prove nothing); `clear` returned
-effective to `manual`; JSONC comments 46 before and 46 after.
+Reviewers reliably signal idle WITHOUT delivering. That is a delivery quirk, not
+a finding: 4 of 4 delivered complete, high-quality reviews once explicitly asked
+via a message naming the evidence required. Never read silence as a pass.
 
-`--show-effective` now reports **7 keys**, ALL at safe defaults arming nothing.
-The only declared key in this repo is `ratification_reviewer_model: fable`.
+### Increment 3 — proposals FILED in both repos, NOT ratified
 
-`livespec-jvdvx4.1` — the ratification-digest conformance bug — is FIXED and
-closed (PR **1974**, merge `066a29fb`). The shipped
-`_canonical_ratification_digest` now binds `LP(P)` FIRST, frames every length as
-`len(x).to_bytes(8, "big")`, and sorts entries by raw path bytes. That closed a
-real replay hole and was a hard predecessor of the v193 ratification.
+Both halves are pending proposed changes on their masters, at v3:
 
-### Increment 3 — still gated, but MUCH closer than the previous text claimed
+| Repo | Proposal file | Landed |
+|---|---|---|
+| `thewoolleyman/livespec` | `SPECIFICATION/proposed_changes/spec-governance-drift-acceptance-mode.md` (3 proposals, atomic) | PR #2010, merge `27331cd8` |
+| `thewoolleyman/livespec-orchestrator-beads-fabro` | `SPECIFICATION/proposed_changes/drift-acceptance-consensus-carveout.md` | PR #1297 |
 
-Do NOT edit the drift-doctrine sentence in `SPECIFICATION/spec.md` yet.
+Ledger: `livespec-jvdvx4.5` (livespec tenant, `backlog` — a spec-doctrine
+amendment is human-gated and MUST NOT enter the factory dispatch lane) and
+`bd-ib-qek6` (orchestrator tenant, `backlog`, filed as reporting only).
 
-**The previous version of this section was WRONG ON THREE COUNTS. It is
-corrected here, measured 2026-08-04T09:0xZ against a freshly fetched
-`livespec-overseer` `origin/master`. Do not restore the old text.**
+**RATIFICATION ORDER: accept the livespec core half FIRST or in the same
+sitting.** The orchestrator proposal cites core's doctrine "as amended", which
+is true only once core ratifies. If core is rejected, the orchestrator half MUST
+NOT ratify. Both files carry the neither-ratifies-assuming-the-other clause.
 
-1. **"The foreman thread is ARCHIVED" — FALSE.** `plan/foreman/` is a live,
-   REOPENED thread in `livespec-overseer`. `plan/archive/` holds twelve other
-   threads and `foreman` is not among them. Its handoff carries a checkpoint
-   dated 2026-08-04T07:18Z.
-2. **"No consensus implementation exists in `livespec_overseer/`" — FALSE, and
-   the error is instructive.** That package directory does not exist; the
-   package is `overseer/`. A grep over a path that never existed returned zero
-   and was written down as absence. The panel EXISTS:
-   `overseer/foreman_consensus.py` plus `_cache`, `_eval`, `_prompt` and
-   `_types` siblings, the `overseer/foreman-consensus` CLI, and both
-   `tests/e2e-cli/test_foreman_consensus.py` and
-   `tests/test_foreman_consensus_inprocess.py`. It is BUILT but **UNWIRED** —
-   no other `overseer/*.py` imports it, which is exactly what the report-only
-   doctrine requires. This is `.ai/verifying-against-the-right-source.md`
-   verbatim; run a positive control before recording any absence.
-3. **"Raise gates 3–4 with the maintainer" — ALREADY ANSWERED. DO NOT RE-ASK.**
-   The maintainer ruled at **2026-08-04T07:12Z: build Phase C+D now** — the
-   cross-vendor consensus panel with the minority-report override, the
-   gate-driving layer, and the cross-repo spec amendments that reverse the
-   report-only disposition (review finding C1). The shipped "do not add Phase C
-   consensus" prose and the `human_action_report_only` refusal are SUPERSEDED
-   by that ruling.
+### What the reviews caught — read before drafting anything here
 
-What is genuinely still open is the **ratification**.
-`livespec-overseer`'s `SPECIFICATION/spec.md:34` still reads "Until a
-consensus-decision policy is ratified in this specification, every action
-classified by the governing orchestrator contract as a human valve is
-report-only for the foreman", and `consensus` appears in that spec in that ONE
-sentence and nowhere else. So: the mechanism exists, the maintainer has
-authorized the reversal, and the doctrine has not yet been amended.
+The doctrine judgment was RIGHT and both reviewers independently confirmed the
+carve-out is NECESSARY: the orchestrator's `contracts.md` floor ENUMERATES drift
+acceptance, so "below the floor it is exactly config" is false for drift and
+v193's mirror-as-config pattern cannot reach it. What kept failing was SCOPE.
 
-Corrected distance to full autonomy: (3) ratify the consensus-decision policy in
-`livespec-overseer`'s spec; (4) wire the EXISTING panel into the foreman's valve
-path; (5) then Increment 3 here. That is a ratification plus a wiring job — not
-the greenfield build the old text described.
+Round 1 (14 blockers). The killer: `contracts.md` defines
+`requires_revise_decision_input` as true for "any design-record/review/drift
+floor" and `spec.md` requires revise enforcement to CONSUME that predicate — so
+an armed `drift_acceptance_mode: consensus` would still demand human input and
+**the ratified lever could never have fired**. Round 2 confirmed this CLOSED by
+tracing an armed repo end-to-end (predicate resolves false on conforming
+evidence; still forces human input on absent/stale evidence).
 
-A cross-track notification was sent 2026-08-04T09:05Z to the `foreman` thread at
-`/data/projects/livespec-overseer/tmp/overseer/foreman/INBOX-from-livespec-spec-side-autonomy.md`,
-asking that its Phase C+D cut either include repository `livespec`'s half of the
-reversal (the drift-doctrine sentence and `spec_governance.drift_acceptance_mode`)
-or cross-link it to epic `livespec-jvdvx4`. As of this writing nothing under
-`plan/foreman/` mentions `drift_acceptance_mode` or `spec_governance`, so
-`livespec`'s half is the piece nothing currently carries. That notification is
-UNACKNOWLEDGED and remains this thread's open obligation.
+Round 2 (4 blockers). Two are worth carrying forward as method:
 
-### Open ledger items under epic `livespec-jvdvx4`
+1. **Uniqueness is not correctness.** A replace-target occurred exactly once and
+   was still WRONGLY BOUNDED — it stopped one line short of a Gherkin scenario's
+   final step, so pure byte substitution emitted that step twice. The `count==1`
+   assertion passed it.
+2. **One edit quoted NO target at all**, while the proposal's own preamble
+   asserted every target was quoted verbatim — making the resulting bytes
+   underivable, the same standard round 1 had applied elsewhere.
 
-- `livespec-jvdvx4.2` — backlog, and REPAIRED 2026-08-04T08:59Z. The
-  `spec_governance` keys are INVISIBLE: absent from
-  `templates/orchestrator-plugin/.livespec.jsonc.jinja` entirely, and absent
-  from every fleet repo's `.livespec.jsonc` except `livespec`'s own.
-  Maintainer-raised. Two defects were found in the item as filed and are fixed:
-  (a) it said "six keys" and named six, but Increment 2 shipped a SEVENTH
-  (`revise_decision_mode`), so the template↔manifest agreement check it asks for
-  would have FAILED on the six-key block it asks for — the description now
-  derives the set from the shipped manifest and says RE-DERIVE rather than
-  carrying a number; (b) it bundled a seven-repo config backfill into one item,
-  which no single-repo fabro sandbox can execute. Scope is now two explicit
-  legs, and the flagged design gap is that leg 1's check guards
-  template↔manifest ONLY, so leg 2's hand-maintained copies would drift
-  unguarded unless leg 1 also decides a per-repo guard.
-- `livespec-jvdvx4.2.1` — **the dispatchable core leg**, filed
-  2026-08-04T09:00Z, 1517-char description, currently the ONLY item in this
-  tenant's ready queue. Derives the commented block into the copier template and
-  adds the template↔manifest agreement check. Blocked ONLY on fabro capacity.
+### The payload-builder method that now works — reuse it
+
+Do NOT hand-transcribe replace-targets. The builders under the session
+scratchpad (`mk_v3_livespec.py`, `mk_v3_obf.py` — recreate them, they are
+ephemeral) do this, and each guard was added because the previous one missed a
+real defect:
+
+1. READ each target's exact bytes out of the live file by start/end anchor;
+2. assert it occurs EXACTLY ONCE (catches wrong quotes);
+3. assert the following live line is not a continuation of the same construct
+   (catches under-quoting);
+4. SIMULATE every substitution and fail on any back-to-back duplicate line;
+5. re-verify the generated proposal file independently afterwards.
+
+`verify_subs.py` in the scratchpad does step 4-5 against a finished proposal;
+it parses OLD/NEW pairs, de-indents them, and reports per-pair counts. Recreate
+it. All 11 livespec and 7 orchestrator substitutions currently pass.
+
+Note the two repos wrap differently: `livespec`'s `spec.md` uses long
+single-line paragraphs; the orchestrator tree is HARD-WRAPPED, so its targets
+span lines and internal newlines and em-dashes are part of the match. A
+single-line quote of a hard-wrapped clause matched ZERO times early on.
+
+### Open ledger items
+
+- `livespec-jvdvx4.2` — backlog. Leg 1 (`.2.1`, PR #1993) and leg 2a (`.2.2`,
+  PR #1997) are CLOSED and verified; the reusable per-repo guard exists.
+  **Remaining: leg 2, the per-repo backfill.** The maintainer decided
+  2026-08-04 to ship the block WITH a per-repo guard (not bare, not skipped).
+  The target set is TEN repos, re-derived from the fleet manifest plus file
+  presence — the item's original "seven siblings" list was wrong twice over.
+  DERIVE the set again at execution time; do not copy the recorded list.
+- `livespec-jvdvx4.5` — Increment 3, above.
 - `livespec-bhammf` — blocked, needs-human. The relocated `spec_pr_merge`
-  redesign. Not Increment 1/2 work; do not treat it as unfinished business.
+  redesign. Not this thread's unfinished business.
+- `livespec-driver-claude-d7d` (P1, that repo's tenant, backlog) — filed from
+  here: `resolve_core_root.py` rule 2 matches ANY repo shipping
+  `.claude-plugin/prose/`, so `/livespec:*` misresolves core from every
+  impl-plugin repo. Workaround in use: the sanctioned `LIVESPEC_CORE_PLUGIN_ROOT`
+  override.
 
-### Standing hazards for whoever resumes
+### Cross-track state — `livespec-overseer` `plan/foreman`
 
-- **Concurrent sessions ratify into this repo.** Master moved v190 → v193 and
-  many commits during one session. A revise `resulting_files[]` entry REPLACES
-  THE ENTIRE FILE, so a splice computed against stale bytes silently reverts
-  another session's change and git reports NO CONFLICT. Re-derive every entry
-  from freshly fetched bytes immediately before applying.
-- **The overseer does NOT restart this repo's codex workers.** Two separate
-  defects, both measured. First, a worker writing `tmp/overseer/<topic>/
-  .overseer-state` RELATIVELY writes it inside whatever worktree it is cd-ed
-  into, and worktree cleanup destroys it; the daemon reads the ABSOLUTE
-  canonical path, gets nothing, and fails closed. Tell workers the absolute
-  path. Second, even after a valid fresh `ready` was consumed, the codex process
-  was NOT replaced (same pid, >1 day old). Leading suspect: the track's
-  `pinned_session_id` is null and restart routes to `codex resume <id>`. The
-  context recoveries you will observe are codex SELF-COMPACTION, not restarts —
-  which is why workers keep losing orientation and must be re-briefed from
-  files. NOT YET FILED against `livespec-overseer`; worth filing.
-- **Do not nudge a worker that has declared `ready`.** Every nudge puts it back
-  to `working` and preempts any restart. This supervisor did that repeatedly.
-- **Factory capacity is unreliable.** Two FOREIGN idle sandboxes
-  (`overseer-z5fo4y.4`, `livespec-dev-tooling-mvvr3f`) held the entire host cap
-  for 20+ hours running only `sleep infinity`. They are NOT ours — never stop or
-  reap them. Still true at 2026-08-04T09:01Z, and now WORSE: those two are at
-  25h and 29h, and a THIRD foreign sandbox joined at 07:53Z, putting three in
-  flight against a cap of 2. When the factory is saturated, building a ready
-  slice directly on the worker via Red-Green-Replay is the sanctioned fallback;
-  PRs 1963, 1974, 1980 and slice B all landed that way.
-- **Keep dispatchable descriptions near ~1500 characters**, provenance in
-  journal notes. A 7196-char item once died mid-publish and lost an hour.
-- **`gh` REST quota is exhaustible.** `check-master-ci-green` correctly FAILS
-  CLOSED at 5000/5000 and blocked a Green amend for ~10 minutes. That is the
-  gate working; wait for the reset, never bypass.
+That thread is LIVE and cooperative. Its supervisor acknowledged this thread's
+notification, cross-linked `overseer-ym6` to epic `livespec-jvdvx4`, and
+explicitly retired its own four-place enumeration as non-exhaustive. It owns
+ratifying `livespec-overseer`'s `SPECIFICATION/spec.md:34` report-only sentence
+and wiring the panel; it will notify here. The consensus panel is RELEASED (not
+merely built): `bin/foreman-consensus` ships in the installed cache build, pins
+corrected to fable/opus/gpt-sol with a one-non-Anthropic guard.
+
+Reply channel both ways:
+`tmp/overseer/spec-side-autonomy/worker-status.log` and the two INBOX files
+(`.../foreman/INBOX-from-livespec-spec-side-autonomy.md` in their repo,
+`.../spec-side-autonomy/INBOX-from-livespec-overseer-foreman.md` in ours).
+
+### Standing hazards
+
+- **Master moves constantly.** It moved at least six times during one session.
+  A revise `resulting_files[]` entry REPLACES THE ENTIRE FILE, so a splice
+  computed against stale bytes silently reverts another session's change with NO
+  git conflict. Re-derive every entry from freshly fetched bytes IMMEDIATELY
+  before applying, and diff the spec files against `origin/master` first.
+- **`bd ready` is NOT the dispatcher's ready set.** Read the orchestrator's own
+  `scripts/bin/next.py --json`. The two disagreed completely: `bd ready` listed
+  only my item; `next.py` listed two others and not mine. An item needs STORED
+  status `ready`; a raw `bd create` produces `open`, which is invisible to the
+  dispatcher. Only `depends_on` entries block — the parent-child edge does not.
+- **Do not infer a dispatch refusal.** I claimed capacity was blocking and was
+  wrong; the dispatch failed a ready-set precondition, never reaching an
+  admission check. Attempt it and read the guard's answer — a refusal is safe,
+  names the cap and observed count, and IS the measurement.
+- **Fresh worktrees fail `check-primary-checkout-commit-refuse-hook-installed`**
+  with `worktree_pack_absent`. Run `just install-worktree-pack` then
+  `git checkout -- .livespec.jsonc` (the installer writes a redundant
+  `worktree_discipline` key into that TRACKED file) IMMEDIATELY after creating
+  any worktree. Rediscovering it at push time costs ~12 minutes of gate runtime.
+- **Never mask an exit status behind a pipe.** `git push … | tail` reported exit
+  0 while the push had FAILED and the gate had refused it; the same `tail` then
+  truncated the diagnostic to 314 bytes. Use `out=$(cmd 2>&1); rc=$?`.
+- **Gate commands must run FOREGROUND** with a raised timeout — a pretooluse
+  hook DENIES backgrounding `just check*`, `git commit`, `git push`, `gh pr`.
+- **A merged PR with `--delete-branch` breaks a later push** on the same branch
+  name: the pre-push script resolves `@{upstream}` against the deleted ref and
+  dies. `git branch --unset-upstream`, `git fetch --prune`, push again.
+- **The dispatcher staleness gate refuses a stale plugin build.** Fix it with
+  `just ensure-plugins`, never bypass. Plugin roots change MID-SESSION — always
+  re-resolve, and resolve from `installed_plugins.json` BY `projectPath`, since
+  it holds entries for several projects and a version string alone does not
+  prove the right project was read.
+- **Two FOREIGN idle fabro sandboxes** have held cap slots for 25-31h running
+  only `sleep infinity`. Never stop or reap them; they are not ours.
+- **Keep dispatchable descriptions near ~1500 chars.**
 
 ### Next concrete action
 
-**Do NOT raise gates 3–4 with the maintainer — that ruling was already given at
-2026-08-04T07:12Z. Re-asking it re-litigates a settled decision.**
-
-1. **Dispatch `livespec-jvdvx4.2.1`** the moment fabro capacity allows. It is
-   ready, correctly sized, and the only item in the queue. Measured
-   2026-08-04T09:01Z, THREE foreign sandboxes were in flight against a default
-   `host_dispatch_cap` of 2, so a dispatch would be refused — correctly. Wait on
-   a capacity watcher; never raise the cap and never reap a foreign sandbox.
-2. **Chase the foreman-thread acknowledgement** of the INBOX notification
-   described above until both receipt and durable recording are confirmed. It is
-   a notification, not a wait — this thread is not blocked on it.
-3. **After `livespec-jvdvx4.2.1` lands**, file the leg-2 per-repo backfill
-   children, having first decided leg 1's per-repo guard.
-
-Increment 3 stays open here on the `livespec-overseer` ratification, so do not
-archive `plan/spec-side-autonomy/`. But it is now gated on a ratification plus a
-wiring job in a LIVE sibling thread whose maintainer authorization is already
-granted — not on greenfield work that nothing carries.
+Re-confirm reviewer authorization with the maintainer, append a `## ROUND 3`
+section to both briefs, spawn the two cross-pinned Fable reviewers, and ratify
+only on NO BLOCKERS from both — core first. Then pick up `livespec-jvdvx4.2`
+leg 2 (the ten-repo backfill), which is fully unblocked and needs no review
+cycle. Do not archive `plan/spec-side-autonomy/`.
 
 ## Shared Protocol
 
