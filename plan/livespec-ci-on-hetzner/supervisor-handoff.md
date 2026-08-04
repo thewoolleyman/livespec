@@ -231,6 +231,16 @@ reason: this same prose digest has shipped under several versions.
   item.
 - **Do not revive the archived shared-factory resident listener pool.** A
   persistent registration is nonconforming even if it runs only one job at a time.
+- **Route every homelab-side ask through the homelab thread-12 coordinator, never
+  to the maintainer directly.** That thread coordinates the homelab critical path
+  and holds the maintainer escalations for it. A livespec-side thread that also
+  asks makes the maintainer pay for the same question twice, and the two asks can
+  carry different framings — so instead of getting a decision he ends up
+  adjudicating a disagreement between two of his own agents. If something
+  homelab-side appears to block this thread, send it to that coordinator, which
+  will either answer it or escalate it once with the reasoning attached. This is a
+  routing rule, not a permission rule: it does not stop this thread raising
+  livespec-side valves to the maintainer.
 - Write every repository name in full in maintainer-facing output. This thread
   cites `livespec-orchestrator-beads-fabro` and `livespec-dev-tooling` constantly,
   and the bare suffix `beads-fabro` is ambiguous with
@@ -473,3 +483,36 @@ Enter" is not a formality to be skipped when the send looks routine. It is the
 only thing standing between a supervisor and a confidently reported instruction
 that was never delivered. This is the same defect class as an empty result read
 as a finding — silence that looks like success.
+
+C2. I read a PEER TRACK'S append-only status log and treated its newest line as
+current state. The homelab thread-12 log's last word at `10:50:00Z` was that the
+`hetzner-prod` closure-identity check needed the maintainer's MacBook operator
+key. I verified the key constraint itself carefully — singleton `authorizedKey`
+in the homelab configuration, this workstation's fingerprint — and every one of
+those facts was true. Then I built a three-option `AskUserQuestion` on top of them
+and put it to the maintainer.
+
+The maintainer had ALREADY RUN the check, at approximately `10:52Z`. It PASSED:
+`/run/current-system` and `/run/booted-system` both resolved to the declared
+toplevel, hostid as declared, `zroot` ONLINE across both mirror members with no
+errors. My reading expired roughly two minutes after I took it, and I spent a
+maintainer interruption asking a question that already had an answer. Two of my
+three options rested on the dead premise, and the third proposed as new a change
+that was already in flight as a draft PR — a deliberately RESTRICTED key, forced
+command and no pty, because an unrestricted key on this shared factory host would
+hand every concurrent agent session an interactive shell on production.
+
+READING A PEER'S LOG IS NOT ASKING THE PEER. An append-only log is evidence of
+what a peer knew when it wrote, never of what is true when you read; the newest
+line is the peer's oldest unretracted claim, not a live measurement. Where the
+authoritative state lives with another actor, ask that actor. This is the same
+defect the shared protocol names for ledgers and gates — filed status is a claim
+with a timestamp — and I applied it diligently to the ledger and the forge in the
+same session while failing to apply it to a peer's log, because a log READS like a
+feed. My careful verification of the key constraint made it worse rather than
+better: it made a stale conclusion feel measured.
+
+Corollary, and it is the more expensive half: this thread does not own the homelab
+escalation channel. See the Thread-specific Valve on routing homelab asks through
+the homelab thread-12 coordinator. Even had my premise been live, that picker
+should have gone to the coordinator rather than to the maintainer.
