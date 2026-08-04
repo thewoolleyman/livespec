@@ -31,9 +31,10 @@ def test_show_effective_emits_manifest_declared_effective_and_diagnostics(
 
     assert exit_code == 0
     payload: dict[str, Any] = json.loads(capsys.readouterr().out)
-    assert len(payload["manifest"]) == 6
+    assert len(payload["manifest"]) == 7
     assert payload["declared"] == {"propose_change_mode": "batch"}
     assert payload["effective"]["propose_change_mode"] == "batch"
+    assert payload["effective"]["revise_decision_mode"] == "manual"
 
 
 def test_show_effective_defaults_project_root_to_cwd(
@@ -61,14 +62,16 @@ def test_action_updates_config_and_emits_changed_path(
             "--project-root",
             str(tmp_path),
             "--action",
-            "set-critique-mode:batch",
+            "set-revise-decision-mode:global:delegated",
         ],
     )
 
     assert exit_code == 0
     payload: dict[str, str] = json.loads(capsys.readouterr().out)
     assert payload["changed_path"] == ".livespec.jsonc"
-    assert "critique_mode" in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+    assert '"revise_decision_mode": "delegated"' in (tmp_path / ".livespec.jsonc").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_invalid_action_exits_usage_error(
@@ -77,11 +80,34 @@ def test_invalid_action_exits_usage_error(
     tmp_path: Path,
 ) -> None:
     exit_code = spec_governance.main(
-        argv=["--project-root", str(tmp_path), "--action", "set-critique-mode:robot"],
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--action",
+            "set-revise-decision-mode:global:robot",
+        ],
     )
 
     assert exit_code == 2
-    assert "unsupported value" in capsys.readouterr().err
+    assert "revise decision mode" in capsys.readouterr().err
+
+
+def test_invalid_revise_decision_action_shape_exits_usage_error(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--action",
+            "set-revise-decision-mode:project:manual",
+        ],
+    )
+
+    assert exit_code == 2
+    assert "requires global" in capsys.readouterr().err
 
 
 def test_journal_event_appends_and_emits_digest(

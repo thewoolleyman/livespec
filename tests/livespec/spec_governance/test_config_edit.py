@@ -113,3 +113,20 @@ def test_config_edit_matching_brace_handles_escaped_quotes(*, tmp_path: Path) ->
     assert isinstance(
         write_config_value(project_root=tmp_path, key="critique_mode", value="batch"), Path
     )
+
+
+def test_config_edit_surgically_clears_only_scalar_member(*, tmp_path: Path) -> None:
+    config_path = tmp_path / ".livespec.jsonc"
+    config_path.write_text(
+        '{\n  "spec_governance": {\n    "revise_decision_mode": "delegated"\n  }\n}\n',
+        encoding="utf-8",
+    )
+
+    result = write_config_value(
+        project_root=tmp_path,
+        key="revise_decision_mode",
+        value=None,
+    )
+
+    assert isinstance(result, Path)
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {"spec_governance": {}}

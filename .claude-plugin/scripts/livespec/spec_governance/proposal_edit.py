@@ -14,8 +14,9 @@ def write_proposal_override(
     project_root: Path,
     proposal_stem: str,
     value: str | None,
+    key: str = "ratification_review_policy",
 ) -> Path | str:
-    """Set or clear a proposal's ratification review front-matter override."""
+    """Set or clear one proposal front-matter policy override."""
     path = project_root / _SPEC_ROOT / "proposed_changes" / f"{proposal_stem}.md"
     if not path.is_file():
         return f"proposal not found: {path}"
@@ -26,10 +27,10 @@ def write_proposal_override(
     if closing < 0:
         return "proposal front matter is unterminated"
     front = text[4:closing]
-    body = text[closing:]
+    body = text[closing + 1 :]
     updated_front = _upsert_front_matter_value(
         front=front,
-        key="ratification_review_policy",
+        key=key,
         value=value,
     )
     updated = f"---\n{updated_front}{body}"

@@ -8,8 +8,8 @@ from pathlib import Path
 __all__: list[str] = []
 
 
-def test_registry_module_exists_and_projects_six_increment_one_rows() -> None:
-    """The registry module exists and exposes the six ratified rows."""
+def test_registry_module_exists_and_projects_seven_ratified_rows() -> None:
+    """The registry module exposes the six Increment 1 rows plus Increment 2."""
     module_path = (
         Path(__file__).resolve().parents[3]
         / ".claude-plugin"
@@ -27,6 +27,12 @@ def test_registry_module_exists_and_projects_six_increment_one_rows() -> None:
         "critique_mode",
         "in_flight_alignment",
         "doctor_dispositions",
+        "revise_decision_mode",
         "ratification_review",
         "ratification_reviewer_model",
     ]
+    revise_mode = registry.CONFIG_KEYS[4]
+    assert revise_mode.value_type == "enum"
+    assert revise_mode.safe_default == "manual"
+    assert revise_mode.per_proposal_override == "decision_policy"
+    assert revise_mode.allowed_values == ["manual", "delegated", "consensus"]

@@ -74,6 +74,13 @@ CONFIG_KEYS: tuple[ConfigKey, ...] = (
         ],
     ),
     ConfigKey(
+        key="revise_decision_mode",
+        value_type="enum",
+        safe_default="manual",
+        per_proposal_override="decision_policy",
+        allowed_values=["manual", "delegated", "consensus"],
+    ),
+    ConfigKey(
         key="ratification_review",
         value_type="enum",
         safe_default="manual-spawn",
