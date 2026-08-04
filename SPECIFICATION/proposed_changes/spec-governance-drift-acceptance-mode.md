@@ -1,7 +1,7 @@
 ---
 topic: spec-governance-drift-acceptance-mode
 author: claude-opus-5
-created_at: 2026-08-04T13:32:30Z
+created_at: 2026-08-04T14:11:43Z
 ---
 
 ## Proposal: Drift acceptance admits the consensus tier, opt-in per repo — swept across every statement
@@ -137,7 +137,15 @@ NEW:
     - `set-revise-decision-mode:proposal:<proposal-stem>:<manual-or-delegated-or-consensus-or-clear>`;
 - `set-drift-acceptance-mode:global:<human-or-consensus-or-clear>`;
 
-8. `SPECIFICATION/contracts.md` — the journal-event taxonomy MUST carry the consensus evidence. The `revise_decision` event MUST additionally carry, for a drift-origin decision, the effective `drift_acceptance_mode`, its effective source, and a SHA-256 digest of the consensus-tier evidence; it MUST NOT carry raw evidence content. The control surface MUST refuse any `drift_acceptance_mode` value other than `human`, `consensus`, or `clear` — including `delegated` — with the allowed-value diagnostic, and MUST append the event before mutation.
+8. `SPECIFICATION/contracts.md` — the journal-event taxonomy MUST carry the consensus evidence. The allowed-value refusal needs no clause here: it already follows from the registry row plus the grammar's `<human-or-consensus-or-clear>`:
+
+OLD:
+
+    A `revise_decision` event carries the proposal stem/content digest, effective mode/source, selected decision, decider model/identity when applicable, ratification-review outcome, final outcome, and escalation reason when applicable; it MUST NOT carry raw proposal or resulting-file content.
+
+NEW:
+
+    A `revise_decision` event carries the proposal stem/content digest, effective mode/source, selected decision, decider model/identity when applicable, ratification-review outcome, final outcome, and escalation reason when applicable; for a drift-origin decision it additionally carries the effective `drift_acceptance_mode`, its effective source, and a SHA-256 digest of the consensus-tier evidence; it MUST NOT carry raw proposal, resulting-file, or consensus-evidence content.
 
 9. `SPECIFICATION/constraints.md` — the Increment-2 twin MUST be replaced so the constraints tree stops asserting an unconditional drift floor:
 
@@ -178,8 +186,45 @@ Scenario: armed consensus accepts only on conforming evidence. GIVEN a repo decl
 
 Scenario: armed consensus escalates on absent or stale evidence. GIVEN a repo declaring `drift_acceptance_mode: consensus` AND evidence that is absent, stale or non-conforming, WHEN a drift-origin proposed change is revised, THEN the decision MUST require maintainer input AND no unattended decision MUST be armed.
 
-Scenario: delegated is refused for drift acceptance. GIVEN a `set-drift-acceptance-mode:global:delegated` invocation, WHEN the control surface resolves it, THEN it MUST be refused with the allowed-value diagnostic AND the effective value MUST remain `human` without raising.
+Scenario: delegated is refused for drift acceptance. GIVEN a repo with no `drift_acceptance_mode` declared AND a `set-drift-acceptance-mode:global:delegated` invocation, WHEN the control surface resolves it, THEN it MUST be refused with the allowed-value diagnostic AND the effective value MUST remain `human` without raising.
 
 Scenario: revise_decision_mode cannot route drift. GIVEN a repo declaring `revise_decision_mode: consensus` and no `drift_acceptance_mode`, WHEN a drift-origin proposed change is revised, THEN the decision MUST resolve through `effective_drift_acceptance_mode` to `human` AND `revise_decision_mode` MUST NOT route it.
+
+ALSO IN `SPECIFICATION/scenarios.md`, one pre-existing Scenario Outline is contradicted by this amendment and MUST be amended in the same pass. Its `| drift origin |` Examples row asserts a human decision and that neither configured value is considered, which is false once a repo is armed; and its title claims the floor wins before EVERY configured value, although `drift_acceptance_mode` is now a configured value that owns exactly that branch:
+
+OLD:
+
+    Scenario Outline: Revise decision hard floors win before every configured value
+      Given `spec_governance.revise_decision_mode` resolves to `delegated`
+      And the proposal front matter sets `decision_policy: consensus`
+      And the proposal has `<floor>`
+      When `effective_revise_decision_mode` resolves
+      Then the proposal requires a human decision
+      And neither configured value is considered
+
+      Examples:
+        | floor                                 |
+        | a cited design-record contradiction   |
+        | no cited or reachable design record   |
+        | a ratification-review blocker         |
+        | drift origin                          |
+
+NEW:
+
+    Scenario Outline: Revise decision hard floors win before every `revise_decision_mode` value
+      Given `spec_governance.revise_decision_mode` resolves to `delegated`
+      And no `drift_acceptance_mode` is declared
+      And the proposal front matter sets `decision_policy: consensus`
+      And the proposal has `<floor>`
+      When `effective_revise_decision_mode` resolves
+      Then the proposal requires a human decision
+      And neither configured value is considered
+
+      Examples:
+        | floor                                 |
+        | a cited design-record contradiction   |
+        | no cited or reachable design record   |
+        | a ratification-review blocker         |
+        | drift origin                          |
 
 Because this adds one `## ` heading, the accepting revise MUST co-edit `tests/heading-coverage.json` in the SAME `resulting_files[]` payload, adding one entry for `SPECIFICATION/scenarios.md` heading `Drift acceptance under each mode`, per `spec.md` §"Self-application". The path MUST be spelled `../tests/heading-coverage.json` so the wrapper's `spec_target / path` join resolves it to the project-root-relative file.
