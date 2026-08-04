@@ -18,23 +18,25 @@ in full before acting. This file is the authoritative resume state as of
   proposal is expected to be
   `SPECIFICATION/proposed_changes/spec-governance-revise-decision-mode.md`,
   but re-enumerate the live queue immediately before revise.
-- Handoff PR #1961 was rebased after the compatibility repair, passed the
-  complete fresh forge matrix, and rebase-merged as `11bd1b72`. The primary
-  checkout was fast-forwarded to that SHA and its completed handoff worktree
-  and branch were removed. The pre-existing dirty
+- Handoff PR #1961 was rebased after the compatibility repair and merged as
+  `11bd1b72`; follow-up handoff PR #1967 rebase-merged as
+  `6e7736afaeda16cd27455c3108a52885b158e233`. The pre-existing dirty
   `plan/spec-side-autonomy/supervisor-handoff.md` remains untouched.
 - The live spec remains v192. Railway landed as v191. Any eventual Increment
   2 ratification is v193 only if no newer ratification lands first; fetch and
   re-enumerate immediately before revise.
 - The ratification worktree is
   `/home/ubuntu/.worktrees/livespec/spec/ratify-spec-governance-increment-2`
-  on branch `spec/ratify-spec-governance-increment-2`, refreshed to current
-  master `11bd1b72`.
+  on branch `spec/ratify-spec-governance-increment-2`, freshly re-derived from
+  forge `origin/master` `6e7736afaeda16cd27455c3108a52885b158e233`.
   It deliberately has four uncommitted candidate files and nothing else:
   `SPECIFICATION/spec.md`, `contracts.md`, `constraints.md`, and
   `scenarios.md` (71 insertions, 8 deletions).
-- The corrected candidate fixes both doctrine-text blockers: it adds the
-  durable revision-record audit clause; makes the overview policy-governed
+- Brief 15 discarded the old full-file candidates, moved the branch itself to
+  that exact origin SHA, and rebuilt all four edits against those fresh
+  predecessor bytes. The corrected candidate fixes both doctrine-text
+  blockers: it makes the durable revision-record audit clause a `MUST`; makes
+  the overview policy-governed
   with human default/floors; states delegated/manual-spawn interaction and
   revise prose ownership; covers delegated plus consensus override; and uses
   the exact `revise_decision` journal token. H2 headings are unchanged and
@@ -44,7 +46,8 @@ in full before acting. This file is the authoritative resume state as of
   `mise exec -- just install-worktree-pack`, then immediately run
   `mise exec -- git checkout -- .livespec.jsonc`; confirm the tracked config
   is clean. The old candidate digest `5792ffc...` is stale and must not be used
-  as evidence.
+  as evidence. No review, revise, ratification, candidate commit, or candidate
+  push was performed.
 
 ## Active blocker — digest repair still precedes review
 
@@ -52,9 +55,12 @@ The producer/core compatibility outage is over. livespec-dev-tooling PR #1212
 and livespec core parser PR #1963 are merged, and the cross-repo gate is green.
 Do NOT redo either change and do not touch the dev-tooling fallout items.
 
-The remaining ratification blocker is the original v190 digest mismatch. On
-fresh core master, `.claude-plugin/scripts/livespec/commands/_revise_ratification.py`
-still hashes decimal-ASCII length framing, omits the
+The digest doctrine in the re-derived candidate correctly preserves raw
+proposal bytes first, unsigned-64-bit big-endian length prefixes, and unsigned
+UTF-8 bytewise path ordering. The remaining ratification blocker is the
+implementation mismatch. On fresh core master,
+`.claude-plugin/scripts/livespec/commands/_revise_ratification.py` still hashes
+decimal-ASCII length framing, omits the
 raw proposal bytes, and does not sort paths by unsigned UTF-8 bytes; that cannot
 validate the ratified `LP(P)` + uint64-BE + bytewise-path contract in candidate
 `contracts.md`. The doctrine candidate must not weaken that contract.
