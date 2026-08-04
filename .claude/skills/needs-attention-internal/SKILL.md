@@ -3,12 +3,16 @@ name: needs-attention-internal
 description: >-
   Compose the livespec-fleet-DEVELOPMENT signals a fleet maintainer must watch
   but an end user does NOT control — CI red on any fleet repo, fleet-conformance
-  drift, stale cross-repo pins, cross-repo consistency drift, and ledger
-  status-conformance drift — into one point-in-time attention list. It mostly
+  drift, stale cross-repo pins, cross-repo consistency drift, ledger
+  status-conformance drift, and a weakened fork-approval tier on a repo that
+  routes gating CI to self-hosted capacity — into one point-in-time attention
+  list. It mostly
   reads signals already computed elsewhere (GitHub Actions for CI, the dev-tooling
-  conformance and pin-freshness checks, `/livespec:doctor` for drift); the one
-  exception is the ledger status-conformance scan, which runs a cheap per-tenant
-  `ledger-normalize --dry-run` directly because no scheduled workflow computes it.
+  conformance and pin-freshness checks, `/livespec:doctor` for drift); the two
+  exceptions are the ledger status-conformance scan, which runs a cheap per-tenant
+  `ledger-normalize --dry-run` directly because no scheduled workflow computes it,
+  and the fork-approval tier, which is a live repo setting no workflow can read
+  from CI.
   All are normalized into the shared `attention_item` shape with `kind: "internal"`.
   This is the
   internal sibling of the shipped product `needs-attention`: the dividing test
@@ -24,11 +28,13 @@ description: >-
 
 You are `needs-attention-internal`: a **maintainer-only, local/unsynced**
 awareness surface for the livespec fleet's own *development* health. When
-invoked, you gather five dev-tooling-facing signals across the fleet and compose
+invoked, you gather six dev-tooling-facing signals across the fleet and compose
 them into one flat, point-in-time attention list. Four are statuses another
-system already produces (you READ them cheaply); the fifth — ledger
-status-conformance drift — you compute yourself with a cheap per-tenant scan,
-because nothing else runs it outside a dispatch. Your job is to gather each
+system already produces (you READ them cheaply); the remaining two — ledger
+status-conformance drift and the fork-approval tier — you determine yourself
+with a cheap per-tenant or per-repo query, because nothing else computes them
+(the ledger scan runs only inside a dispatch, and no CI workflow can read a
+repo's fork-approval setting at all). Your job is to gather each
 cheaply, normalize it into the shared `attention_item` shape, and render it for
 the maintainer.
 
@@ -38,7 +44,7 @@ sibling — the product `needs-attention` (in both orchestrator plugins) — ans
 skill answers the complementary question a fleet maintainer owns: "is anything
 wrong with the fleet's own development machinery right now?"
 
-## The product-vs-internal dividing test (why these five are here)
+## The product-vs-internal dividing test (why these six are here)
 
 The single test that sorts a signal into product-vs-internal is: **does an end
 user have actionable control over it?**
@@ -48,11 +54,12 @@ user have actionable control over it?**
   reap). Those never appear here.
 - **No → internal** (this skill): livespec CI is red, fleet-conformance has
   drifted, a cross-repo pin is stale, two repos have drifted out of consistency,
-  a tenant's ledger holds a work-item at a non-lifecycle status. An end user
-  cannot act on any of these — only a fleet maintainer can — so they live here,
-  local and unsynced, never shipped.
+  a tenant's ledger holds a work-item at a non-lifecycle status, a repo routing
+  gating CI to self-hosted capacity has had its fork-approval tier weakened. An
+  end user cannot act on any of these — only a fleet maintainer can — so they
+  live here, local and unsynced, never shipped.
 
-## The five internal signals and how to gather each
+## The six internal signals and how to gather each
 
 Read the fleet member list LIVE from
 `/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
@@ -169,6 +176,70 @@ the fleet-hygiene surface that catches ledger drift on ANY tenant WITHOUT needin
 a dispatch — the durable fix for the silent-accumulation gap (only the
 dispatcher's `ledger-check` used to catch it, and only for dispatch tenants).
 
+### Signal 6 — fork-approval tier weakened while self-hosted CI is routed
+
+`SPECIFICATION/non-functional-requirements.md` states a **fork-exclusion
+precondition** on self-hosted CI runner hosts that makes the whole
+containment-floor
+reduction CONDITIONAL, not unconditional: self-hosted capacity may carry a
+repository's merge gate ONLY while no workflow originating from a fork of that
+repository can execute on it, and that exclusion MUST be enforced by the
+repository's fork-pull-request workflow-approval setting **at its strictest
+tier**. The strict tier matters specifically because under the weaker ones a
+*returning* outside contributor's fork pull request runs its fork-controlled
+workflow definition with no approval event. If that setting is quietly weakened
+while a self-hosted runner is registered, the basis for self-hosted gating is
+gone and nothing else in the fleet notices.
+
+This is a two-step query, and the FIRST step is a guard that usually ends it.
+For each fleet member, read whether the repo actually routes gating jobs to
+self-hosted capacity:
+
+```bash
+gh api repos/thewoolleyman/<repo>/actions/variables/CI_RUNNER_LABELS --jq '.value'
+```
+
+A 404 (variable absent), or a value whose every label is hosted (each entry
+beginning `ubuntu`, `windows`, or `macos`), means the precondition is not engaged
+for that repo — emit nothing and make NO second call. On today's fleet every
+member is hosted-only or has no variable at all, so this signal normally costs
+one call per member and zero follow-ups.
+
+> **Branch on `gh`'s EXIT CODE, never on whether its output is empty.** On a 404
+> `gh api --jq '.value'` writes the error object
+> (`{"message":"Not Found",…,"status":"404"}`) to **stdout** and exits 1 — so an
+> emptiness test like `[ -z "$v" ]` does not fire, that error JSON flows into the
+> hosted-label test, fails it (it does not begin `ubuntu`), and the repo is
+> misreported as routing self-hosted. Verified live on
+> `livespec-orchestrator-beads-fabro`, whose variable is genuinely absent: the
+> emptiness form raised a spurious high-urgency alert, the exit-code form
+> correctly emitted nothing. A false positive here is a phantom security alarm,
+> so use `if ! value=$(gh api … --jq '.value' 2>/dev/null); then` — treat a
+> non-zero exit as "not engaged" and stop.
+
+Only when the value names a non-hosted label, read the tier:
+
+```bash
+gh api repos/thewoolleyman/<repo>/actions/permissions/fork-pr-contributor-approval --jq '.approval_policy'
+```
+
+`all_external_contributors` is the strict tier — healthy, emit nothing. Anything
+else (`first_time_contributors`, `first_time_contributors_new_to_github`, `none`)
+is a **high**-urgency attention item: a repo is gating merges on self-hosted
+capacity that fork-controlled code can now reach.
+
+**Why this is an attention signal and not a `just check` gate.** That endpoint
+requires fine-grained `Administration: read`. The workflow `permissions:` key does
+not expose `administration` at all, so the default `GITHUB_TOKEN` can never be
+granted it; a CI-resident detector would mean escalating the shared fleet GitHub
+App's permissions across every repo it is installed in and injecting a stronger
+credential into a job — the opposite of what v192's Credential-separation clause
+asks for. The maintainer's shell already holds a credential that can read it, and
+the setting only changes when a human changes it, so a maintainer-facing signal is
+the proportionate home. If this ever needs to become a hard gate, escalate the App
+deliberately as its own decision — never implicitly as a side effect of adding a
+check.
+
 ## Shaping each signal into an `attention_item`
 
 Normalize every fired signal into the shared shape (defined in
@@ -178,7 +249,7 @@ Normalize every fired signal into the shared shape (defined in
 - **`id`** — a stable natural key of the form `internal:<signal>:<repo>`, e.g.
   `internal:ci-red:livespec-runtime`, `internal:conformance-drift:livespec-dev-tooling`,
   `internal:pin-stale:livespec`, `internal:drift:livespec-console-beads-fabro`,
-  `internal:ledger-drift:livespec`.
+  `internal:ledger-drift:livespec`, `internal:fork-approval:livespec`.
   For an open bump PR, key on the PR to stay stable across runs, e.g.
   `internal:pin-stale:livespec#916`. For per-item ledger granularity, suffix the
   work-item id, e.g. `internal:ledger-drift:livespec:livespec-3lev.8`.
@@ -199,7 +270,9 @@ Normalize every fired signal into the shared shape (defined in
   `medium` for a stale pin or an open bump PR; `low`/`medium` for a doctor-drift
   handoff (a consistency check to run, not a known break); `medium` for a
   remappable ledger drift (`open`/`in_progress`, one-command fixable) and `high`
-  for a residual ledger drift (a non-lifecycle status needing a lane decision).
+  for a residual ledger drift (a non-lifecycle status needing a lane decision);
+  `high` for a weakened fork-approval tier (a live repo is gating merges on
+  self-hosted capacity that fork-controlled code can reach).
 - **`summary`** — one line naming the repo and what broke, e.g.
   "livespec-runtime CI is red on master (run 289…)".
 - **`source_ref`** — `{repo: "<repo>", path: <workflow-or-file>|null,
@@ -228,14 +301,15 @@ repo must never abort the whole composition. This mirrors the fleet's
 ## Rendering — Markdown for the maintainer
 
 Render a Markdown list grouped by signal (CI / conformance / pins / drift /
-ledger) or by urgency (high first). Under each group, one row per item: the
+ledger / fork-approval) or by urgency (high first). Under each group, one row per item: the
 summary, the owning repo named explicitly, and the ready-to-run
 `handoff.command`. Put any `skipped:` notes in their own short section so nothing
 strands silently.
 
 **The healthy case emits nothing.** When every fleet CI run is green,
 conformance passed, no pins are stale / no bump PRs are open, there is no drift to
-chase, and every tenant's ledger is status-conformant, say so in one line
+chase, every tenant's ledger is status-conformant, and no repo routing gating CI
+to self-hosted capacity has a weakened fork-approval tier, say so in one line
 ("fleet-dev is green — nothing internal needs attention") and stop. Emitting an
 empty list is the normal, expected outcome most of the time.
 
