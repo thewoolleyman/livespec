@@ -179,3 +179,103 @@ def test_invalid_action_returns_diagnostic_without_mutation(*, tmp_path: Path) -
 
     assert isinstance(result, str)
     assert not (tmp_path / ".livespec.jsonc").exists()
+
+
+def test_revise_decision_global_action_is_surgical_and_clearable(*, tmp_path: Path) -> None:
+    config_path = tmp_path / ".livespec.jsonc"
+    before = (
+        "// outer comment\n"
+        "{\n"
+        '  "template": "livespec",\n'
+        '  "spec_governance": {\n'
+        "    // policy comment\n"
+        '    "critique_mode": "batch",\n'
+        '    "revise_decision_mode": "manual"\n'
+        "  },\n"
+        '  "unrelated": true\n'
+        "}\n"
+    )
+    config_path.write_text(before, encoding="utf-8")
+
+    set_result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:global:delegated",
+    )
+
+    assert isinstance(set_result, EditResult)
+    armed = config_path.read_text(encoding="utf-8")
+    assert armed == before.replace(
+        '"revise_decision_mode": "manual"',
+        '"revise_decision_mode": "delegated"',
+    )
+    assert armed.count("//") == before.count("//")
+
+    clear_result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:global:clear",
+    )
+
+    assert isinstance(clear_result, EditResult)
+    cleared = config_path.read_text(encoding="utf-8")
+    assert "revise_decision_mode" not in cleared
+    assert "// outer comment" in cleared
+    assert "// policy comment" in cleared
+    assert '"critique_mode": "batch"' in cleared
+    assert '"unrelated": true' in cleared
+
+
+def test_revise_decision_proposal_action_preserves_body_and_refuses_invalid_input(
+    *,
+    tmp_path: Path,
+) -> None:
+    proposal_dir = tmp_path / "SPECIFICATION" / "proposed_changes"
+    proposal_dir.mkdir(parents=True)
+    proposal = proposal_dir / "topic-c.md"
+    before = (
+        "---\n"
+        "topic: topic-c\n"
+        "# keep front-matter comment\n"
+        "decision_policy: manual\n"
+        "---\n"
+        "\n"
+        "## Proposal\n"
+        "\n"
+        "Body bytes stay exactly.\n"
+    )
+    proposal.write_text(before, encoding="utf-8")
+
+    set_result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:topic-c:consensus",
+    )
+
+    assert isinstance(set_result, EditResult)
+    armed = proposal.read_text(encoding="utf-8")
+    assert armed == before.replace("decision_policy: manual", "decision_policy: consensus")
+
+    invalid_before = armed
+    invalid_value = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:topic-c:robot",
+    )
+    invalid_stem = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:Bad:manual",
+    )
+
+    assert isinstance(invalid_value, str)
+    assert "manual" in invalid_value
+    assert "delegated" in invalid_value
+    assert "consensus" in invalid_value
+    assert isinstance(invalid_stem, str)
+    assert proposal.read_text(encoding="utf-8") == invalid_before
+
+    clear_result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:topic-c:clear",
+    )
+
+    assert isinstance(clear_result, EditResult)
+    cleared = proposal.read_text(encoding="utf-8")
+    assert "decision_policy" not in cleared
+    assert cleared.endswith("\n---\n\n## Proposal\n\nBody bytes stay exactly.\n")

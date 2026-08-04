@@ -28,6 +28,13 @@
     "allowed_values": ["fix-now", "capture-as-work-item", "propose-change", "defer", "dismiss"]
   },
   {
+    "key": "revise_decision_mode",
+    "value_type": "enum",
+    "safe_default": "manual",
+    "per_proposal_override": "decision_policy",
+    "allowed_values": ["manual", "delegated", "consensus"]
+  },
+  {
     "key": "ratification_review",
     "value_type": "enum",
     "safe_default": "manual-spawn",
