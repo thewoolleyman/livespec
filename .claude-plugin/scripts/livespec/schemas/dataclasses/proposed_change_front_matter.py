@@ -71,6 +71,8 @@ class ProposedChangeFrontMatter:
     `parent_proposed_change` carries the canonical topic of a
     parent / coordinating-epic proposed change (per PC #2 of
     v081, coordinating-epic-stale-revise-enforcement). Optional
+    `decision_policy` preserves the proposal-local policy override
+    wire value for fail-closed resolution. Optional
     `spec_commitments` block per spec.md (li-8mj2lz, PC #4 sub-proposal 1).
     """
 
@@ -78,4 +80,5 @@ class ProposedChangeFrontMatter:
     author: Author
     created_at: str
     parent_proposed_change: str | None = None
+    decision_policy: object = None
     spec_commitments: SpecCommitments | None = None

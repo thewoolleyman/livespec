@@ -45,6 +45,7 @@ from returns.result import Failure, Result, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._revise_decision import enforce_revise_decisions
 from livespec.commands._revise_doctor import (
     _run_post_step_doctor,
 )
@@ -203,6 +204,13 @@ def main(*, argv: list[str] | None = None) -> int:
             )
             .bind(
                 lambda revise_input: _validate_ratification_reviews(
+                    revise_input=revise_input,
+                    project_root=_resolve_project_root(namespace=namespace),
+                    spec_target=_resolve_spec_target(namespace=namespace),
+                ),
+            )
+            .bind(
+                lambda revise_input: enforce_revise_decisions(
                     revise_input=revise_input,
                     project_root=_resolve_project_root(namespace=namespace),
                     spec_target=_resolve_spec_target(namespace=namespace),

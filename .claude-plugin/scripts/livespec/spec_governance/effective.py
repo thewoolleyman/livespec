@@ -3,43 +3,40 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, SpecGovernanceConfig
+from livespec.spec_governance.policy import EffectivePolicy, Source
 from livespec.spec_governance.registry import CONFIG_KEYS
+from livespec.spec_governance.revise_decision import (
+    ReviseDecisionContext,
+    effective_revise_decision_mode,
+    requires_revise_decision_input,
+)
 
 __all__: list[str] = [
     "DoctorContext",
     "EffectivePolicy",
     "RatificationContext",
+    "ReviseDecisionContext",
     "awaits_ratification_review",
     "effective_critique_mode",
     "effective_doctor_disposition",
     "effective_in_flight_alignment",
     "effective_propose_change_mode",
     "effective_ratification_review",
+    "effective_revise_decision_mode",
     "requires_critique_input",
     "requires_doctor_disposition_input",
     "requires_propose_change_input",
+    "requires_revise_decision_input",
 ]
 
-Source = Literal["hard-floor", "invocation", "proposal", "global", "default"]
 _DOCTOR_DISPOSITIONS = frozenset(
     disposition
     for row in CONFIG_KEYS
     if row.key == "doctor_dispositions"
     for disposition in row.allowed_values
 )
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class EffectivePolicy:
-    """A resolved policy value with its winning source and attention flag."""
-
-    value: str | None
-    source: Source
-    requires_input: bool
-    reason: str
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

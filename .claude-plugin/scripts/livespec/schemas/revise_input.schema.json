@@ -91,6 +91,41 @@
               }
             }
           },
+          "revise_decision_context": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "design_record_contradiction": {"type": "boolean"},
+              "design_record_unavailable": {"type": "boolean"},
+              "ratification_blocker": {"type": "boolean"},
+              "drift_origin": {"type": "boolean"},
+              "consensus_evidence_available": {"type": "boolean"},
+              "human_decision_confirmed": {"type": "boolean"}
+            }
+          },
+          "delegated_decision_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "decider_identity",
+              "decider_model",
+              "proposal_stem",
+              "content_digest",
+              "selected_decision",
+              "accepted"
+            ],
+            "properties": {
+              "decider_identity": {"type": "string", "minLength": 1},
+              "decider_model": {"type": "string", "minLength": 1},
+              "proposal_stem": {"type": "string"},
+              "content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "selected_decision": {
+                "type": "string",
+                "enum": ["accept", "modify", "reject"]
+              },
+              "accepted": {"type": "boolean"}
+            }
+          },
           "resulting_files": {
             "type": "array",
             "description": "When decision == 'accept' or 'modify', the spec files to update + their new content. Empty / omitted when decision == 'reject'.",
