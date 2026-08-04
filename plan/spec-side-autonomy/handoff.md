@@ -1,9 +1,9 @@
 # spec-side-autonomy — handoff
 
-Resume at the post-ratification implementation-follow-up filing boundary. This
-is the authoritative state as of 2026-08-04T04:58Z. Increment 2 is ratified and
-landed; do not resume its stale candidate/review/revise briefs or recreate its
-ratification worktree.
+Resume at the Increment 2 Slice B boundary. This is the authoritative state as
+of 2026-08-04T06:36Z. Increment 2 is ratified, and its control-surface Slice A
+is implemented and landed. Do not resume stale candidate/review/revise briefs,
+recreate their worktrees, or redo Slice A.
 
 Before any ledger operation, read `AGENTS.md`, `.ai/agent-disciplines.md`, and
 `.ai/beads-gaps-workarounds.md`, then use the installed orchestrator skill for
@@ -37,62 +37,34 @@ print secret values.
   Increment-1 stale worktree/branch are removed; their remote branches are
   absent. Touch no other session's worktrees.
 
-## Next action 1 — file the orchestrator awareness child
+## Increment 2 implementation state
 
-Brief 09 explicitly requires a child work-item in repo
-`thewoolleyman/livespec-orchestrator-beads-fabro`, parented to cross-repo epic
-`livespec-jvdvx4`, now that core Increment 2 is ratified. File it, but **do not
-implement or dispatch it**.
+- Core control-surface Slice A `livespec-jvdvx4.3` is closed completed. PR
+  #1980 rebase-merged as
+  `2ffebf1b0744e07a5c385c5be25b475bb1dfbd75` after all 75 local and forge
+  gates passed with 100% coverage.
+- Slice A added the seventh co-authoritative registry key,
+  `revise_decision_mode`, with enum values `manual|delegated|consensus`, safe
+  default `manual`, and per-proposal `decision_policy` override support.
+- Its global and proposal control actions set or clear only the selected value,
+  reject invalid modes and proposal stems, preserve JSONC comments/unrelated
+  bytes and Markdown body bytes, and perform no lifecycle, review, git/PR,
+  history, or ledger mutation.
+- Slice A deliberately did not add the effective resolver, human floors, shared
+  attention predicate, `revise_decision` journal validation, or any consensus
+  panel. Those belong to the already-filed dependent Slice B
+  `livespec-jvdvx4.4`; consensus remains only a valid configured enum value.
+- The Slice A feature worktree and local/remote branches are removed. Primary
+  and `origin/master` are clean and equal at the merge SHA above.
 
-Use these prepared inputs:
+## Next action — Slice B boundary
 
-- description:
-  `tmp/overseer/spec-side-autonomy/increment-2-orchestrator-slice-description.md`
-- provenance notes:
-  `tmp/overseer/spec-side-autonomy/increment-2-orchestrator-slice-notes.md`
-
-Replace the notes' ratification placeholder with core v193, PR #1978, and merge
-SHA `98300b9f3bbe6a60650a74a602b6ece137d68279` before filing. Preserve the
-description's bounded size and `ai-only` tier. Its required outcome is to retire
-the spec-revise human handoff from `needs-attention` exactly when core's exported
-`requires_revise_decision_input` is false, consume that predicate rather than
-re-derive it, preserve missing/malformed fail-safe advertisement, and preserve
-`drive`'s refusal of spec-side action IDs.
-
-Verify no equivalent open item already exists before writing. The brief itself
-is explicit filing authority; the factory/build remains unauthorized here.
-Record the created item ID in this handoff.
-
-## Next action 2 — resolve the core implementation follow-up capture
-
-The archived v193 proposal carries this explicit implementation follow-up:
-
-- id hint: `spec-governance-revise-decision-mode-core`
-- outcome: extend core's spec-governance registry, config/front-matter schemas,
-  effective resolver and shared attention predicate, control actions,
-  digest-only journal validation, revise prose, and focused tests for the
-  Increment-2 modes and hard floors.
-
-The mandatory post-revise `capture-impl-gaps --since-version v192` detector was
-invoked, but its touched-file granularity surfaced 203 historical candidates.
-The eight newly introduced decision-mode rules were isolated as:
-
-- `gap-e7fkwrtn` — automated revise safety rails
-- `gap-vwljaiy6` — durable revision-record audit
-- `gap-vahxbmgt` — shared decision-input predicate
-- `gap-o6ellwum` — `revise_decision` journal
-- `gap-f4w4anj5` — `decision_policy` front matter
-- `gap-ij6nkyby` — design-record decision ownership
-- `gap-xf5qdoqk` — policy journal/shared-predicate contract
-- `gap-ga3g5fah` — effective resolver
-
-No core implementation item was filed and no ledger state was mutated. First
-check for an equivalent existing item. Then complete the installed
-`capture-impl-gaps` consent/classification flow without treating the other 195
-file-scoped candidates as new Increment-2 work. Recommend one coherent core
-child matching the proposal's `impl_followups` entry rather than eight
-duplicative slices, but obey the skill's explicit ledger-write consent rule.
-Do not implement or dispatch during that capture step.
+Slice B `livespec-jvdvx4.4` is separate work. Do not infer authorization from
+Slice A, redispatch Slice A, or begin Increment 3. On restart, inspect the
+current ledger state for `livespec-jvdvx4.4` under the configured credential
+wrapper and follow the next explicit supervisor brief. Preserve Slice A's
+landed control surface and its safe-default behavior while implementing the
+resolver/floors/predicate/journal scope only when directed.
 
 ## Increment 3 boundary
 
