@@ -38,39 +38,79 @@ closed (PR **1974**, merge `066a29fb`). The shipped
 `len(x).to_bytes(8, "big")`, and sorts entries by raw path bytes. That closed a
 real replay hole and was a hard predecessor of the v193 ratification.
 
-### Increment 3 — BLOCKED, and the blocker is WORSE than previously recorded
+### Increment 3 — still gated, but MUCH closer than the previous text claimed
 
-Do NOT edit the drift-doctrine sentence in `SPECIFICATION/spec.md`.
+Do NOT edit the drift-doctrine sentence in `SPECIFICATION/spec.md` yet.
 
-The prior handoff said Increment 3 waits on `livespec-overseer`'s `plan/foreman`
-thread Phase C. That is now WRONG in a way that matters: the foreman thread is
-**ARCHIVED** at `plan/archive/foreman/`, and its own record states the epic
-`overseer-z5fo4y` is closed with all eleven children closed, that **v1 is phases
-A+B only**, and that "Phases C–E (consensus, gate-driving, federation) were
-never in v1 and remain separate future scope." No live thread carries the
-consensus panel, and no consensus implementation exists in `livespec_overseer/`.
+**The previous version of this section was WRONG ON THREE COUNTS. It is
+corrected here, measured 2026-08-04T09:0xZ against a freshly fetched
+`livespec-overseer` `origin/master`. Do not restore the old text.**
 
-Worse, `livespec-overseer`'s OWN `SPECIFICATION/spec.md` ratifies that "Until a
+1. **"The foreman thread is ARCHIVED" — FALSE.** `plan/foreman/` is a live,
+   REOPENED thread in `livespec-overseer`. `plan/archive/` holds twelve other
+   threads and `foreman` is not among them. Its handoff carries a checkpoint
+   dated 2026-08-04T07:18Z.
+2. **"No consensus implementation exists in `livespec_overseer/`" — FALSE, and
+   the error is instructive.** That package directory does not exist; the
+   package is `overseer/`. A grep over a path that never existed returned zero
+   and was written down as absence. The panel EXISTS:
+   `overseer/foreman_consensus.py` plus `_cache`, `_eval`, `_prompt` and
+   `_types` siblings, the `overseer/foreman-consensus` CLI, and both
+   `tests/e2e-cli/test_foreman_consensus.py` and
+   `tests/test_foreman_consensus_inprocess.py`. It is BUILT but **UNWIRED** —
+   no other `overseer/*.py` imports it, which is exactly what the report-only
+   doctrine requires. This is `.ai/verifying-against-the-right-source.md`
+   verbatim; run a positive control before recording any absence.
+3. **"Raise gates 3–4 with the maintainer" — ALREADY ANSWERED. DO NOT RE-ASK.**
+   The maintainer ruled at **2026-08-04T07:12Z: build Phase C+D now** — the
+   cross-vendor consensus panel with the minority-report override, the
+   gate-driving layer, and the cross-repo spec amendments that reverse the
+   report-only disposition (review finding C1). The shipped "do not add Phase C
+   consensus" prose and the `human_action_report_only` refusal are SUPERSEDED
+   by that ruling.
+
+What is genuinely still open is the **ratification**.
+`livespec-overseer`'s `SPECIFICATION/spec.md:34` still reads "Until a
 consensus-decision policy is ratified in this specification, every action
 classified by the governing orchestrator contract as a human valve is
-report-only for the foreman." So the foreman is built and running but
-structurally forbidden from driving any valve, and no core config lever changes
-that.
+report-only for the foreman", and `consensus` appears in that spec in that ONE
+sentence and nowhere else. So: the mechanism exists, the maintainer has
+authorized the reversal, and the doctrine has not yet been amended.
 
-Distance to full autonomy, in dependency order: (3) ratify a consensus-decision
-policy in `livespec-overseer`'s spec — NOT STARTED; (4) build the cross-vendor
-consensus panel — NOT STARTED, greenfield; (5) then Increment 3 here. Gates 1
-and 2 are done; everything livespec core can contribute is shipped.
+Corrected distance to full autonomy: (3) ratify the consensus-decision policy in
+`livespec-overseer`'s spec; (4) wire the EXISTING panel into the foreman's valve
+path; (5) then Increment 3 here. That is a ratification plus a wiring job — not
+the greenfield build the old text described.
+
+A cross-track notification was sent 2026-08-04T09:05Z to the `foreman` thread at
+`/data/projects/livespec-overseer/tmp/overseer/foreman/INBOX-from-livespec-spec-side-autonomy.md`,
+asking that its Phase C+D cut either include repository `livespec`'s half of the
+reversal (the drift-doctrine sentence and `spec_governance.drift_acceptance_mode`)
+or cross-link it to epic `livespec-jvdvx4`. As of this writing nothing under
+`plan/foreman/` mentions `drift_acceptance_mode` or `spec_governance`, so
+`livespec`'s half is the piece nothing currently carries. That notification is
+UNACKNOWLEDGED and remains this thread's open obligation.
 
 ### Open ledger items under epic `livespec-jvdvx4`
 
-- `livespec-jvdvx4.2` — backlog. The six (now seven) `spec_governance` keys are
-  INVISIBLE: absent from `templates/orchestrator-plugin/.livespec.jsonc.jinja`
-  entirely, and absent from every fleet repo's `.livespec.jsonc` except
-  `livespec`'s own. Maintainer-raised. The item requires DERIVING the commented
-  block from the shipped manifest plus a check asserting template↔manifest
-  agreement, so Increment 3's `drift_acceptance_mode` cannot re-introduce the
-  drift. Independent of everything else; dispatch whenever.
+- `livespec-jvdvx4.2` — backlog, and REPAIRED 2026-08-04T08:59Z. The
+  `spec_governance` keys are INVISIBLE: absent from
+  `templates/orchestrator-plugin/.livespec.jsonc.jinja` entirely, and absent
+  from every fleet repo's `.livespec.jsonc` except `livespec`'s own.
+  Maintainer-raised. Two defects were found in the item as filed and are fixed:
+  (a) it said "six keys" and named six, but Increment 2 shipped a SEVENTH
+  (`revise_decision_mode`), so the template↔manifest agreement check it asks for
+  would have FAILED on the six-key block it asks for — the description now
+  derives the set from the shipped manifest and says RE-DERIVE rather than
+  carrying a number; (b) it bundled a seven-repo config backfill into one item,
+  which no single-repo fabro sandbox can execute. Scope is now two explicit
+  legs, and the flagged design gap is that leg 1's check guards
+  template↔manifest ONLY, so leg 2's hand-maintained copies would drift
+  unguarded unless leg 1 also decides a per-repo guard.
+- `livespec-jvdvx4.2.1` — **the dispatchable core leg**, filed
+  2026-08-04T09:00Z, 1517-char description, currently the ONLY item in this
+  tenant's ready queue. Derives the commented block into the copier template and
+  adds the template↔manifest agreement check. Blocked ONLY on fabro capacity.
 - `livespec-bhammf` — blocked, needs-human. The relocated `spec_pr_merge`
   redesign. Not Increment 1/2 work; do not treat it as unfinished business.
 
@@ -97,9 +137,11 @@ and 2 are done; everything livespec core can contribute is shipped.
 - **Factory capacity is unreliable.** Two FOREIGN idle sandboxes
   (`overseer-z5fo4y.4`, `livespec-dev-tooling-mvvr3f`) held the entire host cap
   for 20+ hours running only `sleep infinity`. They are NOT ours — never stop or
-  reap them. When the factory is saturated, building a ready slice directly on
-  the worker via Red-Green-Replay is the sanctioned fallback; PRs 1963, 1974,
-  1980 and slice B all landed that way.
+  reap them. Still true at 2026-08-04T09:01Z, and now WORSE: those two are at
+  25h and 29h, and a THIRD foreign sandbox joined at 07:53Z, putting three in
+  flight against a cap of 2. When the factory is saturated, building a ready
+  slice directly on the worker via Red-Green-Replay is the sanctioned fallback;
+  PRs 1963, 1974, 1980 and slice B all landed that way.
 - **Keep dispatchable descriptions near ~1500 characters**, provenance in
   journal notes. A 7196-char item once died mid-publish and lost an hour.
 - **`gh` REST quota is exhaustible.** `check-master-ci-green` correctly FAILS
@@ -108,13 +150,24 @@ and 2 are done; everything livespec core can contribute is shipped.
 
 ### Next concrete action
 
-Nothing in livespec core is pending for spec-side autonomy. Pick up
-`livespec-jvdvx4.2` (template + fleet backfill of the commented key block), and
-raise gates 3–4 with the maintainer: opening a `livespec-overseer` thread for
-the consensus-decision policy and panel is the ONLY remaining path to full
-autonomy, and nothing currently carries it. Do not archive
-`plan/spec-side-autonomy/` — Increment 3 remains open on that named external
-dependency.
+**Do NOT raise gates 3–4 with the maintainer — that ruling was already given at
+2026-08-04T07:12Z. Re-asking it re-litigates a settled decision.**
+
+1. **Dispatch `livespec-jvdvx4.2.1`** the moment fabro capacity allows. It is
+   ready, correctly sized, and the only item in the queue. Measured
+   2026-08-04T09:01Z, THREE foreign sandboxes were in flight against a default
+   `host_dispatch_cap` of 2, so a dispatch would be refused — correctly. Wait on
+   a capacity watcher; never raise the cap and never reap a foreign sandbox.
+2. **Chase the foreman-thread acknowledgement** of the INBOX notification
+   described above until both receipt and durable recording are confirmed. It is
+   a notification, not a wait — this thread is not blocked on it.
+3. **After `livespec-jvdvx4.2.1` lands**, file the leg-2 per-repo backfill
+   children, having first decided leg 1's per-repo guard.
+
+Increment 3 stays open here on the `livespec-overseer` ratification, so do not
+archive `plan/spec-side-autonomy/`. But it is now gated on a ratification plus a
+wiring job in a LIVE sibling thread whose maintainer authorization is already
+granted — not on greenfield work that nothing carries.
 
 ## Shared Protocol
 
