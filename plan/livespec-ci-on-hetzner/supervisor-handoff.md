@@ -516,3 +516,39 @@ Corollary, and it is the more expensive half: this thread does not own the homel
 escalation channel. See the Thread-specific Valve on routing homelab asks through
 the homelab thread-12 coordinator. Even had my premise been live, that picker
 should have gone to the coordinator rather than to the maintainer.
+
+C3. I REPORTED AN EMPTY GREP AS A FINDING, IN THE SAME DOCUMENT WHERE I INSTRUCTED
+THE WORKER TO PROVE A CHECK COULD FAIL BEFORE TRUSTING IT. Reviewing a newly filed
+hazard item, I searched its description with a case-sensitive Python `'Acceptance'
+in desc`, got `False`, and wrote to the worker that the item had "no acceptance
+criteria anywhere ... I searched for the string and it is absent." The description
+carried an all-caps `ACCEPTANCE:` section at line 19. The worker caught it and
+told me so.
+
+Only half my claim was true. The structured `acceptance_criteria` FIELD was
+genuinely empty, and filling it was worth doing. But the evidence I gave for the
+stronger half was a broken query, and I stated it with more confidence than
+anything else in that brief — naming the search as though naming it made it sound.
+
+The shared protocol already carries this rule under "An empty result is not a
+finding. Run a positive control first." I QUOTED THAT PRINCIPLE TO THE WORKER AS
+REQUIREMENT 3 OF THE SAME BRIEF, asking it to prove the replacement check could
+fail on a synthetic unit before trusting it to pass. Then I ran an unproven query
+and shipped its silence as fact. Knowing a rule well enough to teach it is not the
+same as executing it, and the gap is invisible from the inside — the query FELT
+like verification because I had run something.
+
+Practical form for this thread: any grep, `find`, ledger query, or field read whose
+NEGATIVE result you are about to report must first be shown returning a positive on
+an instance you know exists. One extra line. Case sensitivity, a wrong field name,
+a wrong tenant, or a pathspec matching nothing tracked all fail identically and all
+look like clean absence.
+
+Two corrections in one session now share a root, and the pairing is the real
+lesson: in C2 I read a peer's log instead of asking the peer, and here I read my
+own query's silence instead of testing the query. Both times the mechanism I
+trusted was one I had never watched fail. The worker made the mirror-image error in
+the same hour — a `jq` read of `acceptance` where the field is `acceptance_criteria`
+— and self-corrected it. Adopt its sharpening of the sweep requirement as the
+general rule: A ZERO-HIT SEARCH COUNTS ONLY IF THE SAME PATTERN IS SHOWN MATCHING A
+KNOWN-PRESENT INSTANCE.
