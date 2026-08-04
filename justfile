@@ -6,19 +6,16 @@
 # target list: python-skill-script-style-requirements.md
 # §"Enforcement suite — Canonical target list".
 
-# `skip` — space-separated list of `check:` aggregate targets to omit
+# `SKIP_TARGETS` — space-separated list of `check:` aggregate targets to omit
 # from a single run (epic li-cvaudit, cvredmd). Default empty: the full
-# aggregate runs. The Red-mode pre-commit overrides it on the command
-# line — `just skip="check-coverage check-per-file-coverage" check` —
-# so the coverage gates are not run at the Red commit (coverage is
-# verified at the Green amend). The Green-amend pre-commit overrides it
-# with `just skip="check-red-green-replay" check` so the no-arg
-# aggregate replay variant does not reject the in-progress Green amend
-# (the commit-msg hook is the load-bearing per-commit verifier). This
-# is a self-contained just variable; it replaces the prior ambient
-# `LIVESPEC_PRECOMMIT_RED_MODE` env var with no env var and no spec
-# change.
-skip := ""
+# aggregate runs. The Red-mode pre-commit sets it for the child `just check`
+# process so the coverage gates are not run at the Red commit (coverage is
+# verified at the Green amend). The Green-amend pre-commit sets it to omit the
+# no-arg aggregate replay variant, which would otherwise reject the
+# in-progress Green amend (the commit-msg hook is the load-bearing per-commit
+# verifier). This is process-local environment state, not body interpolation,
+# so the shell-quality gate can inspect the resolved justfile without seeing a
+# templated recipe body.
 
 # pytest-xdist worker count, lane-aware (plan/fabro-ci-image-factoring cont.5).
 # GitHub-hosted CI (LIVESPEC_CI_LANE=hosted, set from CI_RUNNER_LABELS in
@@ -133,22 +130,23 @@ ensure-plugins:
 # the user's default CODEX_HOME and are visible to every repo on the host. Codex
 # is an optional dogfooding runtime; bootstrap skips this target when the CLI is
 # absent but fails on real install errors when Codex is present.
+# No-errexit deviation: explicit exits after each required Codex command.
 ensure-codex-plugins:
     #!/usr/bin/env bash
-    set -euo pipefail
+    set -uo pipefail
     if ! command -v codex >/dev/null 2>&1; then
         echo "codex CLI not found; skipping host-wide Codex plugin install." >&2
         exit 0
     fi
-    codex plugin marketplace add thewoolleyman/livespec --ref release
-    codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release
-    codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release
-    codex plugin marketplace upgrade livespec
-    codex plugin marketplace upgrade livespec-driver-codex
-    codex plugin marketplace upgrade livespec-orchestrator-beads-fabro
-    codex plugin add livespec@livespec
-    codex plugin add livespec@livespec-driver-codex
-    codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
+    codex plugin marketplace add thewoolleyman/livespec --ref release || exit $?
+    codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release || exit $?
+    codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release || exit $?
+    codex plugin marketplace upgrade livespec || exit $?
+    codex plugin marketplace upgrade livespec-driver-codex || exit $?
+    codex plugin marketplace upgrade livespec-orchestrator-beads-fabro || exit $?
+    codex plugin add livespec@livespec || exit $?
+    codex plugin add livespec@livespec-driver-codex || exit $?
+    codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro || exit $?
 
 # ---------------------------------------------------------------
 # Aggregate check — runs every check below sequentially. Continues
@@ -156,6 +154,7 @@ ensure-codex-plugins:
 # if any target failed and prints the failure list.
 # ---------------------------------------------------------------
 
+# No-errexit deviation: aggregate continues after failures to report all failed targets.
 check:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -167,23 +166,16 @@ check:
     # `check-aggregate-completeness`, which fails if any canonical
     # slug is missing or out-of-order.
     #
-    # Aggregator continues on failure (matches CI fail-fast: false)
-    # and exits non-zero with the failure list if any target failed.
-    #
-    # `skip` is a just VARIABLE (declared at the top of this justfile,
-    # default empty): a space-separated list of target names to omit
-    # from this run (epic li-cvaudit, cvredmd). The Red-mode pre-commit
-    # invokes `just skip="check-coverage check-per-file-coverage" check`
+    # `SKIP_TARGETS` is a process-local env var, default empty: a
+    # space-separated list of target names to omit from this run (epic
+    # li-cvaudit, cvredmd). The Red-mode pre-commit sets it for `just check`
     # so coverage is not gated at the Red commit (verified at the Green
-    # amend); the Green-amend pre-commit invokes
-    # `just skip="check-red-green-replay" check` so the no-arg replay
-    # aggregate variant does not reject the in-progress Green amend.
-    # These replace the prior ambient `LIVESPEC_PRECOMMIT_RED_MODE` env
-    # var. The recipe header stays the bare `check:` that the
-    # wiring-completeness checks parse for. Pre-push and CI invoke
-    # `just check` with no `skip`, so the full aggregate stays the
+    # amend); the Green-amend pre-commit sets it to omit
+    # `check-red-green-replay` so the no-arg replay aggregate variant does
+    # not reject the in-progress Green amend. Pre-push and CI invoke
+    # `just check` with no `SKIP_TARGETS`, so the full aggregate stays the
     # load-bearing safety net.
-    read -ra skip_targets <<< "{{skip}}"
+    read -ra skip_targets <<< "${SKIP_TARGETS:-}"
     # Sync the environment ONCE per aggregate pass, then run every
     # target with UV_NO_SYNC=1 so the ~50 per-target `uv run`
     # invocations skip their redundant per-invocation re-sync
@@ -254,6 +246,7 @@ check:
         check-required-role-keys-declared
         check-rop-pipeline-shape
         check-self-hosted-routing
+        check-shell-quality
         check-skill-invocation-paths
         check-source-trees-scoped-to-consumer
         check-supervisor-discipline
@@ -326,7 +319,7 @@ check:
         exit 1
     fi
     printf '\nAll %d targets passed.\n' "$ran"
-    if [[ -z "{{skip}}" ]]; then uv run python -m livespec_dev_tooling.green_token write || true; fi
+    if [[ -z "${SKIP_TARGETS:-}" ]]; then uv run python -m livespec_dev_tooling.green_token write || true; fi
 
 # ---------------------------------------------------------------
 # Tool-backed checks.
@@ -354,19 +347,21 @@ check-types:
 # the CI matrix. The authoritative full gate remains `just check`
 # (still run at pre-push and in CI) — `check-static` is a fast
 # pre-flight, never a replacement for it.
+# No-errexit deviation: explicit exits after each tool keep fail-fast behavior.
 check-static:
     #!/usr/bin/env bash
-    set -euo pipefail
-    uv run ruff format --check .
-    uv run ruff check .
-    uv run pyright
+    set -uo pipefail
+    uv run ruff format --check . || exit $?
+    uv run ruff check . || exit $?
+    uv run pyright || exit $?
 
 # Factory-boundary guard used by dispatcher janitor scripts. Factory branches
 # must not carry workflow edits; when a task truly needs one, the maintainer
 # lands that diff outside the factory path.
+# No-errexit deviation: captures all workflow paths before explicit failure.
 check-no-workflow-edits:
     #!/usr/bin/env bash
-    set -euo pipefail
+    set -uo pipefail
     base_ref=origin/master
     if ! git rev-parse --verify --quiet "${base_ref}" >/dev/null; then
         base_ref=master
@@ -398,6 +393,7 @@ check-no-workflow-edits:
 # Helper recipe (like `check-static`): NOT a member of the `check:`
 # aggregate `targets=(...)` array, NOT a canonical slug, NOT in the CI
 # matrix.
+# No-errexit deviation: empty grep results are expected and handled explicitly.
 changed-files:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -425,6 +421,7 @@ changed-files:
 # Like `check-static`, this is a developer/agent convenience: NOT a member
 # of the `check:` aggregate `targets=(...)` array, NOT a canonical slug,
 # and NOT in the CI matrix.
+# No-errexit deviation: empty changed sets are handled before explicit delegation.
 check-changed:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -439,6 +436,7 @@ check-changed:
     echo ":: INNER-LOOP ONLY — 'just check' runs the FULL suite/AST scans at pre-push + CI"
     just check-check-coverage-incremental --paths "${changed[@]}"
 
+# No-errexit deviation: both complexity checks run before returning combined status.
 check-complexity:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -450,16 +448,13 @@ check-complexity:
 check-imports-architecture:
     PYTHONPATH=.claude-plugin/scripts uv run lint-imports
 
+# No-errexit deviation: explicit status checks preserve coverage fail-fast behavior.
 check-coverage:
     #!/usr/bin/env bash
-    # `-e` (errexit) is load-bearing: without it a non-zero pytest/coverage
-    # exit is swallowed by the trailing per_file_coverage command (whose exit
-    # code would become the recipe's), silently reporting GREEN on a RED suite.
-    set -euo pipefail
+    set -uo pipefail
     # Red-mode pre-commit omits this target via `check-pre-commit`'s
-    # `just skip="check-coverage check-per-file-coverage" check`
-    # argument (a self-contained just variable — there is NO ambient
-    # env var). The commit-msg replay hook (`check-red-green-replay`)
+    # `SKIP_TARGETS` env var. The commit-msg replay hook
+    # (`check-red-green-replay`)
     # is the load-bearing verifier in Red mode; coverage is checked at
     # the Green amend. Pre-push, CI, and manual `just check-coverage`
     # invocations run the full aggregate with no `skip`, so this target
@@ -490,10 +485,19 @@ check-coverage:
     # pytest-cov auto-runs `coverage combine` at session-end.
     if [[ -f .coverage ]]; then
         echo ":: check-coverage: reading existing .coverage (produced by check-per-file-coverage); no duplicate suite run"
-        uv run coverage report --fail-under=100
+        uv run coverage report --fail-under=100 || exit $?
     else
         echo ":: check-coverage: no .coverage data file (CI standalone job); running the suite"
-        uv run pytest -n {{test_nprocs}} --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
+        test_nprocs="${LIVESPEC_TEST_PARALLELISM:-}"
+        if [[ -z "$test_nprocs" ]]; then
+            cores=$(nproc 2>/dev/null || echo 4)
+            test_nprocs=$(( cores / 4 ))
+            [[ "$test_nprocs" -ge 1 ]] || test_nprocs=1
+        fi
+        if [[ "${LIVESPEC_CI_LANE:-local}" == "hosted" ]]; then
+            test_nprocs="auto"
+        fi
+        uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
     fi
     # Per-file 100% line+branch gate. In `just check` this reads the
     # `.coverage` that check-per-file-coverage already wrote (cheap, no
@@ -503,7 +507,7 @@ check-coverage:
     # above. Retaining this step preserves livespec's pre-bump CI
     # per-file enforcement, which the previous single-step check-coverage
     # provided.
-    uv run python -m livespec_dev_tooling.checks.per_file_coverage
+    uv run python -m livespec_dev_tooling.checks.per_file_coverage || exit $?
 
 # Red-mode-aware pre-commit aggregate. Classifies the staged tree
 # shape via `git diff --cached --name-only --diff-filter=AM`. Red
@@ -513,8 +517,8 @@ check-coverage:
 # `.claude-plugin/scripts/bin/**`, or `dev-tooling/checks/**`
 # (modified test files extending pre-existing mirror-pairs are
 # valid Red commits too, so the diff-filter includes M as well as
-# A). In Red mode, runs `just skip="check-coverage
-# check-per-file-coverage" check` so the coverage gates are omitted
+# A). In Red mode, sets `SKIP_TARGETS` for a child `just check` so
+# the coverage gates are omitted
 # (the commit-msg replay hook is the load-bearing test-verifier in
 # Red mode; coverage is checked at the Green amend). This is a
 # self-contained recipe argument — there is NO ambient env var
@@ -524,6 +528,7 @@ check-coverage:
 #
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
+# No-errexit deviation: grep no-match statuses are handled before child gates.
 check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -549,7 +554,7 @@ check-pre-commit:
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: Red-mode shape detected: $test_staged"
         echo ":: skipping coverage gates (commit-msg replay hook is the verifier; coverage runs at Green amend)"
-        just skip="check-coverage check-per-file-coverage" check
+        SKIP_TARGETS="check-coverage check-per-file-coverage" just check
         exit $?
     fi
     # Green-amend shape: impl staged while HEAD still carries Red-only
@@ -569,7 +574,7 @@ check-pre-commit:
         && ! grep -q 'TDD-Green-Verified-At:' <<< "$head_msg"; then
         echo ":: Green-amend shape detected (impl staged; HEAD carries Red-only trailers)"
         echo ":: skipping no-arg check-red-green-replay (commit-msg replay hook verifies the Green amend)"
-        just skip="check-red-green-replay" check
+        SKIP_TARGETS="check-red-green-replay" just check
         exit $?
     fi
     just check
@@ -577,6 +582,7 @@ check-pre-commit:
 # When zero `.py` files are staged, `check-pre-commit` delegates to this
 # conservative doc-only subset. Pre-push delegates here via `check-pre-push`
 # when the push contains zero `.py` changes.
+# No-errexit deviation: doc-only aggregate reports all failed targets.
 check-pre-commit-doc-only:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -607,6 +613,7 @@ check-pre-commit-doc-only:
 # `.py` changes; those checks are deterministic functions of the source
 # tree and would pass-or-fail identically against the merge-base. Falls
 # back to `origin/master` when no upstream branch is configured locally.
+# No-errexit deviation: optional upstream and empty grep results are handled explicitly.
 check-pre-push:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -904,20 +911,27 @@ check-fleet-marketplace-relative-sources:
 # as the livespec-private `check-coverage` recipe (kept for CI
 # job-name + branch-protection.json compatibility); this is the
 # canonical-aggregate entry. In Red-mode pre-commit this target is
-# omitted by `check-pre-commit` via the `just skip=...` argument
+# omitted by `check-pre-commit` via the `SKIP_TARGETS` env var
 # (coverage is verified at the Green amend; the commit-msg replay hook
 # is the load-bearing verifier in Red mode), so no ambient env-var read
 # is needed here (epic li-cvaudit, cvredmd).
+# No-errexit deviation: explicit exits preserve per-file coverage fail-fast behavior.
 check-per-file-coverage:
     #!/usr/bin/env bash
-    # `-e` (errexit) is load-bearing: without it a non-zero pytest exit is
-    # swallowed by the trailing per_file_coverage command, silently reporting
-    # GREEN on a RED suite. See check-coverage above for the same rationale.
-    set -euo pipefail
+    set -uo pipefail
     # See check-coverage above for the rationale on the cov-config
     # path + pytest-xdist parallelism.
-    uv run pytest -n {{test_nprocs}} --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing
-    uv run python -m livespec_dev_tooling.checks.per_file_coverage
+    test_nprocs="${LIVESPEC_TEST_PARALLELISM:-}"
+    if [[ -z "$test_nprocs" ]]; then
+        cores=$(nproc 2>/dev/null || echo 4)
+        test_nprocs=$(( cores / 4 ))
+        [[ "$test_nprocs" -ge 1 ]] || test_nprocs=1
+    fi
+    if [[ "${LIVESPEC_CI_LANE:-local}" == "hosted" ]]; then
+        test_nprocs="auto"
+    fi
+    uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
+    uv run python -m livespec_dev_tooling.checks.per_file_coverage || exit $?
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
@@ -940,6 +954,7 @@ check-per-file-coverage:
 # exercise the full suite.
 # ---------------------------------------------------------------
 
+# No-errexit deviation: pytest status remains the recipe status after arg assembly.
 e2e-test-claude-code-real:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -1004,8 +1019,9 @@ check-comment-no-historical-refs:
 # during the Red→Green authoring loop to surface defensive-branch
 # coverage gaps proactively, BEFORE the Green amend triggers a
 # multi-minute aggregate retry.
+[positional-arguments]
 check-coverage-incremental *args:
-    uv run python -m livespec_dev_tooling.checks.check_coverage_incremental {{args}}
+    uv run python -m livespec_dev_tooling.checks.check_coverage_incremental "$@"
 
 # Canonical-slug alias for the path-scoped incremental coverage
 # check. The canonical slug derived from the module name
@@ -1017,8 +1033,9 @@ check-coverage-incremental *args:
 # `git diff --name-only origin/master...HEAD` and gates those — no
 # longer a no-op (epic li-cvaudit, cvnoarg). The interactive
 # developer use case still passes `--paths` explicitly.
+[positional-arguments]
 check-check-coverage-incremental *args:
-    uv run python -m livespec_dev_tooling.checks.check_coverage_incremental {{args}}
+    uv run python -m livespec_dev_tooling.checks.check_coverage_incremental "$@"
 
 # Always invoked plainly; the module self-manages its severity lever
 # (epic li-cvaudit, cvtodo). The 201-250 LLOC soft-band scan ALWAYS
@@ -1039,14 +1056,15 @@ check-no-lloc-soft-warnings:
 # then DERIVES the message from `git log -1 --format=%B` (HEAD) and
 # validates it — no longer a no-op (epic li-cvaudit, cvnoarg). The
 # Green-amend pre-commit shape omits this aggregate variant via
-# `check-pre-commit`'s `just skip="check-red-green-replay" check`
+# `check-pre-commit`'s `SKIP_TARGETS` child environment
 # (the commit-msg hook verifies the in-progress Green amend).
 #
 # Note on lefthook stage: the design is fundamentally `commit-msg`
 # (writes to the commit-message file; distinguishes Red/Green via
 # HEAD~0 inspection), not pre-commit.
+[positional-arguments]
 check-red-green-replay *args:
-    uv run python -m livespec_dev_tooling.checks.red_green_replay {{args}}
+    uv run python -m livespec_dev_tooling.checks.red_green_replay "$@"
 
 # Mirror-pairing: every covered .py under livespec/, bin/, and
 # dev-tooling/checks/ has a paired tests/<mirror>/test_<name>.py.
@@ -1079,6 +1097,7 @@ check-commit-pairs-source-and-test:
 # so the recorded checksum reflects post-autofix bytes. Green amend
 # stages impl files only (not the test), preserving the
 # test-file-byte-identical invariant.
+# No-errexit deviation: empty staged Python sets are handled before xargs.
 lint-autofix-staged:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -1103,8 +1122,9 @@ fmt:
 lint-fix:
     uv run ruff check --fix .
 
+[positional-arguments]
 vendor-update lib:
-    uv run python -m livespec_dev_tooling.vendor_update {{lib}}
+    uv run python -m livespec_dev_tooling.vendor_update "$1"
 
 # Deterministic, idempotent worktree REAPER — the ACTION counterpart
 # to doctor's detection-only `no-stale-worktree` check. The Layer 3
@@ -1120,8 +1140,9 @@ vendor-update lib:
 #   just reap-stale-worktrees /path/to/repo            # reap a sibling
 #   just reap-stale-worktrees . --dry-run              # preview cwd repo
 #   just reap-stale-worktrees /path/to/repo --dry-run  # preview a sibling
+[positional-arguments]
 reap-stale-worktrees repo="." *args="":
-    uv run python3 dev-tooling/reap_stale_worktrees.py --repo {{repo}} {{args}}
+    uv run python3 dev-tooling/reap_stale_worktrees.py --repo "$1" "${@:2}"
 
 check-partition-completeness:
     uv run python -m livespec_dev_tooling.checks.partition_completeness
@@ -1155,6 +1176,9 @@ check-plan-thread-anchor-declared:
 
 check-plan-thread-epic-parity:
     uv run python -m livespec_dev_tooling.checks.plan_thread_epic_parity
+
+check-shell-quality:
+    uv run python -m livespec_dev_tooling.checks.shell_quality
 
 check-no-shadow-ledger-body-typechecks:
     uv run python -m livespec_dev_tooling.checks.no_shadow_ledger_body_typechecks
