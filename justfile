@@ -238,6 +238,7 @@ check:
         check-per-file-coverage
         check-plan-thread-anchor-declared
         check-plan-thread-epic-parity
+        check-plan-thread-no-tombstone
         check-plugin-resolution
         check-primary-checkout-commit-refuse-hook-installed
         check-private-calls
@@ -1188,3 +1189,6 @@ check-required-role-keys-declared:
 
 check-hook-trees-not-io-exempt:
     uv run python -m livespec_dev_tooling.checks.hook_trees_not_io_exempt
+
+check-plan-thread-no-tombstone:
+    uv run python -m livespec_dev_tooling.checks.plan_thread_no_tombstone
