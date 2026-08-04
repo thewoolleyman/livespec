@@ -42,6 +42,47 @@ up (`fabro-run-…`, image `livespec-fabro-sandbox:python-agent-v0.51.7`).
 Pass the flag when you deliberately want a non-default engine. Otherwise let the
 resolver do its job.
 
+## Resolve the plugin root from the install record, never with `ls … | tail -1`
+
+Every dispatch command has to name a path to the orchestrator plugin's
+`scripts/bin/drive.py`. The shorthand that circulates in handoffs is
+
+```bash
+PR=$(ls -d ~/.claude/plugins/cache/livespec-orchestrator-beads-fabro/livespec-orchestrator-beads-fabro/*/ | tail -1)
+```
+
+**That picks the LEXICALLY last directory, which is not the newest one.** The
+cache accumulates one directory per installed build, named two different ways:
+release directories named by version (`0.50.1`) and update directories named by
+a 12-character commit prefix (`d6a7f2e3324a`). `ls` sorts them as strings, so
+every name beginning with a digit sorts ahead of every name beginning with a
+letter, and `tail -1` lands on whichever hex name starts with the highest
+letter. Measured 2026-08-04 against a cache of 125 directories: `tail -1`
+returned `fedf3ab1af78`, built Jul 15, while the build actually installed for
+the target repository was `d6a7f2e3324a` — the commit the latest release
+`v0.50.2` was cut from.
+
+**Resolve it from the install record instead**, taking the entry whose
+`projectPath` equals the repository you are dispatching against:
+
+```bash
+python3 - <<'PY'
+import json, pathlib
+d = json.loads((pathlib.Path.home()/".claude/plugins/installed_plugins.json").read_text())
+key = "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro"
+for e in d["plugins"][key]:
+    if e.get("projectPath") == "/data/projects/<target-repo>":
+        print(e["installPath"])
+PY
+```
+
+The failure this prevents is not loud. A stale build either dispatches quietly
+through old orchestrator code, or trips the dispatcher's own
+plugin-currency gate with exit 3 — which reads as "the plugins are out of
+date" and sends you to `just ensure-plugins`, which then reports every plugin
+already current. That contradiction is the tell: the gate is refusing the build
+your command NAMED, not the build that is installed.
+
 ## A backgrounded `drive` no longer detaches — corrected 2026-07-23
 
 > **This section previously said the parent "returns almost immediately with
