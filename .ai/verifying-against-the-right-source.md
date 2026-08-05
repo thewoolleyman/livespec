@@ -23,8 +23,8 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twenty-two instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-22 on 2026-08-05;
+## Twenty-three instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23 on 2026-08-05;
 ## instances 1-16 span five repos and four independent operators
 
 Two gaps in that heading are deliberate rather than oversights. **Instances 17
@@ -603,9 +603,45 @@ coverage sweep. Worth its own entry because the consequence differs: 17 invents
 absence of DUPLICATES and risks a redundant filing; this one invents absence of
 WORK and risks shipping a fix that misses a quarter of its targets.
 
+### 23. A dead query that returns the RIGHT answer is the one that erodes the habit
+
+Instances 17 and 22 are dead queries returning WRONG answers, which is the
+tractable case: something eventually contradicts you. This is the other case, and
+it is worse.
+
+Re-verifying that no `ci-runner*` or `runner@` unit files remained on the shared
+factory host, a check ran
+`ls /etc/systemd/system/ | grep -cE '^ci-runner|^runner@'` and returned **0** —
+the correct answer, independently true.
+
+The query could not have returned anything else. On this host `ls` is aliased to a
+rich formatter whose every line begins with an INODE NUMBER, not a filename, so a
+`^`-anchored pattern matches nothing no matter what the directory contains. The
+grep was structurally incapable of a positive result and happened to agree with
+reality.
+
+Nothing about the output looked wrong, because nothing WAS wrong — this time. The
+same command run on the day a `ci-runner@.service` reappears returns 0 just as
+confidently. A result that is correct by coincidence actively teaches you to trust
+the method that produced it, which is why this class survives review: every past
+run "worked".
+
+The positive control is what exposed it, and only because it was aimed at a
+prefix KNOWN PRESENT: `^gate-runner` also returned 0, while an unanchored
+`gate-runner` returned 4. Those two numbers cannot both be right, and the
+contradiction — not the original result — is the finding. Re-running with bare
+filenames (`find . -maxdepth 1 -printf '%f\n'`) gave `^gate-runner` = 4 and
+`ci-runner|runner@` = 0 out of 85 entries: same conclusion, now actually measured.
+
+**Two rules follow.** Run the positive control even when the answer looks right —
+especially then, because a matching result is exactly what suppresses the impulse.
+And never parse `ls` in a check; its output is a display artifact that a user alias,
+a locale, or a terminal width can reshape. Use `find -printf`, a glob, or `git
+ls-files`, all of which emit names and nothing else.
+
 ## Why this file exists in livespec CORE
 
-The twenty-two instances span EIGHT repositories — `livespec`,
+The twenty-three instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and
