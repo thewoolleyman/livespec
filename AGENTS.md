@@ -497,13 +497,24 @@ Three failure modes that cost dispatched agents real time:
    trailer blocks). The Red and Green test-file bytes must stay byte-identical.
    **SCOPE — this clause was previously stated unconditionally, and the gap misled
    agents:** `red_green_replay._commit_violates` derives `product_paths` from the
-   same `_IMPL_PREFIXES` tuple the commit-msg leg uses and returns early when that
-   list is empty, so a commit touching NO product-impl `.py` is EXEMPT from the
+   same impl-prefix set the commit-msg leg uses and returns early when that list is
+   empty, so a commit touching NO product-impl `.py` is EXEMPT from the
    both-trailers requirement rather than passing it. A dangling Red block on such a
    commit is harmless. NEVER hand-forge a `TDD-Green-*` trailer to satisfy a check
-   that cannot fire — read `_IMPL_PREFIXES` and confirm whether your paths are even
-   in scope before concluding you are blocked. (Note `_IMPL_PREFIXES` does not yet
-   enumerate every fleet repo's product tree — see `livespec-dev-tooling-rkdg`.)
+   that cannot fire — confirm whether your paths are even in scope before concluding
+   you are blocked.
+   **The prefix set is PER-REPO and derived, not a fleet-wide constant.** Read
+   `_derive_impl_prefixes` / `_impl_prefixes_for_current_repo` in
+   `livespec_dev_tooling/checks/red_green_replay.py`; they build the set from the
+   CURRENT repo's declared `source_trees` plus `role_prefixes(...source_tree_prefixes)`.
+   Do NOT grep for a hardcoded `_IMPL_PREFIXES` tuple — that symbol no longer exists,
+   and a fruitless grep is not evidence that you are exempt. "Am I in scope?" is a
+   question about THIS repo's declared trees, and must be answered per repo rather
+   than once for the fleet.
+   Whether every fleet repo's product tree is actually covered by its own
+   declarations is an OPEN question, not a settled one — `livespec-dev-tooling-rkdg`
+   records at least one repo whose hook trees were omitted and is still open. Treat
+   "the gate did not fire" as a fact needing explanation, never as permission.
 3. **Working-tree gate, not just staged.** lefthook's pre-commit runs the
    structural / dev-tooling checks over the WORKING TREE, not only the staged set.
    So "revert only the impl for Red" is INSUFFICIENT when the change also ADDS
