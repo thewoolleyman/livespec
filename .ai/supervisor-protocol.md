@@ -289,3 +289,40 @@ stale base while origin/master already carried a newer committed version of the
 same file; copying the working-tree copy over blindly would have REVERTED that
 commit with no git conflict. Diff the dirty working copy against `origin/master`
 BEFORE landing it, and confirm which side is actually newer.
+
+C4. A MODAL OUTLIVES THE CONDITION THAT RAISED IT, AND I SAT BLOCKED BEHIND ONE FOR
+ROUGHLY FIFTEEN HOURS. My session parked at the Claude usage-limit dialog ("Stop and
+wait for limit to reset / Switch to usage credits / Switch to Team plan"). The
+dialog's OWN stated reset time was 08:50 Europe/Berlin; a peer measured `date -u` at
+21:14 the same day. The limit had cleared roughly fourteen hours before anyone
+noticed, and the dialog was still sitting there asserting it.
+
+**A limit banner or modal is evidence that a condition ONCE held, never that it
+holds now.** Read the reset time the dialog itself states and compare it against
+`date -u` before believing you are still limited. This is the same family as the
+role-level rule that filed status is a claim with a timestamp — extended to the
+harness's own UI, which is the last place a supervisor thinks to apply it.
+
+TWO STRUCTURAL POINTS, both of which cost real time here.
+
+First, THE BLOCKED-READS-AS-IDLE GAP. This dialog's footer says `Enter to confirm`,
+not `Enter to select`. Any sweep that greps only for the select form classifies a
+BLOCKED agent as IDLE, and idle is the state nobody investigates. The watcher this
+repo's binders emit already matches `Enter to (select|confirm)` anchored at both
+ends and is correct; a fleet sweep that matched only the select form is what missed
+this. When adding a pane-state check anywhere, match BOTH forms.
+
+Second, and it is the one a supervisor cannot fix from inside: NOTHING WATCHES THE
+WATCHER. A supervisor arms a pane watcher over its WORKER. No watcher is pointed at
+the supervisor's own pane, and a blocked agent cannot run the watcher that would
+notice it is blocked — the failure and the detector share a fate. Escalation out of
+that state necessarily comes from a peer or the operator, so a supervisor should
+make its own liveness externally legible: keep the thread's status channel and
+`.supervisor-state` current enough that a stalled pane is inferable from a stale
+timestamp, since that artifact keeps reporting after the pane stops.
+
+Do not select "Switch to usage credits" expecting it to act. Measured: it is purely
+informational — it prints a `claude.ai/settings/usage` URL and changes nothing.
+Switching plans or buying credits is a maintainer BROWSER action, not something a
+session can perform, so a session facing a genuine limit has exactly two honest
+moves: wait, or report the block out-of-band.
