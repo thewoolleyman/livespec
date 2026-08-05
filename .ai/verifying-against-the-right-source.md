@@ -399,10 +399,66 @@ successful one: report a non-success outcome, or make the aggregate distinguish
 filed separately from the regression it concealed precisely so that fixing the
 regression could not close it.)
 
+### 17. A flag that DOES NOT EXIST returns an empty result, not a negative one
+
+Before filing a cross-repo epic, a dedup sweep ran seven queries against the
+beads ledger with `bd list --search "<term>"`. All seven returned nothing. That
+is exactly the shape of "no duplicates exist", and it would have authorised
+filing straight over `livespec-j49m` — an open P1 covering part of the same
+ground.
+
+`--search` is not a flag `bd list` has. It was accepted and ignored, so every
+query degraded to an unfiltered listing whose output was then filtered by a grep
+that matched nothing meaningful. The real flag is `--desc-contains`. Re-running
+the sweep with it surfaced the overlap immediately.
+
+The tell was statistical, not mechanical: SEVEN queries, including deliberately
+broad ones, all returning zero. A search space that answers "no" to everything is
+not describing the corpus, it is describing itself. **Before accepting an empty
+result as evidence of absence, prove the query can return a non-empty result** —
+run it against a term you KNOW is present. One positive control converts an
+unfalsifiable silence into a real measurement, and costs one command.
+
+This generalises past CLIs. Any filter that silently tolerates an unknown
+predicate — an unrecognised flag, a typo'd label, a JSON path that matches no
+key — fails in this direction, and the failure always looks like good news.
+
+### 18. A working tree one commit BEHIND is not the tree that failed
+
+`livespec-runtime` master CI went red on `check-public-api-result-typed`
+immediately after a bot-authored pin bump to `livespec-dev-tooling` v1.18.9. The
+repo declares `pure_trees = { not_applicable = ... }`, and the check's own
+docstring says its scan universe is `pure_trees`-scoped — so the working
+hypothesis was that v1.18.9 had REGRESSED the role-absence gate and was now
+scanning a tree it had been told did not exist.
+
+Running the check locally returned exit 0, logging `role key declared NOT
+APPLICABLE`. That looked like confirmation the gate still worked locally and
+something environmental differed in CI, and it was one step from an upstream bug
+report against a sibling repo.
+
+The local checkout was `behind 1`. The failing commit was not in the working
+tree; the check had been run against the last GREEN commit. After
+`git pull --ff-only`, the same command reproduced all eleven violations. The
+truth was the opposite of the hypothesis: `46c5dab` in `livespec-dev-tooling`
+("scan the first-party universe, not pure_trees") had deliberately ARMED the
+check, fixing the very vacuity defect instance 1 of this file's sibling finding
+records. Nothing had regressed; enforcement had landed ahead of adoption.
+
+**A local reproduction proves nothing until you have confirmed WHICH COMMIT you
+reproduced against.** `git status --short --branch` shows `[behind N]` in one
+line. The trap is specific to investigating a CI failure, because the natural
+motion is to reproduce locally, and a primary checkout drifts behind origin
+constantly in an active fleet — so the default state of the tree is "not the one
+that failed". Note also the direction of the error: it manufactured a
+*sibling-repo bug* out of a *local staleness*, which is the expensive direction
+to be wrong in.
+
 ## Why this file exists in livespec CORE
 
-The sixteen instances span FIVE repositories — `livespec`,
-`livespec-dev-tooling`, `livespec-orchestrator-beads-fabro`,
+The eighteen instances span SIX repositories — `livespec`,
+`livespec-dev-tooling`, `livespec-runtime`,
+`livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro` and `livespec-overseer` — and core owns
 fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.
