@@ -414,7 +414,20 @@ When drafting a revise payload that touches a spec file's H2 set:
    `tests/heading-coverage.json` (the v064 pattern); for each
    removed heading, drop the corresponding entry; for renamed
    headings, update the `heading` field.
-3. Include `tests/heading-coverage.json` in the revise payload's
+3. **For a `scenarios.md` heading, the `reason` MUST explicitly name
+   the integration tier.** A scenario describes end-to-end behavior, so
+   its mapped test must resolve to the integration tier or above, never
+   a unit-tier test. `check-heading-coverage` direction 4 accepts a
+   `TODO` entry only when its `reason` matches one of the tier keywords
+   `tier`, `integration`, or `e2e` (case-insensitive); otherwise it
+   fails with `scenario heading mapped to unit-tier test` even though
+   every manifest key is present and the entry is otherwise complete
+   and accurate. A `reason` that merely cites the implementing
+   work-item is NOT enough — that exact omission cost the v196 revise a
+   full pre-commit gate run. The alternatives to the keyword are
+   mapping a test whose node id matches an integration-tier prefix, or
+   one carrying `pytest.mark.integration` or stronger.
+4. Include `tests/heading-coverage.json` in the revise payload's
    `resulting_files[]` (path spelled as `../tests/heading-coverage.json`
    when `--spec-target` is the main `SPECIFICATION/` tree, so the
    wrapper's `spec_target / path` join resolves it to the project-

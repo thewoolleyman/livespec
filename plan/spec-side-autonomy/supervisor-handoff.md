@@ -644,3 +644,27 @@ WHOLE composer line, not the token's self-reported count — and better, obey C1
 second clause, which already said not to paste long briefs at all. The
 file-reference path worked first try. A rule applied only when the input LOOKS
 long is not a rule.
+
+T3. I walked into T2 again, on the fourth message of the next session, having
+read T2 that same session and cited it in my own marker. I sent a ~1900-char
+instruction with `tmux send-keys` because it felt "short enough" for the
+file-reference path. The composer showed `[Pasted Content 1020 chars]` and
+nothing else, stable across two spaced reads and stable in a full-pane `cat -A`
+capture, so I read it as TRUNCATION. It was T2's spill: the token held the first
+1020 chars and the remainder sat beside it, in pane real-estate I was not
+reading. The threshold is not length and never was — it is MORE THAN ONE LINE.
+Every file-reference send in that session landed first try; the one inline send
+cost a recovery and a rewrite.
+
+The recovery sequence is the part worth keeping, because C1 recorded only that a
+second `C-c` "would have killed a live agent session" and left the safe path
+untested. Measured, on an IDLE worker with nothing in flight: ONE `C-c` did NOT
+clear the composer and did NOT kill the agent — it removed the collapsed token
+and REVEALED the literal remainder, which is what finally proved spill rather
+than truncation; the codex process was confirmed alive immediately after. ONE
+`C-u` then cleared the revealed remainder. Then the file-reference path landed
+first try. Editing keys are safe ONLY under those two preconditions — composer
+stable across two spaced reads, and the worker IDLE rather than mid-turn —
+because C1's damage came from sending them INTO a still-arriving stream, where
+they are consumed as input rather than as commands. Measure both before sending
+any.
