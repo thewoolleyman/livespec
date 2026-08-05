@@ -36,10 +36,45 @@ cannot resolve a foreign-tenant id (`bd-ib-dvmh`):
 To read one, run `bd show <id>` from inside that repository's checkout under the
 same credential wrapper.
 
+## Progress as of 2026-08-05
+
+Read status from the ledger, not from this list; these are landed facts, not
+open state.
+
+- **Contract slot — DONE.** Ratified as `v195` (livespec PR #2030). The registry
+  now carries **Request-budget-discipline**, and `### Request-budget discipline`
+  fills all five slots. Two separately-spawned read-only Fable reviewers each
+  returned NO BLOCKERS bound to the exact ratified bytes; five blockers were
+  found and fixed first.
+- **Installer slot — DONE and live-exercised.** `livespec-driver-claude-6xj`
+  merged via factory dispatch (PR #423, `merge_sha 776827d6`), released as
+  `v0.5.0`. The guard denies a poll loop and a bulk-mutation loop, allows an
+  ordinary read, and fails open on malformed input. Exercised through the
+  adopter `resume`'s own resolved plugin path with zero per-repo wiring —
+  proving the reach property the per-repo settings channel lacks.
+- **Mechanism slot — BLOCKED.** `livespec-runtime-lzq` (slice A) and
+  `livespec-runtime-g2s` (slice B) are blocked behind `livespec-runtime-s8q`, a
+  P0: that repo's master is red from a DIFFERENT epic's enforcement-before-
+  adoption, and unblocking it requires a cross-repo breaking ROP migration
+  belonging to `livespec-y2lkf4`. Maintainer decided 2026-08-04 not to pull that
+  into this thread.
+- **Verifier slot — BLOCKED** on the Mechanism. `livespec-dev-tooling-t2q4` is
+  deliberately NOT routed to `ready`: its real dependency is cross-tenant, which
+  beads cannot express as an edge, so routing it would let the factory dispatch
+  it before the client it checks for exists.
+
 ## Next action
 
-**File the Contract slot as a spec amendment.** This is the thread's blocking
-planning action and it is spec-side, not implementation.
+**Unblock `livespec-runtime` by resolving `livespec-runtime-s8q`**, or accept
+that this thread stays open until `livespec-y2lkf4` does it. Nothing else in
+this thread can proceed: both remaining slots sit behind that P0.
+
+The thread MUST NOT be archived yet — `plan/<topic>/` is active if and only if
+its epic is open, and `livespec-httc` has two unfilled slots.
+
+## Superseded next action (kept for context)
+
+**File the Contract slot as a spec amendment.** COMPLETED — ratified as v195.
 
 Per `SPECIFICATION/non-functional-requirements.md` §"Conformance Pattern", "a
 concern is not adopted until all five slots are filled", and this concern's

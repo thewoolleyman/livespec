@@ -580,7 +580,7 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twelve
+  A green-looking signal read off the wrong source is not evidence: eighteen
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
@@ -591,8 +591,14 @@ existing file):
   (open-PR count, a run conclusion reflecting its worst attempt, a job red
   daily on a benign no-op), a log grep returning zero over a path that never
   ran, `git merge-base --is-ancestor` against a pre-merge SHA on a
-  rebase-merging repo, and a conclusion about live fleet state that expired
-  three minutes after it was written down.
+  rebase-merging repo, a conclusion about live fleet state that expired
+  three minutes after it was written down, an untracked file invisible to a
+  git-derived check universe, a signal distrusted without ever being checked
+  and paid for destructively, a check that exited early leaving a clean
+  stream rather than a clean result, a required check reporting success
+  having skipped its own command step, a CLI flag that does not exist
+  returning an empty result instead of an error, and a local reproduction run
+  against a working tree one commit behind the one that actually failed.
 
 ## Working with the maintainer
 
