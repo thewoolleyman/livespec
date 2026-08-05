@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/thewoolleyman/livespec/compare/v0.27.0...v0.27.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* make spec governance default block self delimiting ([ce437ae](https://github.com/thewoolleyman/livespec/commit/ce437ae6b16b03d5268e3c3abf0a4276a432b1a0))
+
 ## [0.27.0](https://github.com/thewoolleyman/livespec/compare/v0.26.1...v0.27.0) (2026-08-04)
 
 
