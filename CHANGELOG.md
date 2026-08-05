@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/thewoolleyman/livespec/compare/v0.27.1...v0.28.0) (2026-08-05)
+
+
+### Features
+
+* add drift acceptance policy tests ([b6e8d4d](https://github.com/thewoolleyman/livespec/commit/b6e8d4d81e5d587b4d31f3ce31d87ebe64d47467))
+
 ## [0.27.1](https://github.com/thewoolleyman/livespec/compare/v0.27.0...v0.27.1) (2026-08-05)
 
 
