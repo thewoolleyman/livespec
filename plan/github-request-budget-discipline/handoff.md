@@ -1,8 +1,9 @@
 # Handoff — github-request-budget-discipline
 
-**Thread anchor (ledger epic):** `livespec-httc`, in THIS repository's tenant
-(`livespec`). This handoff records no status of its own; read status from the
-ledger.
+**Ledger anchor:** epic `livespec-httc`
+
+This handoff records no status of its own; read status from the ledger in THIS
+repository's tenant (`livespec`).
 
 ## Read-first chain
 

@@ -1,5 +1,7 @@
 # Livespec CI on Hetzner — handoff
 
+**Ledger anchor:** epic `livespec-h22nve`
+
 ## Purpose and authority
 
 Drive ledger epic `livespec-h22nve` until a required Livespec merge-gating job is proven to execute on the dedicated Hetzner host under the v192 contract, and the GitHub-hosted fallback is also proven. The ledger is the only status authority. This file carries coordination and decision boundaries, not a parallel work queue.

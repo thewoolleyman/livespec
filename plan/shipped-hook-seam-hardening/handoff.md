@@ -1,5 +1,7 @@
 # shipped-hook-seam-hardening — READY TO EXECUTE. Two independent children, one ordering constraint.
 
+**Ledger anchor:** epic `livespec-hvtc`
+
 **Read this whole file before acting.** Planning is done. Status is READ from the ledgers (`bd`),
 never stored here. Epic: `livespec-hvtc` (livespec tenant).
 

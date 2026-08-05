@@ -11,7 +11,7 @@ Before any future ledger operation, read `AGENTS.md`,
 installed orchestrator skill for the target tenant. Batch ledger reads under the
 configured credential wrapper and never print secret values.
 
-**Ledger anchor:** livespec epic `livespec-jvdvx4`.
+**Ledger anchor:** epic `livespec-jvdvx4`
 
 ## Landed state
 
