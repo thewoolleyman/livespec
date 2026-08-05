@@ -26,12 +26,14 @@ _GLOBAL_VALUE_ACTIONS = {
 }
 _RATIFICATION_VALUES = {"manual-spawn", "auto-spawn"}
 _REVISE_DECISION_VALUES = {"manual", "delegated", "consensus"}
+_DRIFT_ACCEPTANCE_VALUES = {"human", "consensus"}
 _GLOBAL_ACTION_PARTS = 2
 _DOCTOR_ACTION_PARTS = 3
 _RATIFICATION_GLOBAL_PARTS = 3
 _RATIFICATION_PROPOSAL_PARTS = 4
 _REVISE_DECISION_GLOBAL_PARTS = 3
 _REVISE_DECISION_PROPOSAL_PARTS = 4
+_DRIFT_ACCEPTANCE_GLOBAL_PARTS = 3
 _DOCTOR_VALUES = {
     "fix-now",
     "capture-as-work-item",
@@ -58,6 +60,8 @@ def apply_action(*, project_root: Path, action: str) -> str | EditResult:
         return _apply_doctor_action(project_root=project_root, check_id=parts[1], value=parts[2])
     if parts[0] == "set-revise-decision-mode" and len(parts) >= _REVISE_DECISION_GLOBAL_PARTS:
         return _apply_revise_decision_action(project_root=project_root, parts=parts)
+    if parts[0] == "set-drift-acceptance-mode" and len(parts) >= _DRIFT_ACCEPTANCE_GLOBAL_PARTS:
+        return _apply_drift_acceptance_action(project_root=project_root, parts=parts)
     if parts[0] == "set-ratification-review" and len(parts) >= _RATIFICATION_GLOBAL_PARTS:
         return _apply_ratification_action(project_root=project_root, parts=parts)
     return f"unsupported action grammar: {action}"
@@ -167,6 +171,32 @@ def _apply_revise_decision_proposal(
             proposal_stem=proposal_stem,
             value=None if value == "clear" else value,
             key="decision_policy",
+        ),
+    )
+
+
+def _apply_drift_acceptance_action(
+    *,
+    project_root: Path,
+    parts: list[str],
+) -> str | EditResult:
+    if parts[1] == "global" and len(parts) == _DRIFT_ACCEPTANCE_GLOBAL_PARTS:
+        return _apply_drift_acceptance_global(project_root=project_root, value=parts[2])
+    return "set-drift-acceptance-mode requires global:<value>"
+
+
+def _apply_drift_acceptance_global(
+    *,
+    project_root: Path,
+    value: str,
+) -> str | EditResult:
+    if value != "clear" and value not in _DRIFT_ACCEPTANCE_VALUES:
+        return f"drift acceptance mode must be one of {sorted(_DRIFT_ACCEPTANCE_VALUES)} or clear"
+    return _edit_result(
+        changed_path=write_config_value(
+            project_root=project_root,
+            key="drift_acceptance_mode",
+            value=None if value == "clear" else value,
         ),
     )
 

@@ -35,6 +35,13 @@
     "allowed_values": ["manual", "delegated", "consensus"]
   },
   {
+    "key": "drift_acceptance_mode",
+    "value_type": "enum",
+    "safe_default": "human",
+    "per_proposal_override": null,
+    "allowed_values": ["human", "consensus"]
+  },
+  {
     "key": "ratification_review",
     "value_type": "enum",
     "safe_default": "manual-spawn",

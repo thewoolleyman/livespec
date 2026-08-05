@@ -182,6 +182,7 @@ def _matching_consumer_config() -> str:
         '  //     "in_flight_alignment": "prompt",\n'
         '  //     "doctor_dispositions": {},\n'
         '  //     "revise_decision_mode": "manual",\n'
+        '  //     "drift_acceptance_mode": "human",\n'
         '  //     "ratification_review": "manual-spawn",\n'
         '  //     "ratification_reviewer_model": null\n'
         "  //   }\n"

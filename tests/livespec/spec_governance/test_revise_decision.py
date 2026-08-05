@@ -8,7 +8,9 @@ __all__: list[str] = []
 
 def test_revise_decision_module_exports_resolver_context_and_predicate() -> None:
     assert set(revise_decision.__all__) == {
+        "DriftAcceptanceContext",
         "ReviseDecisionContext",
+        "effective_drift_acceptance_mode",
         "effective_revise_decision_mode",
         "requires_revise_decision_input",
     }
@@ -30,3 +32,18 @@ def test_valid_proposal_override_owns_only_that_resolution() -> None:
     assert policy.value == "delegated"
     assert policy.source == "proposal"
     assert not revise_decision.requires_revise_decision_input(policy=policy)
+
+
+def test_drift_acceptance_consensus_requires_journal_success() -> None:
+    policy = revise_decision.effective_drift_acceptance_mode(
+        config=SpecGovernanceConfig(drift_acceptance_mode="consensus"),
+        context=revise_decision.DriftAcceptanceContext(
+            consensus_evidence_conforming=True,
+            journal_ok=False,
+        ),
+    )
+
+    assert policy.value == "consensus"
+    assert policy.source == "global"
+    assert revise_decision.requires_revise_decision_input(policy=policy)
+    assert policy.reason == "journal write failed"

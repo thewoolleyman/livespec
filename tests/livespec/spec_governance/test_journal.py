@@ -56,6 +56,97 @@ def test_revise_decision_event_is_digest_only_and_io_failure_is_closed(*, tmp_pa
     assert "append failed" in failed
 
 
+def test_drift_revise_decision_event_carries_digest_only_consensus_evidence(
+    *,
+    tmp_path: Path,
+) -> None:
+    event = {
+        "event_type": "revise_decision",
+        "proposal_stem": "demo",
+        "content_digest": "d" * 64,
+        "effective_mode": "consensus",
+        "effective_source": "global",
+        "selected_decision": "accept",
+        "decider_identity": "consensus-tier",
+        "decider_model": "multi",
+        "review_outcome": "NO BLOCKERS",
+        "final_outcome": "proceed",
+        "escalation_reason": "",
+        "effective_drift_acceptance_mode": "consensus",
+        "effective_drift_acceptance_source": "global",
+        "consensus_evidence_digest": "e" * 64,
+        "outcome": "selected",
+    }
+
+    assert isinstance(
+        append_journal_payload(project_root=tmp_path, event=event),
+        JournalAppend,
+    )
+    assert isinstance(
+        append_journal_payload(
+            project_root=tmp_path,
+            event={**event, "consensus_evidence": {"raw": "forbidden"}},
+        ),
+        str,
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("effective_drift_acceptance_mode", "delegated"),
+        ("effective_drift_acceptance_source", "x"),
+        ("consensus_evidence_digest", "not-a-digest"),
+    ],
+)
+def test_drift_revise_decision_event_rejects_invalid_fields(
+    *,
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    event = {
+        "event_type": "revise_decision",
+        "proposal_stem": "demo",
+        "content_digest": "d" * 64,
+        "effective_mode": "consensus",
+        "effective_source": "global",
+        "selected_decision": "accept",
+        "decider_identity": "consensus-tier",
+        "decider_model": "multi",
+        "review_outcome": "NO BLOCKERS",
+        "final_outcome": "proceed",
+        "escalation_reason": "",
+        "effective_drift_acceptance_mode": "consensus",
+        "effective_drift_acceptance_source": "global",
+        "consensus_evidence_digest": "e" * 64,
+        "outcome": "selected",
+    }
+    event[field] = value
+
+    assert isinstance(append_journal_payload(project_root=tmp_path, event=event), str)
+
+
+def test_drift_revise_decision_event_requires_all_drift_fields(*, tmp_path: Path) -> None:
+    event = {
+        "event_type": "revise_decision",
+        "proposal_stem": "demo",
+        "content_digest": "d" * 64,
+        "effective_mode": "consensus",
+        "effective_source": "global",
+        "selected_decision": "accept",
+        "decider_identity": "consensus-tier",
+        "decider_model": "multi",
+        "review_outcome": "NO BLOCKERS",
+        "final_outcome": "proceed",
+        "escalation_reason": "",
+        "effective_drift_acceptance_mode": "consensus",
+        "outcome": "selected",
+    }
+
+    assert isinstance(append_journal_payload(project_root=tmp_path, event=event), str)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

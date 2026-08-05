@@ -31,10 +31,11 @@ def test_show_effective_emits_manifest_declared_effective_and_diagnostics(
 
     assert exit_code == 0
     payload: dict[str, Any] = json.loads(capsys.readouterr().out)
-    assert len(payload["manifest"]) == 7
+    assert len(payload["manifest"]) == 8
     assert payload["declared"] == {"propose_change_mode": "batch"}
     assert payload["effective"]["propose_change_mode"] == "batch"
     assert payload["effective"]["revise_decision_mode"] == "manual"
+    assert payload["effective"]["drift_acceptance_mode"] == "human"
 
 
 def test_show_effective_defaults_project_root_to_cwd(
@@ -66,6 +67,7 @@ def test_show_effective_reports_every_safe_default(
     assert payload["effective"] == {
         "critique_mode": "interactive",
         "doctor_dispositions": {},
+        "drift_acceptance_mode": "human",
         "in_flight_alignment": "prompt",
         "propose_change_mode": "interactive",
         "ratification_review": "manual-spawn",
@@ -133,6 +135,45 @@ def test_action_updates_config_and_emits_changed_path(
     assert '"revise_decision_mode": "delegated"' in (tmp_path / ".livespec.jsonc").read_text(
         encoding="utf-8"
     )
+
+
+def test_drift_acceptance_action_applies_refuses_invalid_and_clears(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    set_exit = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--action",
+            "set-drift-acceptance-mode:global:consensus",
+        ],
+    )
+    refused_exit = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--action",
+            "set-drift-acceptance-mode:global:delegated",
+        ],
+    )
+    clear_exit = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--action",
+            "set-drift-acceptance-mode:global:clear",
+        ],
+    )
+
+    captured = capsys.readouterr()
+    assert set_exit == 0
+    assert refused_exit == 2
+    assert clear_exit == 0
+    assert "drift acceptance mode" in captured.err
+    assert "delegated" not in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+    assert "drift_acceptance_mode" not in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
 
 
 def test_invalid_action_exits_usage_error(
@@ -251,6 +292,7 @@ def _matching_commented_spec_governance_block() -> str:
         '  //     "in_flight_alignment": "prompt",\n'
         '  //     "doctor_dispositions": {},\n'
         '  //     "revise_decision_mode": "manual",\n'
+        '  //     "drift_acceptance_mode": "human",\n'
         '  //     "ratification_review": "manual-spawn",\n'
         '  //     "ratification_reviewer_model": null\n'
         "  //   }\n"

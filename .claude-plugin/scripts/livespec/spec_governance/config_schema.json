@@ -14,6 +14,8 @@
         "enum": ["fix-now", "capture-as-work-item", "propose-change", "defer", "dismiss"]
       }
     },
+    "revise_decision_mode": { "enum": ["manual", "delegated", "consensus"] },
+    "drift_acceptance_mode": { "enum": ["human", "consensus"] },
     "ratification_review": { "enum": ["manual-spawn", "auto-spawn"] },
     "ratification_reviewer_model": {
       "type": "string",

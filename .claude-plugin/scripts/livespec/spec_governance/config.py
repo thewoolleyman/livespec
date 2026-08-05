@@ -40,6 +40,7 @@ class SpecGovernanceConfig:
     in_flight_alignment: str = "prompt"
     doctor_dispositions: dict[str, str] = field(default_factory=dict)
     revise_decision_mode: str = "manual"
+    drift_acceptance_mode: str = "human"
     ratification_review: str = "manual-spawn"
     ratification_reviewer_model: str | None = None
 
@@ -98,6 +99,11 @@ def _parse_block(*, block: dict[str, Any]) -> DeclaredConfig:
             revise_decision_mode=_enum_value(
                 block=block,
                 key="revise_decision_mode",
+                diagnostics=diagnostics,
+            ),
+            drift_acceptance_mode=_enum_value(
+                block=block,
+                key="drift_acceptance_mode",
                 diagnostics=diagnostics,
             ),
             ratification_review=_enum_value(

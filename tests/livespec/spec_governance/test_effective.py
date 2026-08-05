@@ -348,3 +348,77 @@ def test_consensus_unavailable_and_journal_failure_always_escalate() -> None:
 
     assert requires_revise_decision_input(policy=consensus)
     assert requires_revise_decision_input(policy=journal_failed)
+
+
+def test_drift_acceptance_resolves_floors_before_global_consensus() -> None:
+    assert hasattr(effective_module, "effective_drift_acceptance_mode")
+    from livespec.spec_governance.effective import (
+        DriftAcceptanceContext,
+        effective_drift_acceptance_mode,
+        requires_revise_decision_input,
+    )
+
+    clear = DriftAcceptanceContext(consensus_evidence_conforming=True)
+    floor_contexts = (
+        replace(clear, design_record_contradiction=True),
+        replace(clear, design_record_unavailable=True),
+        replace(clear, ratification_blocker=True),
+        replace(clear, consensus_evidence_conforming=False),
+    )
+
+    policies = [
+        effective_drift_acceptance_mode(
+            config=SpecGovernanceConfig(drift_acceptance_mode="consensus"),
+            context=context,
+        )
+        for context in floor_contexts
+    ]
+    default = effective_drift_acceptance_mode(
+        config=SpecGovernanceConfig(),
+        context=clear,
+    )
+    consensus = effective_drift_acceptance_mode(
+        config=SpecGovernanceConfig(drift_acceptance_mode="consensus"),
+        context=clear,
+    )
+
+    assert all(policy.source == "hard-floor" for policy in policies)
+    assert all(requires_revise_decision_input(policy=policy) for policy in policies)
+    assert default.value == "human"
+    assert default.source == "default"
+    assert requires_revise_decision_input(policy=default)
+    assert consensus.value == "consensus"
+    assert consensus.source == "global"
+    assert not requires_revise_decision_input(policy=consensus)
+
+
+def test_revise_decision_routes_drift_only_through_drift_acceptance() -> None:
+    assert hasattr(effective_module, "effective_revise_decision_mode")
+    from livespec.spec_governance.effective import (
+        DriftAcceptanceContext,
+        ReviseDecisionContext,
+        effective_revise_decision_mode,
+        requires_revise_decision_input,
+    )
+
+    drift = effective_revise_decision_mode(
+        config=SpecGovernanceConfig(
+            revise_decision_mode="delegated",
+            drift_acceptance_mode="consensus",
+        ),
+        context=ReviseDecisionContext(
+            proposal_override_present=True,
+            proposal_override="delegated",
+            delegated_decider_accepts=True,
+            decision_evidence_exact=True,
+            review_no_blockers=True,
+            review_evidence_exact=True,
+            drift_origin=True,
+            drift_acceptance=DriftAcceptanceContext(consensus_evidence_conforming=True),
+        ),
+    )
+
+    assert drift.value == "consensus"
+    assert drift.source == "global"
+    assert "drift_acceptance_mode" in drift.reason
+    assert not requires_revise_decision_input(policy=drift)

@@ -15,6 +15,7 @@ def test_missing_block_resolves_to_safe_defaults() -> None:
     assert declared.effective.in_flight_alignment == "prompt"
     assert declared.effective.doctor_dispositions == {}
     assert declared.effective.revise_decision_mode == "manual"
+    assert declared.effective.drift_acceptance_mode == "human"
     assert declared.effective.ratification_review == "manual-spawn"
     assert declared.effective.ratification_reviewer_model is None
     assert declared.diagnostics
@@ -42,6 +43,7 @@ def test_invalid_entries_are_ignored_without_losing_valid_siblings() -> None:
               "doctor-bad-value": "nope"
             },
             "revise_decision_mode": "robot",
+            "drift_acceptance_mode": "delegated",
             "ratification_review": "auto-spawn",
             "ratification_reviewer_model": "bad model!"
           }
@@ -54,9 +56,10 @@ def test_invalid_entries_are_ignored_without_losing_valid_siblings() -> None:
     assert declared.effective.in_flight_alignment == "prompt"
     assert declared.effective.doctor_dispositions == {"doctor-good-check": "defer"}
     assert declared.effective.revise_decision_mode == "manual"
+    assert declared.effective.drift_acceptance_mode == "human"
     assert declared.effective.ratification_review == "auto-spawn"
     assert declared.effective.ratification_reviewer_model is None
-    assert len(declared.diagnostics) == 6
+    assert len(declared.diagnostics) == 7
 
 
 def test_wrong_typed_doctor_dispositions_map_resolves_to_empty() -> None:
@@ -78,6 +81,7 @@ def test_all_valid_entries_project_to_effective_config() -> None:
             "in_flight_alignment": "default-align",
             "doctor_dispositions": {"doctor-x": "fix-now"},
             "revise_decision_mode": "delegated",
+            "drift_acceptance_mode": "consensus",
             "ratification_review": "auto-spawn",
             "ratification_reviewer_model": "fable/model-1"
           }
@@ -90,6 +94,7 @@ def test_all_valid_entries_project_to_effective_config() -> None:
     assert declared.effective.in_flight_alignment == "default-align"
     assert declared.effective.doctor_dispositions == {"doctor-x": "fix-now"}
     assert declared.effective.revise_decision_mode == "delegated"
+    assert declared.effective.drift_acceptance_mode == "consensus"
     assert declared.effective.ratification_review == "auto-spawn"
     assert declared.effective.ratification_reviewer_model == "fable/model-1"
     assert declared.diagnostics == []
