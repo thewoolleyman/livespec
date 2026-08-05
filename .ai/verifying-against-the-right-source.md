@@ -23,8 +23,8 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twenty-one instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-21 on 2026-08-05;
+## Twenty-two instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-22 on 2026-08-05;
 ## instances 1-16 span five repos and four independent operators
 
 Two gaps in that heading are deliberate rather than oversights. **Instances 17
@@ -562,14 +562,58 @@ WRITERS of the thing a control reads, not just its present value. This is the
 has been made to fail on demand* — and it applies with most force to controls
 that are currently satisfied, because those produce no signal to investigate.
 
+### 22. A ref that does not exist here returns empty, so a sweep reports the repo OUT OF SCOPE
+
+Discharging a work-item's "enumerate the fleet, do not assume" clause, a sweep
+read every governed repo's committed config with
+`git show origin/master:.livespec.jsonc` and classified each as affected or
+clean. Two of thirteen came back with nothing and were recorded as **"no
+committed config — out of scope"**.
+
+`openbrain` and `homelab` do not have an `origin/master`. They use `origin/main`.
+Both carry the file, both lack the key being audited, and both were therefore
+AFFECTED. A non-existent ref makes `git show` print nothing and exit 0, which is
+byte-identical to a repo that genuinely has no such file.
+
+The bias is what makes this dangerous: it under-reports SCOPE, so an incomplete
+sweep reads as a complete one. The report said "13 enumerated" and looked
+exhaustive while silently excluding 2 of the 8 affected repos — and "I enumerated
+the whole fleet from the manifest" was TRUE, which is precisely why nothing felt
+wrong. Enumerating the right repos does not mean reading them correctly.
+
+**Resolve each repo's default branch instead of assuming one**
+(`git symbolic-ref --short refs/remotes/origin/HEAD`), and make an unresolvable
+ref FAIL LOUD rather than record an absence. `AGENTS.md` already warns that the
+fleet is non-uniform and that per-repo state must be verified rather than assumed;
+the default branch is one of those dimensions, and it is easy to forget because
+eleven of thirteen repos agree.
+
+The control that caught it could not silently pass:
+`git ls-tree <ref> --name-only | wc -l` returned **0 files at the repository
+root** — a count that cannot be true for any real ref of any real repo. Note that
+the obvious control does NOT work here: re-reading `.livespec.jsonc` and getting
+empty again just reproduces the same ambiguity. The control has to interrogate the
+REF rather than the file, because the ref is what is missing. When a read comes
+back empty, pick a positive control that tests the thing you assumed, not the
+thing you asked for.
+
+This is instance 17's mechanism — a nonexistent predicate silently degrading a
+query — relocated from a CLI flag to a git ref, and from a dedup search to a
+coverage sweep. Worth its own entry because the consequence differs: 17 invents
+absence of DUPLICATES and risks a redundant filing; this one invents absence of
+WORK and risks shipping a fix that misses a quarter of its targets.
+
 ## Why this file exists in livespec CORE
 
-The eighteen instances span SIX repositories — `livespec`,
+The twenty-two instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
-`livespec-console-beads-fabro` and `livespec-overseer` — and core owns
+`livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and
+`homelab` — and core owns
 fleet-level facts. A lesson filed only in one tenant would not be read
 by an agent working in another, which is precisely where most of these happened.
+The last two entered the list via instance 22, which is fitting: they were
+mis-read precisely BECAUSE they sit outside the repos an operator handles daily.
 
 ## Related standing rules
 
