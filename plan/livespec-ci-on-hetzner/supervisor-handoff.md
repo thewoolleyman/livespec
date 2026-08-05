@@ -579,3 +579,53 @@ the same hour — a `jq` read of `acceptance` where the field is `acceptance_cri
 — and self-corrected it. Adopt its sharpening of the sweep requirement as the
 general rule: A ZERO-HIT SEARCH COUNTS ONLY IF THE SAME PATTERN IS SHOWN MATCHING A
 KNOWN-PRESENT INSTANCE.
+
+C4. I TRUNCATED MY OWN OUTPUT AT EXACTLY THE POINT THE ANSWER WOULD HAVE APPEARED,
+and C3's rule does not catch it. Checking whether `livespec-driver-claude` declares
+the keys the replay gate derives its prefixes from, I listed that repo's config keys
+through `sort -u | head -20`. The list is ALPHABETICAL and the cut fell on `pinned`
+— the very next entries are the `s…` keys I was looking for. My query was not empty;
+it was AMPUTATED, and it returned a confident-looking twenty-line answer that simply
+did not reach the region in question.
+
+C3 guards a zero-hit result. This one had NINETEEN hits, so every positive-control
+instinct C3 installs reports a healthy query. A truncated result is worse than an
+empty one precisely because it LOOKS like data.
+
+Two practical forms for this thread. When you pipe a listing through `head`, `tail`,
+or a fixed line cap, either print the total count beside it or drop the cap — a
+window without a denominator cannot be reasoned about. And when you are searching a
+SORTED list for a specific key, never window it at all: grep for the key. I applied
+a cap out of tidiness on output nobody was going to be overwhelmed by, and the
+tidiness cost the answer.
+
+This is the same family as the binder's own marker-read rule, which mandates a
+truncation notice whenever anything is hidden. I wrote that rule into this charter
+and then truncated my own console output without one.
+
+C5. I CHOSE A "HOLD THIS PR" OPTION WITHOUT FIRST CHECKING WHETHER THE PR HAD
+ALREADY MERGED. IT HAD. The worker surfaced `livespec-dev-tooling#1296` — an
+archival that would false-clear two open defects — as a picker whose every option
+assumed the PR was still open, and flagged that auto-merge was armed, so there was a
+CLOCK. I reasoned carefully about reversibility, chose the hold, and wrote a brief
+about giving holds an expiry. By the time the disable ran, `gh` answered
+`Can't disable auto-merge for this pull request`: it had already merged.
+
+The reasoning was sound and the premise was dead. That is C2's failure class
+recurring in a form C2 does not name: C2 is about inheriting a PEER'S stale claim,
+and this is about a decision whose OWN premise expires while you deliberate. A clock
+that makes a decision urgent is the same clock that invalidates it, and the more
+carefully you deliberate the likelier it expires — the diligence and the staleness
+grow together.
+
+The rule: WHEN AN OPTION SET IS PREMISED ON A RACE, RE-MEASURE THE RACE IMMEDIATELY
+BEFORE ACTING, NOT WHEN THE OPTIONS WERE DRAFTED. One `gh pr view --json state` call
+before selecting would have shown `MERGED` and turned a hold into a post-merge
+record — which is exactly what the worker converted it to, correctly, on its own.
+
+Salvage note, because the outcome was still good: the worker did NOT let the record
+claim a hold existed. It posted a post-merge comment opening with "no hold is in
+effect, and none was applied ... nobody should go looking for a block that does not
+exist." A supervisor instruction that has become impossible must be reported as
+impossible, never quietly approximated — and it discharged the substance anyway by
+recording the debt on the merged PR.
