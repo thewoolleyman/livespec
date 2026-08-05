@@ -23,7 +23,6 @@ __all__: list[str] = [
 ]
 
 _BLOCK_START = "// Optional \u2014 spec_governance:"
-_BLOCK_END = "// Optional \u2014 credential_wrapper:"
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -90,28 +89,67 @@ def _comment_block(*, text: str) -> list[str] | None:
     if start_index is None:
         return None
     block: list[str] = []
+    balance = 0
+    object_started = False
     for line in lines[start_index:]:
-        if line.strip().startswith(_BLOCK_END):
-            return block
         block.append(line)
+        content = _comment_content(line=line)
+        if content is None:
+            continue
+        if not object_started and not content.startswith('"spec_governance"'):
+            continue
+        object_started = True
+        balance += _brace_delta(text=content)
+        if balance <= 0:
+            return block
     return None
+
+
+def _comment_content(*, line: str) -> str | None:
+    stripped = line.strip()
+    if not stripped.startswith("//"):
+        return None
+    content = stripped.removeprefix("//").strip()
+    if content.startswith("//"):
+        return None
+    return content
+
+
+def _brace_delta(*, text: str) -> int:
+    delta = 0
+    in_string = False
+    escaped = False
+    for char in text:
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = in_string
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if char == "{":
+            delta += 1
+        if char == "}":
+            delta -= 1
+    return delta
 
 
 def _parse_commented_defaults(*, block: list[str]) -> dict[str, Any] | None:
     uncommented: list[str] = []
     for line in block:
-        stripped = line.strip()
-        if not stripped.startswith("//"):
-            continue
-        content = stripped.removeprefix("//").strip()
-        if content.startswith("//"):
+        content = _comment_content(line=line)
+        if content is None:
             continue
         if content.startswith(('"spec_governance"', "}", '"')):
             uncommented.append(content)
-    if uncommented == []:
-        return None
     parsed = cast(dict[str, object], json.loads("\n".join(["{", *uncommented, "}"])))
     block_value = parsed.get("spec_governance")
     if not isinstance(block_value, dict):
+        return None
+    if block_value == {}:
         return None
     return cast(dict[str, Any], block_value)

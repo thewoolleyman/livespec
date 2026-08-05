@@ -58,6 +58,32 @@ def test_verify_default_block_accepts_exact_manifest_defaults() -> None:
     assert verification.expected == {"mode": "safe", "reviewer": None}
 
 
+def test_verify_default_block_accepts_self_delimited_block_without_later_anchor() -> None:
+    verification = verify_default_block(
+        text=_source_text_without_credential_wrapper_anchor(),
+        manifest=_manifest(),
+    )
+
+    assert verification.drift is None
+    assert verification.documented == {
+        "mode": "safe",
+        "reviewer": None,
+    }
+
+
+def test_verify_default_block_still_rejects_self_delimited_missing_manifest_key() -> None:
+    verification = verify_default_block(
+        text=_source_text_without_credential_wrapper_anchor().replace(
+            '  //     "mode": "safe",\n',
+            "",
+        ),
+        manifest=_manifest(),
+    )
+
+    assert verification.drift is not None
+    assert verification.drift.missing == ["mode"]
+
+
 def test_verify_default_block_reports_missing_extra_and_default_drift() -> None:
     verification = verify_default_block(
         text=_source_text().replace('"mode": "safe"', '"extra": "value"'),
@@ -110,5 +136,23 @@ def _source_text() -> str:
         '  //     "reviewer": null\n'
         "  //   }\n"
         "  // Optional \u2014 credential_wrapper: next\n"
+        "}\n"
+    )
+
+
+def _source_text_without_credential_wrapper_anchor() -> str:
+    return (
+        "{\n"
+        "  // Optional \u2014 spec_governance: policy\n"
+        '  //   "spec_governance": {\n'
+        '  //     "mode": "safe",\n'
+        "  //     // description ignored\n"
+        '  //     "reviewer": null\n'
+        "  //   }\n"
+        "  //\n"
+        "  // Optional \u2014 implementation: next commented sibling block\n"
+        '  //   "implementation": {\n'
+        '  //     "plugin": "example"\n'
+        "  //   }\n"
         "}\n"
     )
