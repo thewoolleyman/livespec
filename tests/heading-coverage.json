@@ -568,5 +568,12 @@
     "clauses": [
       {"gap_id": "gap-4dxzzn5o", "scenario": "Error path \u2014 ratification review blocks mutation"}
     ]
+  },
+  {
+    "heading": "## Drift acceptance under each mode",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Increment 3 ratifies the drift-acceptance mode contract and its five behavioral scenarios; a dedicated integration-tier scenario test is required, tracked by livespec-jvdvx4.5, and this TODO must be replaced by that test id."
   }
 ]
