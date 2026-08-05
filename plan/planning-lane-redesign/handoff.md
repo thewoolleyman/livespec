@@ -17,7 +17,8 @@ Read these before acting:
 2. `plan/planning-lane-redesign/research/brainstorm.md`
 3. `plan/planning-lane-redesign/research/maintainer-rulings.md`
 4. `plan/planning-lane-redesign/research/bd-long-prose-spike.md`
-5. `plan/planning-lane-redesign/supervisor-handoff.md`
+5. `plan/planning-lane-redesign/research/archive-gate-incident-2026-08-05.md`
+6. `plan/planning-lane-redesign/supervisor-handoff.md`
 
 Where any planning prose disagrees with
 `plan/planning-lane-redesign/research/maintainer-rulings.md`, the rulings win.
