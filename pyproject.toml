@@ -107,6 +107,7 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # .ai/ci-gate-discipline.md and the fleet-check-coverage golden rules).
 # Requires livespec-dev-tooling >= v0.39.0 (the flip lever; pinned).
 file_lloc_hard_gate = true
+plan_lifecycle_anchor = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
 
 # e9j slice 1a — arm `newtype_domain_primitives`.
