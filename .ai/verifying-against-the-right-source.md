@@ -23,9 +23,18 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Sixteen instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, across five repos and
-## four independent operators
+## Twenty-one instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-21 on 2026-08-05;
+## instances 1-16 span five repos and four independent operators
+##
+## (17 and 18 carry no recorded observation date and are deliberately not
+## assigned one here. This heading previously read "Sixteen instances" while
+## eighteen were present — it was not updated when they were added, which is the
+## clause-lockstep defect `.ai/spec-proposal-review.md` describes: a count that
+## must be re-derived whenever the set it describes changes. Corrected 2026-08-05
+## along with instances 19-21. The repo/operator tally is left scoped to 1-16
+## because it could not be re-derived from the file, and inventing an increment
+## for it would be the error this very file exists to prevent.)
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -203,6 +212,20 @@ local SHA is an ancestor of nothing on master.
 CONTENT, not ancestry — `git show <tag>:<path> | grep <marker>` answers the
 question the SHA cannot. Reserve `--is-ancestor` for merge-commit workflows where
 the object survives.
+
+**A second counter-move, for the "is this BRANCH's work already merged?" form of
+the same question (added 2026-08-05): `git cherry <upstream> <branch>`.** It
+compares PATCH-IDs, so it sees through the SHA change a rebase-merge causes,
+marking each commit `-` when an equivalent exists upstream and `+` when none
+does. Deciding whether five stale worktrees were safe to delete, `git diff
+origin/master --stat` reported each one carrying insertions plus up to 57,793
+deletions — which reads as unmerged work alongside mass deletion, and is neither:
+the deletions were just the branch being behind master, and the insertions were
+files master had since changed again. `git cherry` settled it in one line per
+branch — every commit `-`, nothing unmerged, all five safe. **Prefer it whenever
+the question is about a branch rather than a single commit, and note that `git
+diff` against master is actively misleading here rather than merely unhelpful,
+because a stale branch always produces a large, alarming, meaningless diff.**
 
 ### 12. A conclusion about live fleet state expires in MINUTES
 
@@ -453,6 +476,87 @@ constantly in an active fleet — so the default state of the tree is "not the o
 that failed". Note also the direction of the error: it manufactured a
 *sibling-repo bug* out of a *local staleness*, which is the expensive direction
 to be wrong in.
+
+### 19. Verifying the STEP you changed is not verifying the RUN it sits in
+
+An eight-repo propagation added a pack-install step to each consumer's `ci.yml`
+(`livespec-dev-tooling-y6e2`). It was reported complete as "8-of-8 done, each
+verified `pack-install=success` where it previously read `skipped`" — a precise,
+per-repo, step-level measurement, and every word of it was true.
+
+Two of those eight repositories had a RED master at that exact commit.
+`livespec-orchestrator-beads-fabro` and `livespec-driver-codex` both failed on
+OTHER jobs in the same run — a `shellcheck` download reset and a `pytest-cov`
+download failure — neither of which the propagation caused or touched. Nobody
+looked, because the thing that had been changed was green, and the report
+answered the question "did my change take effect?" rather than "is the repository
+healthy?".
+
+Note how naturally the narrow question substitutes for the broad one: the step
+was the unit of work, so it became the unit of verification. And the narrower
+check is the more rigorous-LOOKING one — it names a specific step and a specific
+before/after transition, which reads as more careful than "CI is green".
+
+**After landing a change, verify the RUN, not just the step you touched — and do
+it in every repository the change reached.** The step-level check is still worth
+doing; it is simply not a substitute. A useful discriminator: a step-level pass
+tells you your change works, and only a run-level pass tells you it did not break
+something else. This is instance 9 ("a job or run STATUS is not a health
+signal") inverted — there, a green status hid a skipped step; here, a green step
+hid a red run.
+
+### 20. A 404 for one repo's filename is not evidence another repo has no CI
+
+A fleet-wide master-CI sweep queried
+`repos/<owner>/<repo>/actions/workflows/ci.yml/runs` for all 13 manifest members.
+Eleven answered. `openbrain` and `resume` returned HTTP 404, and the first draft
+of the finding recorded them as running no CI and therefore unmeasured.
+
+Enumerating each repository's workflows instead of guessing one filename showed
+`resume` gates with **`check.yml`** — green on `master`, measurable the whole
+time — while `openbrain` genuinely has no per-push gate, only a scheduled
+`tripwire.yml` whose latest run predated the sweep by a week and was therefore no
+evidence about current `main` either.
+
+The 404 was real. The inference from it was not: it silently assumed the fleet
+names its gating workflow uniformly, in a fleet whose own `AGENTS.md` says it is
+**non-uniform by design**. This is the same error recorded elsewhere in this
+thread as "grepping ONE repo's spelling to conclude another repo's state".
+
+**Enumerate the set before concluding a member lacks a thing.** `GET
+/actions/workflows` costs one extra call and answers "what does this repo
+actually have?", where a filename probe only answers "does it have the name I
+guessed?". The tell is a NEGATIVE conclusion resting on a single lookup keyed by
+a name you chose rather than read.
+
+### 21. A control verified as currently-UNMET is not verified as HARD to meet
+
+The shared factory host's residual `gate-runner` units each carry a drop-in whose
+entire `[Unit]` body is `ConditionPathExists=/run/livespec-local-ci-enabled`.
+The path was measured absent, the units measured `inactive` and `disabled`, the
+slice measured `Tasks: 0`. That was recorded as a second, independent gate
+requiring an explicit operator opt-in.
+
+Every one of those readings establishes only that the condition is **not met right
+now**. None of them establishes that it is **difficult to meet** — and the claim
+being banked was the second one. Had any `tmpfiles.d` rule, unit, cron entry or
+boot script created that runfile automatically, "explicit operator opt-in" would
+have been false while every reading still looked green.
+
+Checked adversarially, the claim held: the runfile has **consumers only and no
+creators** across both `tmpfiles.d` directories, `/etc/systemd/system/`,
+`/usr/lib/systemd/system/`, `/usr/local/{lib,bin,sbin}/`, `cron.d`, `cron.daily`,
+`rc.local`, and every tracked file on `livespec` master. The search was shown
+fail-capable by the same grep returning the two CONSUMING drop-ins, so the zero
+was a measurement rather than a silent miss.
+
+**For any control, ask what would have to be true for it to be defeated, then go
+look for that.** A condition's current value is cheap to read and nearly always
+the wrong question; what matters is who can change it. Concretely: enumerate the
+WRITERS of the thing a control reads, not just its present value. This is the
+`livespec-opwqmy` lesson stated generally — *a control is not a control until it
+has been made to fail on demand* — and it applies with most force to controls
+that are currently satisfied, because those produce no signal to investigate.
 
 ## Why this file exists in livespec CORE
 
