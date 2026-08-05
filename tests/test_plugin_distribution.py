@@ -346,3 +346,29 @@ def test_codex_shared_payload_dir_carries_prose_and_scripts() -> None:
         f"prose/scripts ({_PROSE_DIR.parent}); found marker under "
         f"{_CODEX_PLUGIN_JSON.parent.parent}."
     )
+
+
+@pytest.mark.integration
+def test_primary_checkout_playwright_guard_contract_is_ratified() -> None:
+    """The Claude Driver guard's clause, scenario, and coverage map stay in lockstep."""
+    contracts = (_REPO_ROOT / "SPECIFICATION" / "contracts.md").read_text(encoding="utf-8")
+    scenarios = (_REPO_ROOT / "SPECIFICATION" / "scenarios.md").read_text(encoding="utf-8")
+    coverage = json.loads(
+        (_REPO_ROOT / "tests" / "heading-coverage.json").read_text(encoding="utf-8")
+    )
+
+    assert "**PreToolUse primary-checkout Playwright guard**" in contracts
+    assert "Registered for every `mcp__playwright__*` tool" in contracts
+    assert "the guard MUST deny the call before MCP invocation" in contracts
+    assert "## Primary-checkout Playwright calls are refused" in scenarios
+    assert "But the same tool call from the linked worktree is allowed" in scenarios
+
+    scenario_entry = next(
+        entry
+        for entry in coverage
+        if entry.get("heading") == "## Primary-checkout Playwright calls are refused"
+    )
+    assert scenario_entry["test"] == (
+        "tests.test_plugin_distribution."
+        "test_primary_checkout_playwright_guard_contract_is_ratified"
+    )
