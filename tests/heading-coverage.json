@@ -202,7 +202,10 @@
     "heading": "## Plugin distribution",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "tests.test_plugin_distribution"
+    "test": "tests.test_plugin_distribution",
+    "clauses": [
+      {"gap_id": "gap-5efcvwic", "scenario": "Primary-checkout Playwright calls are refused"}
+    ]
   },
   {
     "heading": "## `/livespec:next` spec-side thin-transport binding",
@@ -309,6 +312,13 @@
     "spec_file": "scenarios.md",
     "test": "tests.e2e.test_happy_path.test_happy_path_minimal",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
+  },
+  {
+    "heading": "## Primary-checkout Playwright calls are refused",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "tests.test_plugin_distribution.test_primary_checkout_playwright_guard_contract_is_ratified",
+    "reason": "The local lockstep test verifies the complete core contract/scenario/registry triad. The executable hook behavior remains Driver-owned and is exercised separately by livespec-driver-claude's hook suite."
   },
   {
     "heading": "## Error path \u2014 authoring batch input requires attention",
