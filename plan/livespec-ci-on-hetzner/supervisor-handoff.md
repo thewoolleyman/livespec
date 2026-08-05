@@ -1,5 +1,90 @@
 # Supervisor Handoff - livespec-ci-on-hetzner
 
+## Resume state — written at session wrap-up 2026-08-05T21:45Z
+
+You are the SUPERVISOR of the `livespec-ci-on-hetzner` thread. This section is the
+only thing carried across the restart, so it is deliberately short and points at the
+live sources rather than restating them. **Every status claim below is a reading with
+a timestamp — re-measure before acting on any of it.** That is not boilerplate: this
+thread's Corrections C2 and C5 are both instances of acting on a reading that had
+already expired, one of them within two minutes.
+
+**Run the HALT-first preconditions and the Generator-provenance check below FIRST.**
+Then read, in this order: `.ai/supervisor-protocol.md` (the shared layer — this binder
+is incomplete without it), `plan/livespec-ci-on-hetzner/handoff.md` (the THREAD's own
+record, much longer and the real status authority), and the supervisor marker at
+`tmp/overseer/livespec-ci-on-hetzner/.supervisor-state`. The marker is gitignored but
+survives on this host, and carries the full obligation record.
+
+### The one piece of my own work still in flight
+
+`livespec` PR **#2055** — wrong-source catalogue instances 22 and 23 plus a
+three-site count reconciliation. OPEN with auto-merge REBASE armed; at wrap-up its 72
+checks were QUEUED with **nothing failed**, so it should land unattended. It is my
+branch, so cleaning up after it is safe and expected:
+
+```sh
+gh pr view 2055 --repo thewoolleyman/livespec --json state,mergedAt --jq '.state'
+# once MERGED:
+mise exec -- git -C /data/projects/livespec fetch --prune origin
+mise exec -- git -C /data/projects/livespec pull --ff-only origin master
+mise exec -- git -C /data/projects/livespec worktree remove "$HOME/.worktrees/livespec/docs/wrong-source-instance-22"
+mise exec -- git -C /data/projects/livespec branch -D docs/wrong-source-instance-22
+```
+
+If it did NOT land, read the failing check and fix the cause — do not close it.
+
+**Nine other worktrees exist under `~/.worktrees/livespec/`. NONE of them are this
+thread's.** `docs/wrong-source-instance-22` is the only one you may remove. Never
+touch, push, or reap another session's worktree or branch.
+
+### Thread status — re-measure, do not inherit
+
+Four slices CLOSED: `livespec-teasvm`, `livespec-uyfggr`, `livespec-hhx4gl`,
+`livespec-dev-tooling-3otdg4`. **Every non-Hetzner slice is done.** The remaining
+three — `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` — are
+`pending-approval` behind the homelab gate and CANNOT be started. Measured
+2026-08-05T21:35Z: `hl-wkyeqg` and `hl-euzuhb` both still `pending-approval`,
+`hl-xuu5j3` still `backlog`.
+
+So the thread is **legitimately parked at an external gate, not idling**. Do not
+manufacture a slice to look busy; the previous worker was explicitly commended for
+refusing to. If you have context to spend, spend it on verification or on the open
+items below, not on inventing thread work.
+
+### Open items this thread opened or touched, and who owns them
+
+- `livespec-dev-tooling-y6e2` (P1) — the `check-shell-quality` CI job skips installing
+  the worktree pack, so the gate inspects a justfile with the pack's recipes removed
+  and verifies nothing. Owner: the maintainer. **Review date 2026-08-12** — at that
+  date it gets re-justified or dropped, never silently carried.
+- `livespec-dev-tooling-z68f` (P2) — `just bootstrap` self-dirties `.livespec.jsonc`.
+  Acceptance clause 1 is DISCHARGED: **8 of 13 governed repos affected**
+  (`livespec-driver-claude`, `livespec-driver-codex`, `livespec-runtime`,
+  `livespec-console-beads-fabro`, `livespec-overseer`, `resume`, `openbrain`,
+  `homelab`), full enumeration in the item's notes. The fix choice — commit the key
+  everywhere vs stop writing it — is deliberately left as a design call.
+- `livespec-dev-tooling-irtt` (P0) — **STOOD DOWN, NOT MINE.** The maintainer ruled the
+  `pure_trees` track owns it and considers it handled. Do not re-open that decision on
+  the strength of a red master you happen to observe.
+- Also open elsewhere and merely cross-referenced, not owned here:
+  `livespec-dev-tooling-uw3h` (P2), `bd-ib-te4h` (P2, in
+  `livespec-orchestrator-beads-fabro`), `livespec-f3tf` (P2).
+
+### The routing rule that is easy to get wrong
+
+**Homelab-side asks go to the homelab thread-12 coordinator, never to the maintainer
+directly.** Two agents asking the same question makes him pay twice and can leave him
+adjudicating a disagreement between his own agents. This does NOT suppress
+livespec-side valves — those are still yours to raise.
+
+### The worker
+
+tmux session `livespec-ci-on-hetzner` was alive and idle at wrap-up, around 51% of its
+own context, its track complete apart from the external gate. Verify with the
+preconditions below rather than assuming it is still there. If its pane looks idle,
+check for a stale limit modal before believing it — shared-protocol C4.
+
 ## Shared Protocol
 
 Read `.ai/supervisor-protocol.md` before driving. Validate this binder together
