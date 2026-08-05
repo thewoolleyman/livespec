@@ -37,6 +37,14 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 **Both P0s this thread opened are now CLOSED** (`livespec-dev-tooling-irtt`, `livespec-dev-tooling-62jh`), and the `y6e2` propagation is 8-of-8 done. As of 2026-08-05 the non-Hetzner half is carrying **no P0 and no unblocked implementation work**. What survives is listed under "Open descendants" below — all of it either maintainer-owned or genuinely someone else's queue.
 
+> **CORRECTION, 2026-08-05 (later session).** The sentence above was **FALSE for `livespec-dev-tooling-irtt` when it was written**, and it is left standing rather than rewritten because its failure mode is the lesson. `irtt` measured `status=ready`, `priority=0`, `closed_at=null` — never closed, and its last note predated the fifth repo's evidence. Only `livespec-dev-tooling-62jh` was genuinely closed. A later session that trusted this line would have skipped a live P0 and reported a clean board.
+>
+> `irtt` has since been **discharged on measured evidence and closed** (`closed_at` 2026-08-05T09:26:21Z) by satisfying the acceptance its own notes reserved: the revert release (`v1.19.6`) confirmed carried into all five consumers by reading `git show origin/master:pyproject.toml` in each, and each repo's master CI observed green on a run whose `head_sha` equals that repo's **current** `origin/master`. The full evidence table — run ids, head SHAs, pins, and job ids — is journaled on the item.
+>
+> **The load-bearing part of that discharge is what it refused to accept as evidence.** A green job conclusion was not treated as proof; the **step list** was read in all five repos, confirming `just check-public-api-result-typed` actually EXECUTED rather than reporting success while skipping. That distinction is `livespec-dev-tooling-zi29`, and this thread has been misled by it four separate times. Green here still means **UNENFORCED, not verified** — every repo declares `pure_trees` declared-absent, so the check convicts nobody; arming it remains `livespec-dev-tooling-idlx`'s job.
+>
+> **The general rule this yields, and it outranks the specific correction:** a handoff sentence asserting that something is CLOSED is a claim about a ledger at a past instant, exactly like the struck "nothing is open" sentence in the Resume state section below. **Verify every closure claim against the ledger before relying on it.** Two such claims in this one file have now expired.
+
 So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what four separate readings on 2026-08-04/05 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
 
 ### Open descendants — do not re-file these, and do not close them from here
@@ -49,6 +57,7 @@ So your first action is the census below, run to CONFIRM that picture rather tha
 | `livespec-cpqi` | `livespec` | Copier template CI drift — **re-scoped and much bigger than filed** (see below). Needs a maintainer product decision; do not self-resolve. |
 | `livespec-dev-tooling-7ix8` | `livespec-dev-tooling` | P2 — `just bootstrap` splices an uncommitted `worktree_discipline` key. Reproduced live in 4+ repos this session; it dirties every fresh worktree. |
 | `livespec-opwqmy` | `livespec` | `systemctl preset-all --dry-run` incident; `admission:manual`. |
+| `livespec-driver-claude-mu5` | `livespec-driver-claude` | P1 — `github_rate_limit_guard` denies on substrings, not behavior, and its prescribed `--cache` remedy is absent from its decision logic. Filed 2026-08-05; see the census section below. |
 
 **`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
 
@@ -68,6 +77,25 @@ gh pr list --repo thewoolleyman/livespec --state open --limit 100 --json number,
 `bd` resolves its tenant from the working directory, so a `homelab` query issued from the `livespec` checkout fails with `Access denied for user 'livespec'` — run it from `/data/projects/homelab`.
 
 Verify each command saw its intended input and retain raw output beside any derived count. Then re-measure the slices from the ledger; the table below records the cut, not live status. Per the paragraph above, expect to find nothing unblocked — confirm that rather than hunt.
+
+## Census result — 2026-08-05, run to confirm and it did not fully confirm
+
+Point-in-time like everything else here; re-measure rather than inherit. Recorded because one line of it contradicted this file.
+
+**The homelab gate is still shut, and still has not moved.** `hl-wkyeqg` `pending-approval`, `hl-euzuhb` `pending-approval`, `hl-xuu5j3` `backlog`, `hl-6uldtn` `backlog`. That is a fifth reading agreeing with the previous four. Server 3039451 is not provisioned and `hetzner-prod` is not admitted, so `livespec-3on57g`, `livespec-7wvyo7` and `livespec-q7sfu6` remain externally gated and untouchable — all three measure `pending-approval`. The first four slices are closed. **There is no unblocked Hetzner work, exactly as this file predicted.**
+
+**Forge, this repository.** `actions/runners` `total_count=0` — a fourth reading of a set that went 13 → 6 → 0 → 0. `CI_RUNNER_LABELS` still `["ubuntu-latest"]`, `updated_at` unchanged at 2026-07-18T11:34:31Z. Fork approval still `all_external_contributors`. Master CI green at `3f51c80e`. Three open PRs (2038, 1968, 1960), each red on `ci-green` and each belonging to another thread.
+
+**What did NOT confirm: `livespec-dev-tooling-irtt` was open, at P0.** See the correction under "Named first action". It is now closed on measured evidence. Discharging it required measuring all five previously-red repos, which surfaced the next item.
+
+**`livespec-orchestrator-beads-fabro` master was RED and is now green.** Head `e25746b1` — this thread's own `y6e2` propagation commit — run `30990419706`. Both failures were transient infrastructure with no broken pipeline behind either: attempt 1 died downloading `shellcheck` (`Connection reset by peer`) in a job the commit does not touch; attempt 2 died in `export-telemetry` on an `HTTP 502` from `api.github.com` reading the run's own `/jobs` endpoint — corroborated as GitHub-side because the identical endpoint returned 502 to this session's own read in the same minute and recovered minutes later. Attempt 3: 96 jobs, zero non-success. **Cleared by rerun alone, no code change.**
+
+Two things follow that a later reader needs:
+
+- **A reran run keeps its failed attempts.** The run-level conclusion now reads `success`, but attempts 1 and 2 remain failures in the API. Read attempt 3. This is the "a run conclusion reflecting its worst attempt" trap from `.ai/verifying-against-the-right-source.md`, met from the other side.
+- **That red froze `.py` work in that repo while it lasted**, because `ci-green` and `check-master-ci-green` read different signals — the forge was satisfied while local commits were not. That composition defect is already owned by `livespec-dev-tooling-8o8e.22` (P1), found by prior-art check rather than re-filed. This instance is journaled there, and it sharpens that item: the job also reddens master when nothing is broken, and nothing at the gate distinguishes a transient fault from a real one.
+
+**One new item filed: `livespec-driver-claude-mu5` (P1).** The `github_rate_limit_guard` PreToolUse hook denies on substrings rather than behavior. It blocked a single cached read because its `--jq` contained `select(`, and blocked a purely local script that made zero GitHub calls because a Python `for` loop and the literal string `gh api` both appeared in the command text. Worse, the remedy its own denial message prescribes — `gh api --cache <duration>` — appears nowhere in its decision logic, so following the instruction is denied identically. The only way past it was to move the loop into a script file, which defeats the guard entirely while looking like compliance. **Expect to hit this; do not conclude your command is wrong.**
 
 ## Resume state — 2026-08-04, after the fleet fail-open sweep
 
@@ -121,7 +149,7 @@ All eight consumer repos are fixed, merged and closed — `livespec` [#2042](htt
 
 ### Superseded — the original framing of the decision, retained for its diagnosis
 
-The sweep incidentally surfaced a **pre-existing fleet-red state**, filed as `livespec-dev-tooling-irtt` (P0, ready). **FIVE** repos' master CI is red — `livespec`, `livespec-runtime`, `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`, `livespec-overseer` — all failing `check-public-api-result-typed`. It is not this thread's doing: every failing run names only `.py` files, and this thread's commits touched exclusively `.github/workflows/ci.yml` and Markdown.
+The sweep incidentally surfaced a **pre-existing fleet-red state**, filed as `livespec-dev-tooling-irtt` (P0; **CLOSED 2026-08-05T09:26:21Z** on measured acceptance — see the correction under "Named first action". The diagnosis below is retained because it is still the best account of the mechanism, but its status words are historical). **FIVE** repos' master CI is red — `livespec`, `livespec-runtime`, `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`, `livespec-overseer` — all failing `check-public-api-result-typed`. It is not this thread's doing: every failing run names only `.py` files, and this thread's commits touched exclusively `.github/workflows/ci.yml` and Markdown.
 
 **Root cause, localised to an exact commit by controlled bisect.** `check-public-api-result-typed` used to sit behind the `pure_trees` role-absence gate. Commit `46c5dab` ("scan the first-party universe, not pure_trees") removed that gate DELIBERATELY, shipping with its own design document, and un-shadowing the detectors was a stated benefit rather than a side effect. It first shipped in **`v1.18.8`** — *not* v1.18.9, which is how it presented, because the fan-out bumped consumers `v1.17.1` → `v1.18.9` in one step and they never saw v1.18.8. Proven by holding one consumer tree constant and varying only the checker: `v1.17.1` and `v1.18.7` exit 0 with zero violations, `v1.18.8` and `v1.18.9` exit 1 with eleven. Every affected repo declares `pure_trees` as `not_applicable` or `unarmed_until`, so the check had never actually run there.
 
