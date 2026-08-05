@@ -47,16 +47,106 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >
 > **The general rule this yields, and it outranks the specific correction:** a handoff sentence asserting that something is CLOSED is a claim about a ledger at a past instant, exactly like the struck "nothing is open" sentence in the Resume state section below. **Verify every closure claim against the ledger before relying on it.** Two such claims in this one file have now expired.
 
-So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what **six** separate readings across 2026-08-04/05/06 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
+So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what **seven** separate readings across 2026-08-04/05/06 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
 
 **Read "THREE DECISIONS AWAIT THE MAINTAINER" immediately below before reporting any status.** Those, plus the homelab gate, are the only things in this thread waiting on a human. Everything else is either closed or in somebody else's queue.
 
 **State as of the 2026-08-06 wrap-up, all re-measured that morning:**
 
-- **The gate is shut, static, and its owning repo is quiescent.** `hl-wkyeqg` and `hl-euzuhb` both `pending-approval`, `hl-xuu5j3` and `hl-6uldtn` both `backlog` — a sixth reading in which not one value has moved, their `updated_at` stamps 2-3 days old. And `homelab` `origin/main` sat unchanged at `e8c42600` across a whole working session. **`main` is the LEADING indicator and the ledger the lagging one**, so a gate about to open would show repository movement first. There is none — do not size work on an assumption that it opens soon.
+- **The gate is shut, static, and its owning repo is quiescent.** `hl-wkyeqg` and `hl-euzuhb` both `pending-approval`, `hl-xuu5j3` and `hl-6uldtn` both `backlog` — a sixth reading in which not one value has moved, their `updated_at` stamps 2-3 days old. ~~And `homelab` `origin/main` sat unchanged at `e8c42600` across a whole working session. **`main` is the LEADING indicator and the ledger the lagging one**, so a gate about to open would show repository movement first. There is none — do not size work on an assumption that it opens soon.~~ **The struck half EXPIRED within hours — see the next section. The ledger half held; the leading-indicator half did not, and the conclusion it was offered as evidence for now rests on the ledger alone.**
 - **Fleet CI green, complete and fresh** (12 of 13 members; `openbrain` has no per-push gate at all, only a scheduled workflow, so it is excluded rather than claimed green). `livespec` master `98e6f618`.
 - **`livespec-driver-claude-mu5` reached a SIXTH instance:** the guard denied `bd update` — the ledger CLI, no GitHub call — on the prose of a note. With instance 5 (`git commit`) the shape is settled: any command carrying human-authored prose is at risk, worst when the prose is about GitHub tooling. **Whenever this guard denies you, check whether your command actually touches GitHub before rewriting it**; the fix is `--body-file` / `commit -F <file>` / `--append-notes "$(cat <file>)"`.
 - **Three verification lessons from this thread were promoted into `.ai/verifying-against-the-right-source.md`** as instances **19-21**, plus a counter-move on instance 11. Read that file, not a summary of it, before treating any green signal as evidence — instances 19 (*verifying the STEP you changed is not verifying the RUN it sits in*) and 21 (*a control verified as currently-unmet is not verified as hard to meet*) bear directly on how this epic's remaining completion-evidence bullets must be checked, since every one of them is a live observation of external state.
+
+### Census — 2026-08-06 local / `2026-08-05T22:40Z` UTC. Seventh gate reading: still shut, but its CHARACTER changed
+
+Run to confirm the picture above, and it confirmed the conclusion while
+falsifying one of the reasons given for it.
+
+**The gate is shut — seventh reading, not one value moved.** In `homelab`:
+`hl-wkyeqg` `pending-approval` (`updated_at` 2026-08-04T04:07:29Z),
+`hl-euzuhb` `pending-approval` (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog`
+(2026-08-03T10:06:45Z), `hl-6uldtn` `backlog` (2026-08-04T10:12:12Z). In
+`livespec`: `livespec-3on57g`, `livespec-7wvyo7` and `livespec-q7sfu6` all
+`pending-approval`; epic `livespec-h22nve` correctly held `active`. **There is
+still no unblocked work in this thread.**
+
+**But the leading indicator DID move, and the previous entry's inference from
+it is now false.** `homelab` `origin/main` went `e8c42600` → `a35bb168` —
+**eleven commits**, two of them thread-05 prose. So "its owning repo is
+quiescent" was a claim with a short half-life, and a later session re-deriving
+from it would wrongly conclude `homelab` is idle. It is not; it is busy on work
+that does not touch this gate. **Repository movement is a leading indicator of
+gate motion only when it moves the gate's OWN items — otherwise it is just a
+busy neighbour.** That is the correction the struck bullet above earns.
+
+**The reason the gate is shut is no longer the reason recorded here.** Read from
+`git show origin/main:plan/05-hetzner-fleet-member/handoff.md` in `homelab`, not
+from this file's older text:
+
+- **The host is UP and is BARE METAL.** The boot outage is over; the fix landed
+  as `homelab` [#316](https://github.com/thewoolleyman/homelab/pull/316) /
+  `e59c77e`. Every earlier entry here describing a dark machine at "row C" after
+  a `type=hw` reset is **finished business** — do not re-derive from it.
+- **Thread 05's critical path is now `hl-75f`**, a `nix/hosts/hetzner-prod/storage.nix`
+  declaration fix, routed by maintainer ruling to an implementation lane. Its
+  verifier lane is deliberately HELD and correct to be idle.
+- **Thread 07 (`hl-xuu5j3`) has still published no accepted runner realization**
+  and is `backlog` behind `hl-6uldtn`. That is gate condition 3, and it is the
+  one furthest from met.
+
+So the gate's character moved from *"the machine is dark"* to *"the machine is
+up; one declaration fix and two ratifications are owed, and thread 07 has not
+started."* **That is real progress underneath a gate that has not opened.** It
+still does not license sizing or starting `livespec-3on57g` — all three gate
+conditions remain unmet — but a reader should stop citing a dark host as the
+blocker.
+
+**The three maintainer decisions: re-measured, all three STILL LIVE AND
+UNCHANGED.** `livespec` [#1960](https://github.com/thewoolleyman/livespec/pull/1960)
+is `CONFLICTING` / `DIRTY` with **72 SUCCESS, 2 SKIPPED, zero failures**, last
+updated 2026-08-03T15:40:21Z — green-but-conflicted exactly as described, and
+still not self-healing. `livespec-driver-claude-mu5` is still **P1**, `backlog`.
+`livespec-cpqi` is still `ready`, and still carries its original understated
+title rather than its re-scoped one.
+
+**Forge state, this repository: unchanged on every axis.** `actions/runners`
+`total_count=0` (a fifth reading of the 13 → 6 → 0 → 0 → 0 sequence);
+`CI_RUNNER_LABELS` still `["ubuntu-latest"]`, `updated_at` still
+2026-07-18T11:34:31Z; fork approval still `all_external_contributors`.
+
+**A new bot pin bump exists and is HEALTHY — do not mistake it for a second
+stuck PR.** `livespec` [#2063](https://github.com/thewoolleyman/livespec/pull/2063)
+(`livespec-dev-tooling` pin → v1.19.9) is `MERGEABLE`, opened minutes before
+this census, with 65 checks `QUEUED` and 6 `IN_PROGRESS`. **#1960 remains the
+only stuck bump.**
+
+**Two traps this census walked into, recorded because both are cheap to repeat:**
+
+- **A date inherited from session context is not a measurement.** This session's
+  harness reported the date as 2026-08-06 while UTC was `2026-08-05T22:40Z`; the
+  host is CEST (UTC+2). Reading #2063's queued checks against the inherited date
+  made six-minute-old jobs look like a 26-hour stall, and a stalled required gate
+  on paid capacity would have been a serious finding. **`date -u` before dating
+  any measurement.** Note the split convention in this very file: its section
+  headings are LOCAL dates, while every `updated_at` quoted in them is UTC — so a
+  heading and its contents can legitimately differ by a calendar day.
+- **A dirty primary checkout is not automatically unlanded work.** This session
+  inherited `/data/projects/livespec` with `plan/livespec-ci-on-hetzner/handoff.md`
+  modified and the checkout at `4e536bdf`. The working copy proved **byte-identical
+  to `origin/master`** (sha256 `4bc1ba02…` both sides, with the same query shown
+  fail-capable against `HEAD`): the wrap-up PR had already landed as `b722548c`
+  and only the checkout was stale. It was refreshed with `checkout --` then
+  `pull --ff-only`, discarding nothing. **Diff a dirty primary against
+  `origin/master`, not just against `HEAD`, before concluding work is at risk.**
+
+**One clarification owed on a sentence above.** The line "the non-Hetzner half is
+carrying **no P0** and no unblocked implementation work" is true only of P0s
+**this thread opened**. `livespec-dev-tooling-0j3i` is **P0**, `backlog`, and
+unassigned in the `livespec-dev-tooling` tenant — and it is precisely where
+maintainer decision 1's remedy lives (it owns pin-currency escalation; the #1960
+instance is journaled on it). It is not this thread's to drive, but a reader
+checking the "no P0" claim should find it named rather than be surprised by it.
 
 ### THREE DECISIONS AWAIT THE MAINTAINER — surface these, do not take them
 
