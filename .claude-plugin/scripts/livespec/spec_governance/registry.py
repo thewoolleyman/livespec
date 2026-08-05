@@ -81,6 +81,13 @@ CONFIG_KEYS: tuple[ConfigKey, ...] = (
         allowed_values=["manual", "delegated", "consensus"],
     ),
     ConfigKey(
+        key="drift_acceptance_mode",
+        value_type="enum",
+        safe_default="human",
+        per_proposal_override=None,
+        allowed_values=["human", "consensus"],
+    ),
+    ConfigKey(
         key="ratification_review",
         value_type="enum",
         safe_default="manual-spawn",

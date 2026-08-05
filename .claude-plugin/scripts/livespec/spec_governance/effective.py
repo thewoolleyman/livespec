@@ -8,19 +8,23 @@ from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, SpecGoverna
 from livespec.spec_governance.policy import EffectivePolicy, Source
 from livespec.spec_governance.registry import CONFIG_KEYS
 from livespec.spec_governance.revise_decision import (
+    DriftAcceptanceContext,
     ReviseDecisionContext,
+    effective_drift_acceptance_mode,
     effective_revise_decision_mode,
     requires_revise_decision_input,
 )
 
 __all__: list[str] = [
     "DoctorContext",
+    "DriftAcceptanceContext",
     "EffectivePolicy",
     "RatificationContext",
     "ReviseDecisionContext",
     "awaits_ratification_review",
     "effective_critique_mode",
     "effective_doctor_disposition",
+    "effective_drift_acceptance_mode",
     "effective_in_flight_alignment",
     "effective_propose_change_mode",
     "effective_ratification_review",

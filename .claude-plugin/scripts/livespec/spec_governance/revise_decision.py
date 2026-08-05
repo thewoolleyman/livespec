@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from livespec.spec_governance.config import SpecGovernanceConfig
 from livespec.spec_governance.policy import EffectivePolicy, Source
 
 __all__: list[str] = [
+    "DriftAcceptanceContext",
     "ReviseDecisionContext",
+    "effective_drift_acceptance_mode",
     "effective_revise_decision_mode",
     "requires_revise_decision_input",
 ]
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class DriftAcceptanceContext:
+    """Floors and consensus evidence for one drift-origin revise decision."""
+
+    design_record_contradiction: bool = False
+    design_record_unavailable: bool = False
+    ratification_blocker: bool = False
+    consensus_evidence_conforming: bool = False
+    journal_ok: bool = True
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -28,8 +41,52 @@ class ReviseDecisionContext:
     design_record_unavailable: bool = False
     ratification_blocker: bool = False
     drift_origin: bool = False
+    drift_acceptance: DriftAcceptanceContext = field(default_factory=DriftAcceptanceContext)
     consensus_evidence_available: bool = False
     journal_ok: bool = True
+
+
+def effective_drift_acceptance_mode(
+    *, config: SpecGovernanceConfig, context: DriftAcceptanceContext
+) -> EffectivePolicy:
+    """Resolve drift acceptance ownership after every non-overridable floor."""
+    floor_reason = _drift_acceptance_floor_reason(context=context)
+    if floor_reason is not None:
+        return _input(reason=floor_reason)
+    mode = config.drift_acceptance_mode
+    source: Source = "global" if mode != "human" else "default"
+    if mode == "human":
+        return EffectivePolicy(
+            value=mode,
+            source=source,
+            requires_input=True,
+            reason="human drift acceptance requires maintainer input",
+        )
+    if not context.journal_ok:
+        return EffectivePolicy(
+            value=mode,
+            source=source,
+            requires_input=True,
+            reason="journal write failed",
+        )
+    return EffectivePolicy(
+        value=mode,
+        source=source,
+        requires_input=False,
+        reason="drift_acceptance_mode consensus owns conforming drift evidence",
+    )
+
+
+def _drift_acceptance_floor_reason(*, context: DriftAcceptanceContext) -> str | None:
+    if context.design_record_contradiction:
+        return "design-record contradiction requires maintainer input"
+    if context.design_record_unavailable:
+        return "design record is missing or unreachable"
+    if context.ratification_blocker:
+        return "ratification-review blocker requires maintainer input"
+    if not context.consensus_evidence_conforming:
+        return "consensus-tier evidence is absent, stale, or non-conforming"
+    return None
 
 
 def effective_revise_decision_mode(
@@ -40,9 +97,13 @@ def effective_revise_decision_mode(
         context.design_record_contradiction
         or context.design_record_unavailable
         or context.ratification_blocker
-        or context.drift_origin
     ):
         return _input(reason="design, review, or drift authority requires human input")
+    if context.drift_origin:
+        return effective_drift_acceptance_mode(
+            config=config,
+            context=context.drift_acceptance,
+        )
     if context.proposal_override_present:
         value = context.proposal_override
         if not isinstance(value, str) or value not in {"manual", "delegated", "consensus"}:

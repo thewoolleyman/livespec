@@ -39,6 +39,7 @@ _RAW_FIELD_DENYLIST = {
     "proposal_content",
     "resulting_files",
     "resulting_file_content",
+    "consensus_evidence",
     "raw_content",
 }
 
@@ -219,6 +220,18 @@ def _validate_revise_decision(*, event: dict[str, Any]) -> str | None:
 
 
 def _revise_decision_shape_error(*, event: dict[str, Any]) -> str | None:
+    basic_error = _revise_decision_basic_shape_error(event=event)
+    if basic_error is not None:
+        return basic_error
+    drift_error = _drift_acceptance_shape_error(event=event)
+    if drift_error is not None:
+        return drift_error
+    if event.get("selected_decision") not in {"accept", "modify", "reject"}:
+        return "revise decision selected_decision is invalid"
+    return _revise_decision_text_shape_error(event=event)
+
+
+def _revise_decision_basic_shape_error(*, event: dict[str, Any]) -> str | None:
     stem = event.get("proposal_stem")
     if not isinstance(stem, str) or PROPOSAL_STEM_PATTERN.fullmatch(stem) is None:
         return "revise decision proposal_stem is invalid"
@@ -226,13 +239,35 @@ def _revise_decision_shape_error(*, event: dict[str, Any]) -> str | None:
         return "content_digest must be lowercase sha256 hex"
     if event.get("effective_mode") not in {"delegated", "consensus"}:
         return "revise decision effective_mode is invalid"
-    if event.get("selected_decision") not in {"accept", "modify", "reject"}:
-        return "revise decision selected_decision is invalid"
+    return None
+
+
+def _revise_decision_text_shape_error(*, event: dict[str, Any]) -> str | None:
     required_text = ("decider_identity", "decider_model", "review_outcome", "final_outcome")
     if any(
         not isinstance(event.get(field), str) or not event[field] for field in required_text
     ) or not isinstance(event.get("escalation_reason"), str):
         return "revise decision identity, model, outcomes, and escalation must be strings"
+    return None
+
+
+def _drift_acceptance_shape_error(*, event: dict[str, Any]) -> str | None:
+    drift_fields = {
+        "effective_drift_acceptance_mode",
+        "effective_drift_acceptance_source",
+        "consensus_evidence_digest",
+    }
+    present = drift_fields.intersection(event)
+    if not present:
+        return None
+    if present != drift_fields:
+        return "drift revise decision fields must be present together"
+    if event.get("effective_drift_acceptance_mode") not in {"human", "consensus"}:
+        return "effective_drift_acceptance_mode is invalid"
+    if event.get("effective_drift_acceptance_source") not in _SOURCE_VALUES:
+        return "effective_drift_acceptance_source is invalid"
+    if not _digest(value=event.get("consensus_evidence_digest")):
+        return "consensus_evidence_digest must be lowercase sha256 hex"
     return None
 
 

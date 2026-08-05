@@ -224,6 +224,40 @@ def test_revise_decision_global_action_is_surgical_and_clearable(*, tmp_path: Pa
     assert '"unrelated": true' in cleared
 
 
+def test_drift_acceptance_global_action_refuses_delegated_and_clears(
+    *,
+    tmp_path: Path,
+) -> None:
+    set_result = apply_action(
+        project_root=tmp_path,
+        action="set-drift-acceptance-mode:global:consensus",
+    )
+    invalid_result = apply_action(
+        project_root=tmp_path,
+        action="set-drift-acceptance-mode:global:delegated",
+    )
+    invalid_shape = apply_action(
+        project_root=tmp_path,
+        action="set-drift-acceptance-mode:proposal:topic-a:consensus",
+    )
+
+    assert isinstance(set_result, EditResult)
+    assert isinstance(invalid_result, str)
+    assert "human" in invalid_result
+    assert "consensus" in invalid_result
+    assert isinstance(invalid_shape, str)
+    text_after_invalid = (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+    assert '"drift_acceptance_mode": "consensus"' in text_after_invalid
+
+    clear_result = apply_action(
+        project_root=tmp_path,
+        action="set-drift-acceptance-mode:global:clear",
+    )
+
+    assert isinstance(clear_result, EditResult)
+    assert "drift_acceptance_mode" not in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+
+
 def test_revise_decision_proposal_action_preserves_body_and_refuses_invalid_input(
     *,
     tmp_path: Path,
