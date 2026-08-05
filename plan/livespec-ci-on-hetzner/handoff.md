@@ -33,9 +33,24 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 1. **An external homelab gate** — `hl-wkyeqg` (provision server 3039451) and `hl-euzuhb` (ratify `hetzner-prod` admission) — which gates the last three slices and which this thread must not touch.
 
-**The maintainer decision that used to be item 1 here is DECIDED AND EXECUTED** (2026-08-04/05, revert-and-reland). See "The decided P0" below for what landed and what it spawned. Do not re-open it as a decision; the remaining work is ordinary execution tracked on its own items in the `livespec-dev-tooling` tenant.
+**The maintainer decision that used to be item 1 here is DECIDED AND EXECUTED** (2026-08-04/05, revert-and-reland). See "The decided P0" below for what landed and what it spawned. Do not re-open it as a decision.
 
-So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut, this thread has nothing to do and you should say so rather than manufacture work — but do check the P0's descendant items below, because one of them is a live P0 in another repo that this thread opened and remains accountable for surfacing.
+**Both P0s this thread opened are now CLOSED** (`livespec-dev-tooling-irtt`, `livespec-dev-tooling-62jh`), and the `y6e2` propagation is 8-of-8 done. As of 2026-08-05 the non-Hetzner half is carrying **no P0 and no unblocked implementation work**. What survives is listed under "Open descendants" below — all of it either maintainer-owned or genuinely someone else's queue.
+
+So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what four separate readings on 2026-08-04/05 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
+
+### Open descendants — do not re-file these, and do not close them from here
+
+| Item | Tenant | State |
+|---|---|---|
+| `livespec-dev-tooling-idlx` | `livespec-dev-tooling` | Re-land epic, 7 children, 101 functions. All `ready`. The re-land (`crl2`) is hard-blocked by `zi29`. |
+| `livespec-dev-tooling-zi29` | `livespec-dev-tooling` | P1 — a required context reports SUCCESS while skipping. Cross-repo; 6 of 10 repos. |
+| `livespec-dev-tooling-y6e2` | `livespec-dev-tooling` | P1 — reduced to stale-pack detection only. **Review 2026-08-12.** |
+| `livespec-cpqi` | `livespec` | Copier template CI drift — **re-scoped and much bigger than filed** (see below). Needs a maintainer product decision; do not self-resolve. |
+| `livespec-dev-tooling-7ix8` | `livespec-dev-tooling` | P2 — `just bootstrap` splices an uncommitted `worktree_discipline` key. Reproduced live in 4+ repos this session; it dirties every fresh worktree. |
+| `livespec-opwqmy` | `livespec` | `systemctl preset-all --dry-run` incident; `admission:manual`. |
+
+**`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
 
 Run a fresh read-only critical-path census. Every recorded number below is point-in-time and several have already moved:
 
@@ -58,7 +73,7 @@ Verify each command saw its intended input and retain raw output beside any deri
 
 **`livespec-dev-tooling-3otdg4` is DONE — implemented, merged, green, and closed.** livespec-dev-tooling [#1274](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1274) merged as `70ec2887` with `just check` green at 66/66 and both `TDD-Red-*` and `TDD-Green-*` trailer blocks; its master CI run is `completed/success`. Epic `livespec-zmys` is closed with all six children closed.
 
-~~**Nothing on the non-Hetzner half of this thread is open.**~~ **That was true when written on 2026-08-04 and is FALSE as of 2026-08-05.** The P0 below was decided and executed, and executing it opened a live P0 in another repo (`livespec-dev-tooling-62jh`) plus a re-land epic with seven children. See "The decided P0" and "The fifth repo" below. The sentence is struck rather than deleted because its expiry is the point: a "nothing is open" claim in a handoff is exactly the kind that reads as durable and is not.
+~~**Nothing on the non-Hetzner half of this thread is open.**~~ **That was true when written on 2026-08-04 and went FALSE within hours.** Deciding the P0 below opened a second P0 in another repo (`livespec-dev-tooling-62jh`), a re-land epic with seven children, and an eight-repo propagation. All of that is now discharged, but the sentence is struck rather than deleted because its expiry is the point: **a "nothing is open" claim in a handoff reads as durable and is not.** The same caution applies to the current claim that nothing is unblocked — re-measure it, do not inherit it.
 
 **One deviation, recorded rather than buried:** #1274 was intended to be held unmerged pending the decision below, and it AUTO-MERGED anyway — the repo's own `auto-enable-merge` workflow armed it as `app/livespec-pr-bot` fifteen seconds after it was opened. Five of the six sibling PRs had already auto-merged the same way in the same session, so it was foreseeable, and opening it as a DRAFT was the available safe form. The six-repairs-first ordering was satisfied and no repo was reddened by it; what was lost is the chance to sequence it against the P0 below. **Anyone opening a PR in these repos should assume auto-merge will be armed for them.**
 
@@ -80,15 +95,29 @@ Verify each command saw its intended input and retain raw output beside any deri
 
 **A fourth option was measured and rejected; do not re-propose it.** Pinning the five consumers back to `v1.18.7` cannot hold: the fan-out rewrites pins forward on the next release, and because a pin bump is a zero-`.py` changeset, `zi29` makes the check report `SUCCESS` while skipping, so the bump PR merges green and re-reddens master. That is the exact mechanism that caused the incident.
 
-### The fifth repo, and the live P0 this thread opened
+### The fifth repo, and the P0 this thread opened — BOTH NOW DISCHARGED
 
-`livespec-runtime` did **not** go green, and the reason is a second, independent defect this thread found: **`livespec-dev-tooling-62jh` (P0) — pin distribution was DOWN** to `livespec-runtime` and `livespec-driver-codex`. Neither could receive ANY pin bump after 2026-08-04T16:49Z, so `livespec-runtime` is stranded at `v1.19.3` and cannot receive the revert.
+**All five masters are green.** `livespec-runtime` was the last, and it was blocked by a second, independent defect this thread found: **`livespec-dev-tooling-62jh` (P0) — pin distribution was DOWN** to `livespec-runtime` and `livespec-driver-codex`; neither could receive ANY pin bump after 2026-08-04T16:49Z.
 
-Cause: `livespec_dev_tooling/cross_repo/shellcheck_pin_gate.py` asserted a LAYOUT rather than its invariant — it read only `justfile` for the aggregate target, while the fleet declares that list in **three** measured places (inline justfile, 7 repos; `.github/scripts/check.sh`, `livespec-runtime`; `check-targets.txt`, `livespec-driver-codex`). Both non-inline repos were reported unwired while fully wired. Fix in flight as livespec-dev-tooling [#1290](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1290).
+Cause: `livespec_dev_tooling/cross_repo/shellcheck_pin_gate.py` asserted a LAYOUT rather than its invariant — it read only `justfile` for the aggregate target, while the fleet declares that list in **three** measured places (inline justfile, 7 repos; `.github/scripts/check.sh`, `livespec-runtime`; `check-targets.txt`, `livespec-driver-codex`). Both non-inline repos were reported unwired while fully wired.
 
-Its sibling `livespec-dev-tooling-y6e2` (P1) records why nobody noticed: the `check-shell-quality` CI job **skips installing the canonical worktree pack** and then runs the gate against a justfile whose `import?` of that pack silently resolves to nothing. Same family as `zi29` and as instance 16 in `.ai/verifying-against-the-right-source.md`, different counter-move — there the step list looks wrong; here it looks fine and you must ask what the step could SEE.
+**`62jh` is CLOSED.** Fixed by livespec-dev-tooling [#1290](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1290) (`0af74ad` + `9263274`), released as `v1.19.7`, and discharged on real-fanout evidence for BOTH repos: `livespec-driver-codex` run `30978515079` (`v1.19.3`→`v1.19.7`) and `livespec-runtime` run `30978523169` (`v1.19.6`→`v1.19.7`). In each, `No-op when zero matching pins` is **skipped** and `Rewrite pins + commit + open auto-merge PR` **executed**.
 
-**Two wrong diagnoses were filed and then corrected on those items; read the corrections, not just the descriptions.** I claimed `livespec-runtime` was half-adopted (it is wired, in `.github/scripts/check.sh` — I had grepped only the justfile) and that the canonical worktree pack violates the gate (it does not — sha256 `7ae1ed4d…` passes; my six violations came from STALE INSTALLED COPIES `4fcac10a…`, because `dev-tooling/worktree.just` is gitignored and refreshed only by `just bootstrap`). A first revision of #1290 also shipped `livespec-driver-codex` as a "genuinely unwired" control; that too was false and was caught only because the PR was attended rather than left to auto-merge.
+**Read that discriminator before believing any bump succeeded.** Four earlier runs reported `success` while no-opping for a different producer and never reaching the gate — a green job status reflecting a skipped step. That trap appeared FOUR separate times in this thread (`zi29`, `y6e2`, the fan-out dispatch job, these bump runs). A run conclusion is never evidence here; the step list is.
+
+Note also that `livespec-runtime` first escaped by a **manual** bump the maintainer hand-merged (`livespec-runtime` [#476](https://github.com/thewoolleyman/livespec-runtime/pull/476)), which fixed nothing — the item stayed open until the machinery itself was proven.
+
+**Wrong diagnoses were filed and then corrected ON THOSE ITEMS; read the corrections, not just the descriptions.** I claimed `livespec-runtime` was half-adopted (it is wired, in `.github/scripts/check.sh` — I had grepped only the justfile); that the canonical worktree pack violates the gate (it does not — sha256 `7ae1ed4d…` passes; my six violations came from STALE INSTALLED COPIES `4fcac10a…`, because `dev-tooling/worktree.just` is gitignored and refreshed only by `just bootstrap`); and, in a first revision of #1290, that `livespec-driver-codex` was a "genuinely unwired" control. Later I also mis-classified three repos as having *no* pack-install step when they simply name the step differently.
+
+**Every one of those is the same error: grepping ONE repo's spelling to conclude another repo's state, in a fleet whose `AGENTS.md` says it is non-uniform by design.** Measure with a predicate on the *thing* (the recipe, the content), never on one repo's *name* for it. The #1290 case was caught only because the PR was attended rather than left to auto-merge — and note that **disabling auto-merge does not survive a subsequent push**; the bot re-arms it.
+
+### The y6e2 propagation — DONE, eight of eight
+
+`livespec-dev-tooling-y6e2` turned out **not to be a discovery**: `livespec-dev-tooling-9ywf` diagnosed and fixed exactly this in the producer on 2026-08-03 (*"green for work it never did"*) and it was never propagated. I filed it as novel because I skipped the prior-art check `AGENTS.md` requires.
+
+All eight consumer repos are fixed, merged and closed — `livespec` [#2042](https://github.com/thewoolleyman/livespec/pull/2042), `livespec-runtime` [#479](https://github.com/thewoolleyman/livespec-runtime/pull/479), `livespec-overseer` [#740](https://github.com/thewoolleyman/livespec-overseer/pull/740), `livespec-driver-claude` [#427](https://github.com/thewoolleyman/livespec-driver-claude/pull/427), `livespec-driver-codex` [#403](https://github.com/thewoolleyman/livespec-driver-codex/pull/403), `livespec-orchestrator-git-jsonl` [#557](https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/557), `livespec-orchestrator-beads-fabro` [#1308](https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro/pull/1308), `livespec-console-beads-fabro` [#641](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/641) — each verified `pack-install=success` where it previously read `skipped`. Adoption preceded enforcement: all nine repos were measured at zero violations with the current pack BEFORE any change.
+
+**`y6e2`'s remaining scope is now exactly ONE thing: stale-pack detection.** Nothing reports a consumer checkout carrying an out-of-date installed pack; four of nine primary checkouts silently carried the pre-fix `4fcac10a` on 2026-08-05, and that drift caused two of the wrong diagnoses above. Owner: maintainer. **Review date 2026-08-12** — re-justify or drop, do not carry silently.
 
 ### Superseded — the original framing of the decision, retained for its diagnosis
 
@@ -188,7 +217,7 @@ Re-measured later the same day, after this thread's non-Hetzner half completed: 
 
 Point-in-time; re-measure rather than inheriting any of it. The full raw census is journaled on `livespec-h22nve`.
 
-- **Runners.** `actions/runners` returned `total_count=6`, down from 13 the previous day — all offline, all labelled `self-hosted,local-ci`, all Phase-0 residue. The set is **not static**, so `livespec-uyfggr` must re-enumerate rather than act on a recorded id list.
+- **Runners.** `actions/runners` returned `total_count=6` on 2026-08-04, down from 13 the previous day — all offline, all labelled `self-hosted,local-ci`, all Phase-0 residue. **Re-measured 2026-08-05: `total_count=0`.** The stale registrations aged out on their own; no cleanup was performed by this thread. That is a third reading of a set that went 13 → 6 → 0 in two days, which is exactly why any slice touching runners must **re-enumerate** rather than act on a recorded id list.
 - **Routing.** `CI_RUNNER_LABELS` is `["ubuntu-latest"]`, unchanged since 2026-07-18, so gating matrices really do run hosted.
 - **Fork approval.** `all_external_contributors` — v192's strict tier, satisfied. Nothing yet detects it weakening; that detector is `livespec-uyfggr`.
 - **Triggers and protection.** `ci.yml` triggers on `pull_request` plus `push: branches: [master]`, exactly v192's permitted set. `master` protection requires the single context `ci-green`, with `enforce_admins: true`.
