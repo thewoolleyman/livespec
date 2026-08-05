@@ -26,15 +26,19 @@ If the answer is no, the signal is not evidence, however green it looks.
 ## Twenty-one instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
 ## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-21 on 2026-08-05;
 ## instances 1-16 span five repos and four independent operators
-##
-## (17 and 18 carry no recorded observation date and are deliberately not
-## assigned one here. This heading previously read "Sixteen instances" while
-## eighteen were present — it was not updated when they were added, which is the
-## clause-lockstep defect `.ai/spec-proposal-review.md` describes: a count that
-## must be re-derived whenever the set it describes changes. Corrected 2026-08-05
-## along with instances 19-21. The repo/operator tally is left scoped to 1-16
-## because it could not be re-derived from the file, and inventing an increment
-## for it would be the error this very file exists to prevent.)
+
+Two gaps in that heading are deliberate rather than oversights. **Instances 17
+and 18 carry no recorded observation date**, so none is assigned to them here — a
+first draft of this correction invented one for both and it was backed out. And
+the repo/operator tally is **scoped to instances 1-16**, because it could not be
+re-derived from the file; incrementing it on assumption would be the exact error
+this file exists to prevent.
+
+The heading itself was an instance of the defect. It read "Sixteen instances"
+while eighteen were present, because it was not updated when 17 and 18 landed —
+the clause-lockstep defect `.ai/spec-proposal-review.md` describes, where a count
+must be re-derived whenever the set it describes changes. Corrected 2026-08-05
+alongside instances 19-21. **If you add an instance, re-derive this count.**
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
