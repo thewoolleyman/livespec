@@ -29,12 +29,13 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-**Read this paragraph before running anything.** As of 2026-08-04 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is exactly two things:
+**Read this paragraph before running anything.** As of 2026-08-05 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is now exactly ONE thing:
 
-1. **One maintainer decision**, on the fleet-red P0 `livespec-dev-tooling-irtt`. It is fully diagnosed and the option set is laid out under "The one open decision" below. Nothing else in this thread is blocked by it, but landing further `livespec-dev-tooling` releases while it is open pushes the breakage further into the fleet, so prefer settling it before cutting one.
-2. **An external homelab gate** — `hl-wkyeqg` (provision server 3039451) and `hl-euzuhb` (ratify `hetzner-prod` admission) — which gates the last three slices and which this thread must not touch.
+1. **An external homelab gate** — `hl-wkyeqg` (provision server 3039451) and `hl-euzuhb` (ratify `hetzner-prod` admission) — which gates the last three slices and which this thread must not touch.
 
-So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the P0 decided, act on that decision. If it shows neither, this thread has nothing to do and you should say so rather than manufacture work.
+**The maintainer decision that used to be item 1 here is DECIDED AND EXECUTED** (2026-08-04/05, revert-and-reland). See "The decided P0" below for what landed and what it spawned. Do not re-open it as a decision; the remaining work is ordinary execution tracked on its own items in the `livespec-dev-tooling` tenant.
+
+So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut, this thread has nothing to do and you should say so rather than manufacture work — but do check the P0's descendant items below, because one of them is a live P0 in another repo that this thread opened and remains accountable for surfacing.
 
 Run a fresh read-only critical-path census. Every recorded number below is point-in-time and several have already moved:
 
@@ -55,7 +56,9 @@ Verify each command saw its intended input and retain raw output beside any deri
 
 ## Resume state — 2026-08-04, after the fleet fail-open sweep
 
-**`livespec-dev-tooling-3otdg4` is DONE — implemented, merged, green, and closed.** livespec-dev-tooling [#1274](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1274) merged as `70ec2887` with `just check` green at 66/66 and both `TDD-Red-*` and `TDD-Green-*` trailer blocks; its master CI run is `completed/success`. Epic `livespec-zmys` is closed with all six children closed. **Nothing on the non-Hetzner half of this thread is open.**
+**`livespec-dev-tooling-3otdg4` is DONE — implemented, merged, green, and closed.** livespec-dev-tooling [#1274](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1274) merged as `70ec2887` with `just check` green at 66/66 and both `TDD-Red-*` and `TDD-Green-*` trailer blocks; its master CI run is `completed/success`. Epic `livespec-zmys` is closed with all six children closed.
+
+~~**Nothing on the non-Hetzner half of this thread is open.**~~ **That was true when written on 2026-08-04 and is FALSE as of 2026-08-05.** The P0 below was decided and executed, and executing it opened a live P0 in another repo (`livespec-dev-tooling-62jh`) plus a re-land epic with seven children. See "The decided P0" and "The fifth repo" below. The sentence is struck rather than deleted because its expiry is the point: a "nothing is open" claim in a handoff is exactly the kind that reads as durable and is not.
 
 **One deviation, recorded rather than buried:** #1274 was intended to be held unmerged pending the decision below, and it AUTO-MERGED anyway — the repo's own `auto-enable-merge` workflow armed it as `app/livespec-pr-bot` fifteen seconds after it was opened. Five of the six sibling PRs had already auto-merged the same way in the same session, so it was foreseeable, and opening it as a DRAFT was the available safe form. The six-repairs-first ordering was satisfied and no repo was reddened by it; what was lost is the chance to sequence it against the P0 below. **Anyone opening a PR in these repos should assume auto-merge will be armed for them.**
 
@@ -65,7 +68,29 @@ Verify each command saw its intended input and retain raw output beside any deri
 
 **That sweep is done.** Epic `livespec-zmys` with six per-repo children, all merged: `livespec-runtime` [#472](https://github.com/thewoolleyman/livespec-runtime/pull/472), `livespec-driver-claude` [#417](https://github.com/thewoolleyman/livespec-driver-claude/pull/417), `livespec-driver-codex` [#397](https://github.com/thewoolleyman/livespec-driver-codex/pull/397), `livespec-orchestrator-git-jsonl` [#550](https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl/pull/550), `livespec-overseer` [#698](https://github.com/thewoolleyman/livespec-overseer/pull/698), `livespec-console-beads-fabro` [#640](https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/640). A fleet-wide re-measure returns ZERO remaining self-hosted `runs-on` fallbacks, and the same query returns 3 on the pre-repair trees so the zero is fail-capable. `livespec-orchestrator-beads-fabro` was excluded with reason, verified at byte level: its only three occurrences are `#`-comments and comments are stripped before parsing.
 
-### The one open decision — a fleet-red P0 this thread found but must not decide alone
+### The decided P0 — resolved 2026-08-04/05 by revert-and-reland
+
+**Decision.** The maintainer chose **revert-and-reland** over (b) adopt-forward with the five masters left red for the duration of a 101-function epic, and (c) revert with no scheduled re-land.
+
+**What landed.** livespec-dev-tooling [#1285](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1285) (commit `d423e65`) reverted `46c5dab` AND its docstring follow-up `3e0b745`; all four touched files verified byte-identical to their pre-`46c5dab` state. Release `v1.19.6` was cut and the fan-out carried it. **Four of the five red masters went green**: `livespec` (`cea9cd7d`), `livespec-overseer` (`bb78a14c`), `livespec-orchestrator-git-jsonl` (`c2743a0d`), `livespec-orchestrator-beads-fabro` (`0d1c54b7`).
+
+**"Green" here means UNENFORCED, not verified — do not read it as the ratified rule being satisfied.** All eight fleet repos declare `pure_trees` as `not_applicable` or `unarmed_until`, so with the gate restored this check now convicts nobody anywhere. That is the correct state under revert-and-reland (adoption genuinely has not happened), and arming it is the re-land epic's job.
+
+**The re-land epic is `livespec-dev-tooling-idlx`**, seven children across six tenants: producer-side `livespec-dev-tooling-yj09` (test-tree scoping) and `livespec-dev-tooling-crl2` (re-land `46c5dab`, blocked by `yj09` AND by `zi29`); adoption children `bd-gj-vxa` (4 functions), `livespec-runtime-cq8` (11), `livespec-szto` (13), `bd-ib-vcq9` (17), `overseer-bjrm` (56). Cross-tenant edges are refused by beads, so those five are prose + `metadata.non_local_depends_on` only and **nothing stops the re-land mechanically** — the epic's notes are the single place the set is enumerated.
+
+**A fourth option was measured and rejected; do not re-propose it.** Pinning the five consumers back to `v1.18.7` cannot hold: the fan-out rewrites pins forward on the next release, and because a pin bump is a zero-`.py` changeset, `zi29` makes the check report `SUCCESS` while skipping, so the bump PR merges green and re-reddens master. That is the exact mechanism that caused the incident.
+
+### The fifth repo, and the live P0 this thread opened
+
+`livespec-runtime` did **not** go green, and the reason is a second, independent defect this thread found: **`livespec-dev-tooling-62jh` (P0) — pin distribution was DOWN** to `livespec-runtime` and `livespec-driver-codex`. Neither could receive ANY pin bump after 2026-08-04T16:49Z, so `livespec-runtime` is stranded at `v1.19.3` and cannot receive the revert.
+
+Cause: `livespec_dev_tooling/cross_repo/shellcheck_pin_gate.py` asserted a LAYOUT rather than its invariant — it read only `justfile` for the aggregate target, while the fleet declares that list in **three** measured places (inline justfile, 7 repos; `.github/scripts/check.sh`, `livespec-runtime`; `check-targets.txt`, `livespec-driver-codex`). Both non-inline repos were reported unwired while fully wired. Fix in flight as livespec-dev-tooling [#1290](https://github.com/thewoolleyman/livespec-dev-tooling/pull/1290).
+
+Its sibling `livespec-dev-tooling-y6e2` (P1) records why nobody noticed: the `check-shell-quality` CI job **skips installing the canonical worktree pack** and then runs the gate against a justfile whose `import?` of that pack silently resolves to nothing. Same family as `zi29` and as instance 16 in `.ai/verifying-against-the-right-source.md`, different counter-move — there the step list looks wrong; here it looks fine and you must ask what the step could SEE.
+
+**Two wrong diagnoses were filed and then corrected on those items; read the corrections, not just the descriptions.** I claimed `livespec-runtime` was half-adopted (it is wired, in `.github/scripts/check.sh` — I had grepped only the justfile) and that the canonical worktree pack violates the gate (it does not — sha256 `7ae1ed4d…` passes; my six violations came from STALE INSTALLED COPIES `4fcac10a…`, because `dev-tooling/worktree.just` is gitignored and refreshed only by `just bootstrap`). A first revision of #1290 also shipped `livespec-driver-codex` as a "genuinely unwired" control; that too was false and was caught only because the PR was attended rather than left to auto-merge.
+
+### Superseded — the original framing of the decision, retained for its diagnosis
 
 The sweep incidentally surfaced a **pre-existing fleet-red state**, filed as `livespec-dev-tooling-irtt` (P0, ready). **FIVE** repos' master CI is red — `livespec`, `livespec-runtime`, `livespec-orchestrator-git-jsonl`, `livespec-orchestrator-beads-fabro`, `livespec-overseer` — all failing `check-public-api-result-typed`. It is not this thread's doing: every failing run names only `.py` files, and this thread's commits touched exclusively `.github/workflows/ci.yml` and Markdown.
 
