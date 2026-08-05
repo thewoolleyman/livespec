@@ -34,9 +34,22 @@ mise exec -- git -C /data/projects/livespec branch -D docs/wrong-source-instance
 
 If it did NOT land, read the failing check and fix the cause — do not close it.
 
-**Nine other worktrees exist under `~/.worktrees/livespec/`. NONE of them are this
-thread's.** `docs/wrong-source-instance-22` is the only one you may remove. Never
-touch, push, or reap another session's worktree or branch.
+There is a SECOND worktree of mine: `wrapup-livespec-ci-on-hetzner-supervisor`, which
+carries this very Resume section as `livespec` PR **#2056** (auto-merge armed,
+`--delete-branch`). Clean it up the same way once that PR merges. If you are reading
+this section from the committed file rather than the working copy, #2056 has already
+landed.
+
+**Nine OTHER worktrees exist under `~/.worktrees/livespec/`. NONE of those are this
+thread's.** Exactly two are mine and removable —
+`docs/wrong-source-instance-22` and `wrapup-livespec-ci-on-hetzner-supervisor`. Never
+touch, push, or reap any other session's worktree or branch.
+
+```sh
+# the two that are yours to reap, once their PRs (2055, 2056) are MERGED:
+mise exec -- git -C /data/projects/livespec worktree remove "$HOME/.worktrees/livespec/wrapup-livespec-ci-on-hetzner-supervisor"
+mise exec -- git -C /data/projects/livespec branch -D wrapup-livespec-ci-on-hetzner-supervisor
+```
 
 ### Thread status — re-measure, do not inherit
 
