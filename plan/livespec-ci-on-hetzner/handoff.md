@@ -196,6 +196,46 @@ the sharpest: a plain local `cat >>` to a gitignored scratch log, making **zero*
 denied because the text it was appending described instance 7. **The guard obstructs the
 documentation of the guard.**
 
+**Decision 1's unblock was then EXERCISED LIVE, which is the part that matters.** Within the
+hour, `livespec-runtime` **v0.17.0** was released and its bump PR opened, went green and
+auto-merged **unattended** — `4e25eda5` (v0.13.1) → `cead37ca` (v0.16.0, the hand-unblocked one)
+→ `84775d20` (v0.17.0, no human involved). So the single stuck PR was the ONLY blockage in that
+channel, and clearing it restored full automatic flow. **Do not read that as the system healing
+itself:** the recovery needed a NEW release to trigger it, and had none occurred the pin would
+have sat at v0.16.0 with no signal anything had been repaired. Journaled on
+`livespec-dev-tooling-0j3i`.
+
+**Decision 3's sequencing ruling now rests on a live measurement, not an argument.** PR #2081
+from this session was docs-only — the exact zero-`.py` input that triggers `zi29` — and on its
+CI run `31063620386`, **32 of 75 jobs reported `success` with their `just <target>` step
+`skipped`**, `ci-green` aggregated them, and the PR merged on a green gate in which 32 required
+contexts had verified nothing. The 40 repo-metadata jobs that carry no skip step ran normally
+and are the built-in control. **All four targets the copier template wires — `check-lint`,
+`check-format`, `check-types`, `check-coverage` — are among the 32.** So wiring 59 onto that
+shape would multiply the blast radius rather than close it, exactly as the ruling says.
+Journaled on `livespec-dev-tooling-zi29`.
+
+> ### PRACTICAL — create worktrees with `just worktree-create`, NOT raw `git worktree add`
+>
+> This cost this session **two** failed pushes at roughly four minutes each, because the refusal
+> lands only AFTER a full `just check` completes. A worktree made with the raw command has no
+> worktree-discipline pack (it is gitignored, never tracked), so the first push is refused by
+> `check-primary-checkout-commit-refuse-hook-installed` with `failure_mode: worktree_pack_absent`.
+> **It is not `.py`-gated** — a docs-only changeset is refused identically, which is what caught
+> the second one.
+>
+> ```bash
+> mise exec -- just worktree-create <branch> master   # provisions the pack; verified working
+> ```
+>
+> `just bootstrap` inside an already-created worktree also fixes it. The trap is `AGENTS.md`'s
+> own §"Repository mutation protocol", which documents the raw command — measured across the
+> fleet, **9 of 13 repos' `AGENTS.md` do, and 8 of those never mention `worktree-create`
+> anywhere**. Owned by `livespec-dev-tooling-f7xs`; this session's two reproductions and that
+> fleet spread are journaled there. Second edge: `worktree-create` is defined INSIDE the
+> gitignored pack and imported with `import?`, which silently no-ops, so in a pack-less worktree
+> `just --list` does not show the remedy at all.
+
 ### ~~THREE DECISIONS AWAIT THE MAINTAINER~~ — ALL THREE ANSWERED AND EXECUTED 2026-08-06
 
 > **DO NOT SURFACE THESE AS OPEN. DO NOT RE-ASK THEM.** The maintainer answered all three
