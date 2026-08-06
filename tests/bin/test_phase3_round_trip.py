@@ -39,6 +39,7 @@ import hashlib
 import json
 import subprocess  # documented integration-test usage
 import sys
+import time
 from pathlib import Path
 
 __all__: list[str] = []
@@ -283,6 +284,7 @@ def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: 
     }
     revise_input = tmp_path / "revise_input.json"
     _ = revise_input.write_text(json.dumps(revise_payload), encoding="utf-8")
+    time.sleep(1.1)
     revise_result = _run_wrapper(
         argv=[
             sys.executable,
@@ -366,8 +368,19 @@ def _ratification_evidence(
         "reviewer_model": "fable",
         "separate_reviewer": True,
         "read_only": True,
-        "reviewed_at": "2026-08-03T12:34:56Z",
+        "reviewed_at": _created_at_from_proposal(proposal_bytes=proposal_bytes),
         "verdict": "NO BLOCKERS",
         "proposal_stem": proposal_stem,
         "content_digest": digest.hexdigest(),
     }
+
+
+def _created_at_from_proposal(*, proposal_bytes: bytes) -> str:
+    for line in proposal_bytes.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("created_at: "):
+            return line.removeprefix("created_at: ")
+    return "2026-08-03T12:34:56Z"
+
+
+def test_ratification_fixture_falls_back_without_created_at() -> None:
+    assert _created_at_from_proposal(proposal_bytes=b"## Proposal\n") == "2026-08-03T12:34:56Z"

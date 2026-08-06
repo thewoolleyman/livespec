@@ -12,6 +12,7 @@ import hashlib
 import json
 import subprocess  # documented integration-test usage
 import sys
+import time
 from pathlib import Path
 
 import harness
@@ -159,6 +160,7 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
         revise_path = f.name
 
     spec_target = tmp_path / "SPECIFICATION"
+    time.sleep(1.1)
     revise_result = subprocess.run(
         [
             sys.executable,
@@ -204,8 +206,15 @@ def _ratification_evidence(
         "reviewer_model": "fable",
         "separate_reviewer": True,
         "read_only": True,
-        "reviewed_at": "2026-08-03T12:34:56Z",
+        "reviewed_at": _created_at_from_proposal(proposal_bytes=proposal_bytes),
         "verdict": "NO BLOCKERS",
         "proposal_stem": proposal_stem,
         "content_digest": digest.hexdigest(),
     }
+
+
+def _created_at_from_proposal(*, proposal_bytes: bytes) -> str:
+    for line in proposal_bytes.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("created_at: "):
+            return line.removeprefix("created_at: ")
+    return "2026-08-03T12:34:56Z"

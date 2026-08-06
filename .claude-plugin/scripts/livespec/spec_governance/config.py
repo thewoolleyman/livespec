@@ -43,6 +43,7 @@ class SpecGovernanceConfig:
     drift_acceptance_mode: str = "human"
     ratification_review: str = "manual-spawn"
     ratification_reviewer_model: str | None = None
+    ratification_min_review_age_seconds: int = 1
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -112,6 +113,11 @@ def _parse_block(*, block: dict[str, Any]) -> DeclaredConfig:
                 diagnostics=diagnostics,
             ),
             ratification_reviewer_model=_model_value(block=block, diagnostics=diagnostics),
+            ratification_min_review_age_seconds=_positive_int_value(
+                block=block,
+                key="ratification_min_review_age_seconds",
+                diagnostics=diagnostics,
+            ),
         ),
         diagnostics=diagnostics,
     )
@@ -169,3 +175,18 @@ def _model_value(
         return value
     diagnostics.append("ratification_reviewer_model: invalid model ignored")
     return None
+
+
+def _positive_int_value(
+    *,
+    block: dict[str, Any],
+    key: str,
+    diagnostics: list[str],
+) -> int:
+    value = block.get(key)
+    if value is None:
+        return 1
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
+        return value
+    diagnostics.append(f"{key}: invalid value ignored; safe default 1 applied")
+    return 1

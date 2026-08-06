@@ -9,9 +9,13 @@ from pathlib import Path
 from typing import Any, cast
 
 from returns.io import IOResult, impure_safe
-from returns.result import Failure, Result
+from returns.result import Failure, Result, Success
 from returns.unsafe import unsafe_perform_io
 
+from livespec.commands._revise_ratification_timing import (
+    DEFAULT_MIN_REVIEW_AGE_SECONDS,
+    ratification_timestamp_error,
+)
 from livespec.errors import LivespecError, ValidationError
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 from livespec.spec_governance.config import parse_config_text
@@ -22,7 +26,6 @@ __all__: list[str] = [
 ]
 
 _REVIEW_MODES = frozenset({"manual-spawn", "auto-spawn"})
-_UTC_SECONDS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_EVIDENCE = frozenset(
     {
@@ -79,17 +82,21 @@ def _validate_ratification_reviews(
     *,
     revise_input: RevisionInput,
     project_root: Path,
+    revised_at: str | None = None,
     spec_target: Path,
 ) -> IOResult[RevisionInput, LivespecError]:
     """Require schema-valid no-blockers evidence for every accept/modify decision."""
     reviewer_model = _configured_reviewer_model(project_root=project_root)
+    min_review_age_seconds = _configured_min_review_age_seconds(project_root=project_root)
     for decision in revise_input.decisions:
         decision_value = str(decision.get("decision", ""))
         if decision_value == "reject":
             continue
         error = _validate_decision_review(
             decision=decision,
+            min_review_age_seconds=min_review_age_seconds,
             reviewer_model=reviewer_model,
+            revised_at=revised_at,
             spec_target=spec_target,
         )
         if error is not None:
@@ -106,10 +113,21 @@ def _configured_reviewer_model(*, project_root: Path) -> str | None:
     return declared.effective.ratification_reviewer_model
 
 
+def _configured_min_review_age_seconds(*, project_root: Path) -> int:
+    config_path = project_root / ".livespec.jsonc"
+    if not config_path.is_file():
+        return DEFAULT_MIN_REVIEW_AGE_SECONDS
+    text = config_path.read_text(encoding="utf-8")
+    declared = parse_config_text(text=text)
+    return declared.effective.ratification_min_review_age_seconds
+
+
 def _validate_decision_review(
     *,
     decision: dict[str, object],
+    min_review_age_seconds: int,
     reviewer_model: str | None,
+    revised_at: str | None,
     spec_target: Path,
 ) -> str | None:
     mode = decision.get("ratification_review")
@@ -122,7 +140,9 @@ def _validate_decision_review(
     return _validate_evidence(
         decision=decision,
         evidence=narrowed_evidence,
+        min_review_age_seconds=min_review_age_seconds,
         reviewer_model=reviewer_model,
+        revised_at=revised_at,
         spec_target=spec_target,
     )
 
@@ -131,7 +151,9 @@ def _validate_evidence(
     *,
     decision: dict[str, object],
     evidence: dict[Any, Any],
+    min_review_age_seconds: int,
     reviewer_model: str | None,
+    revised_at: str | None,
     spec_target: Path,
 ) -> str | None:
     missing = sorted(_REQUIRED_EVIDENCE.difference(str(key) for key in evidence))
@@ -140,7 +162,6 @@ def _validate_evidence(
     for validator in (
         _reviewer_error,
         _declaration_error,
-        _timestamp_error,
         _verdict_error,
         _proposal_stem_error,
     ):
@@ -151,12 +172,20 @@ def _validate_evidence(
         )
         if error is not None:
             return error
-    return _digest_error(
-        decision=decision,
+    proposal_result = _proposal_bytes_result(evidence=evidence, spec_target=spec_target)
+    if isinstance(proposal_result, Failure):
+        error = proposal_result.failure()
+        return f"revise: ratification proposal cannot be read at {error[0]}: {error[1]}"
+    proposal_bytes = proposal_result.unwrap()
+    timing_error = ratification_timestamp_error(
         evidence=evidence,
-        reviewer_model=reviewer_model,
-        spec_target=spec_target,
+        min_review_age_seconds=min_review_age_seconds,
+        proposal_bytes=proposal_bytes,
+        revised_at=revised_at,
     )
+    if timing_error is not None:
+        return timing_error
+    return _digest_error(decision=decision, evidence=evidence, proposal_bytes=proposal_bytes)
 
 
 def _reviewer_error(
@@ -187,19 +216,6 @@ def _declaration_error(
     return None
 
 
-def _timestamp_error(
-    *,
-    decision: dict[str, object],
-    evidence: dict[Any, Any],
-    reviewer_model: str | None,
-) -> str | None:
-    _ = (decision, reviewer_model)
-    reviewed_at = evidence.get("reviewed_at")
-    if not isinstance(reviewed_at, str) or not _UTC_SECONDS.fullmatch(reviewed_at):
-        return "revise: ratification reviewed_at must be UTC ISO-8601 seconds"
-    return None
-
-
 def _verdict_error(
     *,
     decision: dict[str, object],
@@ -224,17 +240,11 @@ def _proposal_stem_error(
     return None
 
 
-def _digest_error(
+def _proposal_bytes_result(
     *,
-    decision: dict[str, object],
     evidence: dict[Any, Any],
-    reviewer_model: str | None,
     spec_target: Path,
-) -> str | None:
-    _ = reviewer_model
-    digest = evidence.get("content_digest")
-    if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
-        return "revise: ratification content_digest must be lowercase sha256 hex"
+) -> Result[bytes, tuple[Path, OSError]]:
     proposal_stem = cast(str, evidence["proposal_stem"])
     proposal_path = spec_target / "proposed_changes" / f"{proposal_stem}.md"
     proposal_result = cast(
@@ -244,9 +254,19 @@ def _digest_error(
         ),
     )
     if isinstance(proposal_result, Failure):
-        error = proposal_result.failure()
-        return f"revise: ratification proposal cannot be read at {proposal_path}: {error}"
-    proposal_bytes = proposal_result.unwrap()
+        return Failure((proposal_path, proposal_result.failure()))
+    return Success(proposal_result.unwrap())
+
+
+def _digest_error(
+    *,
+    decision: dict[str, object],
+    evidence: dict[Any, Any],
+    proposal_bytes: bytes,
+) -> str | None:
+    digest = evidence.get("content_digest")
+    if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
+        return "revise: ratification content_digest must be lowercase sha256 hex"
     canonical = _canonical_ratification_digest(
         decision=decision,
         proposal_bytes=proposal_bytes,

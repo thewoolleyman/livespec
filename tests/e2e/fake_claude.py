@@ -23,6 +23,7 @@ import re
 import subprocess  # documented integration-test usage
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 __all__ = [
@@ -269,6 +270,7 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
         for topic in topics
     ]
     payload: dict[str, object] = {"decisions": decisions}
+    time.sleep(1.1)
     return _invoke_with_json(
         wrapper="revise.py",
         flag="--revise-json",
@@ -321,7 +323,7 @@ def _ratification_evidence(
         "reviewer_model": "fable",
         "separate_reviewer": True,
         "read_only": True,
-        "reviewed_at": "2026-08-03T12:34:56Z",
+        "reviewed_at": _created_at_from_proposal(proposal_bytes=proposal_bytes),
         "verdict": "NO BLOCKERS",
         "proposal_stem": proposal_stem,
         "content_digest": _canonical_digest(
@@ -329,6 +331,13 @@ def _ratification_evidence(
             resulting_files=resulting_files,
         ),
     }
+
+
+def _created_at_from_proposal(*, proposal_bytes: bytes) -> str:
+    for line in proposal_bytes.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("created_at: "):
+            return line.removeprefix("created_at: ")
+    return "2026-08-03T12:34:56Z"
 
 
 def prune_history(*, project_root: Path) -> subprocess.CompletedProcess[str]:
