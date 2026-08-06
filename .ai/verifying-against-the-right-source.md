@@ -693,9 +693,60 @@ question is never "is there a skip here" — there is always a skip somewhere �
 but "did the command step execute". If you cannot say which step runs the
 command, you are not yet reading the step list, only scanning it.
 
+### 25. `--dry-run` is scoped to a verb list, and `--help` does not say so
+
+Every other entry here is about misreading a signal. This one is about a flag
+that silently is not the flag you think, and it is the only entry whose cost was
+paid in host state rather than in a wrong conclusion.
+
+`sudo systemctl preset-all --dry-run` was written into a shipped acceptance
+criterion as the NEGATIVE CONTROL proving a unit removal was durable. Run on the
+shared factory host on 2026-08-04, it did not print a plan — it **applied vendor
+presets host-wide**, creating 48 enablement symlinks including `nginx`, `vault`,
+`podman`, `ssh` and a deliberately-disabled runner supervisor. Nothing started,
+so the damage was to NEXT-BOOT enablement; 46 were reverted, and `ssh.service`
+plus the `sshd.service` alias were deliberately left enabled because a lockout on
+a remote host is not recoverable.
+
+**It is documented behaviour, not a bug, which is exactly why it is dangerous.**
+Measured on systemd **257 (257.9-0ubuntu2.5)**. `man systemctl` scopes the flag:
+
+> `--dry-run` — Just print what would be done. Currently supported by verbs
+> halt, poweroff, reboot, kexec, suspend, hibernate, hybrid-sleep,
+> suspend-then-hibernate, default, rescue, emergency, and exit.
+
+That list is **twelve** verbs and `preset-all` is not among them. The flag is
+nevertheless accepted without error and exits 0. And `systemctl --help` advertises
+it with **no scope caveat at all**:
+
+    --dry-run           Only print what would be done
+
+So the two sources disagree, and the one an operator reaches for first is the one
+that omits the constraint. A flag that is silently ignored on the verb you are
+using is indistinguishable from a flag that worked — until you inspect the state
+it was supposed not to touch.
+
+**Counter-move:** before trusting any `--dry-run`, `--check`, `-n` or
+`--what-if`, confirm the flag is honoured *by the specific subcommand*, from the
+man page rather than `--help`; treat the absence of a caveat in short help as no
+evidence. Prefer a control that is read-only **by construction** over one that is
+read-only by flag. Here that replacement already existed and is strictly stronger:
+
+    find /etc/systemd/system /run/systemd/system /usr/lib/systemd/system \
+         /lib/systemd/system -name '<pattern>'
+    systemctl list-unit-files | grep -E '<pattern>'
+
+It asserts nothing is left for ANY preset run to enable, rather than predicting
+what one particular preset run would do — and it cannot mutate, whatever the
+verb. Demonstrated fail-capable against a synthetic unit planted in a scratch
+root: 2 matches with it present (the unit file AND its `.wants/` enablement
+symlink), 0 once removed. **A control is not a control until it has been made to
+fail on demand** — the original was trusted because its name and its `--help`
+line implied a behaviour nobody had tested. (Tracked as `livespec-opwqmy`.)
+
 ## Why this file exists in livespec CORE
 
-The twenty-four instances span EIGHT repositories — `livespec`,
+The twenty-five instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and
