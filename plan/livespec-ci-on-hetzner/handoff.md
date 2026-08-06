@@ -31,35 +31,75 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T11:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T11:5xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
 >
 > **The Hetzner half is parked at an external gate and there is nothing here to drive.**
-> That is the correct, expected state — not a stall. **Nine** consecutive readings across
-> 2026-08-04/05/06 found the gate shut with not one value moved. Ninth reading taken
-> 2026-08-06T11:18:57Z, every `updated_at` byte-identical to the eighth:
+> That is the correct, expected state — not a stall. **Ten** consecutive readings across
+> 2026-08-04/05/06 found the gate shut with not one value moved. Tenth reading taken
+> 2026-08-06T11:38Z, every `updated_at` byte-identical to the ninth (which was itself taken
+> only twenty minutes earlier — this pair is a short-interval re-measure, so treat it as one
+> reading's worth of evidence about motion, not two):
 > `hl-wkyeqg` `pending-approval` (2026-08-04T04:07:29Z), `hl-euzuhb` `pending-approval`
 > (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog` (2026-08-03T10:06:45Z), `hl-6uldtn`
 > `backlog` (2026-08-04T10:12:12Z), `hl-75f` `backlog`/P1 (2026-08-04T20:58:11Z). In
 > `livespec`: `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` all
 > `pending-approval`; epic `livespec-h22nve` correctly held `active`.
 >
+> Forge, this repository, same reading: `actions/runners` `total_count=0` (a SEVENTH such
+> reading), `CI_RUNNER_LABELS` still `["ubuntu-latest"]` at `updated_at`
+> 2026-07-18T11:34:31Z, fork approval still `all_external_contributors`, and the same two
+> open PRs (#2069, #1968), both other threads' `docs(plan)` work. `homelab` `origin/main`
+> moved `12df7ed1` → `5fe0376e` — busy neighbour again, and per the eighth census's rule
+> that is not gate motion unless it moves the gate's OWN items, which it did not.
+>
 > **Your first action is still the census below**, run to CONFIRM this rather than to find
 > work. If it shows the gate open, the next slice is `livespec-3on57g`. If it shows the gate
 > shut, **say so plainly and stop — that is the correct output.**
 >
-> ### ⏰ THE ONE TIME-BOXED THING WAITING FOR YOU — a falsifiable prediction due 13:00Z
+> ### ⏰ THE ONE TIME-BOXED THING WAITING FOR YOU — a falsifiable prediction, and **DO NOT read it at 13:00Z**
 >
 > `livespec-dev-tooling-xdyh` (P1) records that the daily `Pin freshness sweep` dies on a
 > **non-fast-forward push** onto its own leftover bump branch, which took it down in FOUR
 > repos on 2026-08-04/05. Every colliding `…-livespec-runtime-v0.16.0` branch has since
-> been deleted, so the prediction journaled on that item is: **the 13:00Z sweep succeeds in
+> been deleted, so the prediction journaled on that item is: **the sweep succeeds in
 > `livespec`, `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl` and
 > `livespec-console-beads-fabro`.**
+>
+> **⚠ THE "13:00Z" IN THE PREVIOUS VERSION OF THIS BLOCK WAS A TRAP, and it was written by
+> a session that never watched the workflow run.** The cron genuinely is `0 13 * * *` —
+> that is what `pin-freshness.yml` declares and what its own comment says — but GitHub
+> delays scheduled workflows and this one has been late **five days out of five**, never by
+> less than 79 minutes: 2026-08-01 `14:23Z`, 08-02 `14:24Z`, 08-03 `15:39Z`, 08-04 `15:19Z`,
+> 08-05 `15:09Z`. All four repos fire together within about five minutes, so that is the
+> schedule and not one repo's queue. **Read the result no earlier than ~15:45Z**, or poll
+> until a run carrying today's date exists. A session that reads at 13:05Z finds no run for
+> that day and can reasonably conclude a P1 safety net is disabled — a false finding about
+> the very item it was sent to check.
 >
 > **Check it, and record the result either way** — a passing sweep does NOT close `xdyh`.
 > Recovery would be the version moving past the stale branch, not the workflow recovering;
 > the defect re-arms on the next bump PR that lingers a day. If the sweep FAILS, that is a
 > stronger finding than predicted and belongs on the item immediately.
+>
+> **The precondition was verified clear before the event on 2026-08-06 (journaled on
+> `xdyh`), which is what makes a failure a strong finding rather than an ambiguous one:**
+> zero `v0.16.0` branches survive in any of the four (control: 34/12/17/8 total heads, so
+> the empty pattern result is a real absence), and the branches today's sweep will actually
+> push — `chore/freshness-bump-livespec-runtime-v0.17.0` and
+> `chore/freshness-bump-livespec-v0.28.2`, from the current `releases/latest` — do not exist
+> anywhere.
+>
+> **But the collision debris is PERMANENT, and "the v0.16.0 branches were deleted" should
+> not be read as "the litter is cleared."** Three stale bump branches from EARLIER
+> collisions are still present: `chore/freshness-bump-livespec-v0.10.1` in `livespec`, and
+> `chore/freshness-bump-livespec-runtime-v0.12.0` plus `…-v0.5.0` in
+> `livespec-orchestrator-git-jsonl`. None can collide today. Their value is as direct
+> corroboration of `xdyh`'s mechanism — *"it never force-pushes, reuses, or deletes"* —
+> seen from the other side: **every branch this defect has ever stranded is still sitting
+> there.** The v0.16.0 set was cleared by hand; nothing in the workflow cleared these and
+> nothing will. That broadens the recurrence condition past "a bump PR that lingers a day"
+> to "any source version ever re-cut", and it means deleting the colliding branch after each
+> incident treats the symptom while leaving the next one armed.
 >
 > ### What recent sessions closed — do NOT re-drive any of it
 >
