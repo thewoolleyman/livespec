@@ -31,7 +31,7 @@ def test_show_effective_emits_manifest_declared_effective_and_diagnostics(
 
     assert exit_code == 0
     payload: dict[str, Any] = json.loads(capsys.readouterr().out)
-    assert len(payload["manifest"]) == 8
+    assert len(payload["manifest"]) == 9
     assert payload["declared"] == {"propose_change_mode": "batch"}
     assert payload["effective"]["propose_change_mode"] == "batch"
     assert payload["effective"]["revise_decision_mode"] == "manual"
@@ -72,6 +72,7 @@ def test_show_effective_reports_every_safe_default(
         "propose_change_mode": "interactive",
         "ratification_review": "manual-spawn",
         "ratification_reviewer_model": None,
+        "ratification_min_review_age_seconds": 1,
         "revise_decision_mode": "manual",
     }
     assert payload["declared"] == {}
@@ -294,7 +295,8 @@ def _matching_commented_spec_governance_block() -> str:
         '  //     "revise_decision_mode": "manual",\n'
         '  //     "drift_acceptance_mode": "human",\n'
         '  //     "ratification_review": "manual-spawn",\n'
-        '  //     "ratification_reviewer_model": null\n'
+        '  //     "ratification_reviewer_model": null,\n'
+        '  //     "ratification_min_review_age_seconds": 1\n'
         "  //   }\n"
         "  //\n"
         "  // Optional \u2014 credential_wrapper: next block\n"

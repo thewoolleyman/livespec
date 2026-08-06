@@ -206,6 +206,7 @@ def main(*, argv: list[str] | None = None) -> int:
                 lambda revise_input: _validate_ratification_reviews(
                     revise_input=revise_input,
                     project_root=_resolve_project_root(namespace=namespace),
+                    revised_at=revised_at,
                     spec_target=_resolve_spec_target(namespace=namespace),
                 ),
             )

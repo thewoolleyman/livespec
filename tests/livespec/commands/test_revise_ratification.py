@@ -75,7 +75,7 @@ def test_validate_ratification_reviews_accepts_valid_evidence_with_configured_mo
     *,
     tmp_path: Path,
 ) -> None:
-    proposal_bytes = b"## Proposal: demo\nReview me.\n"
+    proposal_bytes = _proposal_bytes(created_at="2026-08-03T12:30:00Z")
     spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
     (tmp_path / ".livespec.jsonc").write_text(
         '{"spec_governance":{"ratification_reviewer_model":"fable"}}',
@@ -91,11 +91,115 @@ def test_validate_ratification_reviews_accepts_valid_evidence_with_configured_mo
         _validate_ratification_reviews(
             revise_input=revise_input,
             project_root=tmp_path,
+            revised_at="2026-08-03T12:37:25Z",
             spec_target=spec_target,
         ),
     )
 
     assert result == Success(revise_input)
+
+
+def test_validate_ratification_reviews_accepts_v197_shaped_review_gap(
+    *,
+    tmp_path: Path,
+) -> None:
+    proposal_bytes = _proposal_bytes(created_at="2026-08-03T12:30:00Z")
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
+    resulting_files = [{"path": "spec.md", "content": "new"}]
+    evidence = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+        reviewed_at="2026-08-03T12:34:56Z",
+    )
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=evidence,
+    )
+
+    result = unsafe_perform_io(
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            revised_at="2026-08-03T12:37:25Z",
+            spec_target=spec_target,
+        ),
+    )
+
+    assert result == Success(revise_input)
+
+
+@pytest.mark.parametrize(
+    "reviewed_at",
+    [
+        "2026-08-03T12:29:59Z",
+        "2026-08-03T12:37:25Z",
+        "2026-08-03T12:37:26Z",
+    ],
+)
+def test_validate_ratification_reviews_rejects_out_of_order_review_timestamps(
+    *,
+    tmp_path: Path,
+    reviewed_at: str,
+) -> None:
+    proposal_bytes = _proposal_bytes(created_at="2026-08-03T12:30:00Z")
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
+    resulting_files = [{"path": "spec.md", "content": "new"}]
+    evidence = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+        reviewed_at=reviewed_at,
+    )
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=evidence,
+    )
+
+    result = unsafe_perform_io(
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            revised_at="2026-08-03T12:37:25Z",
+            spec_target=spec_target,
+        ),
+    )
+
+    assert isinstance(result, Failure)
+
+
+def test_validate_ratification_reviews_honors_configured_review_gap_threshold(
+    *,
+    tmp_path: Path,
+) -> None:
+    proposal_bytes = _proposal_bytes(created_at="2026-08-03T12:30:00Z")
+    spec_target = _write_proposal(tmp_path=tmp_path, proposal_bytes=proposal_bytes)
+    (tmp_path / ".livespec.jsonc").write_text(
+        '{"spec_governance":{"ratification_min_review_age_seconds":3}}',
+        encoding="utf-8",
+    )
+    resulting_files = [{"path": "spec.md", "content": "new"}]
+    evidence = _evidence(
+        proposal_bytes=proposal_bytes,
+        resulting_files=resulting_files,
+        reviewed_at="2026-08-03T12:37:23Z",
+    )
+    revise_input = _mutating_input(
+        resulting_files=resulting_files,
+        proposal_bytes=proposal_bytes,
+        evidence=evidence,
+    )
+
+    result = unsafe_perform_io(
+        _validate_ratification_reviews(
+            revise_input=revise_input,
+            project_root=tmp_path,
+            revised_at="2026-08-03T12:37:25Z",
+            spec_target=spec_target,
+        ),
+    )
+
+    assert isinstance(result, Failure)
 
 
 def test_validate_ratification_reviews_rejects_non_no_blockers_verdict(
@@ -355,13 +459,14 @@ def _evidence(
     *,
     proposal_bytes: bytes,
     resulting_files: list[dict[str, str]],
+    reviewed_at: str = "2026-08-03T12:34:56Z",
 ) -> dict[str, object]:
     return {
         "reviewer_identity": "fable",
         "reviewer_model": "fable",
         "separate_reviewer": True,
         "read_only": True,
-        "reviewed_at": "2026-08-03T12:34:56Z",
+        "reviewed_at": reviewed_at,
         "verdict": "NO BLOCKERS",
         "proposal_stem": "demo",
         "content_digest": _contract_digest(
@@ -377,6 +482,18 @@ def _write_proposal(*, tmp_path: Path, proposal_bytes: bytes) -> Path:
     proposal_path.parent.mkdir(parents=True)
     proposal_path.write_bytes(proposal_bytes)
     return spec_target
+
+
+def _proposal_bytes(*, created_at: str) -> bytes:
+    return (
+        "---\n"
+        "topic: demo\n"
+        "author: Human <human@example.com>\n"
+        f"created_at: {created_at}\n"
+        "---\n"
+        "## Proposal\n"
+        "Review me.\n"
+    ).encode()
 
 
 def _mutating_input(

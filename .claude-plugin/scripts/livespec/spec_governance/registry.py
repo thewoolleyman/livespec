@@ -13,7 +13,7 @@ __all__: list[str] = [
     "manifest_rows",
 ]
 
-ConfigValueType = Literal["enum", "map", "string"]
+ConfigValueType = Literal["enum", "integer", "map", "string"]
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -22,7 +22,7 @@ class ConfigKey:
 
     key: str
     value_type: ConfigValueType
-    safe_default: str | dict[str, str] | None
+    safe_default: str | int | dict[str, str] | None
     per_proposal_override: str | None
     allowed_values: list[str] = field(default_factory=list)
 
@@ -33,7 +33,7 @@ class ManifestRow:
 
     key: str
     value_type: str
-    safe_default: str | dict[str, str] | None
+    safe_default: str | int | dict[str, str] | None
     per_proposal_override: str | None
     allowed_values: list[str]
 
@@ -98,6 +98,13 @@ CONFIG_KEYS: tuple[ConfigKey, ...] = (
         key="ratification_reviewer_model",
         value_type="string",
         safe_default=None,
+        per_proposal_override=None,
+        allowed_values=[],
+    ),
+    ConfigKey(
+        key="ratification_min_review_age_seconds",
+        value_type="integer",
+        safe_default=1,
         per_proposal_override=None,
         allowed_values=[],
     ),

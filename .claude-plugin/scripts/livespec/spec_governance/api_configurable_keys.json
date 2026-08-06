@@ -54,5 +54,12 @@
     "safe_default": null,
     "per_proposal_override": null,
     "allowed_values": []
+  },
+  {
+    "key": "ratification_min_review_age_seconds",
+    "value_type": "integer",
+    "safe_default": 1,
+    "per_proposal_override": null,
+    "allowed_values": []
   }
 ]
