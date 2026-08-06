@@ -33,12 +33,19 @@ mise exec -- git -C /data/projects/livespec worktree list
 mise exec -- git -C /data/projects/livespec branch --list 'master'   # positive control
 ```
 
-**Eleven worktrees exist under `~/.worktrees/livespec/` and NONE is this thread's.**
-The set CHANGES UNDER YOU — one appeared mid-session — so re-enumerate rather than
-acting on any recorded list. Never touch, push, or reap another session's worktree or
-branch. The primary checkout is SHARED: it moved under this supervisor twice, and a
-peer lane cleared a dirty file of this thread's from it (correctly — it verified
-byte-identity against `origin/master` BEFORE acting).
+**Other sessions' worktrees exist under `~/.worktrees/livespec/` and NONE is this
+thread's. COUNT THEM YOURSELF; no number is written here on purpose.** The set changes
+under you in both directions — one appeared mid-session, and four were REAPED
+mid-session by this very supervisor (binder C7), which is how the number that used to
+sit in this sentence became wrong. A recorded count is a claim about a set that is
+moving, so re-enumerate rather than acting on any recorded list.
+
+Never touch, push, or reap another session's worktree or branch. **`just
+reap-stale-worktrees` is now FIXED and its BARE form REAPS — it is not a report.** Use
+`just reap-stale-worktrees <repo> --dry-run` when you want to look. The primary
+checkout is SHARED: it moved under this supervisor repeatedly, and a peer lane cleared
+a dirty file of this thread's from it (correctly — it verified byte-identity against
+`origin/master` BEFORE acting).
 
 ### Thread status — re-measure, do not inherit
 
