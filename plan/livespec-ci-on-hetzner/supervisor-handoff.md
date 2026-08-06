@@ -827,3 +827,41 @@ absence I was asserting — a non-control, C3's error, committed while writing u
 extractor bug. Re-run properly, the generator is clean (675 lines, 63 `supervisor`
 hits, zero composer prose), so this was authored into THIS binder and exactly one
 file in the repository carries it. The blast radius claim is measured, not assumed.
+
+C7. I VERIFIED THAT A DESTRUCTIVE COMMAND WORKS BY RUNNING IT, AND IT REAPED FOUR OF
+OTHER SESSIONS' WORKTREES. Confirming the `livespec-f3tf` fix, I ran the bare
+`just reap-stale-worktrees` as a check that the recipe no longer aborts. It does not
+abort — it REAPS. In about four seconds it removed four worktrees and deleted their
+four local branches, none of them mine.
+
+**The outcome was benign and that was luck relative to my intent, which is the whole
+point.** Checked afterwards: all four objects survive in the repository, all four
+branches' work is already on `origin/master` (each subject found once, with a positive
+control proving the search fail-capable), and no live tmux pane had its cwd inside a
+reaped directory — every pane across 46 sessions sits in a primary checkout. Nothing
+was lost and no session was disrupted. But I could not have known any of that
+beforehand, and I did not check beforehand. The tool is BUILT to reap only merged,
+stale worktrees, so it behaved correctly; what was wrong was me invoking it as a probe.
+
+THE SPECIFIC TRAP, and it is nastier than "read the docs". `AGENTS.md` documents
+exactly two forms — `just reap-stale-worktrees` and
+`just reap-stale-worktrees <repo> --dry-run` — and I had read that line MINUTES
+EARLIER, quoting it into a brief. Seeing a `--dry-run` sibling documented right beside
+it should have told me the bare form is the destructive one. Instead the pairing did
+the opposite: the existence of a safe variant made the family FEEL safe. **When a
+command documents a `--dry-run` form, the form WITHOUT it is the live one, and that is
+exactly the form a verification must not use.**
+
+The general rule for this thread: **NEVER PROVE A DESTRUCTIVE TOOL WORKS BY LETTING IT
+WORK.** Prove it with its dry-run, its `--help`, its exit status on a no-op target, or
+on scratch state you created. A verification is supposed to be a read; if the thing
+being verified is a write, the verification has to be designed rather than typed. And
+`AGENTS.md` separately warns "never run the worktree reaper against a repo while a
+dispatched agent is working in one of its worktrees" — I had a worker dispatched at
+that moment.
+
+This is the same family as C5 and C4 seen from a new side. C5 was a decision whose
+premise expired; C4 was a listing whose window hid the answer; this is an ACTION taken
+in the belief it was an OBSERVATION. In all three the error is invisible from inside
+because the step felt like diligence — I was, after all, verifying rather than
+assuming, which is what this charter keeps demanding.
