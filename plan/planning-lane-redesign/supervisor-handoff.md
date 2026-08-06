@@ -495,17 +495,28 @@ existed then, NOT status. Re-measure each with the commands above before acting
 on it; this plan has already been bitten twice by state that moved underneath a
 written-down claim.
 
-**One dispatch was IN FLIGHT when this session ended.**
-`drive --action impl:livespec-pw55` (the ratification-attestation hardening,
-P1) was `active`/`fabro` at 00:53:34Z. It was deliberately NOT killed at
-wind-down: a detached factory run completes on its own, and killing it
-mid-flight would orphan the sandbox and strand the item `active` with no owner.
-FIRST ACTION on resume: re-measure `livespec-pw55`. If it closed green, verify
-across three sources AND confirm the landed test actually FAILS on a
-`v198`-shaped payload and PASSES on a `v197`-shaped one — a hardening check
-that cannot reject is the same defect class it exists to fix. If it failed or
-is still `active` with no live process, read the dispatch journal `outcome` on
-an explicit `at` cutoff before re-dispatching.
+**The attestation hardening LANDED and was VERIFIED — no action needed.**
+`livespec-pw55` closed green: PR #2077, merge `235d094b`, ledger
+`resolution:completed`, confirmed an ancestor of `origin/master`. It added
+`_revise_ratification_timing.py` with `DEFAULT_MIN_REVIEW_AGE_SECONDS = 1`, a
+`created_at` floor, and a configurable
+`spec_governance.ratification_min_review_age_seconds`.
+
+Verified as more than "green": the parametrized
+`test_validate_ratification_reviews_rejects_out_of_order_review_timestamps`
+rejects all three bad shapes against `created_at 12:30:00` / `revised_at
+12:37:25` — a `reviewed_at` preceding `created_at`, one EQUAL to `revised_at`
+(the exact `v198` shape), and one post-dating it — while
+`test_validate_ratification_reviews_accepts_v197_shaped_review_gap` keeps a
+healthy gap passing, so the check discriminates rather than rejecting
+everything. It also fails closed when the proposal cannot be read. 29 tests
+pass.
+
+A caveat worth carrying: `ratification_timestamp_error` returns `None` when
+`revised_at` is `None`, so ordering validation is skipped on that path. It is
+covered by a deliberate test and is correct for non-mutating calls, but if a
+future caller ever reaches ratification with `revised_at` unset, the gate goes
+quiet rather than failing closed. Worth a look if the surface changes.
 
 **Everything else this seat held is discharged.** The full obligation record,
 including discharge evidence and every finding, is the supervisor marker the
