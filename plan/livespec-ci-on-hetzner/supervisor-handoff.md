@@ -20,12 +20,18 @@ survives on this host, and carries the full obligation record.
 ### Nothing of mine is in flight
 
 At this wrap-up there is **no supervisor-owned PR, branch, or worktree outstanding**.
-Five supervisor PRs landed this session — #2055, #2056, #2072, #2083, and the one
-carrying this very section — and every worktree and branch behind them was reaped. If
-you are reading this from the COMMITTED file rather than a working copy, the last of
-them has by definition already landed.
+Every supervisor PR opened in the session merged, and every worktree and branch behind
+them was reaped.
 
-That is still a claim with a timestamp, so verify rather than trust, and use a
+**NO TALLY IS WRITTEN HERE, DELIBERATELY — do not add one.** This section previously
+carried a worktree count and a numbered list of the session's PRs. Both were wrong
+within hours, and both were invalidated by the same supervisor who wrote them: the
+worktree count by reaping four (binder C7), the PR list by landing two more PRs after
+enumerating it. A wrap-up section is written at a moment and read at a later one, so any
+figure in it is a claim about a set that has since moved. **State invariants and give
+the reader a command; never a tally.**
+
+The invariant is still a claim with a timestamp, so verify rather than trust, and use a
 FAIL-CAPABLE query — an empty listing and a broken listing look identical:
 
 ```sh
