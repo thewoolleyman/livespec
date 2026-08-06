@@ -604,7 +604,7 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twenty-four
+  A green-looking signal read off the wrong source is not evidence: twenty-five
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
@@ -625,7 +625,10 @@ existing file):
   against a working tree one commit behind the one that actually failed, and —
   the one entry guarding the OPPOSITE error — a step named `Skip …` whose
   `skipped` status proves the check RAN, so reading its presence as the
-  skipped-required-check trap discards a green that was honestly earned.
+  skipped-required-check trap discards a green that was honestly earned, and —
+  the one entry whose cost was paid in host state — a `--dry-run` that is scoped
+  to a verb list the short help does not mention, so `systemctl preset-all
+  --dry-run` silently applied presets host-wide.
 
 ## Working with the maintainer
 

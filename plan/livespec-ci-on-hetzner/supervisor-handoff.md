@@ -320,9 +320,21 @@ reason: this same prose digest has shipped under several versions.
   the beads ledger every repository in this fleet reads, including every homelab
   thread. Nothing under `/usr/local/lib/ci-runner/` is in git, so back the tree up
   before deleting: the archive IS the rollback path. The item's own acceptance
-  already requires a negative control (`systemctl preset-all --dry-run` showing
-  nothing that would re-enable a `<unit>` of the removed set) proving the removal
-  is durable rather than merely stopped, and an explicit confirmation that Fabro,
+  already requires a negative control proving the removal is durable rather than
+  merely stopped — **use the read-only search-path assertion, NEVER
+  `systemctl preset-all --dry-run`, which despite the flag APPLIES presets
+  host-wide and did so on this very host (`livespec-opwqmy`; instance 25 in
+  `.ai/verifying-against-the-right-source.md`)**:
+
+  ```sh
+  find /etc/systemd/system /run/systemd/system /usr/lib/systemd/system \
+       /lib/systemd/system -name '<pattern>'
+  systemctl list-unit-files | grep -E '<pattern>'
+  ```
+
+  That is strictly stronger as well as safe: it asserts nothing is left for ANY
+  preset run to enable, rather than predicting one particular run. The acceptance
+  also requires an explicit confirmation that Fabro,
   Dolt on `127.0.0.1:3307`, and the Dispatcher are healthy and untouched. That
   confirmation is what distinguishes success from "the units are gone and
   something else quietly broke"; the removal is not done without it.
