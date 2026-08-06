@@ -66,19 +66,30 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   Never reap another session's worktree.
 >
 > **The `github_rate_limit_guard` will deny commands on their PROSE**, including purely local
-> ones. **Ten** measured instances. Use `git commit -F <file>`, `gh pr create --body-file`,
+> ones. Use `git commit -F <file>`, `gh pr create --body-file`,
 > `bd update --append-notes "$(cat <file>)"`, and avoid `select(` in a `--jq`. That is
 > `livespec-driver-claude-mu5`, not your command being wrong.
 >
-> **Instance 10 sharpened the heuristic, so use the new one.** The old advice — "check
-> whether your command actually touches GitHub before rewriting it" — does NOT discriminate
-> every case. Instance 10 was a single `gh pr list` (one real GitHub call, correctly
-> classified) piped to a `python3` loop **over the local file it had just written**; the
-> guard matched the loop and denied. The command genuinely touched GitHub, so the old check
-> passes and leaves you thinking the denial was earned. **Ask instead whether the LOOP is
-> over GitHub reads.** One un-looped call post-processed locally is exactly what the guard
-> means to permit. Its prescribed `--cache` is also a `gh api` flag, so on a `gh pr list`
-> denial, obeying the message literally yields a usage error.
+> **NO INSTANCE COUNT IS WRITTEN HERE, DELIBERATELY — do not add one.** This sentence
+> carried a running tally, and it was **wrong within the same session that wrote it**: it
+> said ten, and an eleventh landed minutes later in that same session. The instances are
+> journaled on `livespec-driver-claude-mu5`, which is the source of truth for how many
+> exist; read them there if you need the number. This follows the ruling of 2026-08-06 —
+> *state invariants and give the reader a command; never a tally* — which was made about
+> the supervisor binder's resume state and applies here for the identical reason: **a
+> handoff is written at one moment and read at a later one.**
+>
+> **The heuristic, which is what actually matters.** The old advice — "check whether your
+> command actually touches GitHub before rewriting it" — does NOT discriminate every case.
+> One denial was a single `gh pr list` (one real GitHub call, correctly classified) piped
+> to a `python3` loop **over the local file it had just written**; the guard matched the
+> loop and denied. The command genuinely touched GitHub, so the old check passes and leaves
+> you thinking the denial was earned. **Ask instead whether the LOOP is over GitHub reads.**
+> One un-looped call post-processed locally is exactly what the guard means to permit. The
+> next denial narrowed it further: the trigger fired on a bare `for` inside a **generator
+> expression**, with no loop statement present at all — so the matcher keys on the token,
+> not on any loop-like construct. Its prescribed `--cache` is also a `gh api` flag, so on a
+> `gh pr list` denial, obeying the message literally yields a usage error.
 
 **Read this paragraph before running anything.** As of 2026-08-05 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is now exactly ONE thing:
 
