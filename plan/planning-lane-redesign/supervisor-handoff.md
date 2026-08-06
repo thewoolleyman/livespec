@@ -490,45 +490,91 @@ echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 
 ## Resume state — POINTERS ONLY, re-measure every one
 
-Written at session wrap 2026-08-06T00:55Z. These are pointers to things that
+Written at session wrap 2026-08-06T13:05Z. These are pointers to things that
 existed then, NOT status. Re-measure each with the commands above before acting
-on it; this plan has already been bitten twice by state that moved underneath a
-written-down claim.
+on it; this plan has already been bitten three times by state that moved
+underneath a written-down claim. The full obligation record and every finding
+live in the supervisor marker the cold-open boot block already reads — read it,
+it is the detail this section deliberately does not duplicate.
 
-**The attestation hardening LANDED and was VERIFIED — no action needed.**
-`livespec-pw55` closed green: PR #2077, merge `235d094b`, ledger
-`resolution:completed`, confirmed an ancestor of `origin/master`. It added
-`_revise_ratification_timing.py` with `DEFAULT_MIN_REVIEW_AGE_SECONDS = 1`, a
-`created_at` floor, and a configurable
-`spec_governance.ratification_min_review_age_seconds`.
+**THE IMMEDIATE NEXT ACTION.** `livespec-driver-claude-wgi3uy` (repository
+`livespec-driver-claude`) is now `ready` and a confirmed dispatch candidate, and
+nothing blocks it. Dispatch it:
 
-Verified as more than "green": the parametrized
-`test_validate_ratification_reviews_rejects_out_of_order_review_timestamps`
-rejects all three bad shapes against `created_at 12:30:00` / `revised_at
-12:37:25` — a `reviewed_at` preceding `created_at`, one EQUAL to `revised_at`
-(the exact `v198` shape), and one post-dating it — while
-`test_validate_ratification_reviews_accepts_v197_shaped_review_gap` keeps a
-healthy gap passing, so the check discriminates rather than rejecting
-everything. It also fails closed when the proposal cannot be read. 29 tests
-pass.
+```sh
+PR=$(python3 -c "import json,pathlib;d=json.loads((pathlib.Path.home()/'.claude/plugins/installed_plugins.json').read_text());print([e['installPath'] for e in d['plugins']['livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro'] if e.get('projectPath')=='/data/projects/livespec-driver-claude'][0])")
+python3 "$PR/scripts/bin/drive.py" --repo /data/projects/livespec-driver-claude \
+  --action impl:livespec-driver-claude-wgi3uy --json
+```
 
-A caveat worth carrying: `ratification_timestamp_error` returns `None` when
-`revised_at` is `None`, so ordering validation is skipped on that path. It is
-covered by a deliberate test and is correct for non-mutating calls, but if a
-future caller ever reaches ratification with `revised_at` unset, the gate goes
-quiet rather than failing closed. Worth a look if the surface changes.
+Its scope is ONE prose line in `.ai/beads-tenant.md`. Preflight: the checkout
+must be clean on `master` and current, or the engine falls back to a synthetic
+base that exists nowhere on origin.
 
-**Everything else this seat held is discharged.** The full obligation record,
-including discharge evidence and every finding, is the supervisor marker the
-cold-open boot block already reads. Read it — it is the detail this section
-deliberately does not duplicate.
+**THE FIVE RENAME ITEMS — three disposed, one ready, one blocked.** All
+verified from three sources plus each acceptance criterion, never a drive
+summary line:
+
+| item | repository | state |
+|---|---|---|
+| `livespec-driver-codex-4y5ijl` | `livespec-driver-codex` | CLOSED as re-scoped — zero prose hits ever existed |
+| `livespec-runtime-gp3ppk` | `livespec-runtime` | MERGED, PR #495, `8b2c14c4` |
+| `bd-gj-mbde5p` | `livespec-orchestrator-git-jsonl` | MERGED, PR #570, `8a8a3c45` |
+| `livespec-driver-claude-wgi3uy` | `livespec-driver-claude` | READY — dispatch it, see above |
+| `livespec-dev-tooling-jaut4y` | `livespec-dev-tooling` | BLOCKED, see below |
+
+Their filed "at capture" counts were all measured with a pattern set that
+included the IDENTIFIER forms, but the landed ban (`AGENTS.md`:689) governs
+PROSE only. The identifier forms (`check-plan-thread-*`,
+`plan_thread_*.py`) are stamped projections of `livespec-dev-tooling` module
+filenames and are NOT a consumer's to rename — they restamp automatically via
+fan-out once `jaut4y` lands. The full measurement is journaled on all five
+items.
+
+**`livespec-dev-tooling-jaut4y` IS NOT FACTORY-BUILDABLE, and that is not its
+fault.** A dispatch ran ~2h and died: the repo's own justfile records the commit
+aggregate at **593s/1043s**, while Fabro's checkpoint commit caps at **600s**,
+and Fabro exposes no timeout knob (`run --help`, `settings.toml`, the workflow —
+none). It also carries a clause-lockstep trap: renaming
+`checks/plan_thread_epic_parity.py` invalidates `_WORLD_GATE_CHECK_SLUGS`, whose
+`_validate_world_gate_subset` asserts every entry is a real canonical slug. The
+complete 15-file co-edit set is journaled on the item. It was left stranded at
+`active`/`fabro` and has been reset to `pending-approval`; note `drive --action
+reject:<id>:rework` REFUSES a run-stranded item (`expected acceptance source
+state; found active`), so no sanctioned valve reclaims one. Route: build it on a
+worker via Red-Green-Replay (the fallback this binder sanctions), or fix the
+gate-cost mismatch first. Do NOT bare-retry.
+
+**The cross-repo manifest gap — fixed in three repositories, still open in
+three.** Every sibling item of this plan depends on `{repo: livespec}`, and
+`resolve_ref` returns `UNKNOWN` (fail-closed) for any repo absent from the
+CONSUMER's own `.livespec.jsonc` `cross_repo_targets`. Registered now in
+`livespec-runtime` (#494), `livespec-orchestrator-git-jsonl` (#569) and
+`livespec-driver-claude` (#439). Still ABSENT in `livespec-overseer`,
+`livespec-orchestrator-beads-fabro` and `livespec-console-beads-fabro`, so
+`overseer-ftfhek`, `bd-ib-da4fs2` and `livespec-console-beads-fabro-sisnmx`
+will hit the same wall when their turn comes. Correction to the older record:
+closing `livespec-zsn2xh.4` did NOT unblock the siblings — nine of ten were
+never mechanically dispatchable.
+
+**Two defects filed against core, neither this plan's to fix.**
+`livespec-bpzy` (P2): an unreadable cross-repo clone maps to an EMPTY heading
+set rather than `None`, so doctor silently drops the entire
+`external_references` allowlist and reports allowlisted citations as "not
+allowlisted". Also: live `SPECIFICATION/spec.md` carries 15 design-record
+citations to `plan/archive/planning-lane-redesign/research/…`, which does not
+exist yet — they resolve only if `livespec-zsn2xh.5` archives to exactly that
+path, which is journaled on that item.
 
 **Owned elsewhere, not this seat's to drive:** grooming `bd-ib-mrqoy2`
 (repository `livespec-orchestrator-beads-fabro`) and `overseer-pfpfty`
 (repository `livespec-overseer`) — maintainer-owned cuts in their own
-repositories, which this binder forbids decomposing from here;
-`livespec-zsn2xh.5`, gated on that orchestrator rewrite; and five rename-only
-sweeps now unblocked in their own repositories.
+repositories, which this binder forbids decomposing from here. `bd-ib-mrqoy2`
+remains the critical path: it gates `livespec-zsn2xh.5`, `overseer-ftfhek`,
+`bd-ib-da4fs2` and transitively `livespec-console-beads-fabro-sisnmx`. The
+maintainer chose it as the first groom on 2026-08-06. Note `livespec-orchestrator-beads-fabro`
+had an active Codex session on a DIFFERENT plan; coordinate before driving
+anything there.
 
 ## Corrections
 
@@ -601,3 +647,35 @@ Two consequences. A limit banner in scrollback is not evidence of a CURRENT
 limit — check its stated reset against `date -u` before believing it. And when
 a watcher's value depends on a reader, say so in the obligation record rather
 than treating "armed" as "handled".
+
+T5. A GREEN CHECK RUN THROUGH A CODE PATH CI DOES NOT TAKE IS NOT A PREDICTION
+ABOUT CI. I ran `check-doctor-static` locally, got zero non-pass findings, and
+pushed. CI failed the same check on the same commit. Both runs were honest; they
+exercised DIFFERENT BRANCHES. The citation checker resolves a cross-repo
+citation against a local clone when one is configured, and falls back to the
+`external_references` allowlist when none is. Locally
+`/data/projects/livespec` exists, so it passed by RESOLUTION and never touched
+the allowlist. On the runner that path cannot exist, so the allowlist was the
+only path — and it had been silently emptied.
+
+Emptied by a real core defect, now filed as `livespec-bpzy`:
+`_read_cross_repo_headings` maps an UNREADABLE clone file to an EMPTY
+`frozenset`, and `_validated_external_references` keeps an entry only when
+`headings is None or head in headings`. An empty set is neither, so EVERY
+allowlist entry for that repo is dropped and each allowlisted citation fails
+claiming it "is not allowlisted". The branch is marked `# pragma: no cover`.
+
+The asymmetry is the part worth carrying: NOT registering a cross-repo target
+is SAFER than registering one, because an unconfigured repo yields `None` and
+the allowlist survives. Registering it — required for the Dispatcher readiness
+gate — is what breaks the citation checker. Doing the right thing for one
+subsystem broke another, and the error message blamed the citation rather than
+the unreachable clone.
+
+Two habits, both cheap. When a check consults an EXTERNAL artifact, ask which
+branch your green run took and whether CI can take the same one; if it cannot,
+simulate the CI shape locally before pushing (breaking `local_clone` to a
+nonexistent path reproduced the CI failure exactly, in seconds). And when a
+first hypothesis is cheap to test, test it rather than act on it — mine here
+was that the apposition wording confused the parser, and it was WRONG; reverting
+it would have degraded the change while leaving the failure untouched.
