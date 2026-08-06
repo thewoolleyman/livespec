@@ -215,6 +215,22 @@ and are the built-in control. **All four targets the copier template wires — `
 shape would multiply the blast radius rather than close it, exactly as the ruling says.
 Journaled on `livespec-dev-tooling-zi29`.
 
+**And it now has a MATCHED CONTROL, which is what makes it unarguable.** The `livespec-f3tf`
+fix (PR [#2085](https://github.com/thewoolleyman/livespec/pull/2085)) was a `.py` changeset in
+the same repository on the same day, through the same 75-job workflow — one variable changed:
+
+| PR | changeset | trap signature | genuinely ran |
+|---|---|---|---|
+| [#2081](https://github.com/thewoolleyman/livespec/pull/2081) | docs-only, zero `.py` | **32** | 40 |
+| [#2085](https://github.com/thewoolleyman/livespec/pull/2085) | a `.py` fix | **0** | **72** |
+
+Flip the one variable and the same detector reports zero, while the ran-count rises from 40 to
+72. That kills the reply that the detector might simply be mislabelling ordinary skips, and it
+disposes of the softer reading that the skipped checks "would not have found anything on a docs
+change" — whichever is true, the reported STATUS is `success` either way, and `ci-green`
+aggregates it either way. **A required context that reports the same thing whether or not it ran
+cannot be used as evidence.**
+
 > ### PRACTICAL — create worktrees with `just worktree-create`, NOT raw `git worktree add`
 >
 > This cost this session **two** failed pushes at roughly four minutes each, because the refusal
@@ -319,7 +335,7 @@ creators).
 | `livespec-driver-claude-mu5` | `livespec-driver-claude` | P1 — `github_rate_limit_guard` denies on substrings, not behavior, and its prescribed `--cache` remedy is absent from its decision logic. Filed 2026-08-05; see the census section below. |
 | `livespec-dev-tooling-uw3h` | `livespec-dev-tooling` | P2 — `check-self-hosted-routing` guards 2 of the 3 copies of `ci.yml`'s declared fallback lockstep; the unguarded `LIVESPEC_CI_LANE` copy would silently halve paid hosted CI parallelism. Filed 2026-08-05; relevant to `livespec-3on57g`, which will edit those lines. |
 | `bd-ib-te4h` | `livespec-orchestrator-beads-fabro` | P2 — the `gate-runner` referral `livespec-hhx4gl` named and never made. Does v192's factory-host clause reach the privileged tier? **That repository's question to answer; do not answer it here.** |
-| `livespec-f3tf` | `livespec` | P2 — `just reap-stale-worktrees` aborts with `Bad substitution` on EVERY invocation, so the worktree-cleanup entry point `AGENTS.md` prescribes has never run. Filed 2026-08-05 with a full constraint map; see below before attempting the fix. |
+| ~~`livespec-f3tf`~~ | `livespec` | **CLOSED 2026-08-06T03:42:18Z** — fixed and live-exercised, PR [#2085](https://github.com/thewoolleyman/livespec/pull/2085), merged `0f38cc26`. `just reap-stale-worktrees` works again. Do not re-drive it; the section below is retained for its constraint map, which held exactly. |
 | `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
 
 **`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
@@ -391,9 +407,34 @@ Both were dismissed as other threads' PRs by the earlier census; both are actual
 
 Measured across all 13 manifest members: `livespec` `d50a6f0d`, `livespec-dev-tooling` `847fa459`, `livespec-runtime` `b824d241`, `livespec-driver-claude` `0e44a455`, `livespec-driver-codex` `b22faef6` (after rerun), `livespec-orchestrator-git-jsonl` `e627116b`, `livespec-orchestrator-beads-fabro` `e25746b1` (after rerun), `livespec-console-beads-fabro` `706050b2`, `livespec-overseer` `5c0d3ad5`, `homelab` `e8c42600`, `dolt-server` `ceaa078a`. `openbrain` and `resume` return **404 for `ci.yml`**, and the first draft of this section stopped there and declared them unmeasured. That was the fleet's own recorded error — concluding a repo's state from another repo's spelling — so they were enumerated properly instead: `resume` gates with **`check.yml`** (green, `master` `f953c2d5`, 2026-08-05) and `openbrain` has no per-push gate at all, only `tripwire.yml` (green, `main` `934edab5`, but last run 2026-07-29 — it is scheduled, not per-push, so it is **not** evidence about current `main`). **Enumerate a repo's workflows before concluding it has no CI.**
 
-### `just reap-stale-worktrees` has never run — `livespec-f3tf` (P2)
+### ~~`just reap-stale-worktrees` has never run~~ — `livespec-f3tf`, **FIXED AND CLOSED 2026-08-06**
 
-**The worktree-cleanup entry point `AGENTS.md` prescribes aborts on every invocation.** `justfile:1146` reads `--repo "$1" "${@:2}"`; `${@:2}` is a **bash array slice** and this justfile declares no `set shell`, so `just` uses its default `sh` (dash on Ubuntu) and dies with `Bad substitution` before running anything. It is a parse-time failure in the recipe body, so it does not depend on the arguments — the documented no-arg form fails identically. **The script itself is healthy**: invoked directly it runs clean and reports 5 reapable worktrees plus 12 dead project-plugin entries, and the cross-repo form works against a real sibling. This is purely recipe wiring.
+> **This is finished business. `just reap-stale-worktrees` works.** Fixed by
+> `livespec` PR [#2085](https://github.com/thewoolleyman/livespec/pull/2085), merged
+> `0f38cc26`; item closed `2026-08-06T03:42:18Z` on live-exercise evidence — the shipped
+> recipe was re-run from the primary checkout on merged master (exit 0, 5 reapable). The
+> diagnosis below is retained UNCHANGED because its constraint map held in every
+> particular and is the reason the fix took one attempt instead of a fourth rejected
+> candidate. **Read it as a record, not as work.**
+>
+> **What landed:** the recipe body became `--repo "$@"` — under `[positional-arguments]`
+> `$@` is `[repo, *args]`, so that single conforming line expands correctly — and
+> `main()` in `dev-tooling/reap_stale_worktrees.py` absorbs the empty placeholder while
+> still erroring on a real trailing argument. That is design D1 (move the argument shape
+> into the script) in a variant that keeps ONE way to name the repo rather than adding a
+> positional beside the existing `--repo`.
+>
+> **The two `--dry-run`-less forms were deliberately NOT executed** during verification:
+> they reap worktrees AND `prune_dead_project_plugin_entries` rewrites the HOST plugin
+> registry, and this repo holds worktrees belonging to other sessions. Their argv is
+> covered by unit test instead — which is precisely the payoff of putting the quirk in
+> the script.
+>
+> **Still true and still worth obeying:** the reapable set moves continuously (5 → 4 → 5
+> within one session). RE-MEASURE before reaping, and never reap another session's
+> worktree.
+
+**The worktree-cleanup entry point `AGENTS.md` prescribed aborted on every invocation.** `justfile:1146` reads `--repo "$1" "${@:2}"`; `${@:2}` is a **bash array slice** and this justfile declares no `set shell`, so `just` uses its default `sh` (dash on Ubuntu) and dies with `Bad substitution` before running anything. It is a parse-time failure in the recipe body, so it does not depend on the arguments — the documented no-arg form fails identically. **The script itself is healthy**: invoked directly it runs clean and reports 5 reapable worktrees plus 12 dead project-plugin entries, and the cross-repo form works against a real sibling. This is purely recipe wiring.
 
 That is why stale worktrees accumulate here — this repo currently carries **9** beside the primary, 5 of them reapable right now. `AGENTS.md` §"Repository mutation protocol" steers you to this recipe *"rather than hand-deleting unfamiliar state"*, so the prescribed path is the broken one and the fallback it warns you off is the only thing that works. The recipe is defined in `livespec`'s justfile **alone** — all eight sibling members return zero matches — so it is a single-repo fix with fleet-wide effect.
 
