@@ -761,3 +761,40 @@ def test_action_guard_skips_default_branch_even_if_detection_regresses(
     assert wt_master.is_dir()
     master_branch = _git(cwd=primary, args=["branch", "--list", "master"]).stdout
     assert master_branch.strip() != ""  # never `branch -D master`
+
+
+def test_main_tolerates_the_just_empty_variadic_placeholder(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An empty trailing argument is accepted, because `just` always sends one.
+
+    The `reap-stale-worktrees` recipe declares `*args=""`. `just` refuses a
+    non-defaulted variadic after a defaulted parameter, so that default is
+    forced, and it supplies ONE empty-string argument whenever the caller
+    passes no trailing arguments. The recipe body may not filter it out: the
+    shell-quality contract allows a single command line with no chaining or
+    substitution. So `main` must absorb the placeholder itself.
+    """
+    module = _load_module()
+    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    monkeypatch.chdir(primary)
+
+    rc = module.main(argv=["--repo", str(primary), ""])
+
+    assert rc == 0
+
+
+def test_main_rejects_a_non_empty_trailing_argument(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the empty placeholder is absorbed — a real argument tail still errors.
+
+    Guards the acceptance clause that the fix must not be achieved by making
+    the recipe silently swallow whatever follows the repo path.
+    """
+    module = _load_module()
+    primary, _origin = _init_primary_with_origin(tmp_path=tmp_path)
+    monkeypatch.chdir(primary)
+
+    with pytest.raises(SystemExit):
+        _ = module.main(argv=["--repo", str(primary), "unexpected-tail"])

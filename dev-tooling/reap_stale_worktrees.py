@@ -361,7 +361,23 @@ def main(*, argv: list[str] | None = None) -> int:
         action="store_true",
         help="report what would be reaped without removing anything",
     )
+    _ = parser.add_argument(
+        "just_variadic_placeholder",
+        nargs="*",
+        default=[],
+        help=(
+            "absorbs the empty argument the `just reap-stale-worktrees` recipe always "
+            "sends. `just` refuses a non-defaulted variadic after a defaulted parameter, "
+            'so the recipe\'s `*args=""` default is forced, and `just` then supplies one '
+            "empty-string argument whenever no trailing arguments are given. The recipe "
+            "body cannot strip it: check-shell-quality allows a single command line with "
+            "no chaining or substitution. Only empty strings are accepted here"
+        ),
+    )
     namespace = parser.parse_args(argv)
+    unexpected = [value for value in list(namespace.just_variadic_placeholder) if value]
+    if unexpected:
+        parser.error(f"unrecognized arguments: {' '.join(unexpected)}")
     repo = _resolve_repo_path(repo=Path(str(namespace.repo)))
     dry_run = bool(namespace.dry_run)
     _ = reap_worktrees(repo=repo, dry_run=dry_run)

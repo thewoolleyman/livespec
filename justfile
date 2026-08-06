@@ -1128,9 +1128,13 @@ vendor-update lib:
     uv run python -m livespec_dev_tooling.vendor_update "$1"
 
 # Deterministic, idempotent worktree REAPER — the ACTION counterpart
-# to doctor's detection-only `no-stale-worktree` check. The Layer 3
-# orchestrator runs this to mechanically clean up orphaned worktrees
-# in any fleet member repo after their PRs rebase-merge (remote branch gone).
+# to doctor's detection-only `no-stale-worktree` check. Driven by a
+# maintainer (or an agent following AGENTS.md §"Repository mutation
+# protocol") to mechanically clean up orphaned worktrees in any fleet
+# member repo after their PRs rebase-merge (remote branch gone). It has
+# no automated caller: the Layer-3 orchestrator that used to run it was
+# retired at the W6 dark-factory cutover, which is why nothing was
+# failing loudly while this recipe was broken.
 # Reaps a NON-primary worktree only when its branch is "done"
 # (remote-gone), its working tree is clean, and it is not held by a
 # LIVE process lock; never touches the primary worktree. NOT part of
@@ -1143,7 +1147,7 @@ vendor-update lib:
 #   just reap-stale-worktrees /path/to/repo --dry-run  # preview a sibling
 [positional-arguments]
 reap-stale-worktrees repo="." *args="":
-    uv run python3 dev-tooling/reap_stale_worktrees.py --repo "$1" "${@:2}"
+    uv run python3 dev-tooling/reap_stale_worktrees.py --repo "$@"
 
 check-partition-completeness:
     uv run python -m livespec_dev_tooling.checks.partition_completeness
