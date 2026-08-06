@@ -29,41 +29,27 @@ the retry layer can act on them.
 
 import json
 import shlex
-import subprocess
-from dataclasses import dataclass
 from typing import Any
 
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.unsafe import unsafe_perform_io
 
+from livespec_runtime.cross_repo.providers.github_process import (
+    GithubBudgetUnmeasurable,
+    GithubFailure,
+    GithubQueryFailed,
+    completed_gh,
+)
+
 __all__: list[str] = [
+    "GithubBudgetUnmeasurable",
+    "GithubFailure",
     "GithubQueryFailed",
     "NonCanonicalGithubUrlError",
     "branch_exists_on_remote",
     "branch_merged_into_default",
     "query_pull_request_state",
 ]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class GithubQueryFailed:
-    """A `gh` query that did not produce an answer.
-
-    Deliberately NOT inhabited by "gh answered, and the answer was no".
-    A 404 on the branch-existence probe means the branch is gone; a PR
-    in state `CLOSED` is a state. Both are answers and both stay on the
-    success track — putting them here would make the retry layer burn
-    three attempts re-asking a question that was already settled.
-
-    `argv` is the shell-quoted command so an operator can rerun it. The
-    pre-railway code discarded it: `retry_with_backoff` returned a bare
-    `None`, so a resolution that degraded to `UNKNOWN` could not say
-    which of three possible queries had failed.
-    """
-
-    argv: str
-    detail: str
-    http_404: bool = False
 
 
 # Named rather than written as bare `True`/`False` literals at the lift
@@ -91,7 +77,7 @@ class NonCanonicalGithubUrlError(Exception):
         self.github_url = github_url
 
 
-def query_pull_request_state(*, github_url: str, number: int) -> IOResult[str, GithubQueryFailed]:
+def query_pull_request_state(*, github_url: str, number: int) -> IOResult[str, GithubFailure]:
     """Return the PR's `state` via `gh pr view --json state`.
 
     State is one of `OPEN`, `CLOSED`, `MERGED` per the GitHub REST API.
@@ -99,7 +85,7 @@ def query_pull_request_state(*, github_url: str, number: int) -> IOResult[str, G
     `RefStatus.CLOSED` and `OPEN` as `RefStatus.OPEN`.
     """
     argv = ["gh", "pr", "view", str(number), "--repo", github_url, "--json", "state"]
-    completed = _completed_gh(argv=argv)
+    completed = completed_gh(argv=argv)
     if isinstance(completed, IOFailure):
         return completed
     return _decoded_field(
@@ -107,7 +93,7 @@ def query_pull_request_state(*, github_url: str, number: int) -> IOResult[str, G
     )
 
 
-def branch_exists_on_remote(*, github_url: str, name: str) -> IOResult[bool, GithubQueryFailed]:
+def branch_exists_on_remote(*, github_url: str, name: str) -> IOResult[bool, GithubFailure]:
     """Return True iff the named branch exists on the remote.
 
     Uses `gh api repos/<owner>/<name>/branches/<branch>`. A 404 is
@@ -125,43 +111,16 @@ def branch_exists_on_remote(*, github_url: str, name: str) -> IOResult[bool, Git
     """
     owner_name = _split_owner_name(github_url=github_url)
     argv = ["gh", "api", f"repos/{owner_name}/branches/{name}"]
-    completed = _completed_gh(argv=argv)
+    completed = completed_gh(argv=argv)
     if isinstance(completed, IOFailure):
         failure = unsafe_perform_io(completed.failure())
-        if failure.http_404:
+        if isinstance(failure, GithubQueryFailed) and failure.http_404:
             return IOSuccess(_A_404_MEANS_THE_BRANCH_IS_GONE)
         return completed
     return IOSuccess(_GH_ANSWERED_SO_THE_BRANCH_EXISTS)
 
 
-def _completed_gh(
-    *, argv: list[str]
-) -> IOResult[subprocess.CompletedProcess[str], GithubQueryFailed]:
-    """Run a `gh` command, or name the invocation that did not answer.
-
-    The `HTTP 404` fingerprint is read here rather than at each call
-    site, because only the CALLER knows whether a 404 is an answer: for
-    the branch-existence probe it means "gone", and for the PR and
-    compare queries it means the query was aimed at something that is
-    not there. So this records the fingerprint on the failure and lets
-    each caller decide.
-    """
-    try:
-        completed = subprocess.run(argv, capture_output=True, check=True, text=True)
-    except subprocess.CalledProcessError as failed:
-        return IOFailure(
-            GithubQueryFailed(
-                argv=shlex.join(argv),
-                detail=(failed.stderr or "").strip() or f"exit {failed.returncode}",
-                http_404=_stderr_indicates_http_404(stderr=failed.stderr),
-            )
-        )
-    except OSError as unusable:
-        return IOFailure(GithubQueryFailed(argv=shlex.join(argv), detail=str(unusable)))
-    return IOSuccess(completed)
-
-
-def _decoded_field(*, argv: list[str], stdout: str, key: str) -> IOResult[str, GithubQueryFailed]:
+def _decoded_field(*, argv: list[str], stdout: str, key: str) -> IOResult[str, GithubFailure]:
     """The named string field of a `gh --json` payload, or why it is absent.
 
     A malformed payload and a payload missing the key both used to raise
@@ -184,27 +143,12 @@ def _decoded_field(*, argv: list[str], stdout: str, key: str) -> IOResult[str, G
     return IOSuccess(value)
 
 
-def _stderr_indicates_http_404(*, stderr: str | None) -> bool:
-    """Return True iff any stderr line carries the structured `HTTP 404` marker.
-
-    `gh` formats 4xx responses as `gh: <message> (HTTP <code>)` on a
-    dedicated stderr line. Matching on the trailing `(HTTP 404)`
-    marker — rather than a bare `404` substring — avoids
-    mis-categorizing unrelated content (URL fragments, body text
-    referencing 404 pages, etc.) as a real not-found response.
-    """
-    if not stderr:
-        return False
-    marker = "(HTTP 404)"
-    return any(line.rstrip().endswith(marker) for line in stderr.splitlines())
-
-
 def branch_merged_into_default(
     *,
     github_url: str,
     name: str,
     default_branch: str,
-) -> IOResult[bool, GithubQueryFailed]:
+) -> IOResult[bool, GithubFailure]:
     """Return True iff `name` is fully reachable from `default_branch`.
 
     Uses `gh api repos/<owner>/<name>/compare/<default>...<name>`. The
@@ -215,7 +159,7 @@ def branch_merged_into_default(
     """
     owner_name = _split_owner_name(github_url=github_url)
     argv = ["gh", "api", f"repos/{owner_name}/compare/{default_branch}...{name}"]
-    completed = _completed_gh(argv=argv)
+    completed = completed_gh(argv=argv)
     if isinstance(completed, IOFailure):
         return completed
     decoded = _decoded_field(
