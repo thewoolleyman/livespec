@@ -1,6 +1,6 @@
 # Supervisor Handoff - livespec-ci-on-hetzner
 
-## Resume state — written at session wrap-up 2026-08-06T02:15Z
+## Resume state — written at session wrap-up 2026-08-06T09:3xZ
 
 You are the SUPERVISOR of the `livespec-ci-on-hetzner` thread. This section is the
 only thing carried across the restart, so it is deliberately short and points at the
@@ -59,8 +59,8 @@ Four slices CLOSED: `livespec-teasvm`, `livespec-uyfggr`, `livespec-hhx4gl`,
 `livespec-dev-tooling-3otdg4`. **Every non-Hetzner slice is done.** The remaining
 three — `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` — are
 `pending-approval` behind the homelab gate and CANNOT be started. Measured
-2026-08-06T02:04Z: `hl-wkyeqg` and `hl-euzuhb` both still `pending-approval`,
-`hl-xuu5j3` still `backlog`. That is a seventh consecutive reading with nothing moved.
+2026-08-06T08:16Z: `hl-wkyeqg` and `hl-euzuhb` both still `pending-approval`,
+`hl-xuu5j3` still `backlog`. That is a NINTH consecutive reading with nothing moved.
 
 **The gate's SHAPE changed even though its status did not, and that is the useful
 part.** The host is no longer dark — it is up and bare metal — so the blocker is now
@@ -76,6 +76,47 @@ So the thread is **legitimately parked at an external gate, not idling**. Do not
 manufacture a slice to look busy; a previous worker was explicitly commended for
 refusing to. If you have context to spend, spend it on verification or on the open
 items below, not on inventing thread work.
+
+### THE ONE LIVE FINDING — raised to the maintainer, decision PENDING
+
+**Six consecutive `livespec` releases were PUBLISHED while their release gate FAILED.**
+Measured 2026-08-06T08:5xZ: `Release tag` runs for v0.26.1, v0.27.0, v0.27.1, v0.28.0,
+v0.28.1 and v0.28.2 all concluded `failure`, and every one of those releases is
+published and consumable — v0.28.2 is `Latest`. Read per-job on run `31066389661`:
+`check-no-lloc-soft-warnings` FAILURE, `check-no-todo-registry` FAILURE,
+`check-mutation` success. **Genuine rejections, not transient infrastructure.**
+
+**The detector exists, works, and is being ignored.** `release-readiness.yml` is a
+daily fail-mode canary over those same two checks, built 2026-07-04 against precisely
+this class — its own header cites v0.6.0–v0.6.4 all failing their gate unnoticed. It
+returned `failure` on five consecutive daily runs (2026-08-01 → 2026-08-05) and nothing
+acted.
+
+**Why it reaches past this repo.** The fleet pins to LATEST RELEASE, and the ratified
+rationale in `SPECIFICATION/non-functional-requirements.md` is that "a release carries
+the release-gate validation that per-commit checks skip." That validation is failing,
+so `bump-pin` is fanning out to every sibling releases that failed their own gate, on a
+justification assuming they passed.
+
+**The mechanism, stated correctly.** All three levers ARE set at job level in
+`release-tag.yml`; its header is explicit that without them "the release gate would gate
+nothing." The defect is that the gate FIRES ON TAG PUSH, so a failure cannot retract a
+release that already exists. Closed prior art `livespec-besm` recorded this verbatim on
+2026-06-26. **An earlier note on this thread said the rationale "holds only for mutation
+testing" — that is BACKWARDS: mutation is the one criterion currently PASSING.**
+
+**DECISION PENDING WITH THE MAINTAINER**, asked 2026-08-06 and not yet answered: move
+the gate pre-tag so it can actually block, versus accept post-tag reporting and amend
+the ratified wording. Note the second option demotes a ratified gate to a report, which
+`.ai/ci-gate-discipline.md` forbids — so it is not a free choice. **Do not self-resolve
+this and do not re-ask it cold; read the answer first if one has arrived.** Journaled in
+full on `livespec-915y`; the underlying debt (returned heading-coverage TODO entries,
+LLOC soft-band files) is NOT cleared, and clearing it is not this thread's to take.
+
+The supervisor error worth inheriting: I escalated this before opening
+`release-readiness.yml`, which sat in a directory listing I had ALREADY PRINTED.
+Concluding "nothing gates pre-tag" from one workflow while five sibling `release-*`
+workflows went unread is C4's family. **Read across the listing you already have.**
 
 ### Maintainer decisions already taken — do NOT re-ask any of these
 
@@ -116,10 +157,24 @@ actions.**
 - `livespec-dev-tooling-irtt` (P0) — **STOOD DOWN, NOT MINE.** The maintainer ruled the
   `pure_trees` track owns it and considers it handled. Do not re-open that decision on
   the strength of a red master you happen to observe.
+- `livespec-915y` — carries the LIVE release-gate finding above in full, plus the
+  regression of closed `livespec-besm` (it cleared 14 heading-coverage TODOs; four have
+  returned and the LLOC half now fails too). Nothing was reopened and no priority was
+  changed — the regression is journaled on the open successor, which is the disposition
+  this fleet uses for a closed item's defect recurring.
+- **CLOSED this session, listed so nobody re-drives them:** `livespec-opwqmy` (the
+  `systemctl preset-all --dry-run` host-safety hazard — discharged against all three
+  acceptance criteria and verified independently) and `livespec-f3tf` (the reaper recipe
+  — fixed; **both documented forms now run at exit 0**). `f3tf`'s fix has a consequence
+  worth carrying: it turned a broken instruction into a live destructive one, which is
+  why `AGENTS.md` now warns that the BARE form reaps.
 - Also open elsewhere and merely cross-referenced, not owned here:
   `livespec-dev-tooling-uw3h` (P2), `bd-ib-te4h` (P2, in
-  `livespec-orchestrator-beads-fabro`), `livespec-f3tf` (P2),
-  `livespec-dev-tooling-0j3i` (P0, owns pin-currency escalation).
+  `livespec-orchestrator-beads-fabro`), `livespec-dev-tooling-0j3i` (P0, owns
+  pin-currency escalation), `livespec-cpqi` (P2, held behind the maintainer's
+  skip-shape-first sequencing ruling — the template half of
+  `livespec-dev-tooling-zi29` has **no discrete owner**, which is recorded on both
+  items; a precondition nobody owns does not happen).
 
 ### The routing rule that is easy to get wrong
 
