@@ -173,6 +173,48 @@ repealing one of two ratified rules, whereas a cadence collision leaves fixes th
 NEITHER. So the fix space is WIDER than the two options currently tabled — do not present
 those two as exhaustive.
 
+**THE PREDICTION WAS TESTED AND HELD — AT BOTH ENDS.** Measured against the committed
+trees at the two tags, with controls so the zeros are absences rather than broken walks
+(68 `test` keys exist at v0.21.4; the LLOC probe reports a 132-file universe, 125
+covered):
+
+| tag | `"test": "TODO"` | 201–250 LLOC band | release outcome |
+|---|---|---|---|
+| v0.21.4 | 0 | empty | success |
+| v0.21.5 | 3 | empty | failure |
+
+The three v0.21.5 TODOs are the `AGENTS.md`-prescribed interim state verbatim — all in
+`scenarios.md`, citing `livespec-jvdvx4`, with tier-naming reasons. The by-construction
+collision is now OBSERVED IN A COMMITTED TREE, not argued from prose. And the halves
+ALTERNATE: v0.21.0 is the mirror image of v0.21.5 (LLOC fails, TODO passes), so neither
+half is continuous and the cadence signature sits on both.
+
+**NARROWING THE PARAGRAPH ABOVE, WHICH OVERSTATED ITS OWN REACH.** It was landed by this
+supervisor and is corrected here rather than left standing, because a wrong premise in a
+durable record is what this thread has already paid for twice. **Cadence explains why the
+LLOC half is INTERMITTENT. It does NOT explain why it is RED, and no cadence-shaped fix
+clears it.** At both tags the band was empty with the top file at exactly 200 LLOC, one
+line under the soft ceiling. On current master it is not empty — five files at 236, 234,
+215, 210 and 206 LLOC, none past the 250 hard ceiling, each reporting `"failing": false`
+with `fail_env_var: LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST`. They are WARNINGS normally
+and FAIL only in the release context, which is the severity lever the release gate arms.
+Clearing them means refactoring five files. **So "the fix space is wider" is true of the
+TODO half ONLY; presenting it as covering both understates the work.**
+
+**AND THE LLOC HALF IS A REGRESSION, NOT NEW WORK.** A full-ledger search over 626 items
+(control: 46 heading-coverage mentions, proving the scan reads descriptions AND notes)
+returns closed **`livespec-txn2bq`** (2026-07-10, P2), whose scope was this exact band in
+this repo — "10 files in the 201-250 LLOC soft band — trim under the soft ceiling or
+accept as within-band" — and whose acceptance was that they be resolved to zero. It is
+INDEPENDENT prior art by this binder's own self-corroboration test: created long before
+any session of this thread, with the term in its DESCRIPTION rather than in later notes.
+So core's band was driven to zero and has RETURNED, exactly as closed `livespec-besm`'s 14
+heading-coverage TODOs returned. Journaled on the open successor per this fleet's
+disposition for a recurring closed-item defect; **nothing was reopened and no priority was
+changed.** Its acceptance text already frames the two legitimate LLOC outcomes — TRIM, or
+ACCEPT AS WITHIN-BAND — which is a design call, not a mechanical unblock, and it belongs
+with the pending decision rather than as a second question.
+
 **Why it reaches past this repo.** The fleet pins to LATEST RELEASE, and the ratified
 rationale in `SPECIFICATION/non-functional-requirements.md` is that "a release carries
 the release-gate validation that per-commit checks skip." That validation is failing,
