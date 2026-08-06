@@ -584,6 +584,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
-    "reason": "Increment 3 ratifies the drift-acceptance mode contract and its five behavioral scenarios; a dedicated integration-tier scenario test is required, tracked by livespec-jvdvx4.5, and this TODO must be replaced by that test id."
+    "reason": "Increment 3 ratifies the drift-acceptance mode contract and its five behavioral scenarios; a dedicated integration-tier scenario test is required, and this TODO must be replaced by that test id. Re-owned 2026-08-06 from livespec-jvdvx4.5 to its open parent epic livespec-jvdvx4: the child was a SPEC-RATIFYING slice, so it closed (2026-08-05) once ratification was done, while the debt it created is a follow-up integration test that was never in its scope. The parent epic is the owner the three sibling TODO entries already name for executable-coverage follow-up.",
+    "work_item": "livespec-jvdvx4"
   }
 ]
