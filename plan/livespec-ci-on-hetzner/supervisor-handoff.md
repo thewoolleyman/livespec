@@ -23,6 +23,19 @@ At this wrap-up there is **no supervisor-owned PR, branch, or worktree outstandi
 Every supervisor PR opened in the session merged, and every worktree and branch behind
 them was reaped.
 
+**THAT SENTENCE WAS FALSE THE LAST TIME IT WAS WRITTEN, AND IT SURVIVED TWELVE HOURS.**
+The successor measured 2026-08-06T23:29Z and found `docs/binder-name-todays-filings` —
+PR 2106's branch, MINE — still checked out at `~/.worktrees/livespec/`, its PR merged
+11:10:01Z. The wrap-up asserted the cleanup as done rather than measuring it. This is the
+section's own tally-ban lesson in its other form: an INVARIANT stated at wrap-up is still
+a claim with a timestamp, and "everything was reaped" is exactly as perishable as a count.
+**Verify with the fail-capable commands below before believing this paragraph — including
+when it says there is nothing to find.** The reap itself is unremarkable when the evidence
+is there: PR `MERGED` on the forge, remote branch `gone`, clean tree, and `git cherry`
+reporting `-` (patch upstream) with a `+` control on an unmerged branch. `-d` will still
+REFUSE such a branch because rebase-merge rewrote the SHA; that refusal is the expected
+artifact, and `-D` is correct ONLY once patch-equivalence is proven.
+
 **NO TALLY IS WRITTEN HERE, DELIBERATELY — do not add one.** This section previously
 carried a worktree count and a numbered list of the session's PRs. Both were wrong
 within hours, and both were invalidated by the same supervisor who wrote them: the
@@ -79,12 +92,30 @@ items below, not on inventing thread work.
 
 ### THE ONE LIVE FINDING — raised to the maintainer, decision PENDING
 
-**Six consecutive `livespec` releases were PUBLISHED while their release gate FAILED.**
-Measured 2026-08-06T08:5xZ: `Release tag` runs for v0.26.1, v0.27.0, v0.27.1, v0.28.0,
-v0.28.1 and v0.28.2 all concluded `failure`, and every one of those releases is
-published and consumable — v0.28.2 is `Latest`. Read per-job on run `31066389661`:
+**`livespec` releases are being PUBLISHED while their release gate FAILS, and they have
+been since v0.21.0 on 2026-07-30.** Every such release is published and consumable —
+v0.28.2 is `Latest`. Read per-job on run `31066389661`:
 `check-no-lloc-soft-warnings` FAILURE, `check-no-todo-registry` FAILURE,
 `check-mutation` success. **Genuine rejections, not transient infrastructure.**
+
+**NO RELEASE COUNT IS WRITTEN HERE — the tally ban applies to this finding too, and it
+was BREACHED here once already.** This paragraph used to say "six consecutive releases"
+and enumerate v0.26.1 → v0.28.2. Measured 2026-08-06T23:3xZ over 30 runs, the failures
+begin at **v0.21.0 (2026-07-30T10:41:41Z)** — so the enumeration was not merely stale, it
+understated the problem by a wide margin from the moment it was written. A six-entry
+window over a set of failures reaching much further back is C4's amputated listing aimed
+at the finding's own severity. The ONSET DATE is fixed and safe to record; the count is
+not. Re-derive it:
+
+```sh
+gh run list --workflow release-tag.yml --limit 30 \
+  --json conclusion,createdAt,displayTitle \
+  --jq '.[] | "\(.createdAt)  \(.conclusion)  \(.displayTitle)"'
+```
+
+Note the `--jq` form rather than `--template`: the `github_rate_limit_guard` hook denies a
+Bash call carrying two `gh` reads, and separately denies any command text containing
+`select(`. Both are guard misfires on read-only queries, not rate-limit facts.
 
 **The detector exists, works, and is being ignored.** `release-readiness.yml` is a
 daily fail-mode canary over those same two checks, built 2026-07-04 against precisely
@@ -111,13 +142,36 @@ dated onset is a real measurement. A window that shows only failures cannot tell
 cases apart — this is C4's amputated-listing trap aimed at the one fact that makes the
 finding credible.
 
-**The two failing checks are TWO INDEPENDENT REGRESSIONS with different onsets, and
-conflating them mis-sequences the work.** On run `30556514191` (2026-07-30, the first
+**The two failing checks are TWO SEPARATE HALVES with different onsets, and conflating
+them mis-sequences the work.** On run `30556514191` (2026-07-30, the first canary
 failure) `check-no-lloc-soft-warnings` FAILED while `check-no-todo-registry` was still
-`success`; both fail by run `31020527654` (2026-08-05). The TODO half's exact onset within
-2026-08-01 → 2026-08-05 is UNMEASURED — not bounded tighter, not bisected. The consequence
-is the load-bearing part: `livespec-915y` covers only the TODO half, so completing it
-clears ONE of the two failing checks and the gate stays red on LLOC.
+`success`; both fail by run `31020527654` (2026-08-05). The release-tag onset run
+`30535651444` (v0.21.0) shows the identical split, independently. The TODO half's exact
+onset within 2026-08-01 → 2026-08-05 is UNMEASURED — not bounded tighter, not bisected.
+The consequence is the load-bearing part: `livespec-915y` covers only the TODO half, so
+completing it clears ONE of the two failing checks and the gate stays red on LLOC.
+
+**BUT NEITHER HALF IS A CONTINUOUS REGRESSION, AND A GREEN PROVES IT.** An earlier
+version of this section called them "two independent regressions", which reads as
+"broken since onset, permanently". Measured 2026-08-06T23:3xZ: **v0.21.4 (run
+`30761906607`, 2026-08-02T18:47:11Z) SUCCEEDED mid-streak**, after the LLOC onset. Read
+per-job, because a green that merely SKIPPED its jobs would be a false green of exactly
+the class `livespec-39h1`'s METHOD NOTE warns about — all four jobs genuinely ran and
+passed, `check-no-lloc-soft-warnings` among them. So the conditions FLUCTUATE with master
+state and a release firing in a clean window passes.
+
+**That green is the strongest evidence for the worker's cadence framing, and it was
+reached independently.** Brief-13's verdict recast the conflict as cadence-induced rather
+than logical: a heading-coverage `TODO` is a PERMITTED INTERIM state, and a release cadence
+of 12 releases in 66 hours (median gap 2.9h) leaves it no time in which to exist. A
+LOGICAL conflict predicts no green ever; a CADENCE collision predicts rare greens whenever
+a release lands between the debt and its clearing. v0.21.4 is that green. The worker
+argued it from cadence, this section from run history, and they agree.
+
+**Why that matters for the pending decision below:** a logical conflict would force
+repealing one of two ratified rules, whereas a cadence collision leaves fixes that touch
+NEITHER. So the fix space is WIDER than the two options currently tabled — do not present
+those two as exhaustive.
 
 **Why it reaches past this repo.** The fleet pins to LATEST RELEASE, and the ratified
 rationale in `SPECIFICATION/non-functional-requirements.md` is that "a release carries
