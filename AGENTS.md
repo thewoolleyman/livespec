@@ -623,7 +623,7 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twenty-seven
+  A green-looking signal read off the wrong source is not evidence: twenty-eight
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
