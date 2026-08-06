@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.2](https://github.com/thewoolleyman/livespec/compare/v0.28.1...v0.28.2) (2026-08-06)
+
+
+### Bug Fixes
+
+* make just reap-stale-worktrees run under just's default sh ([0f38cc2](https://github.com/thewoolleyman/livespec/commit/0f38cc26108a8598054f778a3691dcf8184bd3b7))
+
 ## [0.28.1](https://github.com/thewoolleyman/livespec/compare/v0.28.0...v0.28.1) (2026-08-06)
 
 
