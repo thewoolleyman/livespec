@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/thewoolleyman/livespec/compare/v0.28.0...v0.28.1) (2026-08-06)
+
+
+### Bug Fixes
+
+* reject minted ratification timestamps ([235d094](https://github.com/thewoolleyman/livespec/commit/235d094b4e8eeb8c525d8c69a605061cc98bfb0e))
+
 ## [0.28.0](https://github.com/thewoolleyman/livespec/compare/v0.27.1...v0.28.0) (2026-08-05)
 
 
