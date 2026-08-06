@@ -31,6 +31,45 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T04:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+>
+> **The Hetzner half is parked at an external gate and there is nothing here to drive.**
+> That is the correct, expected state — not a stall. **Seven** consecutive readings across
+> 2026-08-04/05/06 found the gate shut with not one value moved.
+>
+> **Your first action is still the census below**, run to CONFIRM this rather than to find
+> work. If it shows the gate open, the next slice is `livespec-3on57g`. If it shows the gate
+> shut, **say so plainly and stop — that is the correct output.**
+>
+> ### What the last session closed — do NOT re-drive any of it
+>
+> | item | outcome |
+> |---|---|
+> | the three maintainer decisions | **ANSWERED AND EXECUTED.** Do not re-ask. See "The three answers…" below. |
+> | `livespec` PR #1960 | **MERGED** `cead37ca`; v0.17.0 then flowed through unattended, proving the channel unblocked |
+> | `livespec-f3tf` | **CLOSED** 2026-08-06T03:42:18Z — `just reap-stale-worktrees` works again (PR #2085) |
+> | `livespec-opwqmy` | **CLOSED** 2026-08-06T04:15:50Z — all three criteria discharged (PR #2089) |
+>
+> ### Filed, open, and NOT this thread's to drive
+>
+> `livespec-dev-tooling-a9xp` (P1) and `livespec-dev-tooling-olwk` (P3). Both are in the
+> `livespec-dev-tooling` tenant with their evidence journaled. See "Open descendants".
+>
+> ### Two operational facts that will save you real time
+>
+> - **Create worktrees with `just worktree-create <branch> master`, NOT raw `git worktree
+>   add`.** A raw worktree has no worktree-discipline pack (gitignored), so its first push is
+>   refused after a full `just check` — about four minutes, and it is NOT `.py`-gated, so a
+>   docs-only change is refused identically. Owned by `livespec-dev-tooling-f7xs`.
+> - **`just reap-stale-worktrees` is FIXED, and its BARE form REAPS FOR REAL** (it also prunes
+>   the host plugin registry). Use `just reap-stale-worktrees <repo> --dry-run` for a report.
+>   Never reap another session's worktree.
+>
+> **The `github_rate_limit_guard` will deny commands on their PROSE**, including purely local
+> ones. Nine measured instances. Use `git commit -F <file>`, `gh pr create --body-file`,
+> `bd update --append-notes "$(cat <file>)"`, and avoid `select(` in a `--jq`. That is
+> `livespec-driver-claude-mu5`, not your command being wrong.
+
 **Read this paragraph before running anything.** As of 2026-08-05 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is now exactly ONE thing:
 
 1. **An external homelab gate** — `hl-wkyeqg` (provision server 3039451) and `hl-euzuhb` (ratify `hetzner-prod` admission) — which gates the last three slices and which this thread must not touch.
@@ -331,12 +370,13 @@ creators).
 | `livespec-dev-tooling-y6e2` | `livespec-dev-tooling` | P1 — reduced to stale-pack detection only. **Review 2026-08-12.** |
 | `livespec-cpqi` | `livespec` | Copier template CI drift — **re-scoped and much bigger than filed** (see below). Needs a maintainer product decision; do not self-resolve. |
 | `livespec-dev-tooling-7ix8` | `livespec-dev-tooling` | P2 — `just bootstrap` splices an uncommitted `worktree_discipline` key. Reproduced live in 4+ repos this session; it dirties every fresh worktree. |
-| `livespec-opwqmy` | `livespec` | `systemctl preset-all --dry-run` incident; `admission:manual`. |
+| ~~`livespec-opwqmy`~~ | `livespec` | **CLOSED 2026-08-06T04:15:50Z** — all three criteria discharged, PR [#2089](https://github.com/thewoolleyman/livespec/pull/2089), merged `e57a1d52`. Hazard written up as **instance 25**; `livespec-hhx4gl`'s unsafe acceptance corrected IN PLACE; one live prescription of the command found and removed. Do not re-drive. |
 | `livespec-driver-claude-mu5` | `livespec-driver-claude` | P1 — `github_rate_limit_guard` denies on substrings, not behavior, and its prescribed `--cache` remedy is absent from its decision logic. Filed 2026-08-05; see the census section below. |
 | `livespec-dev-tooling-uw3h` | `livespec-dev-tooling` | P2 — `check-self-hosted-routing` guards 2 of the 3 copies of `ci.yml`'s declared fallback lockstep; the unguarded `LIVESPEC_CI_LANE` copy would silently halve paid hosted CI parallelism. Filed 2026-08-05; relevant to `livespec-3on57g`, which will edit those lines. |
 | `bd-ib-te4h` | `livespec-orchestrator-beads-fabro` | P2 — the `gate-runner` referral `livespec-hhx4gl` named and never made. Does v192's factory-host clause reach the privileged tier? **That repository's question to answer; do not answer it here.** |
 | ~~`livespec-f3tf`~~ | `livespec` | **CLOSED 2026-08-06T03:42:18Z** — fixed and live-exercised, PR [#2085](https://github.com/thewoolleyman/livespec/pull/2085), merged `0f38cc26`. `just reap-stale-worktrees` works again. Do not re-drive it; the section below is retained for its constraint map, which held exactly. |
 | `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
+| `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
 
 **`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
 
