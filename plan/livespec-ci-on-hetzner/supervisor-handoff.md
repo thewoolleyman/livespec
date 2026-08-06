@@ -88,9 +88,36 @@ published and consumable — v0.28.2 is `Latest`. Read per-job on run `310663896
 
 **The detector exists, works, and is being ignored.** `release-readiness.yml` is a
 daily fail-mode canary over those same two checks, built 2026-07-04 against precisely
-this class — its own header cites v0.6.0–v0.6.4 all failing their gate unnoticed. It
-returned `failure` on five consecutive daily runs (2026-08-01 → 2026-08-05) and nothing
-acted.
+this class — its own header cites v0.6.0–v0.6.4 all failing their gate unnoticed. It has
+returned `failure` on every run since its onset of **2026-07-30**, and nothing acted.
+
+**NO STREAK LENGTH IS WRITTEN HERE, and that is this section's tally ban applied rather
+than an omission.** A streak grows every day the canary runs, so any number recorded here
+is wrong by the time it is read — an earlier version of this paragraph said "five
+consecutive daily runs (2026-08-01 → 2026-08-05)" and was wrong on BOTH axes within a
+day. The onset DATE is fixed and therefore safe to record; the count is not. Re-derive it:
+
+```sh
+gh run list --workflow release-readiness.yml --limit 40 \
+  --json conclusion,createdAt \
+  --template '{{range .}}{{.createdAt}}  {{.conclusion}}{{"\n"}}{{end}}'
+```
+
+**Run that far enough back to see the GREEN, because the green is the evidence.** Measured
+2026-08-06T10:29:55Z, the canary ran 27 consecutive SUCCESSES from 2026-07-04 to
+2026-07-29 before the onset. That prior green is the positive control the finding needs: a
+chronically-red job proves nothing, whereas a job green for 27 days that reddens on a
+dated onset is a real measurement. A window that shows only failures cannot tell those two
+cases apart — this is C4's amputated-listing trap aimed at the one fact that makes the
+finding credible.
+
+**The two failing checks are TWO INDEPENDENT REGRESSIONS with different onsets, and
+conflating them mis-sequences the work.** On run `30556514191` (2026-07-30, the first
+failure) `check-no-lloc-soft-warnings` FAILED while `check-no-todo-registry` was still
+`success`; both fail by run `31020527654` (2026-08-05). The TODO half's exact onset within
+2026-08-01 → 2026-08-05 is UNMEASURED — not bounded tighter, not bisected. The consequence
+is the load-bearing part: `livespec-915y` covers only the TODO half, so completing it
+clears ONE of the two failing checks and the gate stays red on LLOC.
 
 **Why it reaches past this repo.** The fleet pins to LATEST RELEASE, and the ratified
 rationale in `SPECIFICATION/non-functional-requirements.md` is that "a release carries
@@ -112,6 +139,29 @@ the ratified wording. Note the second option demotes a ratified gate to a report
 this and do not re-ask it cold; read the answer first if one has arrived.** Journaled in
 full on `livespec-915y`; the underlying debt (returned heading-coverage TODO entries,
 LLOC soft-band files) is NOT cleared, and clearing it is not this thread's to take.
+
+**READ `livespec-39h1` BEFORE TOUCHING ANY OF THIS — it is the open synthesis that already
+owns this finding, and no record of this thread named it until now.** Filed
+2026-08-06T08:38:28Z by this very thread, `backlog`, P2: *"Nothing watches non-required
+workflows: five chronic failures sat red for days-to-weeks while every affected repo
+reported green CI."* The release gate is its instance #3 and the canary is its instance
+#4, which it calls the sharpest of the five and frames better than the paragraphs above
+do: a dedicated early-warning job existed, worked, and fired daily for a week to nobody,
+so **the missing piece is a READER, and adding more detectors of this kind cannot fix it.**
+It also carries a METHOD NOTE naming two `gh` query traps that produce a FALSE GREEN — read
+that before re-measuring anything here.
+
+**THE OMISSION IS THE LESSON, not a footnote.** `livespec-39h1` appeared ZERO times in all
+four of this thread's records — this binder, `handoff.md`, `.supervisor-state`, and
+`worker-status.log` — while `915y` appeared 2 / 0 / 6 / 7 times in the same files, proving
+the greps discriminated. An item this thread FILED lived only in the ledger, so a
+successor supervisor re-derived instance #4 from scratch believing it was new. That is the
+same blind spot as a prior-art check run against the default `bd list`, which returns 50 of
+625 items and hides all 532 closed ones. **When this thread files an item, name it in this
+binder in the same turn, or the next session pays for it again.** And when citing a record
+here, write the FULL filename: "the handoff" is ambiguous between `handoff.md` and
+`supervisor-handoff.md`, and that ambiguity already produced one false disagreement between
+supervisor and worker.
 
 The supervisor error worth inheriting: I escalated this before opening
 `release-readiness.yml`, which sat in a directory listing I had ALREADY PRINTED.
