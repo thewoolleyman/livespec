@@ -23,9 +23,10 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twenty-three instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23 on 2026-08-05;
-## instances 1-16 span five repos and four independent operators
+## Twenty-seven instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23 on 2026-08-05,
+## 24-27 on 2026-08-06; instances 1-16 span five repos and four independent
+## operators
 
 Two gaps in that heading are deliberate rather than oversights. **Instances 17
 and 18 carry no recorded observation date**, so none is assigned to them here — a
@@ -41,6 +42,18 @@ must be re-derived whenever the set it describes changes. Corrected 2026-08-05
 alongside instances 19-21, and again 2026-08-06 alongside instance 24 — where
 the count in `AGENTS.md` had to move in the same commit, since it states the
 total too. **If you add an instance, re-derive this count.**
+
+**It drifted a THIRD time, and how it drifted is the useful part.** When
+instances 24 and 25 landed, the count in `AGENTS.md` was updated and the count in
+§"Why this file exists in livespec CORE" was updated — but this heading was not,
+so it read "Twenty-three" while twenty-five were present. Found and corrected
+2026-08-06 alongside instances 26-27. **There are THREE counts of the same set**
+(this heading, that section, and `AGENTS.md`), and the one that rots is
+whichever is not on screen when the instance is added. Two of three being right
+is what makes it survive review: a spot-check that happens to land on either
+correct copy confirms the number and moves on. Re-derive all three from
+`grep -c '^### ' .ai/verifying-against-the-right-source.md`, never from each
+other.
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -744,9 +757,73 @@ symlink), 0 once removed. **A control is not a control until it has been made to
 fail on demand** — the original was trusted because its name and its `--help`
 line implied a behaviour nobody had tested. (Tracked as `livespec-opwqmy`.)
 
+### 26. `pgrep -f <pattern>` matches the shell running it, so the scan finds itself
+
+The wait-loop version of this is already a standing rule. This entry records the
+version that matters HERE: the same self-match inside a **verification**, where
+it does not hang — it **fabricates evidence**.
+
+Re-measuring the banked completion-evidence bullet *"the shared factory host
+carries no CI listener or worker process"* on 2026-08-06, the check was:
+
+    pgrep -a -f 'ci-runner|Runner.Listener|run-gate-jit'
+
+It returned a hit. The hit was the wrapping shell's own `argv`, which contains
+the pattern because the pattern was typed into it. Read literally, a bullet
+asserting that no listener exists had just reported a listener — and the opposite
+error is equally reachable: the same self-match makes a `pgrep | wc -l` guard
+read `1` and conclude "still running" forever.
+
+**Why it is worse in a verification than in a loop.** A self-matching wait-loop
+hangs, which is loud and gets noticed. A self-matching verification returns
+promptly with a plausible number, and the number is about a security-relevant
+property nobody re-checks. Nothing distinguishes it from a true positive.
+
+**Counter-move:** never let the needle appear in the scanning process's own
+command line. Assemble the pattern at runtime inside a script file
+(`"ci-" + "runner"`), exclude your own PID and PPID, and pair it with a
+**positive control** — a needle you know matches — so an empty result is proved
+discriminating rather than merely empty:
+
+    CONTROL (processes matching 'systemd'): 16 - scan is not vacuous
+    listener/worker process hits: 0
+
+Where the question is "is anything running here", prefer a source that cannot
+self-match at all: `systemctl show <slice> -p TasksCurrent` returning
+`TasksCurrent=0` is an empty cgroup, and no phrasing of the query can put your
+own shell inside it.
+
+### 27. A clock read once per session stamps every later measurement with a stale time
+
+The rule *"`date -u` before dating any measurement"* is already in this fleet's
+records — it was added after an inherited session date made six-minute-old CI
+jobs look like a 26-hour stall. This entry is that same rule **failing on its own
+second application**, which is why it earns a slot rather than a footnote.
+
+A session read `date -u` at its start (`04:29:34Z`) and treated that as "now" for
+the rest of its work. Seventy minutes later it wrote a note to the beads ledger,
+read the record back, and found `updated_at: 2026-08-06T05:39:54Z` — an hour and
+ten minutes "in the future". The obvious inference was a timezone defect: a
+ledger stamping local CET while labelling the field `Z`. **Had that been true it
+would have invalidated every gate comparison in the thread**, since the whole
+method is comparing `updated_at` values across readings.
+
+It was false. True UTC at that moment was `05:40:22Z`; the ledger was correct to
+the second. The only stale value was the session's own idea of the time.
+
+**The trap is that a session's felt duration is not its elapsed duration.** Tool
+calls are fast, so a long session reads as a short one, and the start-of-session
+clock feels current long after it is not.
+
+**Counter-move:** re-run `date -u` **at the moment you stamp something**, not
+once per session — and when a timestamp from an external system disagrees with
+your expectation, re-measure your own clock BEFORE concluding the other system is
+wrong. State session measurements as a range (`04:29Z–04:35Z`) rather than a
+point, so a later reader can see how old they are.
+
 ## Why this file exists in livespec CORE
 
-The twenty-five instances span EIGHT repositories — `livespec`,
+The twenty-seven instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and

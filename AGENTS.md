@@ -604,7 +604,7 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twenty-five
+  A green-looking signal read off the wrong source is not evidence: twenty-seven
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
@@ -628,7 +628,10 @@ existing file):
   skipped-required-check trap discards a green that was honestly earned, and —
   the one entry whose cost was paid in host state — a `--dry-run` that is scoped
   to a verb list the short help does not mention, so `systemctl preset-all
-  --dry-run` silently applied presets host-wide.
+  --dry-run` silently applied presets host-wide, a `pgrep -f` scan that matches
+  the shell running it and so reports a listener that is only itself, and a
+  `date -u` read once at session start and reused seventy minutes later, which
+  made a correct ledger timestamp look like an hour-wide timezone defect.
 
 ## Working with the maintainer
 
