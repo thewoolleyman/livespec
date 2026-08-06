@@ -59,10 +59,19 @@ means stuck, not idle.
 
 A large paste ARRIVES IN CHUNKS OVER SECONDS, so the verify step must wait for
 the composer to stop changing. Read the pane twice with a pause between and
-compare; only a byte count that is STABLE across two reads is the real one. A
-single read taken immediately after `paste-buffer` is a snapshot of a partial
-delivery, and editing keys sent on the strength of it land in the middle of the
-remaining stream and corrupt the composer.
+compare the WHOLE COMPOSER REGION, never a byte count and never a paste token's
+self-reported character count. A single read taken immediately after
+`paste-buffer` is a snapshot of a partial delivery, and editing keys sent on the
+strength of it land in the middle of the remaining stream and corrupt the
+composer.
+
+STABILITY IS NOT IDENTITY, and this is the half that a stability check cannot
+supply. Two matching reads establish only that delivery has FINISHED; they say
+nothing about WHOSE text finished arriving. Before pressing Enter, assert that
+the region you read actually CONTAINS a distinctive fragment of what you just
+sent. A verifier that reads the wrong region of the pane — a stale echoed prompt,
+a neighbouring token, settled transcript — is non-empty AND perfectly stable, so
+an emptiness guard and a stability guard both pass on it. See C5.
 
 Prefer to avoid the problem entirely: write a long brief to a file under the
 thread's `runtime_dir` and send a SHORT instruction naming that path. A
@@ -326,3 +335,40 @@ informational — it prints a `claude.ai/settings/usage` URL and changes nothing
 Switching plans or buying credits is a maintainer BROWSER action, not something a
 session can perform, so a session facing a genuine limit has exactly two honest
 moves: wait, or report the block out-of-band.
+
+C5. THIS FILE TOLD EVERY SUPERVISOR THAT A STABLE BYTE COUNT IS "THE REAL ONE",
+WHILE ITS OWN C2 FORBADE EXACTLY THAT. C2 was recorded after a paste token's
+self-reported count sat still while text arrived beside it, and its rule is
+"compare the WHOLE COMPOSER LINE across the two reads, never the token's own
+character count." The prose six sections above still said the opposite. A
+role-level document that contradicts its own Corrections log teaches the defect
+to every thread that reads it before reaching the log — and the prose is the part
+a cold-opening supervisor reads first.
+
+The falsifying instance came from the `livespec-ci-on-hetzner` thread, where the
+binder had a scripted verifier rather than a manual read, so the contradiction
+became executable. Its extractor scanned the pane for the FIRST prompt-marker
+line. Once anything has been submitted the pane holds the ECHOED prompt above the
+live composer and both begin with that marker, so the scan returned the echo.
+Measured against a live pane whose composer was verifiably EMPTY: the first-match
+form returned **1903 bytes** of stale echo; a last-match form returned **5**, the
+bare marker and its non-breaking space. A ~900-character instruction verified as
+"21 bytes" and Enter was pressed on that reading; it landed by luck rather than by
+method. The thread-specific write-up is that binder's C6.
+
+WHAT MAKES THIS WORTH A ROLE-LEVEL CORRECTION rather than one thread's bug: a
+stale echo DEFEATS BOTH GUARDS THIS PROTOCOL ALREADY PRESCRIBES, by being healthy.
+It is non-empty, so an emptiness assertion passes. It is settled transcript, so it
+is the most stable thing in the pane and a stability comparison passes. This
+protocol already warns that an extractor matching NOTHING is indistinguishable
+from an empty composer; the gap is one step further out — AN EXTRACTOR THAT
+MATCHES THE WRONG THING IS INDISTINGUISHABLE FROM A CORRECT ONE, and it is worse,
+because emptiness at least looks suspicious while a confident wall of plausible
+text reads as proof. Only a content assertion separates them.
+
+The general form, which is this protocol's own empty-result rule turned around:
+"an empty result is not a finding" guards silence, and supervisors apply it. A
+NON-empty result read off the wrong source is the same defect wearing evidence,
+and nothing was guarding it. Prove the verifier reads the region you mean before
+trusting what it says about that region — the positive control belongs on the
+READER, not only on the query.
