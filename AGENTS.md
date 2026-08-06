@@ -342,9 +342,28 @@ stopping points.
 Do not leave orphaned worktrees. If a session must stop before cleanup,
 record the active worktree path, branch, PR, validation state, and next
 action in the relevant handoff document. For stale cleanup outside the
-current branch's own worktree, use the repo's reaper entry point
-(`just reap-stale-worktrees` or `just reap-stale-worktrees <repo>
---dry-run`) rather than hand-deleting unfamiliar state.
+current branch's own worktree, use the repo's reaper entry point rather
+than hand-deleting unfamiliar state:
+
+```bash
+just reap-stale-worktrees <repo> --dry-run   # INSPECT — reports, changes nothing
+just reap-stale-worktrees                    # ACTS — removes worktrees, deletes branches
+```
+
+**The bare form is not a report. It reaps.** It removes every worktree it
+classifies stale and deletes those branches, in seconds, with no
+confirmation. Reach for `--dry-run` first, always, and NEVER use the bare
+form to check whether the recipe works — that is running a destructive
+command to see what it does. The two forms sitting side by side is
+precisely what makes this easy to get wrong: a documented `--dry-run`
+variant makes the family *feel* safe, when it means the other form is the
+live one.
+
+The reaper only removes worktrees whose branches it judges stale, so the
+usual outcome is harmless — but that is a property of the tool, not of the
+invocation, and you cannot know it held until after it has run. See also
+the timing rule under "Orchestration and delegation": never reap while a
+dispatched agent is working in one of that repo's worktrees.
 
 ## Beads runtime prerequisites (what `just bootstrap` does NOT provision)
 
