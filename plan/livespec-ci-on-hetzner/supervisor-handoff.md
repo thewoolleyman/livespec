@@ -581,8 +581,15 @@ a=$(composer); sleep 3; b=$(composer)
   || { echo "HALT: composer still changing — text is mid-delivery"; echo "REMEDY: re-read until two spaced reads match, then send Enter"; exit 1; }
 # STABILITY IS NOT IDENTITY. Assert the composer actually holds what you sent,
 # against a distinctive fragment of it, before pressing Enter.
+#
+# A LONG SEND COLLAPSES TO `[Pasted text #N]` and the literal words are then
+# NOWHERE in the pane, so this assertion CANNOT pass on them. That is a false
+# HALT on a correctly delivered instruction — see C8. Treat a stable paste
+# token as delivered, and take it as the signal you should have used the
+# file-reference path below instead of sending prose inline.
 printf '%s\n' "$a"
 case "$a" in
+  *'[Pasted text #'*) echo "NOTE: collapsed to a paste token — delivered, contents unreadable from the pane. Prefer a file reference next time." ;;
   *'<a distinctive fragment of the text you just sent>'*) : ;;
   *) echo "HALT: composer does NOT contain the text just sent"; echo "REMEDY: do not press Enter — re-read the pane, and suspect the extractor before suspecting the send"; exit 1 ;;
 esac
@@ -890,3 +897,32 @@ premise expired; C4 was a listing whose window hid the answer; this is an ACTION
 in the belief it was an OBSERVATION. In all three the error is invisible from inside
 because the step felt like diligence — I was, after all, verifying rather than
 assuming, which is what this charter keeps demanding.
+
+C8. THE CONTENT ASSERTION I ADDED IN C6 HAS A FALSE-HALT MODE, AND I HIT IT THE SAME
+DAY. I sent a worker a ~1000-character instruction, ran the verify block, and the
+assertion HALTED: 21 bytes, stable across two reads, not containing my text. The
+instruction had in fact been delivered perfectly. The TUI had collapsed it into
+`[Pasted text #4]`, so the literal words were NOWHERE in the pane and a substring test
+on them could never pass.
+
+**The guard failed in the SAFE direction and that matters.** C6's defect blessed an
+undelivered instruction; this refuses a delivered one. Between the two, refusing is
+correct — but a supervisor who hits it, concludes "the assertion is broken", and
+deletes it has reintroduced C6 exactly. So the paste-token case is now handled in the
+procedure above rather than left to be rediscovered: a stable `[Pasted text #N]` means
+DELIVERED-BUT-UNREADABLE, not missing.
+
+**THE REAL ERROR WAS UPSTREAM OF THE ASSERTION, AND IT IS ONE THIS CHARTER ALREADY
+NAMES.** Both layers tell me to write anything long to a file under `runtime_dir` and
+send a ONE-LINE PATH REFERENCE. I sent a thousand characters of prose inline instead,
+because it did not feel long enough to bother. Shared-protocol C2 records that exact
+lapse in those exact terms — *"I had that rule, wrote it, and skipped it anyway because
+the message felt 'short enough'. A rule that only gets applied when the input LOOKS long
+is not a rule."* I then re-committed it, on the same day I was editing the file that
+records it. The collapse into a paste token IS the signal that the file-reference path
+was owed; treat seeing one as evidence you already broke the rule.
+
+Note what did work: every short instruction this session — all of them one-liners
+naming a brief file — verified literally, first try, with the content assertion
+passing. The rule is not merely safer; it is the one that makes verification possible
+at all, because a one-line reference is short enough to stay literal in the pane.
