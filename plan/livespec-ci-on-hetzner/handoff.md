@@ -31,10 +31,10 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T04:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T05:5xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
 >
 > **The Hetzner half is parked at an external gate and there is nothing here to drive.**
-> That is the correct, expected state — not a stall. **Seven** consecutive readings across
+> That is the correct, expected state — not a stall. **Eight** consecutive readings across
 > 2026-08-04/05/06 found the gate shut with not one value moved.
 >
 > **Your first action is still the census below**, run to CONFIRM this rather than to find
@@ -66,9 +66,19 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   Never reap another session's worktree.
 >
 > **The `github_rate_limit_guard` will deny commands on their PROSE**, including purely local
-> ones. Nine measured instances. Use `git commit -F <file>`, `gh pr create --body-file`,
+> ones. **Ten** measured instances. Use `git commit -F <file>`, `gh pr create --body-file`,
 > `bd update --append-notes "$(cat <file>)"`, and avoid `select(` in a `--jq`. That is
 > `livespec-driver-claude-mu5`, not your command being wrong.
+>
+> **Instance 10 sharpened the heuristic, so use the new one.** The old advice — "check
+> whether your command actually touches GitHub before rewriting it" — does NOT discriminate
+> every case. Instance 10 was a single `gh pr list` (one real GitHub call, correctly
+> classified) piped to a `python3` loop **over the local file it had just written**; the
+> guard matched the loop and denied. The command genuinely touched GitHub, so the old check
+> passes and leaves you thinking the denial was earned. **Ask instead whether the LOOP is
+> over GitHub reads.** One un-looped call post-processed locally is exactly what the guard
+> means to permit. Its prescribed `--cache` is also a `gh api` flag, so on a `gh pr list`
+> denial, obeying the message literally yields a usage error.
 
 **Read this paragraph before running anything.** As of 2026-08-05 there is **NO unblocked implementation work left in this epic**. Every slice is either closed or waiting on something this thread does not own. Do not go looking for a slice to drive — you will either find none or re-drive finished work. What this thread is waiting on is now exactly ONE thing:
 
@@ -86,7 +96,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >
 > **The general rule this yields, and it outranks the specific correction:** a handoff sentence asserting that something is CLOSED is a claim about a ledger at a past instant, exactly like the struck "nothing is open" sentence in the Resume state section below. **Verify every closure claim against the ledger before relying on it.** Two such claims in this one file have now expired.
 
-So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what **seven** separate readings across 2026-08-04/05/06 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
+So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what **eight** separate readings across 2026-08-04/05/06 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
 
 **The three maintainer decisions that used to be listed here are ANSWERED AND EXECUTED (2026-08-06).** Do not surface them as open and do not re-ask them — see "The three answers, and what executing them found" below. **The homelab gate is now the ONLY thing in this thread waiting on a human.** Everything else is either closed or in somebody else's queue.
 
@@ -96,6 +106,104 @@ So your first action is the census below, run to CONFIRM that picture rather tha
 - **Fleet CI green, complete and fresh** (12 of 13 members; `openbrain` has no per-push gate at all, only a scheduled workflow, so it is excluded rather than claimed green). `livespec` master `98e6f618`.
 - **`livespec-driver-claude-mu5` reached a SIXTH instance:** the guard denied `bd update` — the ledger CLI, no GitHub call — on the prose of a note. With instance 5 (`git commit`) the shape is settled: any command carrying human-authored prose is at risk, worst when the prose is about GitHub tooling. **Whenever this guard denies you, check whether your command actually touches GitHub before rewriting it**; the fix is `--body-file` / `commit -F <file>` / `--append-notes "$(cat <file>)"`.
 - **Three verification lessons from this thread were promoted into `.ai/verifying-against-the-right-source.md`** as instances **19-21**, plus a counter-move on instance 11. Read that file, not a summary of it, before treating any green signal as evidence — instances 19 (*verifying the STEP you changed is not verifying the RUN it sits in*) and 21 (*a control verified as currently-unmet is not verified as hard to meet*) bear directly on how this epic's remaining completion-evidence bullets must be checked, since every one of them is a live observation of external state. **A fourth was added 2026-08-06 as instance 24, and it guards the OPPOSITE error to all the others** — a step named `Skip …` whose status is `skipped` is the complement notice NOT firing, which is positive evidence the check RAN. Reading its presence as instance 16's trap inverts the signal and throws away an honestly-earned green. It was caught by a reviewer on this thread's own verification of merge commit `cead37ca`.
+
+### Census — 2026-08-06, readings taken `04:29Z`–`04:35Z` UTC. EIGHTH gate reading: shut, and this time nothing about it changed either
+
+Run to confirm, and it confirmed on every axis. The seventh reading could at least
+report that the gate's *character* had moved; this one cannot. There is nothing new
+to act on, which is the finding.
+
+**The gate is shut — eighth reading, not one value moved.** Every `updated_at` below is
+byte-identical to the seventh reading's, so this is a genuine re-measure agreeing, not
+a re-read of the same sentence:
+
+| item (`homelab`) | status | `updated_at` | vs. 7th |
+|---|---|---|---|
+| `hl-wkyeqg` | `pending-approval` | 2026-08-04T04:07:29Z | identical |
+| `hl-euzuhb` | `pending-approval` | 2026-08-03T01:14:47Z | identical |
+| `hl-xuu5j3` | `backlog` | 2026-08-03T10:06:45Z | identical |
+| `hl-6uldtn` | `backlog` | 2026-08-04T10:12:12Z | identical |
+| `hl-75f` | `backlog`, **P1** | 2026-08-04T20:58:11Z | newly measured here |
+
+`hl-75f` is measured for the first time in this file: it is the gate's current critical
+path per thread 05, and it has **not started**. In `livespec`: `livespec-3on57g`,
+`livespec-7wvyo7`, `livespec-q7sfu6` all `pending-approval`; epic `livespec-h22nve`
+correctly held `active`. **All three gate conditions remain unmet.**
+
+**The leading indicator moved AGAIN, and this time it was discriminated properly** —
+which is the whole point of the correction the seventh census earned. `homelab`
+`origin/main` went `a35bb168` → `12df7ed1`, about **30** commits. Only **4** touched
+paths matching `hetzner`, and all four are prose (a `SPECIFICATION/history/v017/`
+snapshot plus three plan handoffs). **No `nix/hosts/hetzner-prod/storage.nix` change,
+so `hl-75f` has not been worked either.** Control: 72 `hetzner` paths exist on `main`,
+so the 4 is fail-capable. The commits are threads 15, 11-1, 09, 12, 06, 08 and 13 —
+secrets/S3, gmktec hardware, and archiving. **Busy neighbour, not gate motion**, exactly
+the case the seventh census said to test for rather than infer.
+
+**Forge, this repository: unchanged on every axis.** `actions/runners` `total_count=0`
+(a SIXTH reading of 13 → 6 → 0 → 0 → 0 → 0); `CI_RUNNER_LABELS` still `["ubuntu-latest"]`,
+`updated_at` still 2026-07-18T11:34:31Z; fork approval still `all_external_contributors`.
+Open PRs down to **two** — [#2069](https://github.com/thewoolleyman/livespec/pull/2069)
+and [#1968](https://github.com/thewoolleyman/livespec/pull/1968), both other threads'
+`docs(plan)` work. #1960 is confirmed **gone from the open list**, consistent with its
+recorded merge. Master CI green at `975833fc` on a run whose `head_sha` equalled
+`origin/master`; master then moved to `6d3337bd` mid-census.
+
+**THE BANKED COMPLETION EVIDENCE WAS FULLY RE-MEASURED AND ALL OF IT HOLDS.** This is
+the part worth inheriting, because every bullet is a live observation of external state
+that expires. Each carries a fail-capable control:
+
+- **Bullet 4, both halves.** `approval_policy` = `all_external_contributors`.
+  `branches/master/protection`: required contexts exactly `["ci-green"]`,
+  `enforce_admins: true`, `allow_force_pushes: false`, `allow_deletions: false`,
+  `strict: false` (the recorded trade-off, unchanged). `ci.yml` triggers are exactly
+  `pull_request` plus `push: branches: [master]`.
+- **Bullet 7, the factory host.** `/usr/local/lib/ci-runner/` holds exactly four files,
+  all the out-of-scope `gate-runner` tier. **Zero** `ci-runner*` / `runner@` unit files
+  (control: 87 unit files exist in that directory — the same control value as
+  2026-08-05). `gate-runner-supervisor.service` is `inactive` and `disabled`. The one
+  active match is `system-gate-runner.slice` at **`TasksCurrent=0`** — an empty cgroup,
+  not a listener. Zero runner timers. The second gate holds: both `hosted-only.conf`
+  drop-ins carry `ConditionPathExists=/run/livespec-local-ci-enabled` and that path is
+  **absent** (control: `/run` is readable with 65 entries, so "absent" is not an
+  unreadable-directory artifact).
+- **The three banked extras.** Both gating `runs-on` (lines 138, 276) fall back to
+  `["ubuntu-latest"]` (control: 10 `runs-on` matches in the file);
+  `ci-selfhosted-shadow.yml` absent (control: the identical `git show` form succeeds for
+  `ci.yml`); zero `origin/ci-shadow/*` branches (control: 36 remote branches exist after
+  `fetch --prune`).
+- **`livespec-dev-tooling-uw3h`'s lockstep still HOLDS.** All three `CI_RUNNER_LABELS`
+  copies — the two gating `runs-on` and the `LIVESPEC_CI_LANE` env expression — still
+  carry `|| '["ubuntu-latest"]'`. Still latent, still unguarded, still nothing pinning
+  the third copy. Re-check it when `livespec-3on57g` edits those lines.
+
+**A DUPLICATE FILING WAS FOUND AND CROSS-REFERENCED (not closed).**
+`livespec-dev-tooling-7ix8` (`ready`, created 2026-08-04T18:11:35Z) and
+`livespec-dev-tooling-z68f` (`backlog`, created 2026-08-05T04:36:28Z) are the SAME
+defect — both name `_ensure_worktree_discipline_default` in
+`livespec_dev_tooling/install_worktree_pack.py`. **The cause is structural and will
+recur:** this thread's two documents cite different ids for it — `handoff.md` (this
+file) says `7ix8`, `supervisor-handoff.md` says `z68f` — so neither lane's prior-art
+check saw the other's filing. **Two records of one plan are two prior-art blind spots.**
+Both items now carry a cross-reference note naming the other, the evidence each holds
+uniquely, and a recommended disposition (merge `7ix8`'s 6-of-6 reproduction into `z68f`,
+close `7ix8`). **Neither was closed from here** — "Open descendants" forbids it, and each
+holds measurements the other lacks.
+
+**Two traps this census walked into, both self-caught, both cheap to repeat:**
+
+- **`date -u` once is not `date -u`.** This session read `04:29:34Z` at its start, then
+  ~70 minutes later dated a fresh ledger write against that stale reading and briefly
+  concluded the beads `updated_at` field was an hour off UTC — which, had it been true,
+  would have invalidated every gate comparison in this file. It was not: true UTC was
+  `05:40:22Z` and the write read `05:39:54Z`. **Re-run `date -u` at the moment you stamp
+  something, not once per session.** The previous census recorded "`date -u` before dating
+  any measurement"; this is the same rule failing on its own second application.
+- **`pgrep -f <pattern>` self-matches and reports a false positive.** The bullet-7
+  listener check appeared to find a process; the only "hit" was the wrapping shell's own
+  argv containing the search string. Re-run with the needles assembled at runtime inside
+  a script file, plus a positive control (16 `systemd` processes), it returns **0**. This
+  is the documented `pgrep -f` footgun arriving in a verification rather than a wait-loop.
 
 ### Census — 2026-08-06 local / `2026-08-05T22:40Z` UTC. Seventh gate reading: still shut, but its CHARACTER changed
 
@@ -369,7 +477,8 @@ creators).
 | `livespec-dev-tooling-zi29` | `livespec-dev-tooling` | P1 — a required context reports SUCCESS while skipping. Cross-repo; 6 of 10 repos. |
 | `livespec-dev-tooling-y6e2` | `livespec-dev-tooling` | P1 — reduced to stale-pack detection only. **Review 2026-08-12.** |
 | `livespec-cpqi` | `livespec` | Copier template CI drift — **re-scoped and much bigger than filed** (see below). Needs a maintainer product decision; do not self-resolve. |
-| `livespec-dev-tooling-7ix8` | `livespec-dev-tooling` | P2 — `just bootstrap` splices an uncommitted `worktree_discipline` key. Reproduced live in 4+ repos this session; it dirties every fresh worktree. |
+| `livespec-dev-tooling-7ix8` | `livespec-dev-tooling` | P2 — `just bootstrap` splices an uncommitted `worktree_discipline` key. Reproduced live in 4+ repos this session; it dirties every fresh worktree. **DUPLICATE of `livespec-dev-tooling-z68f`** — same function, same module, filed ~10h apart by two lanes of THIS plan. Both cross-referenced 2026-08-06; recommended disposition is to merge this one's 6-of-6 reproduction into `z68f` and close this one. Not closed from here. |
+| `livespec-dev-tooling-z68f` | `livespec-dev-tooling` | P2 — the SAME defect as `7ix8` above, filed separately by the supervisor lane and cited only in `supervisor-handoff.md`. Holds the broader evidence (acceptance clause 1 discharged: **8 of 13** governed repos) and the undecided design call (commit the key everywhere vs. stop writing it). Keep this one when the pair is deduped. |
 | ~~`livespec-opwqmy`~~ | `livespec` | **CLOSED 2026-08-06T04:15:50Z** — all three criteria discharged, PR [#2089](https://github.com/thewoolleyman/livespec/pull/2089), merged `e57a1d52`. Hazard written up as **instance 25**; `livespec-hhx4gl`'s unsafe acceptance corrected IN PLACE; one live prescription of the command found and removed. Do not re-drive. |
 | `livespec-driver-claude-mu5` | `livespec-driver-claude` | P1 — `github_rate_limit_guard` denies on substrings, not behavior, and its prescribed `--cache` remedy is absent from its decision logic. Filed 2026-08-05; see the census section below. |
 | `livespec-dev-tooling-uw3h` | `livespec-dev-tooling` | P2 — `check-self-hosted-routing` guards 2 of the 3 copies of `ci.yml`'s declared fallback lockstep; the unguarded `LIVESPEC_CI_LANE` copy would silently halve paid hosted CI parallelism. Filed 2026-08-05; relevant to `livespec-3on57g`, which will edit those lines. |
@@ -667,6 +776,14 @@ The epic may close only when forge and host artifacts jointly establish all of t
 **Two of those bullets are already banked, verified independently on 2026-08-04 — re-measure rather than trust, but know they were true once.** The shared factory host carries no CI listener or worker process: no `ci-runner*` or `runner@` unit files remain, `/usr/local/lib/ci-runner/` holds only the four deliberately out-of-scope `gate-runner` scripts, and no listener process exists. And strict outside-collaborator fork approval was read from the forge as `all_external_contributors`, not inferred from prose. Also banked, though not itself a closing bullet: both gating `runs-on` values in this repo's `ci.yml` now fall back to `["ubuntu-latest"]`, the Phase-0 `ci-shadow/*` remote branches are gone, and `ci-selfhosted-shadow.yml` is deleted — each verified with a query shown to be fail-capable.
 
 **RE-MEASURED 2026-08-05, and all of it still holds. The full raw evidence is journaled on `livespec-h22nve`; the controls are the point.**
+
+> **RE-MEASURED AGAIN 2026-08-06 — every bullet below still holds, each with its control
+> re-run.** The fresh figures (including one control that reproduced at the identical
+> value, 87 unit files) are in the EIGHTH census section above; they are not restated here
+> to keep one source per measurement. Note the bullet-7 listener check needed a corrected
+> method this time: a `pgrep -f` scan self-matched and had to be redone inside a script
+> file with runtime-assembled patterns and a positive control before its zero meant
+> anything.
 
 - **Bullet 4 (fork approval + trigger classes), both halves from the forge.** `approval_policy` = `all_external_contributors`. `branches/master/protection` = required contexts exactly `["ci-green"]`, `enforce_admins: true`, `allow_force_pushes: false`, `allow_deletions: false`. `ci.yml` triggers are exactly `pull_request` plus `push: branches: [master]`.
 - **Bullet 7 (no CI listener or worker on the factory host).** `/usr/local/lib/ci-runner/` holds exactly four files, all the out-of-scope `gate-runner` tier; the only matching unit files are the two `gate-runner` units and their drop-in dirs, with **no `ci-runner*` and no `runner@` unit** (control: 87 unit files exist in that directory, so the grep is not vacuous); `gate-runner-supervisor.service` is `inactive` and `disabled`; the one "active" match is `system-gate-runner.slice` reporting **`Tasks: 0`** — an empty cgroup, not a listener; no timer matches at all. The second gate holds too, verified by reading the file: both units carry a `hosted-only.conf` whose entire `[Unit]` body is `ConditionPathExists=/run/livespec-local-ci-enabled`, and that path is absent. Note the earlier reading recorded both `system-runner.slice` and `system-gate-runner.slice`; only the latter remains, consistent with `livespec-hhx4gl`.
