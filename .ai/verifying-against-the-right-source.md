@@ -38,7 +38,9 @@ The heading itself was an instance of the defect. It read "Sixteen instances"
 while eighteen were present, because it was not updated when 17 and 18 landed —
 the clause-lockstep defect `.ai/spec-proposal-review.md` describes, where a count
 must be re-derived whenever the set it describes changes. Corrected 2026-08-05
-alongside instances 19-21. **If you add an instance, re-derive this count.**
+alongside instances 19-21, and again 2026-08-06 alongside instance 24 — where
+the count in `AGENTS.md` had to move in the same commit, since it states the
+total too. **If you add an instance, re-derive this count.**
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -639,9 +641,61 @@ And never parse `ls` in a check; its output is a display artifact that a user al
 a locale, or a terminal width can reshape. Use `find -printf`, a glob, or `git
 ls-files`, all of which emit names and nothing else.
 
+### 24. A step named "Skip …" that is SKIPPED is proof the check RAN
+
+Every other entry here guards against believing a green that is hollow. This one
+guards the opposite error, and it was reached by a reviewer catching a first
+draft of this very session's verification.
+
+Instance 16 taught this fleet to distrust a green required context and read its
+STEP list. Applied to `livespec` master run `31057914032` for merge commit
+`cead37ca`, the step list for `check-public-api-result-typed` contains a step
+named `Skip when no .py changes` whose conclusion is `skipped`. Seeing the word
+"Skip" in the step list of a job you have been trained to suspect is a strong
+pull toward "there it is again."
+
+It is the exact opposite. The two shapes are mirrors, and the discriminator is
+the STATUS of that step, never its name:
+
+    TRAP (instance 16)                      GENUINE (this run)
+    Skip when no .py changes    success     Skip when no .py changes    skipped
+    Checkout                    skipped     Checkout                    success
+    Install Python dev deps     skipped     Install Python dev deps     success
+    just check-…                skipped     just check-…                success
+    JOB CONCLUSION              success     JOB CONCLUSION              success
+
+That step is a **complement notice**, guarded by the negation of the same
+condition the real steps carry. It can only SUCCEED when `py_changed` is false,
+so observing it `skipped` is positive evidence that `py_changed` was TRUE and
+the real command ran. Reading its presence — rather than its status — as the
+trap inverts the signal and discards a green that was honestly earned.
+
+The failure this would cause is the mirror of instance 16's and no less costly:
+16 makes you accept a check that never ran, 24 makes you reject a check that
+did, and then hunt for a defect that is not there. In this session it would have
+thrown away the one piece of evidence that actually certified the change — the
+same run's `check-vendor-manifest` executing and passing, which is what proves a
+pin bump and its vendored source stayed in lockstep.
+
+A second, subtler half sits in the same run. `Install canonical worktree pack`
+is `success` in `check-shell-quality` and `skipped` in `check-vendor-manifest`.
+Both are correct: only the job that INSPECTS the pack needs it installed, and
+that job having it is the fix for `livespec-dev-tooling-y6e2` holding. So the
+same step name, with opposite conclusions, is right in both places. **A step
+name plus a conclusion is still not a verdict — you need to know whether THAT
+job's check depends on THAT step.**
+
+**Counter-move:** when reading a step list, name the step that runs the command
+(`just <target>`) and require it to be `success`. Treat every `if:`-guarded
+scaffolding step as uninterpretable in isolation, because a guard and its
+complement produce opposite conclusions from the same true condition. The
+question is never "is there a skip here" — there is always a skip somewhere —
+but "did the command step execute". If you cannot say which step runs the
+command, you are not yet reading the step list, only scanning it.
+
 ## Why this file exists in livespec CORE
 
-The twenty-three instances span EIGHT repositories — `livespec`,
+The twenty-four instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and
