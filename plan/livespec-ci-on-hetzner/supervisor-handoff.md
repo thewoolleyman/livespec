@@ -190,6 +190,36 @@ actions.**
 
 ### Open items this thread opened or touched, and who owns them
 
+**THE THREE FILED 2026-08-06 THAT LIVED ONLY IN THE LEDGER.** Listed first because their
+absence is what made a successor re-derive work this thread had already done. They are the
+worked example of the rule stated above — name an item here in the turn you file it.
+
+- `livespec-39h1` (P2, `backlog`) — the SYNTHESIS: nothing watches non-required workflows,
+  so five chronic failures sat red for days-to-weeks while every affected repo reported
+  green `CI`. The release-gate finding is its instance #3 and the `release-readiness`
+  canary its instance #4. Its own framing is the sharpest available: **the missing piece is
+  a READER**, and more detectors of this kind cannot fix it. Read it before re-measuring
+  anything about the release gate — it carries a METHOD NOTE naming two `gh` query traps
+  that produce a FALSE GREEN.
+- `livespec-dev-tooling-xdyh` (P1) — instance #1 of the above: the `Pin freshness sweep`
+  failing across four repos on a non-fast-forward push onto its own leftover bump branch.
+  Owner: the `livespec-dev-tooling` tenant.
+- `livespec-console-beads-fabro-3ej` (P1) — instance #2: `livespec-console-beads-fabro`
+  cannot receive `livespec` pin bumps at all. Owner: that repository's own tenant. Written
+  in full deliberately — `beads-fabro` alone is ambiguous with
+  `livespec-orchestrator-beads-fabro`.
+
+**A TRAP THAT MAKES THIS WORSE, AND IT BIT BOTH SUPERVISOR AND WORKER.** A prior-art search
+run AFTER this thread has written about a topic returns THIS THREAD'S OWN OUTPUT and reads
+exactly like independent corroboration. Measured here: a full-ledger search for
+`check-no-lloc-soft-warnings` returned three items, but only `livespec-besm` (closed
+2026-06-24) is independent prior art — `livespec-39h1` was this thread's own filing hours
+earlier and the `livespec-915y` hit was this thread's own note from minutes earlier. So
+"three mentions, two open" and "exactly one independent prior art" were BOTH true, and only
+the second is evidence. **Exclude hits whose `created_at` postdates your session, and
+distinguish `description` (authored at filing) from `notes` (appended later, possibly by
+you).**
+
 - `livespec-dev-tooling-y6e2` (P1) — the `check-shell-quality` CI job skips installing
   the worktree pack, so the gate inspects a justfile with the pack's recipes removed
   and verifies nothing. Owner: the maintainer. **Review date 2026-08-12** — at that
