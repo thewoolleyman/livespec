@@ -31,63 +31,126 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T11:5xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T23:3xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
 >
 > **The Hetzner half is parked at an external gate and there is nothing here to drive.**
-> That is the correct, expected state — not a stall. **Ten** consecutive readings across
-> 2026-08-04/05/06 found the gate shut with not one value moved. Tenth reading taken
-> 2026-08-06T11:38Z, every `updated_at` byte-identical to the ninth (which was itself taken
-> only twenty minutes earlier — this pair is a short-interval re-measure, so treat it as one
-> reading's worth of evidence about motion, not two):
+> That is the correct, expected state — not a stall. **Eleven** consecutive readings across
+> 2026-08-04/05/06 found the gate shut with not one value moved. Eleventh reading taken
+> 2026-08-06T23:2xZ, every `updated_at` still byte-identical to the eighth through tenth —
+> and unlike the ninth/tenth pair, this one sits **twelve hours** after its predecessor, so
+> it is a genuine independent re-measure rather than a short-interval re-read:
 > `hl-wkyeqg` `pending-approval` (2026-08-04T04:07:29Z), `hl-euzuhb` `pending-approval`
 > (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog` (2026-08-03T10:06:45Z), `hl-6uldtn`
 > `backlog` (2026-08-04T10:12:12Z), `hl-75f` `backlog`/P1 (2026-08-04T20:58:11Z). In
 > `livespec`: `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` all
 > `pending-approval`; epic `livespec-h22nve` correctly held `active`.
 >
-> Forge, this repository, same reading: `actions/runners` `total_count=0` (a SEVENTH such
+> Forge, this repository, same reading: `actions/runners` `total_count=0` (an EIGHTH such
 > reading), `CI_RUNNER_LABELS` still `["ubuntu-latest"]` at `updated_at`
 > 2026-07-18T11:34:31Z, fork approval still `all_external_contributors`, and the same two
-> open PRs (#2069, #1968), both other threads' `docs(plan)` work. `homelab` `origin/main`
-> moved `12df7ed1` → `5fe0376e` — busy neighbour again, and per the eighth census's rule
-> that is not gate motion unless it moves the gate's OWN items, which it did not.
+> open PRs (#2069, #1968), both other threads' `docs(plan)` work.
+>
+> ### 🔎 BUT THE GATE'S CRITICAL PATH MOVED FOR THE FIRST TIME — read this before re-running the discrimination
+>
+> Ten prior readings answered "did `homelab` move?" with *busy neighbour, not gate motion*.
+> **This one does not.** `homelab` `origin/main` went `5fe0376e` → `7a6a7277`, 15 commits,
+> **4** touching `hetzner` paths (control: 78 `hetzner` paths exist on `main`, so the 4 is
+> fail-capable) — and one of those four, `5979562`, edits
+> **`nix/hosts/hetzner-prod/storage.nix` and carries `Refs: hl-r6hihy.3, hl-75f`.** That is
+> the gate's own critical-path item and its own file. By the eighth census's own rule —
+> *repository movement is a leading indicator only when it moves the gate's OWN items* —
+> this qualifies, and it is the first time it has.
+>
+> **`hl-r6hihy` measures `active`, P2, `updated_at` 2026-08-06T10:48:44Z**: "Thread 17 —
+> hetzner-prod storage repair: the 512 GiB ESP declaration and the coupled re-partition."
+> So there is now a LIVE implementation lane on the repair `hl-75f` names, where three
+> readings ago there was none.
+>
+> **Do NOT read that as the gate opening, and do not size work from it.** Three things
+> hold it shut, and all three are measured above: every one of the five gate items is
+> byte-identical to the eighth reading; `hl-75f` itself is still `backlog` and unstarted;
+> and thread 07 (`hl-xuu5j3`) — gate condition 3, the one furthest from met — is still
+> `backlog` with no accepted runner realization. The commit itself is explicit that it
+> changes nothing declarative: *"No declaration change, no cap change, no partition added
+> or removed, no host contact."*
+>
+> **What it actually is, is the eighth census's own warning arriving as work.** That census
+> said *"acceptance filed" is not "acceptance fail-capable"* and predicted the remaining
+> work was larger than `hl-75f`'s wording implied. `5979562` is precisely that: it makes the
+> partition-readback verifier's controls **re-run on every build** rather than having been
+> run once into a PR body, on the stated principle that **a control that is run is not the
+> same as a control that re-runs.** It also found and fixed a real safety defect — the
+> replay passed non-target `/dev/` paths through to `sgdisk`, and did execute one against a
+> real device path, harmless only because that device does not exist on that workstation.
+>
+> So the gate's character has moved a third time: from *"the machine is dark"* → *"the
+> machine is up; one declaration fix and two ratifications are owed"* → **"the declaration
+> fix has an active lane that is building fail-capable acceptance before touching the
+> declaration."** Consume this; never act on it. Sizing consequence is unchanged and
+> reinforced: expect a destructive repartition between here and a serving runner.
 >
 > **Your first action is still the census below**, run to CONFIRM this rather than to find
 > work. If it shows the gate open, the next slice is `livespec-3on57g`. If it shows the gate
 > shut, **say so plainly and stop — that is the correct output.**
 >
-> ### ⏰ THE ONE TIME-BOXED THING WAITING FOR YOU — a falsifiable prediction, and **DO NOT read it at 13:00Z**
+> ### ✅ THE TIME-BOXED PREDICTION WAS READ AND RESOLVED — nothing here is waiting on you
 >
-> `livespec-dev-tooling-xdyh` (P1) records that the daily `Pin freshness sweep` dies on a
-> **non-fast-forward push** onto its own leftover bump branch, which took it down in FOUR
-> repos on 2026-08-04/05. Every colliding `…-livespec-runtime-v0.16.0` branch has since
-> been deleted, so the prediction journaled on that item is: **the sweep succeeds in
-> `livespec`, `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl` and
-> `livespec-console-beads-fabro`.**
+> The `livespec-dev-tooling-xdyh` sweep prediction that previous sessions left pending was
+> read at 2026-08-06T23:2xZ and **journaled on both affected items.** Do not re-run it; the
+> next sweep is a fresh event. Result in one line: **3 of 4 repos succeeded with real
+> pushes, the 4th failed on a different already-filed defect, and `xdyh`'s mechanism did not
+> fire anywhere.**
 >
-> **⚠ THE "13:00Z" IN THE PREVIOUS VERSION OF THIS BLOCK WAS A TRAP, and it was written by
-> a session that never watched the workflow run.** The cron genuinely is `0 13 * * *` —
-> that is what `pin-freshness.yml` declares and what its own comment says — but GitHub
-> delays scheduled workflows and this one has been late **five days out of five**, never by
-> less than 79 minutes: 2026-08-01 `14:23Z`, 08-02 `14:24Z`, 08-03 `15:39Z`, 08-04 `15:19Z`,
-> 08-05 `15:09Z`. All four repos fire together within about five minutes, so that is the
-> schedule and not one repo's queue. **Read the result no earlier than ~15:45Z**, or poll
-> until a run carrying today's date exists. A session that reads at 13:05Z finds no run for
-> that day and can reasonably conclude a P1 safety net is disabled — a false finding about
-> the very item it was sent to check.
+> | repo | run | conclusion |
+> |---|---|---|
+> | `livespec` | 31106424287 | **success** — bump merged as `e1c96543` |
+> | `livespec-orchestrator-git-jsonl` | 31106552345 | **success** |
+> | `livespec-orchestrator-beads-fabro` | 31106565154 | **success** |
+> | `livespec-console-beads-fabro` | 31106710043 | failure — **`-3ej`, not `xdyh`** |
 >
-> **Check it, and record the result either way** — a passing sweep does NOT close `xdyh`.
-> Recovery would be the version moving past the stale branch, not the workflow recovering;
-> the defect re-arms on the next bump PR that lingers a day. If the sweep FAILS, that is a
-> stronger finding than predicted and belongs on the item immediately.
+> **The three successes are fail-capable, not no-ops** — each spawned a real `open-bump-pr`
+> job that ran through `Rewrite pins + commit + open auto-merge PR`, which is exactly where
+> a non-fast-forward push dies. **`xdyh` stays open**: recovery is the source version moving
+> past the stale branch, not the workflow recovering, and it re-arms on the next lingering
+> bump PR.
 >
-> **The precondition was verified clear before the event on 2026-08-06 (journaled on
-> `xdyh`), which is what makes a failure a strong finding rather than an ambiguous one:**
-> zero `v0.16.0` branches survive in any of the four (control: 34/12/17/8 total heads, so
-> the empty pattern result is a real absence), and the branches today's sweep will actually
-> push — `chore/freshness-bump-livespec-runtime-v0.17.0` and
-> `chore/freshness-bump-livespec-v0.28.2`, from the current `releases/latest` — do not exist
-> anywhere.
+> **Two findings came out of it that a future session should not re-derive:**
+>
+> - **`-3ej` MASKS `xdyh` in `livespec-console-beads-fabro`.** The two sit in one pipeline in
+>   a fixed order: the CI-matrix guard refuses the bump strictly BEFORE the push, and that
+>   run's `Commit + push bump branch` reports `skipped`. So that repo can never push a bump
+>   branch, never hit a non-fast-forward, and never reproduce `xdyh` while `-3ej` stands.
+>   **Its clean record against `xdyh` is evidence of nothing** — do not count it as a passing
+>   sample. `-3ej` also widened: **both** sources now fail there, not only `livespec`.
+> - **Auto-merge deletes the bump branch on success** (`…-livespec-v0.28.2` is gone; control:
+>   34 heads, the lone surviving `chore/freshness-bump-*` is the old `-v0.10.1` debris). So
+>   the stranded-branch inventory is a census of past NON-merges. Consistent with `xdyh` as
+>   filed — nothing in the workflow cleared v0.28.2 either; the merge did.
+>
+> ### ⚠ AND THE "READ NO EARLIER THAN ~15:45Z" RULE IS FALSIFIED — delete it from your plan
+>
+> Previous sessions recorded this cron (`0 13 * * *`) as late **five days out of five, never
+> by less than 79 minutes**, and prescribed reading no earlier than ~15:45Z. **Today's runs
+> fired at `13:32Z`–`13:36Z` — 32 to 36 minutes late, well inside the band that streak
+> declared impossible.** A sixth sample broke it at the first opportunity.
+>
+> The lateness was real, but **a five-sample streak is not a lower bound**, and a clock time
+> derived from one is a guess wearing a measurement's clothes. The correct rule is the
+> fallback the same note already carried: **poll until a run carrying today's date exists.**
+> That was right on all six days; the clock time was right on five and would have cost a
+> two-hour wait on the sixth. **Prefer the state test over the time test** — which is this
+> file's own recurring lesson (`date -u` once is not `date -u`) in a new costume.
+>
+> **The prediction's setup text that stood here is SPENT and has been removed** — it briefed
+> a reading that has now been taken, and leaving it would invite a second session to re-run a
+> one-shot event. What it established and what it cost are both preserved above. One piece of
+> it is worth keeping because it is the reason the result means anything: the precondition was
+> verified clear BEFORE the event (journaled on `xdyh`) — zero `v0.16.0` branches in any of the
+> four (control: 34/12/17/8 total heads), and neither branch the sweep would push
+> (`…-livespec-runtime-v0.17.0`, `…-livespec-v0.28.2`) existed anywhere beforehand. **That is
+> what makes today's three successes a real observation rather than an ambiguous one**, and it
+> is instance 21's rule obeyed in advance: a control verified as currently-unmet is not
+> verified as hard to meet, so it was checked before, not after.
 >
 > **But the collision debris is PERMANENT, and "the v0.16.0 branches were deleted" should
 > not be read as "the litter is cleared."** Three stale bump branches from EARLIER
@@ -622,8 +685,8 @@ creators).
 | `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
 | `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
 | `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
-| `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. |
-| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive `livespec` pin bumps at all** (pinned v0.26.0, latest v0.28.2): its `ci.yml` matrix lacks **53** canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. |
+| `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
+| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0, latest v0.28.2): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 
 > **The three rows above were added 2026-08-06 to close a gap that cost a supervisor real
 > work, and the gap is the lesson.** All three were FILED BY THIS THREAD that morning and
