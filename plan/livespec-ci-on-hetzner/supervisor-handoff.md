@@ -502,7 +502,20 @@ composer() {
   # The prompt marker is U+276F followed by a NON-BREAKING SPACE (U+00A0), so a
   # pattern of '^❯ ' with an ordinary space silently matches NOTHING and the
   # function returns empty. Match the marker alone.
-  tmux capture-pane -p -t "$WORKER_TARGET" | awk '/^❯/{f=1} f&&/^─+/{exit} f{print}'
+  #
+  # Anchor on the LAST marker line, not the first. Once any instruction has been
+  # submitted, the pane holds the ECHOED prompt above the live composer, and both
+  # begin with the marker. A first-match scan returns the echo — settled text that
+  # is byte-identical across any two reads. See C6.
+  tmux capture-pane -p -t "$WORKER_TARGET" | awk '
+    { line[NR] = $0; if ($0 ~ /^❯/) last = NR }
+    END {
+      if (last == 0) exit
+      for (i = last; i <= NR; i++) {
+        if (i > last && line[i] ~ /^─+/) exit
+        print line[i]
+      }
+    }'
 }
 tmux send-keys -t "$WORKER_TARGET" -- '<condition-command>'
 a=$(composer); sleep 3; b=$(composer)
@@ -510,6 +523,13 @@ a=$(composer); sleep 3; b=$(composer)
   || { echo "HALT: composer extraction returned EMPTY — the extractor is broken, not the composer"; echo "REMEDY: print the pane through 'cat -A' and re-derive the marker bytes before trusting any comparison"; exit 1; }
 [ "$a" = "$b" ] \
   || { echo "HALT: composer still changing — text is mid-delivery"; echo "REMEDY: re-read until two spaced reads match, then send Enter"; exit 1; }
+# STABILITY IS NOT IDENTITY. Assert the composer actually holds what you sent,
+# against a distinctive fragment of it, before pressing Enter.
+printf '%s\n' "$a"
+case "$a" in
+  *'<a distinctive fragment of the text you just sent>'*) : ;;
+  *) echo "HALT: composer does NOT contain the text just sent"; echo "REMEDY: do not press Enter — re-read the pane, and suspect the extractor before suspecting the send"; exit 1 ;;
+esac
 tmux send-keys -t "$WORKER_TARGET" Enter             # only after verifying
 ```
 
@@ -528,6 +548,12 @@ strings compare EQUAL, so without the `-n` test the check would have reported
 STABLE on a composer it had never actually read, and pressed Enter on that basis.
 An extractor that matches nothing is indistinguishable from an empty composer.
 Prove the extractor finds something before trusting what it says about change.
+
+It is NOT sufficient, though, and C6 is the case it misses. The `-n` test and the
+stability test together still pass when the extractor matches the WRONG region —
+a stale echoed prompt is non-empty AND perfectly stable. Non-empty, unchanging,
+and wrong is the hardest of the three states to see, because both guards report
+health. Only the content assertion above catches it.
 
 Prefer a file reference over a paste for anything longer. Write the brief under
 `runtime_dir` and send a one-line instruction naming that path; a one-line
@@ -727,3 +753,46 @@ effect, and none was applied ... nobody should go looking for a block that does 
 exist." A supervisor instruction that has become impossible must be reported as
 impossible, never quietly approximated — and it discharged the substance anyway by
 recording the debt on the merged PR.
+
+C6. THE COMPOSER EXTRACTOR IN THIS CHARTER READ THE WRONG REGION OF THE PANE, AND
+BOTH GUARDS AROUND IT REPORTED HEALTH. I sent a ~900-character instruction, ran the
+verify block, and it reported 21 bytes. I compared two spaced reads, they matched, so
+the stability gate passed and I pressed Enter on a 21-byte reading of a 900-character
+instruction. It landed correctly — by luck, not by method. Had it not, I would have
+submitted a fragment and reported a delivered brief.
+
+The mechanism, reproduced deliberately afterwards rather than guessed at. The old
+extractor scanned for the FIRST line beginning with the prompt marker. Once any
+instruction has been submitted, the pane holds the ECHOED prompt above the live
+composer and BOTH begin with that marker, so a first-match scan latches onto the
+echo. Measured live against this worker's pane with the composer verifiably EMPTY:
+the old extractor returned **1903 bytes** of the previously-submitted instruction;
+the corrected last-match form returned **5 bytes**, which is the bare marker plus its
+non-breaking space — an empty composer, correctly reported.
+
+**WHY THE EXISTING GUARDS COULD NOT CATCH IT, which is the part worth carrying.**
+This charter already installs two: a `-n` emptiness assertion and a two-read
+stability comparison. A stale echoed prompt defeats BOTH BY BEING HEALTHY — it is
+non-empty, so `-n` passes, and it is settled transcript that cannot change, so it is
+the most stable thing in the pane. The existing prose says "an extractor that matches
+nothing is indistinguishable from an empty composer." The gap is one step further
+out: AN EXTRACTOR THAT MATCHES THE WRONG THING IS INDISTINGUISHABLE FROM A CORRECT
+ONE, and it is worse, because emptiness at least looks suspicious while 1903 bytes of
+plausible text looks like proof. This is C4's amputated-listing lesson arriving in a
+new place — a result that is confidently wrong reads better than one that is
+obviously broken.
+
+The fix is in two parts and the second is the load-bearing one. Anchor on the LAST
+marker line, so the live composer is what gets read. Then STOP TREATING STABILITY AS
+IDENTITY: assert that the extracted text actually CONTAINS a distinctive fragment of
+what was just sent. Stability answers "has delivery finished," never "is this my
+text" — and only the second question is the one being asked before pressing Enter.
+
+Two process notes. First, I printed only a BYTE COUNT rather than the content;
+printing the content would have exposed this instantly, and the count is exactly the
+kind of denominator-free window C4 warns against. Second, my initial check of whether
+the generator re-mints this defect grepped the generator for the very term whose
+absence I was asserting — a non-control, C3's error, committed while writing up an
+extractor bug. Re-run properly, the generator is clean (675 lines, 63 `supervisor`
+hits, zero composer prose), so this was authored into THIS binder and exactly one
+file in the repository carries it. The blast radius claim is measured, not assumed.
