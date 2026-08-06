@@ -46,13 +46,42 @@ regroom-out disposition can close a work-item that is *also* a plan's own
 anchor epic, and nothing anywhere flags that combination or checks whether
 the epic's replacements are themselves done.
 
-**There is no mechanical verifier for this anywhere in the fleet's shared
-tooling** — checked `livespec-dev-tooling` and
-`livespec-orchestrator-beads-fabro` directly, zero hits for anything
-resembling an archive-on-close check. Despite being named as "always-on
-enforcement... realized by the Conformance Pattern," today it is enforced by
-nothing but an LLM reading prose correctly, and this incident is the proof
-that fails.
+**CORRECTED 2026-08-06 — the claim below was wrong; kept struck-through-in-
+spirit rather than deleted, since the correction is itself evidence.**
+~~There is no mechanical verifier for this anywhere in the fleet's shared
+tooling — checked `livespec-dev-tooling` and `livespec-orchestrator-beads-fabro`
+directly, zero hits for anything resembling an archive-on-close check.~~ That
+grep searched for the wrong substrings (`archive.on.epic.close` /
+`epic_close` / `archive_on_epic`). A real check family exists in
+`livespec-dev-tooling`: `plan_thread_anchor_declared` (static) and
+`plan_thread_epic_parity` (ledger-aware, credential/lever-gated). The
+latter's own remediation text, verbatim, on an active thread pointing at a
+closed epic: *"the plan thread is complete — archive it."* That is this same
+conflation, found baked into shipped code — deliberately designed (epic
+`livespec-dev-tooling-scsj5e`, closed 2026-07-18), motivated by a real prior
+incident with the opposite ground truth (a genuinely-complete epic that sat
+un-archived).
+
+Two things survive the correction: (1) that check is unarmed everywhere in
+the fleet today (zero `LIVESPEC_RUN_PLAN_EPIC_PARITY` references in any
+`.github/workflows/` checked; `livespec-dev-tooling-d1j`, "establish a
+standing armed home," is still `backlog`); (2) even fully armed, it would
+not have caught THIS incident — its assertion direction is "active thread +
+closed epic → fail," but by the time this mistake existed on disk the thread
+itself had already moved to `plan/archive/`, structurally outside that
+check's glob (a distinct defect, `livespec-dev-tooling-q3emww`, found
+independently the same day by a different thread). Catching this incident's
+specific shape needed a third check — descendant completion, not anchor
+status — filed as `livespec-dev-tooling-5asgvm`.
+
+So: despite `SPECIFICATION/contracts.md` naming this as "always-on
+enforcement... realized by the Conformance Pattern," in practice it is STILL
+enforced by nothing but an LLM reading prose correctly — not because no
+check was ever built, but because the check that was built is unarmed, and
+even armed, points the wrong direction for this incident's specific failure
+mode. The practical conclusion is unchanged; the reasoning under it was
+sloppier than it should have been. Full detail:
+`livespec-orchestrator-beads-fabro` PR #1317.
 
 ## What this validates, concretely
 
