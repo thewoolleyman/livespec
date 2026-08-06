@@ -124,6 +124,33 @@ request closed records explicitly. A default listing answers "what is open?", no
 "what exists?" — and those are different questions whenever you are checking for
 prior art.
 
+**A SECOND CONSEQUENCE, worse than a duplicate: the closed record often holds the
+CORRECT ANALYSIS, so missing it means re-deriving the question badly.** Recorded
+2026-08-06. A session measured that `release-tag.yml` fails on every release,
+inferred that the dogfooding-pin rationale ("a release is the more-validated
+artifact") therefore held "only for mutation testing", and escalated that to a
+human. The framing was wrong — all three release-gate validations do run, and
+run strictly. A CLOSED item in the same tenant, `livespec-besm`, had already
+stated the right framing in one clause: *"Does NOT block the release (the gate
+runs post-tag)."* The real point is that the gate fires on tag push, after the
+release object exists, so a failing gate cannot retract a release that siblings
+will consume — sharper than what was escalated, and available for the reading.
+
+So the cost of skipping closed records is not only a duplicate filing. It is
+**escalating an analysis that the ledger had already got right**, which spends a
+reviewer's round-trip and puts a wrong claim in front of a human. Note the scale
+that made it easy: the default listing returned **50** items where
+`--all -n 0` returned **624**, of which **532** were closed. A prior-art check
+run against 8% of the record is not a weak check, it is a different question.
+
+**The same blind spot has a NON-LEDGER form — two documents describing one
+effort.** Also 2026-08-06: the same defect was filed twice, ten hours apart, by
+two lanes of one plan, because the lanes' own records cited different ids for it
+(`handoff.md` named one, `supervisor-handoff.md` the other) and neither lane's
+prior-art check read the other's document. **Two records of one effort are two
+prior-art blind spots.** When a plan is written down in more than one place,
+search every place, not the one you authored.
+
 ### 6. A directory listing cannot distinguish "never existed" from "deleted"
 
 A supervisor checked whether a plan existed, found the path absent from a
