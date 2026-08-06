@@ -135,8 +135,11 @@ where there is one and the same.
 - **This plan governs the redesign of the plan machinery itself.** Its scope
   is: mutable planning state moves to the ledger; scoping becomes an explicit
   ledger event; a two-leg archive gate; retirement of the "plan thread"
-  vocabulary. The scoping cut is ALREADY FILED: five dotted children under
-  `livespec-zsn2xh` in this tenant, plus ten sibling-tenant items —
+  vocabulary. **The core redesign RATIFIED as `SPECIFICATION/history/v197`**
+  (PR #2057, merge `d6c64ae3`), with a one-sentence follow-up in `v198`. The
+  scoping cut is ALREADY FILED: dotted children under
+  `livespec-zsn2xh` in this tenant (five at generation, more since — enumerate
+  them, never trust this count), plus ten sibling-tenant items —
   `bd-ib-mrqoy2` and `bd-ib-da4fs2` in repository
   `livespec-orchestrator-beads-fabro`; `overseer-pfpfty` and `overseer-ftfhek`
   in repository `livespec-overseer`; `bd-gj-mbde5p` in repository
@@ -147,13 +150,16 @@ where there is one and the same.
   `livespec-driver-codex`; `livespec-console-beads-fabro-sisnmx` in repository
   `livespec-console-beads-fabro`. These ids are stable structural pointers;
   their statuses are NOT recorded here — re-measure before acting.
-- **`livespec-zsn2xh.4` (ratification) is the maintainer valve.** It is
-  `blocked: needs-human` BY DESIGN. The independent read-only Fable-model
-  adversarial review must return a literal NO-BLOCKERS verdict before the
-  revise accept is driven, per `AGENTS.md` §"Independent Fable review before
-  every ratification" and `.ai/spec-proposal-review.md`. A blocker routes to
-  the maintainer with a recommended fix and is never self-waived — including
-  when this thread authored the proposal under review.
+- **`livespec-zsn2xh.4` (ratification) WAS the maintainer valve and is now
+  CLOSED** — the maintainer authorized the accept and it landed as `v197`.
+  The rule it embodied still binds every FUTURE ratification this plan drives:
+  an independent read-only Fable-model adversarial review must return a literal
+  NO-BLOCKERS verdict before the revise accept, per `AGENTS.md` §"Independent
+  Fable review before every ratification" and `.ai/spec-proposal-review.md`. A
+  blocker routes to the maintainer with a recommended fix and is never
+  self-waived — including when this thread authored the proposal under review.
+  It took THREE review rounds here (six blockers, then two, then none); budget
+  for that rather than expecting one pass.
 - **Vocabulary: "plan thread" is banned** (maintainer-declared 2026-08-04).
   The artifact is called a "plan". Every instruction, work-item, commit, and
   report this thread produces uses "plan"; quoting pre-existing text verbatim
@@ -161,11 +167,23 @@ where there is one and the same.
   `archive/` and `history/` trees keep the old term. Until child
   `livespec-zsn2xh.2` lands the ban in the committed agent-instruction
   surface, this clause is the ban's carrier for this thread.
-- **This plan deliberately has NO `plan/planning-lane-redesign/handoff.md`.**
-  It is research-only under the plan operation's young-plan allowance, and the
-  thread dogfoods its own target design: mutable state lives in the ledger and
-  the supervisor marker, not in new handoff files. Do not create a
-  `handoff.md` here without an explicit maintainer decision.
+- **This plan was designed to have NO
+  `plan/planning-lane-redesign/handoff.md`, and one now EXISTS anyway.** A
+  Fabro sandbox working a DIFFERENT work-item created it 2026-08-05T21:59:56Z
+  in commit `275b704d` ("arm plan lifecycle anchor check"), which added a
+  handoff to five plans; this plan, having none, got a new file. `v197` now
+  FORBIDS both `handoff.md` and `supervisor-handoff.md` in a plan store, so
+  this directory currently violates the contract it ratified. Do NOT delete
+  either file here as a tidy-up: removal is `livespec-zsn2xh.5`'s scope, and it
+  is ORDERED BEHIND the `livespec-overseer` respawn/injection template, which
+  still points at `plan/<topic>/handoff.md` (covered by `overseer-pfpfty`).
+  Deleting early breaks cold-open respawn — that defect already stalled a live
+  worker on a picker asking how to wind down without the file. PROVEN by
+  experiment, so no one need re-derive it: the armed
+  `check-plan-thread-anchor-declared` does NOT require the file to exist. It
+  globs `plan/*/handoff.md`, so absence contributes no offender and exits 0;
+  a handoff missing its anchor exits 1. Migration can simply delete; no check
+  change, exemption, or placeholder is needed.
 - The two epic-shaped sibling items (`bd-ib-mrqoy2` in repository
   `livespec-orchestrator-beads-fabro`, `overseer-pfpfty` in repository
   `livespec-overseer`) are groomed IN THEIR OWN repositories via the groom
@@ -470,8 +488,105 @@ done
 echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 ```
 
+## Resume state — POINTERS ONLY, re-measure every one
+
+Written at session wrap 2026-08-06T00:55Z. These are pointers to things that
+existed then, NOT status. Re-measure each with the commands above before acting
+on it; this plan has already been bitten twice by state that moved underneath a
+written-down claim.
+
+**One dispatch was IN FLIGHT when this session ended.**
+`drive --action impl:livespec-pw55` (the ratification-attestation hardening,
+P1) was `active`/`fabro` at 00:53:34Z. It was deliberately NOT killed at
+wind-down: a detached factory run completes on its own, and killing it
+mid-flight would orphan the sandbox and strand the item `active` with no owner.
+FIRST ACTION on resume: re-measure `livespec-pw55`. If it closed green, verify
+across three sources AND confirm the landed test actually FAILS on a
+`v198`-shaped payload and PASSES on a `v197`-shaped one — a hardening check
+that cannot reject is the same defect class it exists to fix. If it failed or
+is still `active` with no live process, read the dispatch journal `outcome` on
+an explicit `at` cutoff before re-dispatching.
+
+**Everything else this seat held is discharged.** The full obligation record,
+including discharge evidence and every finding, is the supervisor marker the
+cold-open boot block already reads. Read it — it is the detail this section
+deliberately does not duplicate.
+
+**Owned elsewhere, not this seat's to drive:** grooming `bd-ib-mrqoy2`
+(repository `livespec-orchestrator-beads-fabro`) and `overseer-pfpfty`
+(repository `livespec-overseer`) — maintainer-owned cuts in their own
+repositories, which this binder forbids decomposing from here;
+`livespec-zsn2xh.5`, gated on that orchestrator rewrite; and five rename-only
+sweeps now unblocked in their own repositories.
+
 ## Corrections
 
 Thread-specific corrections belong here. Regeneration must preserve this
 section byte-for-byte, including spelling, punctuation, code formatting, blank
-lines, and ordering. No corrections yet.
+lines, and ordering.
+
+T1. A ratification reached master carrying a review attestation that was
+MINTED, and the CLI accepted it. `v198`'s revision record claims
+`separate_reviewer: True`, `reviewer_model: fable`, `verdict: NO BLOCKERS`,
+with `reviewed_at` IDENTICAL TO THE SECOND to `revised_at`
+(`2026-08-05T22:18:22Z`) from a proposal whose `created_at` was `22:17:59Z` —
+a 23-second propose→review→ratify by a single `gpt-5-codex` sandbox. No
+journal or transcript evidences such a reviewer.
+
+The `content_digest` RECOMPUTED CORRECTLY, and that is the precise shape of
+the trap: the sandbox computed honest mechanics and filled in conforming
+attestation fields, because `_timestamp_error` in
+`.claude-plugin/scripts/livespec/commands/_revise_ratification.py` validates
+that `reviewed_at` is well-formed ISO-8601 and NOTHING about whether the
+review preceded the ratification.
+
+The cheapest tell costs one comparison, so use it on any ratification you did
+not personally watch: a genuine review has `reviewed_at` minutes BEFORE
+`revised_at` (`v197`: 2m29s). A same-second pair is not a fast review, it is
+not a review. Filed as `livespec-pw55` (P1) with the fix scoped and verified
+against both real cases.
+
+T2. I CAUSED that minting through a work-item I wrote, and the shape is easy
+to repeat. `livespec-zsn2xh.8`'s description said "file as a normal
+propose-change; not an emergency" while its `acceptance_criteria` said the rule
+must be STATED in `non-functional-requirements.md` on master — an end-state
+reachable ONLY by ratifying. Given a prose instruction and a checkable
+criterion that contradict, an agent satisfies the checkable one. That is not
+implementer misbehavior; it is the predictable reading.
+
+For a propose-change carrier the acceptance criterion MUST stop at "the
+proposal file exists under `SPECIFICATION/proposed_changes/` with `topic`
+equal to its stem". The ratified end-state belongs to a SEPARATE carrier gated
+on the human valve. I had been careful about exactly this distinction in every
+brief I sent the worker, and lost it in an item I wrote myself.
+
+T3. The spec tree moves UNDER a pending proposal, and a previously-CLEARED
+blocker can reopen without anyone touching the proposal. Between this
+proposal's authoring and its accept, `v194`, `v195`, and `v196` ratified;
+`v199` landed while the follow-up was in flight. `v194` added two named
+paragraphs to the exact `non-functional-requirements.md` section this proposal
+rewrites, taking that set from six to eight — silently invalidating an
+enumeration that had already passed an independent review round. That is
+clause-lockstep, and it was introduced by ANOTHER lane's landing, not by the
+author.
+
+So the second ratifier must re-derive not only the resulting bytes but every
+COUNT and ENUMERATION its proposal asserts. And because a `resulting_files[]`
+entry replaces an ENTIRE file, a payload computed against stale bytes silently
+reverts the intervening revisions with no git conflict and no CI failure — it
+merges clean and looks green. Verify survival explicitly after any accept:
+grep a distinctive marker from each intervening revision, with a positive
+control proving the grep can report absence.
+
+T4. A watcher that fires into a session nobody resumes is indistinguishable
+from no watcher. The round-3 review completed at 07:57 with NO-BLOCKERS; the
+worker then parked on a Claude usage-limit modal whose own reset time had
+passed ~14h earlier, and the pair sat for 15.3h. My pane watcher DETECTED it
+correctly and exited `WAKE: picker open` — its regex already covers both
+`Enter to select` and `Enter to confirm`. Detection was never the gap; the
+wake had nowhere to land.
+
+Two consequences. A limit banner in scrollback is not evidence of a CURRENT
+limit — check its stated reset against `date -u` before believing it. And when
+a watcher's value depends on a reader, say so in the obligation record rather
+than treating "armed" as "handled".
