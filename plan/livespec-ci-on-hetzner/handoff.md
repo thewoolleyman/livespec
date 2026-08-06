@@ -31,17 +31,37 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T05:5xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T11:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
 >
 > **The Hetzner half is parked at an external gate and there is nothing here to drive.**
-> That is the correct, expected state — not a stall. **Eight** consecutive readings across
-> 2026-08-04/05/06 found the gate shut with not one value moved.
+> That is the correct, expected state — not a stall. **Nine** consecutive readings across
+> 2026-08-04/05/06 found the gate shut with not one value moved. Ninth reading taken
+> 2026-08-06T11:18:57Z, every `updated_at` byte-identical to the eighth:
+> `hl-wkyeqg` `pending-approval` (2026-08-04T04:07:29Z), `hl-euzuhb` `pending-approval`
+> (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog` (2026-08-03T10:06:45Z), `hl-6uldtn`
+> `backlog` (2026-08-04T10:12:12Z), `hl-75f` `backlog`/P1 (2026-08-04T20:58:11Z). In
+> `livespec`: `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` all
+> `pending-approval`; epic `livespec-h22nve` correctly held `active`.
 >
 > **Your first action is still the census below**, run to CONFIRM this rather than to find
 > work. If it shows the gate open, the next slice is `livespec-3on57g`. If it shows the gate
 > shut, **say so plainly and stop — that is the correct output.**
 >
-> ### What the last session closed — do NOT re-drive any of it
+> ### ⏰ THE ONE TIME-BOXED THING WAITING FOR YOU — a falsifiable prediction due 13:00Z
+>
+> `livespec-dev-tooling-xdyh` (P1) records that the daily `Pin freshness sweep` dies on a
+> **non-fast-forward push** onto its own leftover bump branch, which took it down in FOUR
+> repos on 2026-08-04/05. Every colliding `…-livespec-runtime-v0.16.0` branch has since
+> been deleted, so the prediction journaled on that item is: **the 13:00Z sweep succeeds in
+> `livespec`, `livespec-orchestrator-beads-fabro`, `livespec-orchestrator-git-jsonl` and
+> `livespec-console-beads-fabro`.**
+>
+> **Check it, and record the result either way** — a passing sweep does NOT close `xdyh`.
+> Recovery would be the version moving past the stale branch, not the workflow recovering;
+> the defect re-arms on the next bump PR that lingers a day. If the sweep FAILS, that is a
+> stronger finding than predicted and belongs on the item immediately.
+>
+> ### What recent sessions closed — do NOT re-drive any of it
 >
 > | item | outcome |
 > |---|---|
@@ -49,11 +69,39 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > | `livespec` PR #1960 | **MERGED** `cead37ca`; v0.17.0 then flowed through unattended, proving the channel unblocked |
 > | `livespec-f3tf` | **CLOSED** 2026-08-06T03:42:18Z — `just reap-stale-worktrees` works again (PR #2085) |
 > | `livespec-opwqmy` | **CLOSED** 2026-08-06T04:15:50Z — all three criteria discharged (PR #2089) |
+> | the `7ix8`/`z68f` duplicate | **CROSS-REFERENCED, NOT CLOSED** — same defect filed twice by two lanes of this plan. Closing it is that tenant's call. |
+> | `livespec-39h1` acceptance | **FILLED** 2026-08-06, outcome-based with a positive-control clause. Its description's "File this one only if…" sentence is SPENT drafting guidance — see its notes. |
 >
 > ### Filed, open, and NOT this thread's to drive
 >
 > `livespec-dev-tooling-a9xp` (P1) and `livespec-dev-tooling-olwk` (P3). Both are in the
 > `livespec-dev-tooling` tenant with their evidence journaled. See "Open descendants".
+>
+> ### ⚠ THE LIVE NON-HETZNER FINDING, and who owns which half
+>
+> The **release gate has failed on five consecutive releases** (v0.27.0 → v0.28.2) and it
+> fires on **tag push** — after the release object exists — so it cannot retract a release
+> siblings then consume via the pin fan-out. Measured: v0.28.2 published `02:42:45Z`, gate
+> started `02:42:46Z`, conclusion `failure`, release still `Latest`.
+>
+> **TWO independent regressions, not one**, and this is the part most easily got wrong:
+> `check-no-lloc-soft-warnings` (onset 2026-07-30) and `check-no-todo-registry` (later).
+> `check-mutation` PASSES. The TODO half is red **BY CONSTRUCTION** — `AGENTS.md`'s revise
+> discipline PRESCRIBES a `TODO` entry for every added heading and the gate REJECTS any
+> `TODO` entry — and with a **median 2.9 h between releases** the permitted interim state
+> has no interval in which to exist. So the recurrence is not negligence.
+>
+> | half | owner |
+> |---|---|
+> | TODO half + the by-construction mechanism | `livespec-915y` (P2) |
+> | making non-required failures VISIBLE | `livespec-39h1` (P2) |
+> | **clearing the LLOC soft-band files** | **NOBODY — this is the one real ownership gap** |
+>
+> **Completing `livespec-915y` would clear ONE of the two checks and the gate would stay
+> red.** The LLOC gap is a gap in SCOPE, not an absence from the ledger (it is mentioned in
+> three items, two open). **A maintainer question on this is ALREADY in front of him,
+> unanswered, from 2026-08-06 — do NOT raise a second one.** Do not clear the TODO or LLOC
+> debt yourself; measuring and journaling it is this thread's scope.
 >
 > ### Two operational facts that will save you real time
 >
@@ -64,6 +112,18 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > - **`just reap-stale-worktrees` is FIXED, and its BARE form REAPS FOR REAL** (it also prunes
 >   the host plugin registry). Use `just reap-stale-worktrees <repo> --dry-run` for a report.
 >   Never reap another session's worktree.
+> - **Prior-art searches: `bd list --all -n 0`, and then discount your OWN writes.** The
+>   default `bd list` returns 50 items and hides every CLOSED record — in `livespec` that is
+>   50 of 624, an 8% sample. The `--all -n 0` form does carry `description` and `notes`, so
+>   grepping it is sound. But a search run AFTER you have written about a topic returns your
+>   own output and reads exactly like corroboration: of three hits this session found, TWO
+>   were its own (an item it had filed that morning, and a note it had appended minutes
+>   earlier). **Check each hit's `created_at` against your session start, and whether the
+>   term sits in the DESCRIPTION (authored at filing) or in NOTES (appended later).**
+> - **Filing an item is not recording it.** Three items this thread filed on 2026-08-06
+>   existed only in the ledger and appeared ZERO times in all four of this thread's records,
+>   which cost a supervisor a full re-derivation of a finding that already existed. When you
+>   file anything, add its "Open descendants" row in the SAME pass.
 >
 > **The `github_rate_limit_guard` will deny commands on their PROSE**, including purely local
 > ones. Use `git commit -F <file>`, `gh pr create --body-file`,
