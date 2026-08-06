@@ -1,13 +1,14 @@
 # Supervisor Handoff - livespec-ci-on-hetzner
 
-## Resume state — written at session wrap-up 2026-08-05T21:45Z
+## Resume state — written at session wrap-up 2026-08-06T02:15Z
 
 You are the SUPERVISOR of the `livespec-ci-on-hetzner` thread. This section is the
 only thing carried across the restart, so it is deliberately short and points at the
 live sources rather than restating them. **Every status claim below is a reading with
 a timestamp — re-measure before acting on any of it.** That is not boilerplate: this
 thread's Corrections C2 and C5 are both instances of acting on a reading that had
-already expired, one of them within two minutes.
+already expired, one of them within two minutes. The predecessor's own marker recorded
+a PR as OPEN roughly ELEVEN SECONDS after it had merged.
 
 **Run the HALT-first preconditions and the Generator-provenance check below FIRST.**
 Then read, in this order: `.ai/supervisor-protocol.md` (the shared layer — this binder
@@ -16,40 +17,28 @@ record, much longer and the real status authority), and the supervisor marker at
 `tmp/overseer/livespec-ci-on-hetzner/.supervisor-state`. The marker is gitignored but
 survives on this host, and carries the full obligation record.
 
-### The one piece of my own work still in flight
+### Nothing of mine is in flight
 
-`livespec` PR **#2055** — wrong-source catalogue instances 22 and 23 plus a
-three-site count reconciliation. OPEN with auto-merge REBASE armed; at wrap-up its 72
-checks were QUEUED with **nothing failed**, so it should land unattended. It is my
-branch, so cleaning up after it is safe and expected:
+At this wrap-up there is **no supervisor-owned PR, branch, or worktree outstanding**.
+Five supervisor PRs landed this session — #2055, #2056, #2072, #2083, and the one
+carrying this very section — and every worktree and branch behind them was reaped. If
+you are reading this from the COMMITTED file rather than a working copy, the last of
+them has by definition already landed.
 
-```sh
-gh pr view 2055 --repo thewoolleyman/livespec --json state,mergedAt --jq '.state'
-# once MERGED:
-mise exec -- git -C /data/projects/livespec fetch --prune origin
-mise exec -- git -C /data/projects/livespec pull --ff-only origin master
-mise exec -- git -C /data/projects/livespec worktree remove "$HOME/.worktrees/livespec/docs/wrong-source-instance-22"
-mise exec -- git -C /data/projects/livespec branch -D docs/wrong-source-instance-22
-```
-
-If it did NOT land, read the failing check and fix the cause — do not close it.
-
-There is a SECOND worktree of mine: `wrapup-livespec-ci-on-hetzner-supervisor`, which
-carries this very Resume section as `livespec` PR **#2056** (auto-merge armed,
-`--delete-branch`). Clean it up the same way once that PR merges. If you are reading
-this section from the committed file rather than the working copy, #2056 has already
-landed.
-
-**Nine OTHER worktrees exist under `~/.worktrees/livespec/`. NONE of those are this
-thread's.** Exactly two are mine and removable —
-`docs/wrong-source-instance-22` and `wrapup-livespec-ci-on-hetzner-supervisor`. Never
-touch, push, or reap any other session's worktree or branch.
+That is still a claim with a timestamp, so verify rather than trust, and use a
+FAIL-CAPABLE query — an empty listing and a broken listing look identical:
 
 ```sh
-# the two that are yours to reap, once their PRs (2055, 2056) are MERGED:
-mise exec -- git -C /data/projects/livespec worktree remove "$HOME/.worktrees/livespec/wrapup-livespec-ci-on-hetzner-supervisor"
-mise exec -- git -C /data/projects/livespec branch -D wrapup-livespec-ci-on-hetzner-supervisor
+mise exec -- git -C /data/projects/livespec worktree list
+mise exec -- git -C /data/projects/livespec branch --list 'master'   # positive control
 ```
+
+**Eleven worktrees exist under `~/.worktrees/livespec/` and NONE is this thread's.**
+The set CHANGES UNDER YOU — one appeared mid-session — so re-enumerate rather than
+acting on any recorded list. Never touch, push, or reap another session's worktree or
+branch. The primary checkout is SHARED: it moved under this supervisor twice, and a
+peer lane cleared a dirty file of this thread's from it (correctly — it verified
+byte-identity against `origin/master` BEFORE acting).
 
 ### Thread status — re-measure, do not inherit
 
@@ -57,13 +46,43 @@ Four slices CLOSED: `livespec-teasvm`, `livespec-uyfggr`, `livespec-hhx4gl`,
 `livespec-dev-tooling-3otdg4`. **Every non-Hetzner slice is done.** The remaining
 three — `livespec-3on57g`, `livespec-7wvyo7`, `livespec-q7sfu6` — are
 `pending-approval` behind the homelab gate and CANNOT be started. Measured
-2026-08-05T21:35Z: `hl-wkyeqg` and `hl-euzuhb` both still `pending-approval`,
-`hl-xuu5j3` still `backlog`.
+2026-08-06T02:04Z: `hl-wkyeqg` and `hl-euzuhb` both still `pending-approval`,
+`hl-xuu5j3` still `backlog`. That is a seventh consecutive reading with nothing moved.
+
+**The gate's SHAPE changed even though its status did not, and that is the useful
+part.** The host is no longer dark — it is up and bare metal — so the blocker is now
+`hl-75f` (P1, `backlog`) plus those two ratifications plus thread 07 unstarted.
+`hl-75f` is a real defect on `hetzner-prod`: its ESP was created at **512 GiB instead
+of 1 GiB** because a byte-suffixed partition end was consumed as SECTORS, leaving the
+ZFS pool under half its intended size. It is measured on the live machine, not
+inferred. Expect a DESTRUCTIVE REPARTITION to sit between here and a serving runner,
+so do not read "the host is up" as "the gate is nearly open." All of it is
+homelab-side; consume it, never act on it.
 
 So the thread is **legitimately parked at an external gate, not idling**. Do not
-manufacture a slice to look busy; the previous worker was explicitly commended for
+manufacture a slice to look busy; a previous worker was explicitly commended for
 refusing to. If you have context to spend, spend it on verification or on the open
 items below, not on inventing thread work.
+
+### Maintainer decisions already taken — do NOT re-ask any of these
+
+Three were put to the maintainer 2026-08-05T22:45Z and answered:
+
+- **`livespec` PR #1960** (stuck `livespec-runtime` pin) — REBASE AND REGENERATE.
+  **Executed and merged** as `cead37ca`; the pin caught up three releases to v0.16.0.
+  Closed out, listed only so nobody re-opens it as a question.
+- **`livespec-driver-claude-mu5`** — KEEP AT P1. It already measures `backlog`/P1, so
+  **no edit is owed**. Do not re-raise the priority.
+- **`livespec-cpqi`** — FIX THE SKIP SHAPE FIRST, then choose the adopter check set.
+  The template half of `livespec-dev-tooling-zi29` lands BEFORE any of the 59 canonical
+  checks are wired into `ci.yml.jinja`.
+
+**The standing disposition that came with them matters more than the three answers.**
+The maintainer rebuked the ASKING on #1960, not the analysis: it was a mechanical
+unblock the supervisor was already authorized to perform, and the shared protocol says
+so verbatim — *"If the SUPERVISOR can perform the unblock, PERFORM IT."* **Act on
+mechanical unblocks. Reserve escalation for genuine product calls and irreversible
+actions.**
 
 ### Open items this thread opened or touched, and who owns them
 
@@ -71,18 +90,23 @@ items below, not on inventing thread work.
   the worktree pack, so the gate inspects a justfile with the pack's recipes removed
   and verifies nothing. Owner: the maintainer. **Review date 2026-08-12** — at that
   date it gets re-justified or dropped, never silently carried.
+- `livespec-dev-tooling-a9xp` (P1) — NEW this session. `pretooluse_background_guard`
+  directs callers to `just gate-start` / `just gate-wait` and an `.ai/` file, none of
+  which exist in the repos where it fires: 7 repos arm the hook, 6 have none of the
+  named artifacts. This is the **third** guard prescribing an unavailable remedy,
+  alongside `livespec-driver-claude-mu5` and `livespec-f3tf`. The cost is the TRAINING
+  EFFECT, not the friction — every workaround hides text from a safety guard.
 - `livespec-dev-tooling-z68f` (P2) — `just bootstrap` self-dirties `.livespec.jsonc`.
-  Acceptance clause 1 is DISCHARGED: **8 of 13 governed repos affected**
-  (`livespec-driver-claude`, `livespec-driver-codex`, `livespec-runtime`,
-  `livespec-console-beads-fabro`, `livespec-overseer`, `resume`, `openbrain`,
-  `homelab`), full enumeration in the item's notes. The fix choice — commit the key
-  everywhere vs stop writing it — is deliberately left as a design call.
+  Acceptance clause 1 is DISCHARGED: **8 of 13 governed repos affected**, full
+  enumeration in the item's notes. The fix choice — commit the key everywhere vs stop
+  writing it — is deliberately left as a design call.
 - `livespec-dev-tooling-irtt` (P0) — **STOOD DOWN, NOT MINE.** The maintainer ruled the
   `pure_trees` track owns it and considers it handled. Do not re-open that decision on
   the strength of a red master you happen to observe.
 - Also open elsewhere and merely cross-referenced, not owned here:
   `livespec-dev-tooling-uw3h` (P2), `bd-ib-te4h` (P2, in
-  `livespec-orchestrator-beads-fabro`), `livespec-f3tf` (P2).
+  `livespec-orchestrator-beads-fabro`), `livespec-f3tf` (P2),
+  `livespec-dev-tooling-0j3i` (P0, owns pin-currency escalation).
 
 ### The routing rule that is easy to get wrong
 
@@ -93,10 +117,17 @@ livespec-side valves — those are still yours to raise.
 
 ### The worker
 
-tmux session `livespec-ci-on-hetzner` was alive and idle at wrap-up, around 51% of its
-own context, its track complete apart from the external gate. Verify with the
-preconditions below rather than assuming it is still there. If its pane looks idle,
-check for a stale limit modal before believing it — shared-protocol C4.
+tmux session `livespec-ci-on-hetzner` was alive and idle at wrap-up with its track
+complete apart from the external gate. **It was cleared and RESTARTED mid-session**
+(its `pane_pid` changed), which destroyed its context minutes after it had answered a
+question — the answer survived only because it had also been written to
+`worker-status.log`. Two things follow. Write briefs and answers to files under
+`runtime_dir`, never only into a pane. And a restart leaves a STAGED, UNSENT bootstrap
+prompt in the composer: idle plus queued input is STUCK, not idle, so submit it.
+
+Verify the worker with the preconditions below rather than assuming it is there. If
+its pane looks idle, check for a stale limit modal before believing it —
+shared-protocol C4.
 
 ## Shared Protocol
 
