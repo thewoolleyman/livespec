@@ -130,6 +130,30 @@ path per thread 05, and it has **not started**. In `livespec`: `livespec-3on57g`
 `livespec-7wvyo7`, `livespec-q7sfu6` all `pending-approval`; epic `livespec-h22nve`
 correctly held `active`. **All three gate conditions remain unmet.**
 
+**AND THE GATE GOT FURTHER AWAY, NOT NEARER — do not size `hl-75f` from the seventh
+census's wording.** That entry called it "a `nix/hosts/hetzner-prod/storage.nix`
+declaration fix", which reads as small. Read from
+`git show origin/main:plan/05-hetzner-fleet-member/handoff.md` in `homelab`, three
+verification artifacts landed there 2026-08-06 and every one of them enlarges the
+remaining work:
+
+- **The `hl-75f` packet is not ready.** Its own readiness audit found two dead pointers,
+  and the check its red-then-revert is supposed to redden **does not exist yet**.
+- **Its acceptance runs BACKWARDS.** Against the suite that actually exists, the polarity
+  is inverted — the repair goes red and the defect goes green.
+- **Fixing the ESP is necessary but NOT sufficient.** Assertion C in the packet is red
+  today *even after* the ESP is corrected; the margin re-derives to `+27.3369 GiB`.
+- **A sibling acceptance-polarity sweep found `hl-ate` and `hl-pwv` both red for the
+  WRONG reason**, because `system.checks` runs the whole 63-assertion verifier at build
+  time, so "change X and observe silence" is almost never true for storage declarations.
+- **Thread 05 remains deliberately HELD**, and its outstanding `PR #311` ratification
+  question is **escalated to the maintainer, not resolved.**
+
+None of that is this thread's to touch — consume it, never act on it. Its only bearing
+here is on sizing: **"acceptance filed" is not "acceptance fail-capable"**, which is this
+repo's own lesson arriving from the other side of the gate. Expect a destructive
+repartition to sit between here and a serving runner.
+
 **The leading indicator moved AGAIN, and this time it was discriminated properly** —
 which is the whole point of the correction the seventh census earned. `homelab`
 `origin/main` went `a35bb168` → `12df7ed1`, about **30** commits. Only **4** touched
