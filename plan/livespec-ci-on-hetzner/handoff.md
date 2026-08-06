@@ -49,14 +49,14 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 So your first action is the census below, run to CONFIRM that picture rather than to find work. If it shows the homelab gate has opened, the next slice is `livespec-3on57g`. If it shows the gate still shut — which is what **seven** separate readings across 2026-08-04/05/06 all showed — **this thread has nothing to drive, and saying so plainly is the correct output.** Do not manufacture work, and do not re-drive the descendants below; they are tracked in their own tenants with owners and review dates.
 
-**Read "THREE DECISIONS AWAIT THE MAINTAINER" immediately below before reporting any status.** Those, plus the homelab gate, are the only things in this thread waiting on a human. Everything else is either closed or in somebody else's queue.
+**The three maintainer decisions that used to be listed here are ANSWERED AND EXECUTED (2026-08-06).** Do not surface them as open and do not re-ask them — see "The three answers, and what executing them found" below. **The homelab gate is now the ONLY thing in this thread waiting on a human.** Everything else is either closed or in somebody else's queue.
 
 **State as of the 2026-08-06 wrap-up, all re-measured that morning:**
 
 - **The gate is shut, static, and its owning repo is quiescent.** `hl-wkyeqg` and `hl-euzuhb` both `pending-approval`, `hl-xuu5j3` and `hl-6uldtn` both `backlog` — a sixth reading in which not one value has moved, their `updated_at` stamps 2-3 days old. ~~And `homelab` `origin/main` sat unchanged at `e8c42600` across a whole working session. **`main` is the LEADING indicator and the ledger the lagging one**, so a gate about to open would show repository movement first. There is none — do not size work on an assumption that it opens soon.~~ **The struck half EXPIRED within hours — see the next section. The ledger half held; the leading-indicator half did not, and the conclusion it was offered as evidence for now rests on the ledger alone.**
 - **Fleet CI green, complete and fresh** (12 of 13 members; `openbrain` has no per-push gate at all, only a scheduled workflow, so it is excluded rather than claimed green). `livespec` master `98e6f618`.
 - **`livespec-driver-claude-mu5` reached a SIXTH instance:** the guard denied `bd update` — the ledger CLI, no GitHub call — on the prose of a note. With instance 5 (`git commit`) the shape is settled: any command carrying human-authored prose is at risk, worst when the prose is about GitHub tooling. **Whenever this guard denies you, check whether your command actually touches GitHub before rewriting it**; the fix is `--body-file` / `commit -F <file>` / `--append-notes "$(cat <file>)"`.
-- **Three verification lessons from this thread were promoted into `.ai/verifying-against-the-right-source.md`** as instances **19-21**, plus a counter-move on instance 11. Read that file, not a summary of it, before treating any green signal as evidence — instances 19 (*verifying the STEP you changed is not verifying the RUN it sits in*) and 21 (*a control verified as currently-unmet is not verified as hard to meet*) bear directly on how this epic's remaining completion-evidence bullets must be checked, since every one of them is a live observation of external state.
+- **Three verification lessons from this thread were promoted into `.ai/verifying-against-the-right-source.md`** as instances **19-21**, plus a counter-move on instance 11. Read that file, not a summary of it, before treating any green signal as evidence — instances 19 (*verifying the STEP you changed is not verifying the RUN it sits in*) and 21 (*a control verified as currently-unmet is not verified as hard to meet*) bear directly on how this epic's remaining completion-evidence bullets must be checked, since every one of them is a live observation of external state. **A fourth was added 2026-08-06 as instance 24, and it guards the OPPOSITE error to all the others** — a step named `Skip …` whose status is `skipped` is the complement notice NOT firing, which is positive evidence the check RAN. Reading its presence as instance 16's trap inverts the signal and throws away an honestly-earned green. It was caught by a reviewer on this thread's own verification of merge commit `cead37ca`.
 
 ### Census — 2026-08-06 local / `2026-08-05T22:40Z` UTC. Seventh gate reading: still shut, but its CHARACTER changed
 
@@ -148,14 +148,75 @@ maintainer decision 1's remedy lives (it owns pin-currency escalation; the #1960
 instance is journaled on it). It is not this thread's to drive, but a reader
 checking the "no P0" claim should find it named rather than be surprised by it.
 
-### THREE DECISIONS AWAIT THE MAINTAINER — surface these, do not take them
+### The three answers, and what executing them found — 2026-08-06
 
-Re-measured 2026-08-06 and all three UNCHANGED from when they were raised. **None is
+The maintainer answered all three (brief-10, `tmp/overseer/livespec-ci-on-hetzner/brief-10.md`,
+which is gitignored — hence this record). All three are DISCHARGED.
+
+| # | Answer | State |
+|---|---|---|
+| 1 | **Rebase and regenerate** #1960; force-push authorized per-instance for that branch only | **MERGED** as `cead37ca` |
+| 2 | **Keep `livespec-driver-claude-mu5` at P1** | Already its state — nothing edited |
+| 3 | **Fix the skip shape FIRST**, then choose the set | Ruling recorded on `livespec-cpqi` |
+
+**Decision 1 carried a trap the brief did not predict, and it is the durable lesson.** The
+conflicting `pyproject.toml` hunk held BOTH pins: master had `livespec-dev-tooling` **v1.19.9**
+with `livespec-runtime` v0.13.1, while the branch had `livespec-dev-tooling` **v1.17.1**
+(stale — cut when that was current) with `livespec-runtime` v0.16.0. Resolving in the branch's
+favour, which is the natural move on a bump PR, would have **regressed `livespec-dev-tooling`
+two minor versions while presenting as a routine runtime bump**. Correct resolution is master's
+dev-tooling pin PLUS the branch's runtime pin; verified on the forge at the pushed head and
+again on master after merge. **Any future auto-rebase mechanism must reconcile per-pin, not
+per-hunk** — journaled on `livespec-dev-tooling-0j3i`, which owns pin-currency escalation.
+
+The brief's own warning also held: the bump is NOT a one-line pin edit. `livespec-runtime` is
+SOURCE-COPIED, so the changeset is 14 files — 11 modules under
+`.claude-plugin/scripts/_vendor/livespec_runtime/` plus `.vendor.jsonc`, `pyproject.toml`,
+`uv.lock`. Regenerated with `just vendor-update livespec_runtime` (manifest name UNDERSCORED).
+`uv lock` and `vendor-update` independently resolved the same upstream commit `07916c51`, and
+the re-vendored source came back byte-identical to the bot's — verified, not assumed. `uv lock`
+also pulled in a NEW transitive dependency, `returns v0.26.0`, that no part of the pin diff
+advertises. All 78 local targets passed before the single push.
+
+**A P1 was filed while doing this: `livespec-dev-tooling-a9xp`** — the
+`pretooluse_background_guard` hook denies backgrounding a gate command and prescribes
+`just gate-start` / `just gate-wait` and `.ai/gate-runtime-vs-harness-patience.md`, **none of
+which exist in 6 of the 7 repos that arm it**. Root cause is two commits in order: `1478ecb`
+added the runner to producer-only files (zero package files), then `b2e08c2` changed only the
+PACKAGED hook module to point at them. The prescription is distributed; the remedy is not.
+Owner is `livespec-dev-tooling` (it ships the module AND `worktree_pack/`, the existing carrier
+that is the recommended fix) — **determined from the shipping plugin, not assumed from where it
+fired.** With `livespec-driver-claude-mu5` and `livespec-f3tf` that is **three guards whose
+prescribed remedy does not work where they fire**; the maintainer ruled that a pattern, and the
+cost is the training effect — each one teaches that the way past a guard is to find the shape
+it cannot read.
+
+**`mu5` reached instances 7, 8 and 9**, all journaled, priority left at P1 per the ruling. 8 is
+the sharpest: a plain local `cat >>` to a gitignored scratch log, making **zero** network calls,
+denied because the text it was appending described instance 7. **The guard obstructs the
+documentation of the guard.**
+
+### ~~THREE DECISIONS AWAIT THE MAINTAINER~~ — ALL THREE ANSWERED AND EXECUTED 2026-08-06
+
+> **DO NOT SURFACE THESE AS OPEN. DO NOT RE-ASK THEM.** The maintainer answered all three
+> on 2026-08-06 (brief-10) and every one has been carried out. The section below is retained
+> because the reasoning and the measurements are still the record — but its instruction to
+> "surface these, do not take them" is SPENT. What each answer was, and what discharging it
+> produced, is in "The three answers, and what executing them found" — the section
+> immediately ABOVE this one.
+>
+> The section header and the paragraph under it are struck rather than deleted for the reason
+> this file keeps striking things: **a handoff sentence telling you something awaits a human
+> is a claim about a past instant**, exactly like the "nothing is open" and "its owning repo
+> is quiescent" claims already struck above. That is now the THIRD expired claim in this file,
+> which is enough to call it the norm rather than the exception.
+
+~~Re-measured 2026-08-06 and all three UNCHANGED from when they were raised. **None is
 self-resolvable; each was deliberately left un-taken.** If you are reporting status, report
 these first — they are the only things in this thread waiting on a human other than the
-homelab gate. (They previously existed only in a session scrollback and a gitignored
+homelab gate.~~ (They previously existed only in a session scrollback and a gitignored
 `tmp/overseer/` log; that is why they are written here, in the one file a fresh session
-inherits.)
+inherits — and that reason still stands.)
 
 | # | Question | Owner | Side |
 |---|---|---|---|
@@ -219,6 +280,7 @@ creators).
 | `livespec-dev-tooling-uw3h` | `livespec-dev-tooling` | P2 — `check-self-hosted-routing` guards 2 of the 3 copies of `ci.yml`'s declared fallback lockstep; the unguarded `LIVESPEC_CI_LANE` copy would silently halve paid hosted CI parallelism. Filed 2026-08-05; relevant to `livespec-3on57g`, which will edit those lines. |
 | `bd-ib-te4h` | `livespec-orchestrator-beads-fabro` | P2 — the `gate-runner` referral `livespec-hhx4gl` named and never made. Does v192's factory-host clause reach the privileged tier? **That repository's question to answer; do not answer it here.** |
 | `livespec-f3tf` | `livespec` | P2 — `just reap-stale-worktrees` aborts with `Bad substitution` on EVERY invocation, so the worktree-cleanup entry point `AGENTS.md` prescribes has never run. Filed 2026-08-05 with a full constraint map; see below before attempting the fix. |
+| `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
 
 **`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
 

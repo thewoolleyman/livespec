@@ -604,7 +604,7 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twenty-three
+  A green-looking signal read off the wrong source is not evidence: twenty-four
   recorded instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
@@ -621,8 +621,11 @@ existing file):
   and paid for destructively, a check that exited early leaving a clean
   stream rather than a clean result, a required check reporting success
   having skipped its own command step, a CLI flag that does not exist
-  returning an empty result instead of an error, and a local reproduction run
-  against a working tree one commit behind the one that actually failed.
+  returning an empty result instead of an error, a local reproduction run
+  against a working tree one commit behind the one that actually failed, and —
+  the one entry guarding the OPPOSITE error — a step named `Skip …` whose
+  `skipped` status proves the check RAN, so reading its presence as the
+  skipped-required-check trap discards a green that was honestly earned.
 
 ## Working with the maintainer
 
