@@ -521,6 +521,31 @@ creators).
 | ~~`livespec-f3tf`~~ | `livespec` | **CLOSED 2026-08-06T03:42:18Z** — fixed and live-exercised, PR [#2085](https://github.com/thewoolleyman/livespec/pull/2085), merged `0f38cc26`. `just reap-stale-worktrees` works again. Do not re-drive it; the section below is retained for its constraint map, which held exactly. |
 | `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
 | `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
+| `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
+| `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. |
+| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive `livespec` pin bumps at all** (pinned v0.26.0, latest v0.28.2): its `ci.yml` matrix lacks **53** canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. |
+
+> **The three rows above were added 2026-08-06 to close a gap that cost a supervisor real
+> work, and the gap is the lesson.** All three were FILED BY THIS THREAD that morning and
+> then existed **only in the ledger**. Measured across this thread's four records —
+> `handoff.md`, `supervisor-handoff.md`, `.supervisor-state`, `worker-status.log` —
+> `livespec-39h1` appeared **0/0/0/0** and the other two essentially likewise, with
+> `livespec-915y` as the control at 0/2/6/7. A supervisor consequently re-derived one of
+> `39h1`'s own five instances from scratch, believing it new. **Filing an item is not
+> recording it.** When this thread files anything, add a row here in the same pass —
+> the ledger is the status authority, but this file is what a fresh session reads first.
+>
+> **There is also a LIVE FINDING this file records nowhere**, kept short here because it
+> is journaled in full on `livespec-915y` and `livespec-39h1`: the **release gate has
+> failed on five consecutive releases**, and it fires on TAG PUSH — *after* the release
+> object exists — so it cannot retract a release siblings then consume via the pin
+> fan-out. Two independent regressions, not one: `check-no-lloc-soft-warnings` (onset
+> 2026-07-30) and `check-no-todo-registry` (later). The TODO half is red **by
+> construction** — `AGENTS.md`'s revise discipline PRESCRIBES a `TODO` entry for each
+> added heading and the gate REJECTS any `TODO` entry — with a median 2.9 h between
+> releases leaving the permitted interim state no interval in which to exist. **Completing
+> `livespec-915y` would clear only the TODO half; the gate would stay red on the LLOC
+> half, which no open item's scope covers.**
 
 **`livespec-cpqi` was re-scoped on measurement and the original filing understates it badly.** The copier template's `ci.yml.jinja` runs **4** targets while its own `canonical-slugs.yml` declares **59** (a real consumer runs 60), and it lists `check-shell-quality` as canonical while wiring neither the recipe nor the job. So it is wholesale template CI drift, not a missing gate. Choosing which of 59 checks a brand-new adopter must pass on day one is a **product decision about onboarding cost** — several are meaningless or hostile in a fresh scaffold — and getting it wrong either strands adopters on red CI or ships a CI that certifies nothing. It also now exceeds its parent `y6e2` and should be re-parented or promoted. Full reasoning is on the item.
 
