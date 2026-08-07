@@ -313,3 +313,25 @@ def test_revise_decision_proposal_action_preserves_body_and_refuses_invalid_inpu
     cleared = proposal.read_text(encoding="utf-8")
     assert "decision_policy" not in cleared
     assert cleared.endswith("\n---\n\n## Proposal\n\nBody bytes stay exactly.\n")
+
+
+def test_editing_decision_modes_module_is_a_leaf() -> None:
+    """The extracted decision-mode handlers must not import back into `editing`.
+
+    `EditResult` and `_edit_result` are shared by handlers on BOTH sides of
+    the split and were moved into the child so the dependency runs one way:
+    `editing` imports them back and re-exports `EditResult` as its public
+    surface. Reversing that would form an import cycle.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+        / "_editing_decision_modes.py"
+    ).read_text(encoding="utf-8")
+    assert "spec_governance.editing" not in source, (
+        "the decision-modes module must not import from `editing`; the "
+        "one-way dependency is what prevents an import cycle"
+    )

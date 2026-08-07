@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
+from livespec.spec_governance._editing_decision_modes import (
+    EditResult,
+    _apply_drift_acceptance_action,
+    _apply_revise_decision_action,
+    _edit_result,
+)
 from livespec.spec_governance.config import (
     DOCTOR_CHECK_ID_PATTERN,
     MODEL_PATTERN,
@@ -25,8 +30,6 @@ _GLOBAL_VALUE_ACTIONS = {
     "set-ratification-reviewer-model": ("ratification_reviewer_model", None),
 }
 _RATIFICATION_VALUES = {"manual-spawn", "auto-spawn"}
-_REVISE_DECISION_VALUES = {"manual", "delegated", "consensus"}
-_DRIFT_ACCEPTANCE_VALUES = {"human", "consensus"}
 _GLOBAL_ACTION_PARTS = 2
 _DOCTOR_ACTION_PARTS = 3
 _RATIFICATION_GLOBAL_PARTS = 3
@@ -41,14 +44,6 @@ _DOCTOR_VALUES = {
     "defer",
     "dismiss",
 }
-
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class EditResult:
-    """Result of one validated policy edit."""
-
-    changed_path: Path
-    message: str
 
 
 def apply_action(*, project_root: Path, action: str) -> str | EditResult:
@@ -123,84 +118,6 @@ def _apply_ratification_action(
     return "set-ratification-review requires global:<value> or proposal:<stem>:<value>"
 
 
-def _apply_revise_decision_action(
-    *,
-    project_root: Path,
-    parts: list[str],
-) -> str | EditResult:
-    if parts[1] == "global" and len(parts) == _REVISE_DECISION_GLOBAL_PARTS:
-        return _apply_revise_decision_global(project_root=project_root, value=parts[2])
-    if parts[1] == "proposal" and len(parts) == _REVISE_DECISION_PROPOSAL_PARTS:
-        return _apply_revise_decision_proposal(
-            project_root=project_root,
-            proposal_stem=parts[2],
-            value=parts[3],
-        )
-    return "set-revise-decision-mode requires global:<value> or proposal:<stem>:<value>"
-
-
-def _apply_revise_decision_global(
-    *,
-    project_root: Path,
-    value: str,
-) -> str | EditResult:
-    if value != "clear" and value not in _REVISE_DECISION_VALUES:
-        return f"revise decision mode must be one of {sorted(_REVISE_DECISION_VALUES)} or clear"
-    return _edit_result(
-        changed_path=write_config_value(
-            project_root=project_root,
-            key="revise_decision_mode",
-            value=None if value == "clear" else value,
-        ),
-    )
-
-
-def _apply_revise_decision_proposal(
-    *,
-    project_root: Path,
-    proposal_stem: str,
-    value: str,
-) -> str | EditResult:
-    if PROPOSAL_STEM_PATTERN.fullmatch(proposal_stem) is None:
-        return f"proposal stem must match {PROPOSAL_STEM_PATTERN.pattern}"
-    if value != "clear" and value not in _REVISE_DECISION_VALUES:
-        return f"proposal override must be one of {sorted(_REVISE_DECISION_VALUES)} or clear"
-    return _edit_result(
-        changed_path=write_proposal_override(
-            project_root=project_root,
-            proposal_stem=proposal_stem,
-            value=None if value == "clear" else value,
-            key="decision_policy",
-        ),
-    )
-
-
-def _apply_drift_acceptance_action(
-    *,
-    project_root: Path,
-    parts: list[str],
-) -> str | EditResult:
-    if parts[1] == "global" and len(parts) == _DRIFT_ACCEPTANCE_GLOBAL_PARTS:
-        return _apply_drift_acceptance_global(project_root=project_root, value=parts[2])
-    return "set-drift-acceptance-mode requires global:<value>"
-
-
-def _apply_drift_acceptance_global(
-    *,
-    project_root: Path,
-    value: str,
-) -> str | EditResult:
-    if value != "clear" and value not in _DRIFT_ACCEPTANCE_VALUES:
-        return f"drift acceptance mode must be one of {sorted(_DRIFT_ACCEPTANCE_VALUES)} or clear"
-    return _edit_result(
-        changed_path=write_config_value(
-            project_root=project_root,
-            key="drift_acceptance_mode",
-            value=None if value == "clear" else value,
-        ),
-    )
-
-
 def _apply_ratification_global(
     *,
     project_root: Path,
@@ -242,9 +159,3 @@ def _apply_ratification_proposal(
             value=None if value == "clear" else value,
         ),
     )
-
-
-def _edit_result(*, changed_path: Path | str) -> str | EditResult:
-    if isinstance(changed_path, str):
-        return changed_path
-    return EditResult(changed_path=changed_path, message="policy edit applied")
