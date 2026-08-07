@@ -518,3 +518,30 @@ def _mutating_input(
     elif evidence is not None:
         decision["ratification_evidence"] = evidence
     return RevisionInput(author=None, decisions=[decision])
+
+
+def test_ratification_errors_module_is_a_leaf() -> None:
+    """The extracted error builders must not import back into their parent.
+
+    `_digest_error` stayed in `_revise_ratification` precisely because it
+    needs `_canonical_ratification_digest`; if a later edit moves it — or
+    any other parent-dependent helper — into the errors module, the two
+    modules form an import cycle. Nothing else would catch that: the cycle
+    is legal Python and only bites at import order.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "commands"
+        / "_revise_ratification_errors.py"
+    ).read_text(encoding="utf-8")
+    assert "_revise_ratification import" not in source, (
+        "the errors module must not import from its parent; keeping it a leaf "
+        "is what prevents an import cycle between the two"
+    )
+    assert "_canonical_ratification_digest" not in source, (
+        "the canonical-digest helper is the parent's public surface; depending "
+        "on it here would create the cycle this extraction avoided"
+    )
