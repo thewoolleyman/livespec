@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 from livespec.spec_governance import effective as effective_module
 from livespec.spec_governance.config import SpecGovernanceConfig
@@ -422,3 +423,24 @@ def test_revise_decision_routes_drift_only_through_drift_acceptance() -> None:
     assert drift.source == "global"
     assert "drift_acceptance_mode" in drift.reason
     assert not requires_revise_decision_input(policy=drift)
+
+
+def test_effective_authoring_module_is_a_leaf() -> None:
+    """The extracted authoring resolver must not import back into `effective`.
+
+    `_input` moved out with its dependant rather than staying behind, so
+    the dependency runs one way: `effective` imports both back. Reversing
+    it would form an import cycle.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+        / "_effective_authoring.py"
+    ).read_text(encoding="utf-8")
+    assert "spec_governance.effective" not in source, (
+        "the authoring module must not import from `effective`; the one-way "
+        "dependency is what prevents an import cycle"
+    )
