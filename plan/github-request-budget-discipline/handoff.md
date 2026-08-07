@@ -5,9 +5,38 @@
 ledger.
 
 **One-line state:** the Contract, Installer, and Mechanism slots are DONE and
-live-exercised. The Verifier slot is BLOCKED — not on ordering any more, but on
-a fleet-wide retrofit that must land before its ban may arm. Four retrofit
-work-items are filed and the first one is ready to drive.
+live-exercised. The Verifier slot is BLOCKED behind a fleet-wide retrofit that
+must land before its ban may arm. All four retrofit work-items are filed,
+resized, and carry AST-validated site inventories — but **the factory cannot
+dispatch anything right now**, so none can be driven. See the blocker below.
+
+## ⚠ BLOCKER — factory dispatch is down fleet-wide (2026-08-08)
+
+Two dispatch attempts were refused identically, before any sandbox launched, at
+stage `run-config-overlay`:
+
+> `CLAUDE_CODE_OAUTH_TOKEN` is exhausted or rate-limited (HTTP 429,
+> `rate_limit_error`). Observed condition: **exhausted**.
+
+The second attempt came ~15 minutes after the first, specifically to tell a
+rolling rate limit from a spend limit. It failed identically, which points at an
+**organization spend or billing limit**, not something that decays.
+
+**This is a maintainer action, not an agent one:** raise the billing limit, or
+re-mint with `claude setup-token` under a healthy org and rotate the wrapper
+secret. The token is the factory's own, so this blocks EVERY dispatch in every
+repo — all four retrofit slices and the Verifier behind them.
+
+**Each refusal strands the item.** The dispatcher promotes `ready → active` with
+assignee `fabro` before the refusal, leaving a claim with nothing behind it, and
+no valve repairs it. Reset by hand after any refused dispatch:
+
+```bash
+bd update <item-id> --status ready --assignee ""
+```
+
+Both attempts had `fabro_run_id: null`, so nothing was stranded on the forge —
+verified: no sandbox carries the item and no remote branch matches it.
 
 ## Read-first chain
 
@@ -102,7 +131,22 @@ control:
 | `livespec-dev-tooling` | 7 |
 | `livespec-orchestrator-beads-fabro` | 12 |
 
-Four retrofit items are filed, each in its own tenant. Drive them in this order:
+Four retrofit items are filed, each in its own tenant. **All four were prepared
+on 2026-08-08 and need no rework** — descriptions resized from ~2700 chars to the
+dispatchable budget (1791 / 1501 / 1861 / 2072), each carrying an AST-validated
+site inventory that names the enclosing FUNCTION of every call site, and each
+scanned clean of template expressions with a positive control. Dispatch them as
+soon as the token blocker above is cleared.
+
+The inventory was confirmed by a second method: a throwaway AST scanner
+implementing the two shapes the Verifier specifies reproduced the grep counts
+exactly in three of four repos and added function names grep cannot. Confirmed
+totals, first-party non-test — `livespec` 4, `livespec-dev-tooling` 7,
+`livespec-runtime` 5 (one being the exempt minting constant, so 4 to retrofit),
+`livespec-orchestrator-beads-fabro` 12. Every other fleet repo is a non-vacuous
+zero. **27 sites to retrofit.**
+
+Drive them in this order:
 
 1. **`livespec-runtime-wpt`** — the ANCHOR. Land it first: the client lives in
    that repo, and this slice establishes the calling pattern the other three
@@ -134,6 +178,22 @@ New-obligation discipline in
 Route and dispatch it only after all four retrofit items have landed. Do **not**
 resolve a retrofit by adding an exemption entry — the exemption list is reserved
 for the credential-minting path.
+
+**Two file-universe traps are already recorded on that item**, both found by
+actually building and running an AST prototype rather than by reading the spec:
+
+- **Generated mutation-testing trees.** `livespec-dev-tooling` carries a
+  `mutants/` directory where mutmut writes a per-mutant copy of the whole
+  package. Including it reports *hundreds* of sites instead of 7 — one per mutant
+  for each real call site.
+- **Maintainer scratch and archive.** `tmp/archive/…` in core holds archived
+  housekeeping scripts with real-looking call sites that must never be
+  retrofitted.
+
+Both cut in the OPPOSITE direction from the vacuity failure that item already
+warns about: the check can be far too LOUD as easily as silently green, and one
+that cries wolf over generated trees gets disabled — which ends in the same
+place.
 
 ## Routing rules that bind every remaining slice
 
