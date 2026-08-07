@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.28.3](https://github.com/thewoolleyman/livespec/compare/v0.28.2...v0.28.3) (2026-08-07)
+
+
+### Refactoring
+
+* **commands:** extract ratification error builders ([bf7e3ee](https://github.com/thewoolleyman/livespec/commit/bf7e3ee655ca1b2d9058fa682c4225104e510f7f))
+* **dev-tooling:** split the reaper's git queries from its actions ([f3bc179](https://github.com/thewoolleyman/livespec/commit/f3bc179ae851dd8475415811f57ed06989a698c9))
+* **spec-governance:** extract decision-mode policy edits ([cada367](https://github.com/thewoolleyman/livespec/commit/cada3670a49dd081375913239157bad68047b4e2))
+* **spec-governance:** extract journal shape primitives ([e8de3ba](https://github.com/thewoolleyman/livespec/commit/e8de3baad26acc1270f8f718b3e5580e609fd5c4))
+* **spec-governance:** extract the authoring-mode resolver ([3dafcb9](https://github.com/thewoolleyman/livespec/commit/3dafcb9654e2c3bde328d2ab933daf6f1b5fe6cc))
+
 ## [0.28.2](https://github.com/thewoolleyman/livespec/compare/v0.28.1...v0.28.2) (2026-08-06)
 
 
