@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.4](https://github.com/thewoolleyman/livespec/compare/v0.28.3...v0.28.4) (2026-08-07)
+
+
+### Bug Fixes
+
+* **plan:** restore the required Ledger anchor label ([ac6957a](https://github.com/thewoolleyman/livespec/commit/ac6957a8668ae496f2a474a5d8ebbcb5507c1cf8))
+
 ## [0.28.3](https://github.com/thewoolleyman/livespec/compare/v0.28.2...v0.28.3) (2026-08-07)
 
 
