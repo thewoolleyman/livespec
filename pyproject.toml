@@ -431,6 +431,11 @@ ban-relative-imports = "all"
 # argv lists. Same S603/S607/S404 carve-out shape as the peer
 # mutating tool above.
 "dev-tooling/reap_stale_worktrees.py" = ["S603", "S607", "S404"]
+# reap_stale_worktrees_git.py is that same reaper's READ-ONLY query
+# side, split out of the file above; it carries the identical fixed-argv
+# `git -C` runner, so it inherits the identical carve-out. The mutating
+# calls stayed in the parent.
+"dev-tooling/reap_stale_worktrees_git.py" = ["S603", "S607", "S404"]
 # gh_feature_surfaces.py probes local gh help/flag parsing with fixed
 # argv lists only; the command is hermetic and never contacts GitHub.
 "dev-tooling/gh_feature_surfaces.py" = ["S603", "S607", "S404"]
