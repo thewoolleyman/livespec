@@ -70,7 +70,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -88,89 +87,15 @@ from livespec_runtime.hygiene_scan import (  # noqa: E402  — path-aware import
     GitWorktree,
     detect_stale_worktrees,
 )
+from reap_stale_worktrees_git import (  # noqa: E402
+    _branch_was_pushed,
+    _candidate_on_default_branch,
+    _resolve_default_branch,
+    _run_git,
+)
 from reap_stale_worktrees_locks import _parse_locked_pid, _parse_worktrees  # noqa: E402
 
 __all__: list[str] = ["main", "reap_worktrees"]
-
-
-def _run_git(*, repo: Path, args: list[str], check: bool) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(repo), *args],
-        capture_output=True,
-        text=True,
-        check=check,
-    )
-
-
-def _branch_was_pushed(*, repo: Path, branch: str) -> bool:
-    """Return True if `branch` carries local evidence of ever having been pushed.
-
-    Two signals, either sufficient:
-
-      - upstream config (`branch.<name>.merge`), written by
-        `git push -u` / `--set-upstream`; it persists after the
-        remote branch is deleted and after `fetch --prune`;
-      - a remote-tracking ref (`refs/remotes/origin/<name>`),
-        written by a plain `git push origin <name>` (and by fetch)
-        and lingering until `fetch --prune` removes it.
-
-    This is the reaper's ACTION-layer never-pushed guard: a branch with
-    NEITHER signal is local-only never-pushed work, so even when the
-    detection seam flags its worktree (a fresh worktree at `origin/HEAD`
-    is a trivial ancestor of `origin/HEAD`), the action layer treats it
-    as a dispatched agent's in-progress work and SKIPS it.
-    """
-    upstream = _run_git(repo=repo, args=["config", "--get", f"branch.{branch}.merge"], check=False)
-    if upstream.returncode == 0 and upstream.stdout.strip() != "":
-        return True
-    tracking = _run_git(
-        repo=repo,
-        args=["rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"],
-        check=False,
-    )
-    return tracking.returncode == 0
-
-
-def _resolve_default_branch(*, repo: Path) -> str | None:
-    """Resolve `repo`'s default branch name from `refs/remotes/origin/HEAD`.
-
-    Reads `git symbolic-ref refs/remotes/origin/HEAD` (e.g.
-    `refs/remotes/origin/master`) and strips the `refs/remotes/origin/`
-    prefix, yielding the short default-branch name (`master`/`main`).
-    Returns None when `origin/HEAD` is unset (no origin, or a fresh clone
-    that never resolved it), so the action-layer guard applies NO
-    default-branch skip rather than guarding on a bogus name.
-    """
-    result = _run_git(
-        repo=repo,
-        args=["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip().removeprefix("refs/remotes/origin/")
-
-
-def _candidate_on_default_branch(*, candidate: GitWorktree, default_branch: str | None) -> bool:
-    """Return True if `candidate` is checked out ON the repo's default branch.
-
-    A secondary worktree whose CURRENT BRANCH is the default branch
-    (`master`/`main`) is MAINLINE, never a stale/merged feature branch, so
-    it must NEVER be reaped — removing it runs `git worktree remove` +
-    `branch -D <default>`, destroying a mainline worktree and its default
-    branch. This is the action-layer belt-and-suspenders counterpart to the
-    detection seam's own default-branch guard: even if detection ever
-    regressed and surfaced such a worktree as a candidate, this skip stops
-    the destructive removal. A detached worktree (`branch is None`) does not
-    match — it holds no named branch to `branch -D`, so removing it is
-    `git worktree remove` only. When the default branch is UNRESOLVED
-    (`default_branch is None`) no candidate matches.
-    """
-    return (
-        candidate.branch is not None
-        and default_branch is not None
-        and candidate.branch == default_branch
-    )
 
 
 def _pid_is_alive(*, pid: int) -> bool:
