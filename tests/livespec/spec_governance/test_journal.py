@@ -486,3 +486,25 @@ def _event_file(*, tmp_path: Path, name: str, event: dict[str, object]) -> Path:
     path = tmp_path / name
     path.write_text(json.dumps(event), encoding="utf-8")
     return path
+
+
+def test_journal_shapes_module_is_a_leaf() -> None:
+    """The extracted shape primitives must not import back into `journal`.
+
+    `_digest` and `_SOURCE_VALUES` are shared by validators on BOTH sides
+    of the split, and they were moved into the child precisely so the
+    dependency runs one way: `journal` imports from here, never the
+    reverse. Leaving them behind would have forced the cycle instead.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+        / "_journal_shapes.py"
+    ).read_text(encoding="utf-8")
+    assert "spec_governance.journal" not in source, (
+        "the shapes module must not import from `journal`; keeping the "
+        "dependency one-way is what prevents an import cycle"
+    )
