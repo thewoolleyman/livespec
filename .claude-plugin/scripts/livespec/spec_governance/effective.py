@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from livespec.spec_governance._effective_authoring import _authoring_mode, _input
 from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, SpecGovernanceConfig
 from livespec.spec_governance.policy import EffectivePolicy, Source
 from livespec.spec_governance.registry import CONFIG_KEYS
@@ -211,32 +212,6 @@ def awaits_ratification_review(*, policy: EffectivePolicy) -> bool:
     return policy.requires_input
 
 
-def _authoring_mode(
-    *,
-    global_value: str,
-    invocation_mode: str | None,
-    contradictory_envelope: bool,
-    batch_complete: bool,
-) -> EffectivePolicy:
-    if contradictory_envelope:
-        return _input(reason="internally contradictory envelope requires escalation")
-    if invocation_mode == "batch" and not batch_complete:
-        return _input(reason="batch mode is incomplete")
-    if invocation_mode is not None:
-        return EffectivePolicy(
-            value=invocation_mode,
-            source="invocation",
-            requires_input=invocation_mode == "interactive",
-            reason="invocation mode supplied",
-        )
-    return EffectivePolicy(
-        value=global_value,
-        source="global" if global_value != "interactive" else "default",
-        requires_input=global_value == "interactive",
-        reason="resolved from global policy or safe default",
-    )
-
-
 def _doctor_execution_failure_reason(*, context: DoctorContext) -> str | None:
     if not context.action_available:
         return "mapped action is unavailable"
@@ -247,7 +222,3 @@ def _doctor_execution_failure_reason(*, context: DoctorContext) -> str | None:
     if not context.execution_ok:
         return "selected action failed"
     return None
-
-
-def _input(*, reason: str, source: Source = "hard-floor") -> EffectivePolicy:
-    return EffectivePolicy(value=None, source=source, requires_input=True, reason=reason)
