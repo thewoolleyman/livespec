@@ -17,8 +17,8 @@ _CHECK = _REPO_ROOT / "dev-tooling" / "checks" / "spec_governance_template.py"
 _MANIFEST_REL = (
     Path(".claude-plugin")
     / "scripts"
-    / "livespec"
-    / "spec_governance"
+    / "_vendor"
+    / "livespec_runtime"
     / "api_configurable_keys.json"
 )
 _TEMPLATE_REL = Path("templates") / "orchestrator-plugin" / ".livespec.jsonc.jinja"

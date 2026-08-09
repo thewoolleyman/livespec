@@ -16,8 +16,8 @@ _CHECK = _REPO_ROOT / "dev-tooling" / "checks" / "spec_governance_template.py"
 _MANIFEST_REL = (
     Path(".claude-plugin")
     / "scripts"
-    / "livespec"
-    / "spec_governance"
+    / "_vendor"
+    / "livespec_runtime"
     / "api_configurable_keys.json"
 )
 _TEMPLATE_REL = Path("templates") / "orchestrator-plugin" / ".livespec.jsonc.jinja"
@@ -118,10 +118,10 @@ def test_spec_governance_template_rejects_non_object_documented_block(
     assert _run_check(cwd=tmp_path, monkeypatch=monkeypatch) == 1
 
 
-def test_spec_governance_template_accepts_empty_non_list_manifest(
+def test_spec_governance_template_rejects_empty_non_list_manifest(
     *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A non-list manifest projects to no expected keys."""
+    """The runtime verifier rejects an unusable documented defaults block."""
     _write_fixture(
         root=tmp_path,
         manifest_text="{}",
@@ -132,7 +132,7 @@ def test_spec_governance_template_accepts_empty_non_list_manifest(
         ),
     )
 
-    assert _run_check(cwd=tmp_path, monkeypatch=monkeypatch) == 0
+    assert _run_check(cwd=tmp_path, monkeypatch=monkeypatch) == 1
 
 
 def test_spec_governance_template_ignores_non_dict_manifest_items(
@@ -141,7 +141,11 @@ def test_spec_governance_template_ignores_non_dict_manifest_items(
     """Only manifest object rows contribute expected keys."""
     _write_fixture(
         root=tmp_path,
-        manifest_text='["ignored", {"key": "x", "safe_default": "safe"}]',
+        manifest_text=(
+            '["ignored", {"key": "x", "value_type": "enum", '
+            '"safe_default": "safe", "per_proposal_override": null, '
+            '"allowed_values": ["safe"]}]'
+        ),
         template_text=(
             "// Optional \u2014 spec_governance: policy\n"
             '//   "spec_governance": {\n'
