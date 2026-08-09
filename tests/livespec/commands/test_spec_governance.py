@@ -116,6 +116,20 @@ def test_check_default_block_rejects_missing_manifest_key(
     assert "spec-governance-default-block-drift" in capsys.readouterr().err
 
 
+def test_check_default_block_rejects_config_without_commented_block(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / ".livespec.jsonc"
+    _ = source.write_text('{"template": "livespec"}', encoding="utf-8")
+
+    exit_code = spec_governance.main(argv=["--check-default-block", str(source)])
+
+    assert exit_code == 2
+    assert "spec-governance-default-block-drift" in capsys.readouterr().err
+
+
 def test_action_updates_config_and_emits_changed_path(
     *,
     capsys: pytest.CaptureFixture[str],

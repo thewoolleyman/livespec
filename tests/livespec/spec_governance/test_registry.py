@@ -48,3 +48,22 @@ def test_registry_module_exists_and_projects_nine_ratified_rows() -> None:
     assert review_age.safe_default == 1
     assert review_age.per_proposal_override is None
     assert review_age.allowed_values == []
+
+
+def test_spec_governance_manifest_and_block_logic_delegate_to_runtime() -> None:
+    """Core keeps compatibility modules, while runtime owns the manifest/checker."""
+    package_path = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+    )
+
+    registry_source = (package_path / "registry.py").read_text(encoding="utf-8")
+    default_block_source = (package_path / "default_block.py").read_text(encoding="utf-8")
+
+    assert "livespec_runtime.spec_governance.registry" in registry_source
+    assert "livespec_runtime.spec_governance.default_block" in default_block_source
+    assert "ConfigKey(" not in registry_source
+    assert "def verify_default_block" not in default_block_source

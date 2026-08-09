@@ -21,32 +21,31 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 _VENDOR_DIR = Path(__file__).resolve().parents[2] / ".claude-plugin" / "scripts" / "_vendor"
 if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
 
 import structlog  # noqa: E402
+from livespec_runtime.spec_governance import ManifestRow, verify_default_block  # noqa: E402
 
 __all__: list[str] = []
 
 _MANIFEST_PATH = (
     Path(".claude-plugin")
     / "scripts"
-    / "livespec"
-    / "spec_governance"
+    / "_vendor"
+    / "livespec_runtime"
     / "api_configurable_keys.json"
 )
 _BLOCK_SOURCE_PATH = Path("templates") / "orchestrator-plugin" / ".livespec.jsonc.jinja"
-_BLOCK_START = "// Optional \u2014 spec_governance:"
-_BLOCK_END = "// Optional \u2014 credential_wrapper:"
 
 
 class _ManifestRow(TypedDict):
     key: str
-    value_type: Literal["enum", "map", "string"]
-    safe_default: str | dict[str, str] | None
+    value_type: Literal["enum", "integer", "map", "string"]
+    safe_default: str | int | dict[str, str] | None
     per_proposal_override: str | None
     allowed_values: list[str]
 
@@ -75,44 +74,6 @@ def _manifest_rows(*, manifest_path: Path) -> list[_ManifestRow]:
     return rows
 
 
-def _comment_block(*, template_text: str) -> list[str] | None:
-    lines = template_text.splitlines()
-    start_index: int | None = None
-    for index, line in enumerate(lines):
-        if line.strip().startswith(_BLOCK_START):
-            start_index = index
-            break
-    if start_index is None:
-        return None
-    block: list[str] = []
-    for line in lines[start_index:]:
-        if line.strip().startswith(_BLOCK_END):
-            return block
-        block.append(line)
-    return None
-
-
-def _documented_defaults(*, block: list[str]) -> dict[str, Any] | None:
-    uncommented: list[str] = []
-    for line in block:
-        stripped = line.strip()
-        if not stripped.startswith("//"):
-            continue
-        content = stripped.removeprefix("//").strip()
-        if content.startswith("//"):
-            continue
-        if content.startswith(('"spec_governance"', "}", '"')):
-            uncommented.append(content)
-    if not uncommented:
-        return None
-    parsed = cast(object, json.loads("\n".join(["{", *uncommented, "}"])))
-    parsed_dict = cast(dict[str, object], parsed)
-    block_value = parsed_dict.get("spec_governance")
-    if not isinstance(block_value, dict):
-        return None
-    return cast(dict[str, Any], block_value)
-
-
 def _verify_block(
     *,
     cwd: Path,
@@ -134,33 +95,42 @@ def _verify_block(
             ),
         )
         return 1
-    rows = _manifest_rows(manifest_path=resolved_manifest_path)
-    block = _comment_block(template_text=resolved_block_source_path.read_text(encoding="utf-8"))
-    documented = None if block is None else _documented_defaults(block=block)
-    if documented is None:
+    rows = [
+        ManifestRow(
+            key=row["key"],
+            value_type=row["value_type"],
+            safe_default=row["safe_default"],
+            per_proposal_override=row["per_proposal_override"],
+            allowed_values=row["allowed_values"],
+        )
+        for row in _manifest_rows(manifest_path=resolved_manifest_path)
+    ]
+    verification = verify_default_block(
+        text=resolved_block_source_path.read_text(encoding="utf-8"),
+        manifest=rows,
+    )
+    if verification.documented is None:
         log.error(
             "commented spec_governance defaults block is absent or unparsable",
             check_id="spec-governance-template-block-invalid",
             path=str(block_source_path),
         )
         return 1
-    expected = {row["key"]: row["safe_default"] for row in rows}
-    if documented == expected:
+    if verification.drift is None:
         log.info(
             "commented spec_governance defaults block matches the manifest",
             check_id="spec-governance-template-ok",
-            key_count=len(expected),
+            key_count=len(verification.expected),
         )
         return 0
+    drift = verification.drift
     log.error(
         "commented spec_governance defaults block has drifted from the manifest",
         check_id="spec-governance-template-drift",
         path=str(block_source_path),
-        missing=sorted(set(expected) - set(documented)),
-        extra=sorted(set(documented) - set(expected)),
-        default_drift=sorted(
-            key for key, value in expected.items() if documented.get(key) != value
-        ),
+        missing=drift.missing,
+        extra=drift.extra,
+        default_drift=drift.default_drift,
         hint=(
             "Update the block source so the commented spec_governance block lists "
             "every manifest key at its safe default."

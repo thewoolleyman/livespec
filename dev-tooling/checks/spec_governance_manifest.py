@@ -1,8 +1,8 @@
-"""spec_governance_manifest — registry/manifest completeness check."""
+"""spec_governance_manifest — runtime manifest resource loadability check."""
 
 from __future__ import annotations
 
-import ast
+import dataclasses
 import json
 import sys
 from pathlib import Path
@@ -13,21 +13,21 @@ if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
 
 import structlog  # noqa: E402
+from livespec_runtime.spec_governance import manifest_rows  # noqa: E402
 
 __all__: list[str] = []
 
-_REGISTRY_PATH = Path(".claude-plugin") / "scripts" / "livespec" / "spec_governance" / "registry.py"
 _MANIFEST_PATH = (
     Path(".claude-plugin")
     / "scripts"
-    / "livespec"
-    / "spec_governance"
+    / "_vendor"
+    / "livespec_runtime"
     / "api_configurable_keys.json"
 )
 
 
 def main() -> int:
-    """Compare registry ConfigKey rows against the committed manifest."""
+    """Compare the runtime loader projection against its vendored resource."""
     structlog.configure(
         processors=[
             structlog.processors.add_log_level,
@@ -37,44 +37,25 @@ def main() -> int:
         logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
     )
     log = structlog.get_logger("spec_governance_manifest")
-    cwd = Path.cwd()
-    registry_path = cwd / _REGISTRY_PATH
-    manifest_path = cwd / _MANIFEST_PATH
-    if not registry_path.is_file() and not manifest_path.is_file():
-        return 0
-    registry_rows = _registry_rows(path=registry_path)
-    manifest_rows = _manifest_rows(path=manifest_path)
-    if registry_rows == manifest_rows:
+    manifest_path = Path.cwd() / _MANIFEST_PATH
+    if not manifest_path.is_file():
+        log.error(
+            "spec governance runtime manifest resource missing",
+            check_id="spec-governance-manifest-missing",
+            manifest_path=str(_MANIFEST_PATH),
+        )
+        return 1
+    resource_rows = _manifest_rows(path=manifest_path)
+    loaded_rows = [dataclasses.asdict(row) for row in manifest_rows()]
+    if loaded_rows == resource_rows:
         return 0
     log.error(
-        "spec governance registry/manifest drift",
-        registry_rows=registry_rows,
-        manifest_rows=manifest_rows,
+        "spec governance runtime manifest loader/resource drift",
+        check_id="spec-governance-manifest-drift",
+        loaded_rows=loaded_rows,
+        resource_rows=resource_rows,
     )
     return 1
-
-
-def _registry_rows(*, path: Path) -> list[dict[str, Any]]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    rows: list[dict[str, Any]] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and _call_name(node=node) == "ConfigKey":
-            row: dict[str, Any] = {}
-            for keyword in node.keywords:
-                if keyword.arg is not None:
-                    row[keyword.arg] = ast.literal_eval(keyword.value)
-            if "key" not in row:
-                continue
-            rows.append(
-                {
-                    "key": row["key"],
-                    "value_type": row["value_type"],
-                    "safe_default": row["safe_default"],
-                    "per_proposal_override": row["per_proposal_override"],
-                    "allowed_values": row["allowed_values"],
-                },
-            )
-    return rows
 
 
 def _manifest_rows(*, path: Path) -> list[dict[str, Any]]:
@@ -86,12 +67,6 @@ def _manifest_rows(*, path: Path) -> list[dict[str, Any]]:
         if isinstance(item, dict):
             rows.append(cast(dict[str, Any], item))
     return rows
-
-
-def _call_name(*, node: ast.Call) -> str:
-    if isinstance(node.func, ast.Name):
-        return node.func.id
-    return ""
 
 
 if __name__ == "__main__":
