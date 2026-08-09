@@ -1,163 +1,190 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-06T01:4xZ at session wrap-up
+## Resume state — written 2026-08-09T21:1xZ at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. The detailed supervisor record is at
 `/data/projects/livespec/tmp/overseer/spec-side-autonomy/.supervisor-state`
 (gitignored, same host, read by the cold-open boot block).
 
-### INCREMENT 3 IS COMPLETE. Do not re-do it.
-
-Both halves are RATIFIED and the key is SHIPPED, all verified against the forge
-rather than taken from a worker report:
+### INCREMENT 3 IS COMPLETE, AND SO IS LEG 2C. Do not re-do either.
 
 | Piece | Where | Evidence |
 |---|---|---|
 | Doctrine, core | `livespec` **v196** | PR #2033, merge `0f06129f` |
 | Doctrine, paired | `livespec-orchestrator-beads-fabro` **v058** | PR #1307, merge `a269345c` |
 | `drift_acceptance_mode` implementation | `livespec` | PR #2058, merge `b6e8d4d8` |
+| Leg 2c — guard relocated to the library | `livespec-runtime` | PR #500, merge `e60b0a94`, released **v0.18.0** |
+| Leg 2c — core consumes it | `livespec` | PR #2124, merge `d2ab3cbf` |
 
-Round 3 of the independent adversarial review returned NO BLOCKERS from BOTH
-cross-pinned reviewers (rounds 1 and 2 returned 14 then 4, all real). The key
-ships as enum `[human, consensus]`, safe default `human`, global-only
-(`per_proposal_override: null`), with `delegated` REFUSED at exit 2 — exercised
-as a positive control, not asserted. Ledger `livespec-jvdvx4.5` and
-`livespec-jvdvx4.5.1` are CLOSED with that evidence.
+All five merge SHAs were verified as ancestors of their repo's `origin/master`,
+not taken from a drive summary. `livespec-runtime` now ships BOTH
+`livespec_runtime/spec_governance.py` and `api_configurable_keys.json`, so any
+consumer reaches the guard by plain import with NO plugin-root resolution. Core
+consumes that copy; its local manifest is deleted and `default_block.py` is a
+22-line re-export shim holding no logic. Exactly ONE manifest exists fleet-wide.
 
-### The one thing to do next
+### LEG 2 IS 9 OF 12 DONE. Three remain, all block-only.
 
-**`livespec-jvdvx4.2` leg 2 — the ten-repo `spec_governance` backfill.** It is
-now fully unblocked: leg 2b (`livespec-jvdvx4.2.3`, PR #2031) made the guard
-self-delimiting, and PR #2058 shipped the 8th key AND regenerated the copier
-template in the same change (`check-spec-governance-template` passes at
-`key_count: 8`). The backfill was deliberately sequenced behind that so it fans
-out the FINAL 8-key block once instead of a 7-key block that would go stale
-immediately and fail the per-repo guard in all ten repos.
+The maintainer authorized (2026-08-07) "twelve repos, block + guard", then
+(2026-08-09) "runtime can depend on dev tooling. Dev tooling should not depend on
+runtime." Measuring each target's toolchain turned that into an **8/4 split**,
+which is forced by per-repo reality and is NOT a scope cut:
 
-The maintainer authorized "file per-repo children, dispatch one at a time"
-(2026-08-05). Re-confirm before a large fan-out, since that authorization is now
-a day old.
+**DONE — 8 with block + guard**, each verified on all six checks including a
+NEGATIVE CONTROL proving the guard can actually fail:
+`livespec-orchestrator-git-jsonl` (PR #580), `livespec-driver-claude`,
+`livespec-driver-codex`, `livespec-orchestrator-beads-fabro`,
+`livespec-runtime`, `livespec-console-beads-fabro`, `livespec-overseer`,
+`dolt-server` (PR #60, merge `20d82973`).
 
-DERIVE BOTH SETS AT EXECUTION TIME — each has already been wrong once:
+**DONE — 1 block-only:** `livespec-dev-tooling` (`livespec-dev-tooling-bdiu`).
+Its commit touched ONLY `.livespec.jsonc`. It is UPSTREAM of `livespec-runtime`
+(runtime's pyproject declares livespec-dev-tooling and its tests import
+`livespec_dev_tooling`), so wiring the guard there would create
+`dev-tooling → runtime → dev-tooling`. Verified after landing: zero
+`livespec_runtime` imports, no guard target, no dependency added.
 
-- **Target repos.** Read `.livespec-fleet-manifest.jsonc`, then for each repo
-  FETCH FIRST and read `origin/master:.livespec.jsonc`. Measured
-  2026-08-05T04:25Z: TEN repos carry the file with zero `spec_governance`
-  lines — `livespec-dev-tooling`, `livespec-driver-claude`,
-  `livespec-driver-codex`, `livespec-orchestrator-beads-fabro`,
-  `livespec-orchestrator-git-jsonl`, `livespec-runtime`,
-  `livespec-console-beads-fabro`, `livespec-overseer`, `dolt-server`, `resume`.
-  `openbrain` and `homelab` carry NO `.livespec.jsonc` and are out of scope.
-  `livespec` is the SOURCE, not a target. Positive control: `livespec` returns
-  a non-zero count, so the zeros are genuine absence.
-- **Credential wrappers.** Read each repo's OWN committed `.livespec.jsonc`.
-  The eight fleet repos use `/usr/local/bin/with-livespec-env.sh`; `dolt-server`
-  uses `with-dolt-server-env.sh`; `resume` uses `./with-resume-env.sh`. A
-  single-wrapper sweep wrongly reports adopter tenants UNREACHABLE — it did, to
-  me, and I nearly recorded a provisioning gap that did not exist.
+**REMAINING — 3 block-only adopters, all stored `backlog`:**
 
-A child must live in ITS OWN repo's tenant to be dispatchable there (a fabro
-sandbox works in one repo; each dispatcher reads that repo's ledger). File into
-the owning tenant; never touch another queue's admission, ranking, or dispatch.
+| Repo | Item | Why block-only |
+|---|---|---|
+| `resume` | `li-hok` | no justfile AND no pyproject.toml on origin/master |
+| `openbrain` | `ob-z7sp` | a justfile but NO pyproject.toml on origin/main |
+| `homelab` | `hl-clge` | no justfile AND no pyproject.toml on origin/main |
 
-### Open ledger items
+The guard is a Python import wired into `just check`; two of these have no
+`just check` and three have no Python project. Their descriptions and titles
+already say block-only with the reason, so they are dispatch-ready as written.
+Each carries an accepted, recorded residual: a hand-maintained unguarded block
+that can go stale when a tenth manifest key lands.
 
-- `livespec-jvdvx4.2` — backlog. Legs 1, 2a, 2b CLOSED. Leg 2 above is all that
-  remains. Its notes carry the derived target set and the sequencing rationale.
+### `resume` FAILED TWICE FOR REASONS I COULD NOT EXPLAIN — read this before retrying
+
+Three dispatch attempts on `li-hok`. Two came back `killed` with no output; the
+third I stopped myself at wrap-up. **Every hypothesis I formed was wrong**, so do
+not inherit them as facts — these were MEASURED HEALTHY:
+
+- the wrapper `./with-resume-env.sh` injects the secret fine WITHOUT a tty (rc=0);
+- the older plugin ref `b5418160a30c` installed for that projectPath DOES ship
+  `drive.py`, and its `next.py` returns `li-hok` as the sole ready candidate (rc=0);
+- the tenant, the item, and the dispatcher lane are all fine.
+
+A 240s FOREGROUND `drive.py` run returned rc=124 still-running with ZERO bytes on
+stdout. That is NOT a hang: `drive.py` buffers all JSON until it finishes, so
+silence says nothing about progress. I had been reading silence as failure.
+
+**Every aborted attempt left CLEAN state** — `li-hok` still `ready`/unassigned,
+nothing pushed, no sandbox, primary clean — verified after each one.
+
+If it dies again, do NOT burn a fourth factory attempt on an unnamed cause. This
+is a one-file documentation change; the honest fallback is a normal
+worktree → PR in `resume`, which needs no factory at all.
+
+### The tooling is durable — reuse it, do not rebuild it
+
+`tmp/overseer/spec-side-autonomy/leg2-tooling/` (gitignored, survives restart):
+
+- `dispatch_item.sh <repo-path> <item-id>` — the ONLY sanctioned way I dispatched.
+- `verify_landing.sh <repo-path> <item-id> guard|blockonly` — six-check verifier.
+- `leg2-filed-ids.txt` — repo → item id for all twelve.
+- `derive_leg2.sh`, `probe_tenants.sh` — target-set and tenant derivation.
+
+Each encodes a defect that already cost real time. Do not "simplify" them:
+
+- **Per-repo credential wrapper.** `drive.py` reads the TARGET repo's tenant, so
+  the fleet wrapper only works for fleet repos. `dolt-server`, `resume`,
+  `openbrain` and `homelab` declare their own, and `homelab`'s is a MULTI-element
+  argv (`with-homelab-aws.sh --role … hl param run --bind … --`). Taking only its
+  first element yields `exec: --: not found`, which reads exactly like an
+  unreachable tenant.
+- **Preflight inside the script.** It fired on THREE of nine dispatches. Fleet
+  repos drift constantly from pin fan-out, so clean+behind is NORMAL and is
+  fast-forwarded; dirty or AHEAD still aborts, because ahead means somebody's
+  unpushed work.
+- **Release the claim ONLY when no PR was opened.** A `merge-poll` timeout means
+  the work is done and a PR is LIVE; releasing there invites a second dispatch
+  into an open PR.
+- **The verifier's negative control mirrors the check script into a scratch tree**
+  at its same relative path, because scripts differ: some resolve config from
+  `Path.cwd()`, others from `Path(__file__).parent.parent`. A scratch CWD alone
+  made the second kind read the REAL file, so it could never fail.
+
+### Open follow-ups — filed, not lost
+
+- `livespec-driver-claude-3xc` (that repo's tenant) — its guard recipe pins
+  livespec-runtime by INLINE GIT URL. Nothing bumps a pin buried in a justfile,
+  so it will validate against a frozen 9-key manifest forever and stop catching
+  future drift. It still catches deletions, so it is not vacuous today. The other
+  seven guarded repos declare the dependency properly.
 - `livespec-bhammf` — blocked, needs-human. The relocated `spec_pr_merge`
   redesign. Not this thread's unfinished business.
-- `livespec-driver-claude-d7d` (P1, that repo's tenant) — `resolve_core_root.py`
-  rule 2 matches ANY repo shipping `.claude-plugin/prose/`, so `/livespec:*`
-  misresolves core from every impl-plugin repo. Workaround in daily use:
-  `LIVESPEC_CORE_PLUGIN_ROOT=/data/projects/livespec/.claude-plugin`, verified
-  by confirming the resolved root carries `propose-change.md` and `revise.md`.
-- `livespec-overseer` `overseer-9569` (P3, THEIR tenant) — their v007 restates a
-  floor enumeration one paragraph above their own "MUST NOT restate them". They
-  filed it after independently verifying our finding. Not ours; do not carry it.
-
-### Housekeeping owed
-
-- **The worker's Codex `thread_name` is DROPPED.** Restarting the worker gave it
-  session id `019fd04e-4085-7571-a5fa-329f2b81a2c9` with NO
-  `~/.codex/session_index.jsonl` record, so `livespec-overseer` adoption cannot
-  map it to a plan topic and surfaces a synthetic `codex-unindexed` row. Codex
-  has no launch-time name flag (unlike `claude -n`). Fix it through Codex's own
-  naming mechanism — NOT by hand-appending to `session_index.jsonl`, which
-  fabricates state Codex owns. Degraded visibility only; nothing is blocked.
-- `plan/github-request-budget-discipline/handoff.md` sits MODIFIED in the shared
-  primary and is NOT ours. Verified 2026-08-06: 115 insertions / 122 deletions
-  existing ONLY in the working tree, so it must NOT be discarded. That lane was
-  notified on its `worker-status.log`. Leave it alone.
+- `livespec-driver-claude-d7d` (P1) — `resolve_core_root.py` rule 2 misresolves
+  core from any impl-plugin repo. Workaround:
+  `LIVESPEC_CORE_PLUGIN_ROOT=/data/projects/livespec/.claude-plugin`.
+- `bd-ib-zp3u7y` and `bd-ib-3mbj` in `livespec-orchestrator-beads-fabro` — both
+  already existed; I added fresh reproductions rather than filing duplicates. A
+  pre-launch refusal claims the item and never releases it, and Claude credential
+  pre-flight is presence-only. They COMPOUND: presence-only lets a dispatch
+  proceed far enough to claim, then the claim strands.
+- `livespec-runtime` `origin/master`'s `uv.lock` records version 0.17.0 while its
+  `pyproject.toml` says 0.18.0. Benign and self-healing; recorded, not filed.
 
 ### Standing hazards
 
-- **EXIT CODES LIE IN BOTH DIRECTIONS.** Dispatch 1 of `livespec-jvdvx4.5.1`
-  reported exit 0 and had LOST a complete green implementation; dispatch 2
-  reported exit 1 and had LANDED everything (it died at `stage=pull-primary`
-  AFTER the merge). Read the outcome event's `merge_sha`/`pr_number`, then
-  cross-check the forge and the ledger. Never the exit code. And note the shape
-  that fooled the harness: a command ending `echo "drive exit=$?"` makes the
-  SCRIPT's status the echo's, so the notification says success. End with an
-  explicit `exit "$rc"`.
-- **A quota exhaustion can remove a safety net and the thing it protects at
-  once.** The factory's in-sandbox Claude review stage failed twice with
-  `ACP turn failed`, escalated to `HumanInputRequired`, and a 7200s stall
-  watchdog then DISCARDED an hour of green work — in the same window a Claude
-  usage limit parked this supervisor on a modal. Nobody was left to answer.
-- **A stale usage-limit modal persists long after the limit clears**, and it uses
-  "Enter to confirm", not "Enter to select". Check its stated reset time against
-  `date -u` before believing it. Nothing watches the SUPERVISOR pane — that gap
-  is real and needs the daemon or a peer.
-- **Master moves constantly** (three times mid-ratification here, once consuming
-  the version number we were about to take). A revise `resulting_files[]` entry
-  REPLACES THE ENTIRE FILE, so a stale splice silently reverts a peer with NO
-  git conflict and green CI. Re-derive every entry from freshly fetched bytes
-  IMMEDIATELY before applying, and diff the spec files against `origin/master`
-  first. A peer lane collision WAS live this session and was avoided exactly this
-  way.
-- **Never discard an unexamined dirty tracked file** (Correction C3). Diff the
-  working copy against `origin/master` first: one foreign file this session was
-  byte-identical and safe to clear, another was a unique 115-line rewrite that
-  had to be left alone. Same symptom, opposite correct action.
-- **`git merge-base --is-ancestor` gives a FALSE NEGATIVE on this repo's
-  rebase-merge discipline** — a merged PR's branch tip is not an ancestor. Ask
-  the forge whether a PR merged.
+- **EXIT CODES LIE IN BOTH DIRECTIONS, and this session proved both.** `dolt-server`
+  exited 1 at `stage=pr-view` with the WORK COMPLETE and the branch pushed — only
+  PR creation had failed; re-dispatching would have duplicated it. Read the
+  outcome event's `merge_sha`/`pr_number`, then cross-check the forge and ledger.
+  End dispatch scripts with an explicit `exit "$rc"` — a trailing `echo` makes the
+  script's status the echo's.
+- **EVERY red I hit this session was in the measuring apparatus, not the thing
+  measured** — five times: a `.venv` lacking the library, a `.py`-only regex, a
+  scratch cwd the script ignored, an unstripped justfile indent that made a `case`
+  pattern silently never match, and a merge-SHA read from a log that recorded
+  `null`. Run a positive AND a negative control before believing either result.
+- **Verifying a landing can DIRTY the primary.** Running the repo's own toolchain
+  (`just`, `uv run`) in a primary checkout regenerated `uv.lock` in
+  `livespec-runtime` and blocked the next dispatch. "Read-only verification" is
+  not read-only when it invokes a package manager. Prefer the scratch-mirror path.
+- **A stale note beside a corrected description is the same clause-lockstep rot
+  this item has now suffered four times.** When a child's fix shape changes,
+  rewrite the DESCRIPTION (a dispatcher reads that, never the parent's notes) and
+  supersede any contradicting note explicitly.
+- **Master moves constantly.** A revise `resulting_files[]` entry REPLACES THE
+  ENTIRE FILE, so a stale splice silently reverts a peer with NO git conflict and
+  green CI. Re-derive from freshly fetched bytes IMMEDIATELY before applying.
+- **Never discard an unexamined dirty tracked file** (Correction C3). Diff against
+  `origin/master` first; same symptom, opposite correct action.
+- **`git merge-base --is-ancestor` gives a FALSE NEGATIVE** on a merged PR's BRANCH
+  TIP under rebase-merge. Ask the forge whether a PR merged. The MERGE COMMIT
+  itself is a valid ancestor test.
 - **`.claude/CLAUDE.md` is a symlink to `AGENTS.md`.** Edit the real target.
 - **A fresh worktree fails `check-primary-checkout-commit-refuse-hook-installed`**
   with `worktree_pack_absent`. Run `just install-worktree-pack` then
   `git checkout -- .livespec.jsonc` IMMEDIATELY after creating any worktree.
-- **Plugin caches are pruned mid-session.** A driver bump deleted the ref every
-  running Codex session had captured at startup, blocking every command AND
-  shutdown fleet-wide. Re-resolve plugin roots before EVERY invocation, and
-  resolve from `installed_plugins.json` BY `projectPath`.
 - **`bd ready` is NOT the dispatcher's ready set.** Read the orchestrator's own
-  `next.py --json`. A raw `bd create` yields status `open`, invisible to the
-  dispatcher; it needs stored status `ready`.
+  `next.py --json`. A raw `bd create` yields status `open`, invisible to dispatch.
 - **Do not infer a dispatch refusal** — attempt it and read the guard's answer.
-- **Keep dispatchable descriptions near ~1500 chars**, but do NOT split an item
-  on a sizing warning alone: the warning fired on a slice that completed fine and
-  died for an unrelated reason.
+- **Run fleet sweeps as `bash <file>`, never inline.** `mapfile` is a bash builtin
+  and this session's shell is zsh; an inline sweep failed on all twelve at once.
+- **The repo's GitHub rate-limit hook DENIES looped or multi-call `gh` commands**,
+  and sometimes shapes containing `&&`/`select`/heredocs. Use one `gh` call per
+  Bash invocation, `gh api --cache <duration>`, and write PR bodies to a file.
 - **Two FOREIGN idle fabro sandboxes** have held cap slots for days running only
   `sleep infinity`. Never stop or reap them; they are not ours.
 
-### Cross-track state
-
-`livespec-overseer`'s `plan/foreman` thread is LIVE and cooperative; it ratified
-v007 (PR #688, merge `c57d928`), which discharged this thread's last external
-dependency, and it filed `overseer-9569` off our round-3 finding. The
-`planning-lane-redesign` lane holds a pending proposal targeting the SAME four
-spec files as ours did; it committed in its own marker to re-deriving from fresh
-bytes if it lands second, and expected to go after us. Reply channels:
-`tmp/overseer/spec-side-autonomy/worker-status.log` and the per-thread INBOX
-files.
-
 ### Next concrete action
 
-Re-confirm the fan-out authorization with the maintainer, then drive
-`livespec-jvdvx4.2` leg 2: re-derive the target set and the per-repo credential
-wrappers, file one child per repo into that repo's own tenant, and dispatch
-strictly one at a time. Do not archive `plan/spec-side-autonomy/`.
+Dispatch the three remaining block-only adopters ONE AT A TIME with
+`tmp/overseer/spec-side-autonomy/leg2-tooling/dispatch_item.sh`, flipping each
+from `backlog` to `ready` only at its own dispatch so sequential dispatch stays
+structural. Verify each with `verify_landing.sh <repo> <item> blockonly` — for
+these the requirement is the OPPOSITE of the guarded eight: the block present AND
+no guard target added. Start with `openbrain` or `homelab` rather than `resume`,
+since `resume` has the unexplained failure history above and the other two are
+untried. When all twelve are done, close `livespec-jvdvx4.2` with the evidence.
+Do not archive `plan/spec-side-autonomy/`.
 
 ## Shared Protocol
 
