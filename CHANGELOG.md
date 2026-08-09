@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.5](https://github.com/thewoolleyman/livespec/compare/v0.28.4...v0.28.5) (2026-08-09)
+
+
+### Bug Fixes
+
+* consume runtime spec governance defaults ([d2ab3cb](https://github.com/thewoolleyman/livespec/commit/d2ab3cbf2aaf698c50a283ae2f2250a2ef97e786))
+
 ## [0.28.4](https://github.com/thewoolleyman/livespec/compare/v0.28.3...v0.28.4) (2026-08-07)
 
 
