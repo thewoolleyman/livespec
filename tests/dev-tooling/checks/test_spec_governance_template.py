@@ -185,7 +185,8 @@ def _matching_consumer_config() -> str:
         '  //     "drift_acceptance_mode": "human",\n'
         '  //     "ratification_review": "manual-spawn",\n'
         '  //     "ratification_reviewer_model": null,\n'
-        '  //     "ratification_min_review_age_seconds": 1\n'
+        '  //     "ratification_min_review_age_seconds": 1,\n'
+        '  //     "spec_pr_merge": "manual"\n'
         "  //   }\n"
         "  //\n"
         "  // Optional \u2014 credential_wrapper: next block\n"

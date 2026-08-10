@@ -31,7 +31,7 @@ def test_show_effective_emits_manifest_declared_effective_and_diagnostics(
 
     assert exit_code == 0
     payload: dict[str, Any] = json.loads(capsys.readouterr().out)
-    assert len(payload["manifest"]) == 9
+    assert len(payload["manifest"]) == 10
     assert payload["declared"] == {"propose_change_mode": "batch"}
     assert payload["effective"]["propose_change_mode"] == "batch"
     assert payload["effective"]["revise_decision_mode"] == "manual"
@@ -74,6 +74,7 @@ def test_show_effective_reports_every_safe_default(
         "ratification_reviewer_model": None,
         "ratification_min_review_age_seconds": 1,
         "revise_decision_mode": "manual",
+        "spec_pr_merge": "manual",
     }
     assert payload["declared"] == {}
     assert payload["diagnostics"] == ["missing spec_governance block; safe defaults applied"]
@@ -278,6 +279,186 @@ def test_invalid_journal_event_exits_usage_error(
     assert "JSON object" in capsys.readouterr().err
 
 
+def test_pr_effective_policy_zero_match_resolves_manual(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".livespec.jsonc").write_text(
+        '{"spec_governance": {"spec_pr_merge": "auto-on-green"}}',
+        encoding="utf-8",
+    )
+
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--pr-effective-policy",
+            "--proposal-stem",
+            "missing-proposal",
+        ],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["effective"]["spec_pr_merge"] == "auto-on-green"
+    assert payload["pr_effective_policy"]["spec_pr_merge"] == "manual"
+
+
+def test_pr_effective_policy_multi_match_conservative_fold(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    _write_history_proposal(
+        root=tmp_path,
+        version="v032",
+        stem="repeated-topic",
+        front_matter="spec_pr_merge_policy: auto-on-green\n",
+    )
+    _write_history_proposal(
+        root=tmp_path,
+        version="v034",
+        stem="repeated-topic",
+        front_matter="spec_pr_merge_policy: manual\n",
+    )
+
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--pr-effective-policy",
+            "--proposal-stem",
+            "repeated-topic",
+        ],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["pr_effective_policy"]["spec_pr_merge"] == "manual"
+
+
+def test_pr_effective_policy_all_auto_fold(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    _write_history_proposal(
+        root=tmp_path,
+        version="v001",
+        stem="topic-a",
+        front_matter="spec_pr_merge_policy: auto-on-green\n",
+    )
+    _write_history_proposal(
+        root=tmp_path,
+        version="v002",
+        stem="topic-b",
+        front_matter="spec_pr_merge_policy: auto-on-green\n",
+    )
+
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--pr-effective-policy",
+            "--proposal-stem",
+            "topic-a",
+            "--proposal-stem",
+            "topic-b",
+        ],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["pr_effective_policy"]["spec_pr_merge"] == "auto-on-green"
+
+
+def test_pr_effective_policy_any_manual_floors_fold(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".livespec.jsonc").write_text(
+        '{"spec_governance": {"spec_pr_merge": "auto-on-green"}}',
+        encoding="utf-8",
+    )
+    _write_history_proposal(
+        root=tmp_path,
+        version="v001",
+        stem="topic-a",
+        front_matter="spec_pr_merge_policy: auto-on-green\n",
+    )
+    _write_history_proposal(
+        root=tmp_path,
+        version="v002",
+        stem="topic-b",
+        front_matter="spec_pr_merge_policy: manual\n",
+    )
+
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--pr-effective-policy",
+            "--proposal-stem",
+            "topic-a",
+            "--proposal-stem",
+            "topic-b",
+        ],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["pr_effective_policy"]["spec_pr_merge"] == "manual"
+
+
+def test_pr_effective_policy_explicitly_empty_set_resolves_manual(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".livespec.jsonc").write_text(
+        '{"spec_governance": {"spec_pr_merge": "auto-on-green"}}',
+        encoding="utf-8",
+    )
+
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--pr-effective-policy",
+        ],
+    )
+
+    assert exit_code == 0
+    payload: dict[str, Any] = json.loads(capsys.readouterr().out)
+    assert payload["pr_effective_policy"]["spec_pr_merge"] == "manual"
+
+
+def test_proposal_stem_without_pr_effective_policy_is_usage_error(
+    *,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    exit_code = spec_governance.main(
+        argv=[
+            "--project-root",
+            str(tmp_path),
+            "--show-effective",
+            "--proposal-stem",
+            "topic-a",
+        ],
+    )
+
+    assert exit_code == 2
+    assert "--proposal-stem requires --pr-effective-policy" in capsys.readouterr().err
+
+
 def test_dispatch_rejects_namespace_without_operation() -> None:
     result = unsafe_perform_io(
         spec_governance.dispatch(
@@ -286,6 +467,8 @@ def test_dispatch_rejects_namespace_without_operation() -> None:
                 show_effective=False,
                 action=None,
                 journal_event_json=None,
+                pr_effective_policy=False,
+                proposal_stem=[],
             ),
         ),
     )
@@ -310,9 +493,25 @@ def _matching_commented_spec_governance_block() -> str:
         '  //     "drift_acceptance_mode": "human",\n'
         '  //     "ratification_review": "manual-spawn",\n'
         '  //     "ratification_reviewer_model": null,\n'
-        '  //     "ratification_min_review_age_seconds": 1\n'
+        '  //     "ratification_min_review_age_seconds": 1,\n'
+        '  //     "spec_pr_merge": "manual"\n'
         "  //   }\n"
         "  //\n"
         "  // Optional \u2014 credential_wrapper: next block\n"
         "}\n"
+    )
+
+
+def _write_history_proposal(
+    *,
+    root: Path,
+    version: str,
+    stem: str,
+    front_matter: str,
+) -> None:
+    proposal_dir = root / "SPECIFICATION" / "history" / version / "proposed_changes"
+    proposal_dir.mkdir(parents=True)
+    (proposal_dir / f"{stem}.md").write_text(
+        f"---\ntopic: {stem}\n{front_matter}---\n\n## Proposal\n\nBody.\n",
+        encoding="utf-8",
     )

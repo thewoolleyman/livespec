@@ -22,6 +22,7 @@ from livespec.spec_governance.default_block import BlockDrift, verify_default_bl
 from livespec.spec_governance.editing import EditResult, apply_action
 from livespec.spec_governance.journal import JournalAppend, append_journal_event
 from livespec.spec_governance.registry import manifest_rows
+from livespec.spec_governance.spec_pr_merge import effective_spec_pr_merge
 
 __all__: list[str] = ["build_parser", "dispatch", "main"]
 
@@ -30,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     """Construct the spec-governance argparse parser without parsing."""
     parser = argparse.ArgumentParser(prog="spec-governance", exit_on_error=False)
     _ = parser.add_argument("--project-root", default=None)
+    _ = parser.add_argument("--proposal-stem", action="append", default=[])
+    _ = parser.add_argument("--pr-effective-policy", action="store_true")
     group = parser.add_mutually_exclusive_group(required=True)
     _ = group.add_argument("--show-effective", action="store_true")
     _ = group.add_argument("--action")
@@ -58,8 +61,15 @@ def main(*, argv: list[str] | None = None) -> int:
 
 def dispatch(*, namespace: argparse.Namespace) -> IOResult[Any, LivespecError]:
     project_root = _project_root(namespace=namespace)
+    proposal_stems = tuple(str(stem) for stem in namespace.proposal_stem)
+    if proposal_stems != () and not namespace.pr_effective_policy:
+        return IOResult.from_failure(UsageError("--proposal-stem requires --pr-effective-policy"))
     if namespace.show_effective:
-        return _emit_effective(project_root=project_root)
+        return _emit_effective(
+            project_root=project_root,
+            proposal_stems=proposal_stems,
+            pr_effective_policy=bool(namespace.pr_effective_policy),
+        )
     if namespace.action is not None:
         return _apply_action(project_root=project_root, action=str(namespace.action))
     if namespace.journal_event_json is not None:
@@ -79,7 +89,12 @@ def _project_root(*, namespace: argparse.Namespace) -> Path:
     return Path(str(namespace.project_root))
 
 
-def _emit_effective(*, project_root: Path) -> IOResult[str, LivespecError]:
+def _emit_effective(
+    *,
+    project_root: Path,
+    proposal_stems: tuple[str, ...] = (),
+    pr_effective_policy: bool = False,
+) -> IOResult[str, LivespecError]:
     config_path = project_root / ".livespec.jsonc"
     text = config_path.read_text(encoding="utf-8") if config_path.exists() else "{}"
     declared = parse_config_text(text=text)
@@ -89,6 +104,19 @@ def _emit_effective(*, project_root: Path) -> IOResult[str, LivespecError]:
         "effective": dataclasses.asdict(declared.effective),
         "diagnostics": declared.diagnostics,
     }
+    if pr_effective_policy:
+        pr_policy = effective_spec_pr_merge(
+            project_root=project_root,
+            config=declared.effective,
+            proposal_stems=proposal_stems,
+        )
+        payload["pr_effective_policy"] = {
+            "proposal_stems": list(proposal_stems),
+            "spec_pr_merge": pr_policy.value,
+            "source": pr_policy.source,
+            "requires_input": pr_policy.requires_input,
+            "reason": pr_policy.reason,
+        }
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     _ = streams.write_stdout(text=f"{rendered}\n")
     return IOSuccess(rendered)

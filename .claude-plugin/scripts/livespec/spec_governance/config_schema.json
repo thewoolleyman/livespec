@@ -25,6 +25,7 @@
     "ratification_min_review_age_seconds": {
       "type": "integer",
       "minimum": 1
-    }
+    },
+    "spec_pr_merge": { "enum": ["manual", "auto-on-green"] }
   }
 }
