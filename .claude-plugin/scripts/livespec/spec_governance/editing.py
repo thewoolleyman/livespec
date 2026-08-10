@@ -30,10 +30,13 @@ _GLOBAL_VALUE_ACTIONS = {
     "set-ratification-reviewer-model": ("ratification_reviewer_model", None),
 }
 _RATIFICATION_VALUES = {"manual-spawn", "auto-spawn"}
+_SPEC_PR_MERGE_VALUES = {"manual", "auto-on-green"}
 _GLOBAL_ACTION_PARTS = 2
 _DOCTOR_ACTION_PARTS = 3
 _RATIFICATION_GLOBAL_PARTS = 3
 _RATIFICATION_PROPOSAL_PARTS = 4
+_SPEC_PR_MERGE_GLOBAL_PARTS = 3
+_SPEC_PR_MERGE_PROPOSAL_PARTS = 4
 _REVISE_DECISION_GLOBAL_PARTS = 3
 _REVISE_DECISION_PROPOSAL_PARTS = 4
 _DRIFT_ACCEPTANCE_GLOBAL_PARTS = 3
@@ -51,6 +54,15 @@ def apply_action(*, project_root: Path, action: str) -> str | EditResult:
     parts = action.split(":")
     if parts[0] in _GLOBAL_VALUE_ACTIONS and len(parts) == _GLOBAL_ACTION_PARTS:
         return _apply_global_action(project_root=project_root, verb=parts[0], value=parts[1])
+    return _apply_scoped_action(project_root=project_root, action=action, parts=parts)
+
+
+def _apply_scoped_action(
+    *,
+    project_root: Path,
+    action: str,
+    parts: list[str],
+) -> str | EditResult:
     if parts[0] == "set-doctor-disposition" and len(parts) == _DOCTOR_ACTION_PARTS:
         return _apply_doctor_action(project_root=project_root, check_id=parts[1], value=parts[2])
     if parts[0] == "set-revise-decision-mode" and len(parts) >= _REVISE_DECISION_GLOBAL_PARTS:
@@ -59,6 +71,8 @@ def apply_action(*, project_root: Path, action: str) -> str | EditResult:
         return _apply_drift_acceptance_action(project_root=project_root, parts=parts)
     if parts[0] == "set-ratification-review" and len(parts) >= _RATIFICATION_GLOBAL_PARTS:
         return _apply_ratification_action(project_root=project_root, parts=parts)
+    if parts[0] == "set-spec-pr-merge" and len(parts) >= _SPEC_PR_MERGE_GLOBAL_PARTS:
+        return _apply_spec_pr_merge_action(project_root=project_root, parts=parts)
     return f"unsupported action grammar: {action}"
 
 
@@ -157,5 +171,65 @@ def _apply_ratification_proposal(
             project_root=project_root,
             proposal_stem=proposal_stem,
             value=None if value == "clear" else value,
+        ),
+    )
+
+
+def _apply_spec_pr_merge_action(
+    *,
+    project_root: Path,
+    parts: list[str],
+) -> str | EditResult:
+    if parts[1] == "global" and len(parts) == _SPEC_PR_MERGE_GLOBAL_PARTS:
+        return _apply_spec_pr_merge_global(project_root=project_root, value=parts[2])
+    if parts[1] == "proposal" and len(parts) == _SPEC_PR_MERGE_PROPOSAL_PARTS:
+        return _apply_spec_pr_merge_proposal(
+            project_root=project_root,
+            proposal_stem=parts[2],
+            value=parts[3],
+        )
+    return "set-spec-pr-merge requires global:<value> or proposal:<stem>:<value>"
+
+
+def _apply_spec_pr_merge_global(
+    *,
+    project_root: Path,
+    value: str,
+) -> str | EditResult:
+    if value == "clear":
+        return _edit_result(
+            changed_path=write_config_value(
+                project_root=project_root,
+                key="spec_pr_merge",
+                value=None,
+            ),
+        )
+    if value not in _SPEC_PR_MERGE_VALUES:
+        return f"spec PR merge must be one of {sorted(_SPEC_PR_MERGE_VALUES)} or clear"
+    return _edit_result(
+        changed_path=write_config_value(
+            project_root=project_root,
+            key="spec_pr_merge",
+            value=value,
+        ),
+    )
+
+
+def _apply_spec_pr_merge_proposal(
+    *,
+    project_root: Path,
+    proposal_stem: str,
+    value: str,
+) -> str | EditResult:
+    if PROPOSAL_STEM_PATTERN.fullmatch(proposal_stem) is None:
+        return f"proposal stem must match {PROPOSAL_STEM_PATTERN.pattern}"
+    if value != "clear" and value not in _SPEC_PR_MERGE_VALUES:
+        return f"proposal override must be one of {sorted(_SPEC_PR_MERGE_VALUES)} or clear"
+    return _edit_result(
+        changed_path=write_proposal_override(
+            project_root=project_root,
+            proposal_stem=proposal_stem,
+            value=None if value == "clear" else value,
+            key="spec_pr_merge_policy",
         ),
     )

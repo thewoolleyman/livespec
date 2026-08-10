@@ -44,6 +44,7 @@ class SpecGovernanceConfig:
     ratification_review: str = "manual-spawn"
     ratification_reviewer_model: str | None = None
     ratification_min_review_age_seconds: int = 1
+    spec_pr_merge: str = "manual"
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -116,6 +117,11 @@ def _parse_block(*, block: dict[str, Any]) -> DeclaredConfig:
             ratification_min_review_age_seconds=_positive_int_value(
                 block=block,
                 key="ratification_min_review_age_seconds",
+                diagnostics=diagnostics,
+            ),
+            spec_pr_merge=_enum_value(
+                block=block,
+                key="spec_pr_merge",
                 diagnostics=diagnostics,
             ),
         ),

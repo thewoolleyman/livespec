@@ -8,7 +8,7 @@ from pathlib import Path
 __all__: list[str] = []
 
 
-def test_registry_module_exists_and_projects_nine_ratified_rows() -> None:
+def test_registry_module_exists_and_projects_ten_ratified_rows() -> None:
     """The registry module exposes the ratified spec-governance key set."""
     module_path = (
         Path(__file__).resolve().parents[3]
@@ -32,6 +32,7 @@ def test_registry_module_exists_and_projects_nine_ratified_rows() -> None:
         "ratification_review",
         "ratification_reviewer_model",
         "ratification_min_review_age_seconds",
+        "spec_pr_merge",
     ]
     revise_mode = registry.CONFIG_KEYS[4]
     assert revise_mode.value_type == "enum"
@@ -48,6 +49,11 @@ def test_registry_module_exists_and_projects_nine_ratified_rows() -> None:
     assert review_age.safe_default == 1
     assert review_age.per_proposal_override is None
     assert review_age.allowed_values == []
+    spec_pr_merge = registry.CONFIG_KEYS[9]
+    assert spec_pr_merge.value_type == "enum"
+    assert spec_pr_merge.safe_default == "manual"
+    assert spec_pr_merge.per_proposal_override == "spec_pr_merge_policy"
+    assert spec_pr_merge.allowed_values == ["manual", "auto-on-green"]
 
 
 def test_spec_governance_manifest_and_block_logic_delegate_to_runtime() -> None:

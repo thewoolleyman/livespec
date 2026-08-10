@@ -15,6 +15,7 @@ from livespec.spec_governance.revise_decision import (
     effective_revise_decision_mode,
     requires_revise_decision_input,
 )
+from livespec.spec_governance.spec_pr_merge import awaits_manual_spec_pr_merge
 
 __all__: list[str] = [
     "DoctorContext",
@@ -22,6 +23,7 @@ __all__: list[str] = [
     "EffectivePolicy",
     "RatificationContext",
     "ReviseDecisionContext",
+    "awaits_manual_spec_pr_merge",
     "awaits_ratification_review",
     "effective_critique_mode",
     "effective_doctor_disposition",

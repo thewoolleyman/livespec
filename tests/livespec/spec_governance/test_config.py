@@ -19,6 +19,7 @@ def test_missing_block_resolves_to_safe_defaults() -> None:
     assert declared.effective.ratification_review == "manual-spawn"
     assert declared.effective.ratification_reviewer_model is None
     assert declared.effective.ratification_min_review_age_seconds == 1
+    assert declared.effective.spec_pr_merge == "manual"
     assert declared.diagnostics
 
 
@@ -47,7 +48,8 @@ def test_invalid_entries_are_ignored_without_losing_valid_siblings() -> None:
             "drift_acceptance_mode": "delegated",
             "ratification_review": "auto-spawn",
             "ratification_reviewer_model": "bad model!",
-            "ratification_min_review_age_seconds": 0
+            "ratification_min_review_age_seconds": 0,
+            "spec_pr_merge": "delegate"
           }
         }
         """,
@@ -62,7 +64,8 @@ def test_invalid_entries_are_ignored_without_losing_valid_siblings() -> None:
     assert declared.effective.ratification_review == "auto-spawn"
     assert declared.effective.ratification_reviewer_model is None
     assert declared.effective.ratification_min_review_age_seconds == 1
-    assert len(declared.diagnostics) == 8
+    assert declared.effective.spec_pr_merge == "manual"
+    assert len(declared.diagnostics) == 9
 
 
 def test_wrong_typed_doctor_dispositions_map_resolves_to_empty() -> None:
@@ -87,7 +90,8 @@ def test_all_valid_entries_project_to_effective_config() -> None:
             "drift_acceptance_mode": "consensus",
             "ratification_review": "auto-spawn",
             "ratification_reviewer_model": "fable/model-1",
-            "ratification_min_review_age_seconds": 120
+            "ratification_min_review_age_seconds": 120,
+            "spec_pr_merge": "auto-on-green"
           }
         }
         """,
@@ -102,4 +106,5 @@ def test_all_valid_entries_project_to_effective_config() -> None:
     assert declared.effective.ratification_review == "auto-spawn"
     assert declared.effective.ratification_reviewer_model == "fable/model-1"
     assert declared.effective.ratification_min_review_age_seconds == 120
+    assert declared.effective.spec_pr_merge == "auto-on-green"
     assert declared.diagnostics == []

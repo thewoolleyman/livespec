@@ -258,6 +258,61 @@ def test_drift_acceptance_global_action_refuses_delegated_and_clears(
     assert "drift_acceptance_mode" not in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
 
 
+def test_spec_pr_merge_global_action_is_clearable(*, tmp_path: Path) -> None:
+    set_result = apply_action(
+        project_root=tmp_path,
+        action="set-spec-pr-merge:global:auto-on-green",
+    )
+    invalid_result = apply_action(
+        project_root=tmp_path,
+        action="set-spec-pr-merge:global:delegate",
+    )
+
+    assert isinstance(set_result, EditResult)
+    assert isinstance(invalid_result, str)
+    assert "auto-on-green" in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+
+    clear_result = apply_action(
+        project_root=tmp_path,
+        action="set-spec-pr-merge:global:clear",
+    )
+
+    assert isinstance(clear_result, EditResult)
+    assert "spec_pr_merge" not in (tmp_path / ".livespec.jsonc").read_text(encoding="utf-8")
+    assert isinstance(
+        apply_action(project_root=tmp_path, action="set-spec-pr-merge:project:manual"),
+        str,
+    )
+
+
+def test_spec_pr_merge_proposal_action_writes_front_matter_key(*, tmp_path: Path) -> None:
+    proposal_dir = tmp_path / "SPECIFICATION" / "proposed_changes"
+    proposal_dir.mkdir(parents=True)
+    proposal = proposal_dir / "topic-a.md"
+    proposal.write_text("---\ntopic: topic-a\n---\n\n## Proposal\n\nBody.\n", encoding="utf-8")
+
+    set_result = apply_action(
+        project_root=tmp_path,
+        action="set-spec-pr-merge:proposal:topic-a:auto-on-green",
+    )
+    clear_result = apply_action(
+        project_root=tmp_path,
+        action="set-spec-pr-merge:proposal:topic-a:clear",
+    )
+
+    assert isinstance(set_result, EditResult)
+    assert isinstance(clear_result, EditResult)
+    assert "spec_pr_merge_policy" not in proposal.read_text(encoding="utf-8")
+    assert isinstance(
+        apply_action(project_root=tmp_path, action="set-spec-pr-merge:proposal:Bad:manual"),
+        str,
+    )
+    assert isinstance(
+        apply_action(project_root=tmp_path, action="set-spec-pr-merge:proposal:topic-a:nope"),
+        str,
+    )
+
+
 def test_revise_decision_proposal_action_preserves_body_and_refuses_invalid_input(
     *,
     tmp_path: Path,
