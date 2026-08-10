@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/thewoolleyman/livespec/compare/v0.28.5...v0.29.0) (2026-08-10)
+
+
+### Features
+
+* add spec PR effective policy CLI tests ([91bd075](https://github.com/thewoolleyman/livespec/commit/91bd0754c6e1eff7f1ecfd3e7081820eea39181a))
+
 ## [0.28.5](https://github.com/thewoolleyman/livespec/compare/v0.28.4...v0.28.5) (2026-08-09)
 
 
