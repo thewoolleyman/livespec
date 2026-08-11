@@ -38,6 +38,39 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > **The previous block's named first action is DISCHARGED. All three of its steps are done and
 > verified — do not re-run them.** What follows is what that discharge found.
 >
+> ### 0. HOW TO READ THIS BLOCK — it is ~500 lines; here is the map
+>
+> **If you read only one thing: §1.** It tells you what to do first. Everything else is evidence
+> you may need *while* doing it, or context so you do not re-derive a finding that already exists.
+>
+> **The `§6a`–`§6h` run is not a designed hierarchy** — those sections were appended one at a time
+> as a single session found things, so the lettering records discovery order, not importance. They
+> are all *"what this session found beyond its assigned task"*. Read §6c, §6f and §6g first if you
+> read only some.
+>
+> | § | one line | act on it? |
+> |---|---|---|
+> | **1** | **Your first action: re-run the census; expect to confirm, not to find work** | **YES — start here** |
+> | 2 | What the prior first action found (PR #2149 merged, exercise green, worktree already clean) | no — done |
+> | 3 | ✅ Release gate REPAIRED and proven live (v0.30.1 + v0.30.2, both step-verified) | no — closed |
+> | 4 | The LLOC band edge holds EIGHT files at 191–200; expect regrowth | consume, don't act |
+> | 5 | Hetzner half: TWELFTH reading, gate SHUT, all three conditions unmet | **nothing to drive** |
+> | 6 | Banked completion evidence re-measured, all holds, controls re-run | re-measure, don't trust |
+> | 6a | The "Open descendants" table was audited wholesale and is accurate | no — don't re-audit |
+> | 6b | Two fleet masters were RED; both repaired; cause filed as `el7g` | no — repaired |
+> | 6c | 🔗 `el7g` **arms** `xdyh` — the flaky defect enables the dangerous one | read this |
+> | 6d | 🚩 Four obsolete bump PRs lingering in two sibling repos (`bd-ib-3a7x`, `bd-gj-kv8`) | not ours to close |
+> | 6e | 🧊 `livespec-console-beads-fabro` frozen INBOUND and OUTBOUND | not ours to fix |
+> | 6f | 🔴 Fleet conformance RED 2 days (`livespec-runtime-0u8`) | not ours to fix |
+> | 6g | ⭐ The "missing reader" splits into a SCHEDULING gap and a SIGNAL-SET gap | read this |
+> | 6h | Signal 5: four drifted ledger items; none normalized, and why | not ours to touch |
+> | 7 | Housekeeping that saves real time (guard behaviour, worktree creation, timings) | read before working |
+> | 8 | Disciplines earned earlier this week | read before refactoring |
+>
+> **Nothing in §6a–§6h is this thread's to drive.** Every one is filed in the tenant that owns it,
+> with acceptance criteria, and listed under "Open descendants". They are here so a later session
+> does not rediscover them at the same cost this one paid.
+>
 > ### 1. YOUR FIRST ACTION: re-run the census, and expect to confirm rather than to find work
 >
 > Run the census in the **"Next-session command"** section (the `bash` block under "Open
