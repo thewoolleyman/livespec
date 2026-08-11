@@ -56,6 +56,29 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > still `open`, its `updated_at` 06:38:15Z, which *predates* the previous session's close). The
 > subtree was enumerated rather than read off the parent, per the trap §5 records.
 >
+> > **⭐ USE THIS ONE-COMMAND DISCRIMINATOR INSTEAD OF COUNTING COMMITS — it is strictly better,
+> > and it is what settled this reading.** Counting `hetzner`-path commits is a weak proxy: it
+> > answered "11 of 44" here and *still* could not tell delivery from prose. Ask the sharp
+> > question directly — **did the gate's OWN file move?**
+> >
+> > ```bash
+> > cd /data/projects/homelab
+> > git log --oneline <prev-head>..origin/main -- 'nix/hosts/hetzner-prod/storage.nix'
+> > git ls-tree origin/main -- nix/hosts/hetzner-prod/storage.nix   # CONTROL — must be non-empty
+> > ```
+> >
+> > That file is `hl-75f`'s subject, and `hl-75f` is the gate's critical path. **At this reading
+> > the first command returned EMPTY across all 44 commits while the control confirmed the file
+> > exists on `main`** — so the empty result is a real absence, not a mistyped path. The control
+> > is not optional: without it a renamed or misspelled path yields the same empty output and
+> > reads as "no movement".
+> >
+> > Reading the 11 commit SUBJECTS confirms it independently: **ten are planning prose**
+> > (eight `plan/17:`, one `plan/12:`, one `ci:`), and the eleventh — *"Accept
+> > add-gmktec-host-surface … add nixosConfigurations.gmktec"* — is a **DIFFERENT HOST**
+> > (`gmktec`, not `hetzner-prod`). A path glob of `*hetzner*` matches thread-17's planning
+> > directory, so it counts prose as movement; the storage.nix probe cannot.
+>
 > **livespec master CI is green at the CURRENT head** — run 31489393891 `success` on `c5fd8804`,
 > which equals `origin/master` exactly, so it is not a stale run. One open PR, #2069, another
 > thread's.
