@@ -277,13 +277,24 @@ jobs:
           fi
 
           # 8. JOURNAL AS GATE (SPECIFICATION/contracts.md §"Spec pull-
-          #    request merge-registration mechanics"; the journal is the
-          #    decision gate, not a durable archive — the GitHub pull-
-          #    request timeline serves that role, per the restored v190
-          #    design record). Append the event BEFORE registering. If the
-          #    append fails, do NOT register — journal failure requires
-          #    human input and prevents registration. Do not invent a
-          #    persistence mechanism beyond this append.
+          #    request merge-registration mechanics"). Append the event
+          #    BEFORE registering. If the append fails, do NOT register —
+          #    journal failure requires human input and prevents
+          #    registration. Do not invent a persistence mechanism beyond
+          #    this append: the journal is the decision gate for THIS
+          #    step, and nothing here depends on it outliving the job.
+          #
+          #    An earlier revision of this comment justified the ephemeral
+          #    journal location by citing a "restored v190 design record"
+          #    naming the pull-request timeline as the durable evidence
+          #    leg. That citation was FALSE and is removed rather than
+          #    reworded: the v190 language came from a proposal that was
+          #    REJECTED and ordered refiled, so there was no such record to
+          #    restore. A clause to that effect is currently only PENDING
+          #    (`SPECIFICATION/proposed_changes/spec-pr-merge-durable-evidence-locus.md`)
+          #    and is NOT ratified, so nothing here may lean on it. The
+          #    append-before-mutation gate above is required by the
+          #    ratified contract on its own and does not need that claim.
           stems_json=$(printf '%s\n' "${stems[@]}" | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
           event_file=$(mktemp)
           PULL_REQUEST_IDENTITY="$REPO#$PR" EFFECTIVE_SOURCE="$effective_source" STEMS_JSON="$stems_json" python3 -c "
