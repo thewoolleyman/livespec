@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:4xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:5xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -479,6 +479,31 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > IMPORT IS NOT FINDING THE GUARD — a consumer's `if x is None` does not FAIL against a Result, it
 > is permanently False, so the guard stops being a guard."* And the three names are a **floor**:
 > the oracle is blind to `getattr`/`importlib`/string dispatch.
+>
+> **✅ THE FIVE-SITE GUARD READING IS ALREADY DONE — do not repeat it.** All five consumption
+> sites live in `livespec`, so this thread read them and journaled the per-site result on
+> `livespec-runtime-0u8` (that item's acceptance clause 3). Summary, so you know whether you even
+> need the detail:
+>
+> | site | consumes | guard |
+> |---|---|---|
+> | `spec_governance/default_block.py` | `documented_defaults`, `verify_default_block` | **none possible** — a pure re-export shim; never calls them |
+> | `spec_governance/registry.py:23` | `manifest_rows` | **none** — `tuple(manifest_rows())` at module level; a shape change raises at import |
+> | `dev-tooling/checks/spec_governance_manifest.py:49` | `manifest_rows` | **none** — iterates the return directly |
+> | `dev-tooling/checks/spec_governance_template.py:108` | `verify_default_block` | **⚠ the load-bearing one** |
+>
+> **The one that matters:** `if verification.drift is None: return 0` is that check's **only
+> success return**. Direction is what counts, not the mere presence of a guard — a Result
+> conversion `AttributeError`s loudly, and a never-None `.drift` would report drift always (a
+> noisy false FAILURE). **The dangerous direction is the reverse:** any change making `.drift`
+> None in a genuinely drifted case returns 0 with *"matches the manifest"*, shipping a drifted
+> template silently green and disabling the only detector. So the contract that **`.drift is None`
+> means exactly "no drift"** is load-bearing, and declaring the function does not by itself
+> protect it.
+>
+> **Still NOT done** (stated so it is not mistaken for complete): that item's acceptance clause 4
+> — the named set is a FLOOR, so a dynamic-consumption search plus its required positive control
+> is still owed. No such search has been run.
 >
 > ### 6g. ⭐ THE READER QUESTION IS NOW DECOMPOSED — `livespec-39h1` should not be closed by half
 >
