@@ -207,24 +207,83 @@ jobs:
           #    KNOWN-EMPTY and auto-enable. Per spec.md, such an error is
           #    derivation FAILURE and MUST block. Filtering is applied only
           #    after both sources have been obtained successfully.
+          #
+          #    RENAMES ARE THE PRODUCTION SHAPE, AND BOTH SOURCES MUST SEE
+          #    THEM. A real ratifying pull request MOVES the proposal from
+          #    <spec-root>/proposed_changes/<stem>.md into
+          #    <spec-root>/history/vNNN/proposed_changes/<stem>.md. git scores
+          #    that `R100` and the hosting API reports `status: "renamed"`, so
+          #    an added-only filter on BOTH sources missed it, AGREED it had
+          #    missed it — defeating the dual-source hardening, which by
+          #    construction only catches SOURCE-level divergence — and derived
+          #    an empty stem set that then read as KNOWN-EMPTY. That is the
+          #    filter-level residual spec.md names honestly, and it is why the
+          #    only file left matching the pattern was the `-revision.md` the
+          #    next filter deliberately strips.
+          #
+          #    The repair deliberately takes the RENAME HEURISTIC OUT OF THE
+          #    COMPARISON rather than teaching both sides to agree about it.
+          #    git's rename detection and the hosting API's are SEPARATE
+          #    implementations, so widening both to accept renames would make
+          #    a move that one scores as a rename and the other as add+delete
+          #    DISAGREE — resolving derivation FAILURE and hard-blocking a
+          #    routine ratification. Instead:
+          #      - the LOCAL side passes `--no-renames`, so a move is always
+          #        reported as an ordinary addition of its DESTINATION path;
+          #      - the API side accepts `added`, `renamed` and `copied`, whose
+          #        `.filename` is already the DESTINATION in every case.
+          #    Both sides therefore yield the destination path no matter how
+          #    either implementation scores the move, and the hardening still
+          #    catches genuine source-level divergence.
           STEM_PATTERN="^${SPEC_ROOT}/(templates/[^/]+/)?history/[^/]+/proposed_changes/[^/]+\.md\$"
-          local_files=$(git diff --name-only --diff-filter=A "$MERGE_BASE" "$HEAD_SHA" -- "$SPEC_ROOT") || {
+          local_files=$(git diff --no-renames --name-only --diff-filter=A "$MERGE_BASE" "$HEAD_SHA" -- "$SPEC_ROOT") || {
             echo "::error::local-git file listing failed — derivation FAILURE"
             echo "decision=blocked" >> "$GITHUB_OUTPUT"
             exit 0
           }
-          api_files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate -q '.[] | select(.status=="added") | .filename') || {
+          api_files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate \
+            -q '.[] | select(.status=="added" or .status=="renamed" or .status=="copied") | .filename') || {
             echo "::error::hosting-API file listing failed — derivation FAILURE"
             echo "decision=blocked" >> "$GITHUB_OUTPUT"
             exit 0
           }
-          # A no-match `grep` exits 1; that is an EMPTY RESULT, not an error,
-          # and is the KNOWN-EMPTY path — so these filters are deliberately
-          # exempt from the exit-status checks above.
-          local_added=$(printf '%s\n' "$local_files" \
-            | grep -E "$STEM_PATTERN" | grep -v -- '-revision\.md$' | sort)
-          api_added=$(printf '%s\n' "$api_files" \
-            | grep -E "$STEM_PATTERN" | grep -v -- '-revision\.md$' | sort)
+          # The runner shell for a `run:` block is `/usr/bin/bash -e {0}`, and
+          # this script's own `set -uo pipefail` does NOT cancel that inherited
+          # `-e`. A no-match `grep` exits 1, `pipefail` propagates it, and the
+          # assignment below then KILLED THE WHOLE STEP — silently, before it
+          # emitted any output of its own. An earlier revision of this comment
+          # claimed these filters were "deliberately exempt from the exit-status
+          # checks above"; that was true of the explicit `|| { ... }` guards and
+          # FALSE of `-e`, so the claim is corrected here rather than reworded.
+          #
+          # The fix distinguishes grep's two failure meanings instead of
+          # blanket-swallowing both with `|| true`: exit 1 means NO MATCH (an
+          # empty RESULT, which is the legitimate KNOWN-EMPTY path) and is
+          # mapped to success, while exit >= 2 means a REAL grep error and is
+          # preserved so it still reaches the guard and blocks. Swallowing a
+          # genuine grep failure would be the same class of mistake the
+          # dual-source hardening exists to prevent.
+          grep_allow_empty() {
+            local status=0
+            grep "$@" || status=$?
+            if [ "$status" -le 1 ]; then
+              return 0
+            fi
+            return "$status"
+          }
+          filter_stem_paths() {
+            grep_allow_empty -E "$STEM_PATTERN" | grep_allow_empty -v -- '-revision\.md$' | sort
+          }
+          local_added=$(printf '%s\n' "$local_files" | filter_stem_paths) || {
+            echo "::error::local stem filtering failed — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          api_added=$(printf '%s\n' "$api_files" | filter_stem_paths) || {
+            echo "::error::hosting-API stem filtering failed — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
 
           if [ "$local_added" != "$api_added" ]; then
             echo "::error::derivation FAILURE: local-git and hosting-API derivations disagree"
@@ -284,17 +343,25 @@ jobs:
           #    this append: the journal is the decision gate for THIS
           #    step, and nothing here depends on it outliving the job.
           #
-          #    An earlier revision of this comment justified the ephemeral
-          #    journal location by citing a "restored v190 design record"
-          #    naming the pull-request timeline as the durable evidence
-          #    leg. That citation was FALSE and is removed rather than
-          #    reworded: the v190 language came from a proposal that was
-          #    REJECTED and ordered refiled, so there was no such record to
-          #    restore. A clause to that effect is currently only PENDING
-          #    (`SPECIFICATION/proposed_changes/spec-pr-merge-durable-evidence-locus.md`)
-          #    and is NOT ratified, so nothing here may lean on it. The
-          #    append-before-mutation gate above is required by the
-          #    ratified contract on its own and does not need that claim.
+          #    Why the ephemeral journal location is correct rather than a
+          #    defect, citing the RATIFIED source: SPECIFICATION/contracts.md
+          #    §"Spec-governance control wrapper" states that the
+          #    pull-request timeline MAY serve as the durable final-evidence
+          #    leg for this event, so the journal is the decision gate —
+          #    recording which setting governed the attempt and refusing to
+          #    proceed when it cannot be written — rather than its durable
+          #    archive. That clause ratified as v201.
+          #
+          #    Two superseded revisions of this comment are named so the
+          #    error class is not repeated. The first cited a "restored v190
+          #    design record", which never existed: the v190 language came
+          #    from a proposal that was REJECTED and ordered refiled. The
+          #    second, written while the refile was still pending, asserted
+          #    the clause was "NOT ratified, so nothing here may lean on it"
+          #    and pointed at a `proposed_changes/` path — a claim that
+          #    expired at ratification and a path that no longer resolves,
+          #    since ratifying MOVES the proposal into `history/v201/`.
+          #    Cite ratified spec sections, never queue paths.
           stems_json=$(printf '%s\n' "${stems[@]}" | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
           event_file=$(mktemp)
           PULL_REQUEST_IDENTITY="$REPO#$PR" EFFECTIVE_SOURCE="$effective_source" STEMS_JSON="$stems_json" python3 -c "
