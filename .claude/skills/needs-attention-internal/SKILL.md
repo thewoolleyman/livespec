@@ -86,6 +86,53 @@ A `completed  success` conclusion is healthy — emit nothing. A `failure`,
 Query with `--workflow CI` explicitly: a bare `gh run list` is masked by non-CI
 workflows and reports a misleading green.
 
+> **⛔ RUNNING THAT COMMAND ONCE PER MEMBER IS DENIED — use the ONE-CALL SCREEN
+> below first.** Nine per-repo `gh` reads is a *looped GitHub read*, and
+> `github_rate_limit_guard` refuses it. It also refuses its own prescribed
+> remedy: `gh api --cache 20s` inside the loop is denied by the same message that
+> just recommended `--cache` (`livespec-driver-claude-mu5`, journaled there
+> 2026-08-11). **Do NOT restructure the command to slip past the matcher** —
+> writing the loop into a script file to change what the guard sees is evasion,
+> however defective the guard. Ask GitHub *once* instead:
+>
+> ```bash
+> gh api graphql -f query="$(cat <<'Q'
+> query { r0: repository(owner:"thewoolleyman", name:"livespec") {
+>           nameWithOwner
+>           defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } } }
+>         r1: repository(owner:"thewoolleyman", name:"livespec-dev-tooling") { nameWithOwner
+>           defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } } }
+>         # …one alias per fleet member, derived from the manifest…
+> }
+> Q
+> )" > /tmp/fleetci.json
+> ```
+>
+> One call, no loop, and **fewer** API reads than the per-repo form — which is the
+> guard's own stated concern. Parse the JSON in a SEPARATE call (a comprehension
+> in the same command as a `gh` invocation is itself denied — the matcher keys on
+> the `for` token).
+>
+> **THIS SCREEN IS NOT EQUIVALENT TO SIGNAL 1, IN BOTH DIRECTIONS, AND BOTH
+> MATTER:**
+>
+> - **BROADER.** `statusCheckRollup` aggregates *every* check on the HEAD commit,
+>   not just the workflow named `CI`. A non-`CI` workflow red on that commit turns
+>   it non-`SUCCESS` — which is coverage this skill's own gap note says Signal 1
+>   lacks. So treat non-`SUCCESS` as **"drill into this repo"** with the per-repo
+>   `gh run list` above (now a handful of one-shot calls, not a loop), never as
+>   "the `CI` workflow is red".
+> - **BLIND.** The rollup hangs off a COMMIT, so it cannot see a **scheduled**
+>   workflow's failure at all — that failure attaches to no commit. Verified
+>   2026-08-11: all nine members read `SUCCESS` while `Fleet conformance` (Signal
+>   2) was red on its third consecutive scheduled run. It is equally blind to a
+>   red run on an EARLIER commit, which is how a required gate can go red on
+>   master and be invisible an hour later once a green commit lands on top.
+>
+> **So a green screen means "no member's HEAD commit has a failing check right
+> now" — nothing more.** Signal 2 is what covers the scheduled tier, and neither
+> covers a red run that a later green commit has buried.
+
 ### Signal 2 — fleet-conformance drift
 
 Fleet-conformance lives in the sibling `livespec-dev-tooling` repo
@@ -121,6 +168,39 @@ a free-text `--search "bump pin"`, which false-positives on any unrelated PR who
 title or body merely mentions those words (verified: it matched an unrelated
 skills PR during this skill's own live-exercise). Repeat the query per fleet repo
 whose pins you want covered, or scope it to the repos the sweep targets.
+
+> **⛔ BOTH LINES ABOVE ARE DENIED AS WRITTEN — and for two DIFFERENT reasons, so
+> fixing one does not fix the other.**
+>
+> 1. Repeating the `gh pr list` per fleet repo is a *looped GitHub read*
+>    (`github_rate_limit_guard`), the same denial Signal 1 hits.
+> 2. **The `--jq` above is denied on its own, un-looped, purely for containing
+>    the token `select(`.** That is `livespec-driver-claude-mu5`: the guard
+>    matches substrings, not behaviour. So even a single-repo invocation of the
+>    command as written fails.
+>
+> Sweep all members in ONE call and filter locally instead:
+>
+> ```bash
+> gh api graphql -f query="$(cat <<'Q'
+> query { r0: repository(owner:"thewoolleyman", name:"livespec") {
+>           nameWithOwner
+>           pullRequests(states: OPEN, first: 50) { nodes { number headRefName createdAt } } }
+>         # …one alias per fleet member, derived from the manifest…
+> }
+> Q
+> )" > /tmp/fleetprs.json
+> ```
+>
+> Then match `^chore/(freshness-)?bump-` in a SEPARATE call (Python/`jq` over the
+> file — no `gh` in that command, so neither trigger fires).
+>
+> **ALWAYS PRINT THE TOTAL OPEN-PR COUNT BESIDE THE BUMP COUNT.** A bump count of
+> zero means nothing if the query saw zero PRs at all — the same
+> count-without-its-listing trap that produced a false "the lockstep broke" and a
+> false "a CI runner exists" elsewhere in this fleet on 2026-08-11. Verified live
+> that day: 4 bump PRs against 10 open PRs fleet-wide, so the 4 is a real subset
+> rather than a filter artifact.
 
 > **THERE ARE TWO BUMP-BRANCH CONVENTIONS, AND MATCHING ONLY THE OBVIOUS ONE
 > MISSES HALF THE PRs.** This filter read `startswith("chore/bump-")` until
