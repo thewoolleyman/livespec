@@ -790,12 +790,34 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > | `livespec-dev-tooling` | `jaut4y.2` | 05:43:05Z | 05:43:05Z |
 > | `livespec-dev-tooling` | `jaut4y.3` | 05:43:31Z | 07:43:31Z |
 >
-> **Nothing was normalized, deliberately.** `livespec-jvdvx4.9` was updated ONE MINUTE before the
+> **Nothing was normalized, deliberately.** ~~`livespec-jvdvx4.9` was updated ONE MINUTE before the
 > reading — another session is working it live — and the `jaut4y.*` three belong to a sibling
-> session's in-flight epic. Remapping another session's active work is a cross-session clobber, and
+> session's in-flight epic.~~ Remapping another session's active work is a cross-session clobber, and
 > the skill's own design agrees: Signal 5 emits an attention item with a `handoff.command` for the
 > maintainer, it does not say "auto-heal what you find". The ready-to-run handoff, per tenant, is
 > the same command **without** `--dry-run`:
+>
+> > **⚠ THE STRUCK RATIONALE HAS EXPIRED — the DISPOSITION still holds, but not for the reason
+> > given.** Re-measured 2026-08-11T19:48Z, all four items individually: **every one is now stale,
+> > and none is anybody's live work.**
+> >
+> > | item | last updated | idle at re-measure |
+> > |---|---|---|
+> > | `livespec-jvdvx4.9` | 10:44:04Z | **9h 04m** |
+> > | `livespec-dev-tooling-jaut4y.1` | 05:42:37Z | **14h 06m** — never updated since creation |
+> > | `livespec-dev-tooling-jaut4y.2` | 05:43:05Z | **14h 05m** — never updated since creation |
+> > | `livespec-dev-tooling-jaut4y.3` | 07:43:31Z | **12h 05m** |
+> >
+> > All four still read `open`, so the drift itself is unchanged and still auto-remappable with
+> > zero residual. **Do NOT read the struck sentence as "leave it, someone is on it"** — nothing
+> > has touched these for between nine and fourteen hours, and two were never touched at all after
+> > `bd create` left them at the beads-native intake default.
+> >
+> > **The disposition is unchanged anyway, and that is the point worth carrying:** it never rested
+> > on the items being active. Signal 5 is *designed* to hand off rather than auto-heal, so
+> > "another session is working it" was a supporting reason, not the load-bearing one — which is
+> > lucky, because it was the half that expired. **A disposition justified by a fact that expires
+> > needs re-justifying every time it is read; one justified by a design rule does not.**
 >
 > ```bash
 > python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
