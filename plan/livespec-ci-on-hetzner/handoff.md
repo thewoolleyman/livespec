@@ -557,7 +557,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > cannot fire, which produces no alert, no red master, and no notification — that repo's master is
 > **green**. Cross-referenced to `livespec-39h1` as a fifth instance, this time on the RELEASE path.
 >
-> ### 6f. 🔴 FLEET CONFORMANCE IS RED (2 days) — and running the READER is what found it
+> ### 6f. 🔴 FLEET CONFORMANCE IS RED ON EVERY RUN SINCE 08-09 — and running the READER is what found it
 >
 > After five findings all pointing at `livespec-39h1`'s *"the missing piece is a READER"*, this
 > session **ran the reader**: livespec's local maintainer skill `needs-attention-internal`. Its
@@ -601,6 +601,30 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > >
 > > So there is **one sibling commit, one missing declaration, and no second regression hiding
 > > behind the first.** Journaled on the item.
+>
+> > **AND THE THIRD NUMBER IN THAT SUMMARY LINE IS BENIGN — checked, not waved through, so you
+> > need not.** `out_of_vantage_rows: 3` invites the reasonable worry that the single-finding
+> > headline hides unevaluated obligations, and the check's own source says that worry is
+> > sometimes right: a row whose lane nobody runs is *"exactly the zero-enforcement hole this
+> > split was built to close."* The three are `secret-names`, `branch-protection` and
+> > `adopter-claude-plugin-currency`, all `vantage: admin` — and **two of them are
+> > security-relevant**, which is why a named-but-unrun owner would have mattered. The chain was
+> > verified end to end, because **a NAMED owner is not a RUNNING owner**: the scheduled workflow
+> > deliberately cannot assert them (App-installation token, admin scope withheld, so they can
+> > neither pass nor fail there — which is also why a scheduled red is always a real finding and
+> > never a permissions artifact); the named lane `check-fleet-conformance-admin` **is** a literal
+> > member of the `just check` aggregate with an unconditional recipe body and no env lever; and
+> > under a dispatch-class (`ghs_`) credential it classifies its own rows out-of-vantage by design
+> > rather than failing, because treating that as a shortfall once killed every factory dispatch
+> > at the Red commit hook. Enforcement context is **operator pre-push with real admin `gh`
+> > credentials**, not CI. **No hole.**
+> >
+> > Worth knowing why this was worth checking at all: that workflow's own header records that an
+> > EARLIER version of this same coverage claim was **FALSE** — it asserted operator-local `just
+> > check` covered those rows when `just check` did not set the required env var, so they were
+> > *"enforced in ZERO contexts"*. It was repaired and the header says *"do not restore the old
+> > claim."* **A coverage claim that has been wrong once is exactly the kind to re-verify rather
+> > than inherit** — and on re-verification the current one holds.
 >
 > **Do NOT bulk-fill that key if you touch it.** The check's own finding warns: *"FINDING THE
 > IMPORT IS NOT FINDING THE GUARD — a consumer's `if x is None` does not FAIL against a Result, it
