@@ -31,9 +31,49 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–12:0xZ. READ THIS BLOCK FIRST;
-> ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
-> ## old each reading is — instance 27's own counter-move applied to this file.)
+> ## 🟢 LATEST READING — 2026-08-11T12:0xZ–13:2xZ. This block is NEWER than the ⛔ block below it,
+> ## and it is SHORT on purpose: it changes almost nothing. Read it, then read ⛔ §1.
+>
+> **The ⛔ block's named first action — re-run the census — is DISCHARGED, and it CONFIRMED.
+> Your first action is the same census again** (the `bash` block under "Open descendants"),
+> run to confirm rather than to hunt.
+>
+> **THIRTEENTH consecutive reading: the homelab gate is SHUT, all five values byte-identical to
+> the eighth-through-twelfth readings.** `hl-wkyeqg` `pending-approval` (2026-08-04T04:07:29Z),
+> `hl-euzuhb` `pending-approval` (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog`
+> (2026-08-03T10:06:45Z), `hl-6uldtn` `backlog` (2026-08-04T10:12:12Z), `hl-75f` `backlog`/P1
+> (2026-08-04T20:58:11Z) — **`hl-75f` is now 7 days unstarted at P1.** All three gate conditions
+> unmet. Forge unchanged: `actions/runners` `total_count=0` (a **tenth** zero), `CI_RUNNER_LABELS`
+> `["ubuntu-latest"]` at 2026-07-18T11:34:31Z, fork approval `all_external_contributors`. Epic
+> `livespec-h22nve` measures `active`, `closed_at` null — correctly held, not false-cleared.
+> **There is still no unblocked implementation work in this epic.**
+>
+> **The discrimination came out BUSY NEIGHBOUR again**, reverting the twelfth reading's result.
+> `homelab` `origin/main` moved `e8ed045` → `68896ab`: 44 commits, 11 touching `hetzner` paths
+> (control: 83 such paths exist on `main`). But by this file's own rule — repository movement is a
+> leading indicator only when it moves the gate's OWN items — it does not qualify: **the Thread 17
+> subtree is unchanged in shape** from the twelfth reading (six of seven closed, `hl-r6hihy.7`
+> still `open`, its `updated_at` 06:38:15Z, which *predates* the previous session's close). The
+> subtree was enumerated rather than read off the parent, per the trap §5 records.
+>
+> **livespec master CI is green at the CURRENT head** — run 31489393891 `success` on `c5fd8804`,
+> which equals `origin/master` exactly, so it is not a stale run. One open PR, #2069, another
+> thread's.
+>
+> **The one substantive thing this session did beyond the census:** `livespec-runtime-0u8`'s
+> acceptance **clause 4 is now discharged** — the dynamic-consumption search §6f recorded as
+> "still owed" has been run, with its required positive control, and a tempting wrong reading
+> about a fourth function was disproven. **See §6f below, which has been rewritten in place.**
+> That item is still not this thread's to drive; clauses 1, 2 and 5 remain owed.
+>
+> **`livespec-dev-tooling-y6e2`'s review date of 2026-08-12 was NOT yet due** at this reading.
+> If you are reading this on or after that date, it is due — surface it, do not drive it.
+
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–12:0xZ. Read this block SECOND,
+> ## after the 🟢 block above it (which is newer and shorter); EVERYTHING BELOW IT IS OLDER.
+> ## (Stated as a RANGE, not a point, so a later reader can see how old each reading is —
+> ## instance 27's own counter-move applied to this file.) Its §6f has been REWRITTEN IN PLACE by
+> ## the 🟢 session; every other section is as that session left it.
 >
 > **The previous block's named first action is DISCHARGED. All three of its steps are done and
 > verified — do not re-run them.** What follows is what that discharge found.
@@ -533,9 +573,37 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > means exactly "no drift"** is load-bearing, and declaring the function does not by itself
 > protect it.
 >
-> **Still NOT done** (stated so it is not mistaken for complete): that item's acceptance clause 4
-> — the named set is a FLOOR, so a dynamic-consumption search plus its required positive control
-> is still owed. No such search has been run.
+> **✅ CLAUSE 4 IS NOW ALSO DISCHARGED — 2026-08-11T12:2xZ. Do not re-run the search.** The
+> previous sentence here said no dynamic-consumption search had been run; that is no longer
+> true. **Result: NEGATIVE — no dynamic consumption of `livespec_runtime/spec_governance.py`
+> exists anywhere in the fleet.** Full evidence is journaled on `livespec-runtime-0u8`; the
+> parts worth carrying:
+>
+> - **Four detectors, two regex and two AST**, over all 13 manifest repos read from each clone's
+>   `origin/master`/`origin/main` rather than its working tree. 53 `.py` files fleet-wide mention
+>   `spec_governance`. Computed-`getattr` sites: **0**. Dynamic imports: **1**, and it is not a
+>   consumption of this module — it targets livespec's own re-export shim, from a test file.
+>   All 9 string-literal hits on the three names are `__all__` declarations, not dispatch.
+> - **The zero was proven fail-capable before it was believed**, which is the whole point of the
+>   clause. A constructed sample carrying all four shapes was run through the SAME detector
+>   functions by import (not re-implemented), and every one fired — including the computed-
+>   `getattr` detector that scored zero fleet-wide.
+>
+> **AND A TEMPTING WRONG READING WAS DISPROVEN — do not re-form it.** That module exports
+> **four** functions, not three; the fourth, `verify_livespec_jsonc_default_block`, is statically
+> imported by **seven** sibling repos and is undeclared. That reads exactly like "the oracle
+> missed one, so clause 2 should declare four." **It is wrong.** The row's criterion owes a
+> declaration only when a name is *also* not already public by a repo-LOCAL form, and the fourth
+> one is — livespec-runtime's own `.github/scripts/check-spec-governance-default-block.py`
+> imports it (tracked, non-vendored, outside the tests tree). The three named functions have no
+> such local importer; inside livespec-runtime they appear only in their own defining module and
+> in tests. **So the set of exactly three is CORRECT, and adding the fourth would manufacture a
+> declaration the criterion does not owe.** Stated as an inference from reading the criterion,
+> not from re-running the check.
+>
+> **Still owed on that item:** clauses 1, 2 and 5. Clause 3 was discharged earlier by this
+> thread, clause 4 now. **None of them is this thread's to drive** — it supplies measured
+> evidence to another tenant's item and nothing more.
 >
 > ### 6g. ⭐ THE READER QUESTION IS NOW DECOMPOSED — `livespec-39h1` should not be closed by half
 >
