@@ -673,6 +673,40 @@ coverage sweep. Worth its own entry because the consequence differs: 17 invents
 absence of DUPLICATES and risks a redundant filing; this one invents absence of
 WORK and risks shipping a fix that misses a quarter of its targets.
 
+**A second case, added 2026-08-11, and it is the uncomfortable one: FIXING THE
+AXIS THIS ENTRY NAMES DOES NOT PROTECT YOU ON THE OTHER AXES.** A fleet
+master-CI sweep was written that handled the `master`/`main` asymmetry correctly
+— it tried both refs, which is precisely the counter-move above — and it still
+fell into this same trap one level over, because it probed a **hardcoded
+workflow filename**, `ci.yml`. It reported:
+
+    resume     adopter   NO ci.yml RUNS (excluded, not claimed green)
+
+`resume`'s gating workflow is **`check.yml`**, with **145 runs**, master green.
+Twelve of thirteen repos use `ci.yml`, so the assumption held everywhere it was
+looked at, and the one exception read as an absence of CI rather than an absence
+of that filename. The bias is identical to the `origin/main` case: it
+under-reports, and the sweep looked complete because every repo in the manifest
+appeared in the output. The wording *"excluded, not claimed green"* even sounded
+careful — it honestly flagged that the repo was not being asserted green, while
+being wrong about why.
+
+**What generalises past both cases: a sweep should never hardcode a per-repo
+NAME it could enumerate.** The corrected probe lists each repo's workflows first
+and selects from what exists; when nothing matches, it prints the workflows it
+DID find rather than the phrase "no CI". That makes the negative
+self-falsifying — `openbrain`, the one repo that genuinely has no gating
+workflow, now reports `has: bump-plugin-pin.yml deploy-dashboard.yml
+tripwire.yml`, which a reader can immediately check, instead of an unfalsifiable
+absence.
+
+So the entry's own counter-move needs stating more broadly than the ref: **for
+every per-repo name a sweep assumes — default branch, workflow filename, config
+path, job name, label — either enumerate it or make its absence fail loud. The
+fleet is non-uniform on more dimensions than the one that bit you last time.**
+(Self-caught, roughly an hour after the wrong figure had already been published
+in a merged handoff and had to be corrected there too.)
+
 ### 23. A dead query that returns the RIGHT answer is the one that erodes the habit
 
 Instances 17 and 22 are dead queries returning WRONG answers, which is the

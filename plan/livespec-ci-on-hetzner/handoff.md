@@ -272,9 +272,29 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > safety net.** A required context that goes red after merge has no PR left to block; like the
 > release gate's post-tag firing, there is nothing left to prevent, only something to notice.
 >
-> Two adopters are **excluded rather than claimed green**: `openbrain` and `resume` have no
-> `ci.yml` runs at all. `homelab` (`main`) and `livespec` were mid-run at sweep time. Everything
+> ~~Two adopters are **excluded rather than claimed green**: `openbrain` and `resume` have no
+> `ci.yml` runs at all.~~ `homelab` (`main`) and `livespec` were mid-run at sweep time. Everything
 > else was green.
+>
+> > **⚠ CORRECTED — the struck sentence was MY OWN MEASUREMENT ERROR, published here and merged
+> > before it was caught.** `resume` is NOT excluded and NOT without CI: its gating workflow is
+> > **`check.yml`** (145 runs), and its master was **green** at `f7e30aa5`. The sweep script
+> > probed a HARDCODED `ci.yml`, which 12 of 13 repos use, so the one exception returned empty and
+> > was recorded as an absence of CI rather than an absence of that filename.
+> >
+> > **`openbrain` remains correctly excluded**, and that was verified rather than inherited: it
+> > carries only `bump-plugin-pin.yml`, `deploy-dashboard.yml` and `tripwire.yml` — no gating
+> > workflow under any name.
+> >
+> > **The corrected picture: 12 of 13 repos have a gating workflow, and ZERO are red.**
+> >
+> > The uncomfortable part, promoted into `.ai/verifying-against-the-right-source.md` as a second
+> > case under **instance 22**: that script ALREADY handled the `master`/`main` asymmetry, which is
+> > instance 22's own named counter-move, and fell into instance 22's trap anyway one axis over.
+> > **Fixing the axis the catalogue names does not protect you on the axes it doesn't.** The
+> > repaired probe enumerates each repo's workflows and, when none matches, prints the workflows it
+> > DID find — so the negative is self-falsifying instead of an unfalsifiable "no CI". Use that
+> > form for any future fleet sweep; do not hardcode a per-repo name you could enumerate.
 >
 > ### 6c. 🔗 THE SHARPEST FINDING OF THE SESSION: `el7g` and `xdyh` are CAUSALLY CHAINED
 >
