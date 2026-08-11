@@ -23,10 +23,10 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twenty-nine instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
-## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23 on 2026-08-05,
-## 24-28 on 2026-08-06, 29 on 2026-08-11; instances 1-16 span five repos and
-## four independent operators
+## Recorded instances, by observation date — 1-8 on 2026-07-20, 9-12 on
+## 2026-07-21, 13 on 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23
+## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11; instances 1-16 span
+## five repos and four independent operators
 
 Two gaps in that heading are deliberate rather than oversights. **Instances 17
 and 18 carry no recorded observation date**, so none is assigned to them here — a
@@ -35,25 +35,33 @@ the repo/operator tally is **scoped to instances 1-16**, because it could not be
 re-derived from the file; incrementing it on assumption would be the exact error
 this file exists to prevent.
 
-The heading itself was an instance of the defect. It read "Sixteen instances"
-while eighteen were present, because it was not updated when 17 and 18 landed —
-the clause-lockstep defect `.ai/spec-proposal-review.md` describes, where a count
+**This heading used to carry a total, and that total is gone on purpose — the
+history of why is the useful part.** It read "Sixteen instances" while eighteen
+were present, because it was not updated when 17 and 18 landed: the
+clause-lockstep defect `.ai/spec-proposal-review.md` describes, where a count
 must be re-derived whenever the set it describes changes. Corrected 2026-08-05
 alongside instances 19-21, and again 2026-08-06 alongside instance 24 — where
-the count in `AGENTS.md` had to move in the same commit, since it states the
-total too. **If you add an instance, re-derive this count.**
+the count in `AGENTS.md` had to move in the same commit, since it stated the
+total too.
 
-**It drifted a THIRD time, and how it drifted is the useful part.** When
-instances 24 and 25 landed, the count in `AGENTS.md` was updated and the count in
-§"Why this file exists in livespec CORE" was updated — but this heading was not,
-so it read "Twenty-three" while twenty-five were present. Found and corrected
-2026-08-06 alongside instances 26-27. **There are THREE counts of the same set**
-(this heading, that section, and `AGENTS.md`), and the one that rots is
-whichever is not on screen when the instance is added. Two of three being right
-is what makes it survive review: a spot-check that happens to land on either
-correct copy confirms the number and moves on. Re-derive all three from
-`grep -c '^### ' .ai/verifying-against-the-right-source.md`, never from each
-other.
+It then drifted a THIRD time. When instances 24 and 25 landed, the count in
+`AGENTS.md` and the one in §"Why this file exists in livespec CORE" were both
+updated, but this heading was not, so it read "Twenty-three" while twenty-five
+were present. There were THREE copies of the same total — this heading, that
+section, and `AGENTS.md` — and the one that rotted was whichever was not on
+screen when the instance was added. **Two of three being right is exactly what
+let it survive review:** a spot-check landing on either correct copy confirms
+the number and moves on.
+
+Three rots in three weeks is the argument for deleting duplicated state rather
+than maintaining it harder, so all three totals were REMOVED on 2026-08-11
+rather than corrected a fourth time. The count is now derived on demand with
+`grep -c '^### ' .ai/verifying-against-the-right-source.md`, which cannot
+disagree with itself. **Do not reintroduce a total in any of those three
+places.** What this heading still carries is the per-instance observation dates,
+which are provenance rather than duplicated state — the `###` headings record no
+dates, so nothing else holds them — and those DO need extending when you add an
+instance.
 
 These are recorded with their concrete mechanism and counter-move, because the
 slogan alone is a platitude that gets skimmed. The pattern is ENVIRONMENTAL, not
@@ -962,9 +970,49 @@ layers'.
 (Observed 2026-08-11 by the `livespec-ci-on-hetzner` plan, on the twelfth reading of
 a gate whose eleven prior readings had all been correct.)
 
+### 30. A CONFLICTED pull request produces zero workflow runs, which looks exactly like a broken trigger
+
+An empty run list is a true answer to the wrong question. Run-existence is not
+the signal for "did the trigger fire".
+
+Live-exercising a just-shipped `auto-enable-merge` change, PR #2148 in `livespec`
+produced no `pull_request` workflow runs at all. The natural reading was that the
+newly-landed logic had broken the trigger — a serious defect in a gate that had
+merged minutes earlier.
+
+It had not. The pull request was `mergeable=false` / `mergeable_state=dirty`, a
+conflict against master. **GitHub cannot compute a merge ref for a conflicted
+pull request, and `pull_request` workflows run against that merge ref**, so no
+run object is created at all. That is why `opened`, `reopened` AND `synchronize`
+each produced nothing — three trigger types failing identically, which reads as
+strong evidence of a broken workflow and is nothing of the kind. Rebasing and
+resolving the conflict caused a run to appear immediately, which is what
+established causation rather than correlation.
+
+The first diagnosis — "repo-wide Actions scheduling delay" — was reached by
+querying `runs?head_sha=`, then `runs?branch=`, then an unfiltered repo-wide
+listing, all of which agreed. On a quiet repo the unfiltered listing corroborates
+"nothing scheduled recently" perfectly well, and the agreement of three queries
+felt like triangulation. All three answered the same wrong question.
+
+**The counter-move:** before concluding a workflow did not fire, read the pull
+request's `mergeable` and `mergeable_state`. A `dirty` state explains zero runs
+completely and must be excluded first. Note `mergeable` is computed
+asynchronously and reads `null` on a fresh query — re-read until it resolves
+rather than treating `null` as false, which would recreate the same error one
+level down.
+
+The smaller lesson is the one worth carrying: **that wrong diagnosis was stated
+WITH a positive control attached, and was still wrong.** The queries were sound
+and could return results; they simply did not measure trigger-firing. A positive
+control establishes that a query CAN return a result. It does not establish that
+the query answers the question being asked. Reviewing a proposal, the same
+distinction appears as the shared-instrument defect class in
+`.ai/spec-proposal-review.md`.
+
 ## Why this file exists in livespec CORE
 
-The twenty-nine instances span EIGHT repositories — `livespec`,
+These instances span the repositories `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and

@@ -7,9 +7,17 @@ proposed change you want to survive that review.
 `AGENTS.md` names five minimum criteria: replacement-target fidelity,
 design-record fidelity, drift-sweep completeness, ratification mechanics, and
 cross-repo consistency. Those catch a proposal that is *wrong about the world*.
-The three below catch a proposal that is *correct today and rots on contact with
-its own ratification* — a class the five do not address, because each of these
-proposals is accurate at the moment it is written.
+
+The classes below catch what those criteria do not. They divide into two kinds,
+and the difference matters when you use them:
+
+- **Classes 1-3 are defects of the PROPOSAL.** Each is *correct today and rots
+  on contact with its own ratification*, so it is accurate at the moment it is
+  written and false later.
+- **Class 4 is a defect of the REVIEW.** The proposal's flaw is present and
+  visible at review time; what fails is the instrument the reviewer probes it
+  with. It is listed here because this file describes what a reviewer must
+  catch, and a reviewer who trusts a shared instrument catches nothing.
 
 Every one is drawn from a defect that actually shipped. None is hypothetical.
 
@@ -92,12 +100,79 @@ derived values that must be re-counted rather than assumed.
 against the post-change set. Do not trust the proposal's own edit map to have
 listed them — by construction it lists what the author noticed.
 
-## Why these three sit together
+## 4. Independent reviewers sharing a flawed instrument
 
-All three are **latent** defects: the proposal is accurate when written, passes
-every fidelity check, and ratifies cleanly. The damage appears later, to a reader
-who has no signal that the text ever changed meaning. That is what distinguishes
-them from the five criteria in `AGENTS.md`, which catch a proposal that is wrong
-at the moment of review — something a careful reader can see.
+**Two NO-BLOCKERS verdicts are independent evidence only if the reviewers used
+different instruments. Otherwise they are one verdict counted twice.**
 
-A reviewer who checks only the five will pass all three of these every time.
+Independent review defends against a reviewer missing something. It does not
+defend against a defect that is invisible to the *method* both reviewers reach
+for. When the author's mistake is in the measuring, a reviewer who measures the
+same way reproduces the mistake and reports agreement — and that agreement then
+reads as corroboration, which is exactly backwards: it is the same error,
+observed twice.
+
+The sharpest version is **unit conflation**, because counting tools disagree
+silently. Over one file, `grep -c <term>` counts matching LINES, `grep -o
+<term> | wc -l` counts OCCURRENCES, and `grep -o '\b<term>\b' | wc -l` counts
+WORD-BOUNDARY matches — three different units, each of which a reader would
+call "the count", each defensible, returning three different numbers. A claim
+that says only "contains six" names none of them.
+
+Seen live: a proposal's Lineage section claimed a v200 spec file "contains six"
+occurrences of a term, in a sentence whose first half had already fixed the unit
+as OCCURRENCES. Six is the LINE count; the occurrence count is nine. Two
+separately-spawned read-only Fable reviewers were given the same file. Reviewer
+A ran `grep -o <term> | wc -l`, got nine, and filed a blocker. Reviewer B ran
+`grep -c <term>`, got six, matched it against the stated "six", and reported the
+claim CONFIRMED. Asked afterwards, Reviewer B said plainly that it had
+"reproduced the exact lines-versus-occurrences unit conflation the proposal
+made", and on re-derivation its split matched Reviewer A's exactly. The reviews
+did not converge; which one caught the defect was decided entirely by which
+counting tool each happened to reach for.
+
+Note what did NOT save this. A positive control on the query passes here — the
+grep works, and it returns results. A positive control establishes that a query
+CAN return a result; it does not establish that the query measures the UNIT the
+claim asserts, nor that it answers the question being asked. The same
+distinction shows up from the diagnosis side in
+`.ai/verifying-against-the-right-source.md`.
+
+**The reviewer's move:** when a proposal states a magnitude, re-derive it by a
+DIFFERENT method than the one the claim implies, and require the two to agree —
+or require the claim to name its unit explicitly. When briefing multiple
+reviewers, vary the instrument deliberately; identical briefs invite identical
+blind spots.
+
+**The author's move, and the stronger one:** DELETE the magnitude wherever the
+evidentiary point is presence-versus-absence. Zero is the one value where line,
+occurrence and word-boundary counts all agree, so "this term does not appear"
+survives every instrument, while "this term appears six times" is only as good
+as the tool that produced it. That is the same delete-a-count discipline class 3
+prescribes, arrived at from the opposite direction: class 3 deletes counts
+because they rot, this class deletes them because they cannot be verified
+unambiguously.
+
+## Why these sit together
+
+The unifying property is that **no gate fires**. Every class here survives the
+five `AGENTS.md` criteria and ratifies cleanly, and nothing downstream forces a
+re-read.
+
+They fail that way for two different reasons, and conflating them costs a
+reviewer the wrong counter-move:
+
+- **Classes 1-3 are latent in the TEXT.** The proposal is accurate when
+  written, passes every fidelity check, and only becomes false afterwards — so
+  the damage lands on a reader who has no signal the text ever changed meaning.
+  The counter-move is temporal: ask what this sentence will mean after the
+  accept.
+- **Class 4 is latent in the METHOD.** Nothing about it is deferred; the
+  proposal is wrong at the moment of review, and a careful reader *could* see
+  it. What hides it is that the obvious way to check reproduces the author's
+  error. The counter-move is not temporal but instrumental: change how you
+  measure, not when.
+
+A reviewer who checks only the five `AGENTS.md` criteria will pass every class
+here. A reviewer who checks classes 1-3 with a single shared instrument can
+still pass class 4 — twice, and call it agreement.

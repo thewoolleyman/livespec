@@ -602,19 +602,24 @@ existing file):
   + Fabro Dispatcher directly against a repo's ready work-item queue: why
   `--fabro-bin` is an OVERRIDE rather than the once-mandatory flag (the
   sanctioned `drive` path exposes none), why a backgrounded `drive` detaches so
-  its exit code and log carry no information about the dispatch, the
-  strictly-sequential `--budget 1 --parallel 1` rule and why `--network host`
-  forbids parallelism, the ban on hand-editing beads `admission:*` labels
-  instead of using the `set-admission` valve, and the
-  re-enumerate-every-iteration rule.
+  its exit code and log carry no information about the dispatch, why `drive`
+  emits `--budget 1 --parallel 1` PER INVOCATION while concurrent invocations
+  are sanctioned up to the per-repo `dispatcher.wip_cap` (which counts ledger
+  `active` items, never containers, so an idle container holds no slot), the
+  ban on hand-editing beads `admission:*` labels instead of using the
+  `set-admission` valve, and the re-enumerate-every-iteration rule.
 - **`.ai/spec-proposal-review.md`** — read when performing or briefing the
   independent adversarial review required before every `/livespec:revise`
   accept, and when authoring a proposed change meant to survive it. Carries the
-  three LATENT defect classes the five `AGENTS.md` criteria do not catch:
-  claims that expire at ratification, negative assertions about sibling-owned
-  surfaces that rot without notice, and clause-lockstep (counts and
-  enumerations that must be re-derived when the set they describe changes).
-  Each is drawn from a defect that actually shipped.
+  defect classes the five `AGENTS.md` criteria do not catch. Defects of the
+  PROPOSAL, latent in the text: claims that expire at ratification, negative
+  assertions about sibling-owned surfaces that rot without notice, and
+  clause-lockstep (counts and enumerations that must be re-derived when the set
+  they describe changes). Plus one defect of the REVIEW, latent in the method:
+  independent reviewers sharing a flawed instrument, where the same wrong query
+  reproduces the author's error and two NO-BLOCKERS verdicts read as
+  corroboration when they are one verdict counted twice. Each is drawn from a
+  defect that actually shipped.
 - **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
   check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
@@ -623,8 +628,8 @@ existing file):
 - **`.ai/verifying-against-the-right-source.md`** — read BEFORE treating a
   passing check, an empty query result, or a green test suite as EVIDENCE,
   and before reporting such a conclusion or deciding work is already done.
-  A green-looking signal read off the wrong source is not evidence: twenty-nine
-  recorded instances with their concrete counter-moves — a suite that never
+  A green-looking signal read off the wrong source is not evidence: recorded
+  instances with their concrete counter-moves — a suite that never
   exercises the call site, a fixture asserting the retired shape, `gh pr list`
   defaulting to open-only, a stale `remotes/origin/*` cache, a default
   ledger listing that hides closed records during a dedup sweep, a directory
@@ -655,7 +660,11 @@ existing file):
   its whole purpose is to hold deliberately-wrong variants, and — the one entry
   about the right source's WRONG FIELD — a parent record's `updated_at` read as
   a subtree activity measure, which reported a lane idle for five days while six
-  of its seven children had been closed underneath it.
+  of its seven children had been closed underneath it, and — the one entry where
+  three agreeing queries all answered the wrong question — a CONFLICTED pull
+  request producing zero workflow runs, because a conflict leaves no merge ref
+  for `pull_request` workflows to run against, so read `mergeable_state` before
+  concluding a trigger broke.
 
 ## Working with the maintainer
 
@@ -840,8 +849,10 @@ existing file):
   co-edits for any `## ` heading change), and cross-repo consistency. A
   NO-BLOCKERS verdict is a precondition for driving the accept; any blocker
   routes to the maintainer with a recommended fix — it is never self-waived.
-  Those five catch a proposal that is wrong at review time; for the three
-  LATENT defects that ratify cleanly and rot afterwards, see
+  Those five catch a proposal that is wrong at review time. For the defects
+  that ratify cleanly — those latent in the TEXT, which rot afterwards, and the
+  one latent in the METHOD, where independent reviewers share a flawed
+  instrument and their agreement is not corroboration — see
   `.ai/spec-proposal-review.md`.
 - **`depends_on` entries are typed dicts** `{"kind": "local", "work_item_id":
   "..."}`, never bare id strings — the store wrapper accepts bare strings but
