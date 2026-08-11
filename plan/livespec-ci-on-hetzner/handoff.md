@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:3xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:4xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -474,6 +474,44 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > **Live-run result at 2026-08-11T10:2xZ, corrected skill:** Signal 1 green (livespec mid-run),
 > Signal 2 **RED** (above), Signal 3 four bump PRs (§6d), Signal 6 green — no fleet repo routes
 > gating CI to self-hosted capacity, so the fork-approval precondition is not engaged anywhere.
+>
+> ### 6h. Signal 5 (ledger conformance) — four drifted items, and why NONE was normalized
+>
+> Signal 5 is the one signal nothing else computes, so the live run completed it. Result: **four
+> items at the non-lifecycle status `open`**, all auto-remappable (`open` → `backlog`), zero
+> residual anywhere:
+>
+> | tenant | item | created | last updated |
+> |---|---|---|---|
+> | `livespec` | `livespec-jvdvx4.9` | 05:32:11Z | **10:44:04Z — one minute before the reading** |
+> | `livespec-dev-tooling` | `jaut4y.1` | 05:42:37Z | 05:42:37Z |
+> | `livespec-dev-tooling` | `jaut4y.2` | 05:43:05Z | 05:43:05Z |
+> | `livespec-dev-tooling` | `jaut4y.3` | 05:43:31Z | 07:43:31Z |
+>
+> **Nothing was normalized, deliberately.** `livespec-jvdvx4.9` was updated ONE MINUTE before the
+> reading — another session is working it live — and the `jaut4y.*` three belong to a sibling
+> session's in-flight epic. Remapping another session's active work is a cross-session clobber, and
+> the skill's own design agrees: Signal 5 emits an attention item with a `handoff.command` for the
+> maintainer, it does not say "auto-heal what you find". The ready-to-run handoff, per tenant, is
+> the same command **without** `--dry-run`:
+>
+> ```bash
+> python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
+>   ledger-normalize --project-root /data/projects/<repo>
+> ```
+>
+> **`--dry-run` was verified non-mutating by READING THE SOURCE before running it nine times**, not
+> by trusting the flag's name — `_dispatcher_run_checks.py` takes `project_native_status_remaps`
+> (a projection) on the dry-run branch and calls `apply_native_status_remaps` only in the `else`.
+> That check is owed to this repo's own recorded hazard, where a `--dry-run` scoped to a verb list
+> the help did not mention applied changes host-wide.
+>
+> **This thread's four new filings are NOT the drift** — `livespec-dev-tooling-el7g`, `bd-ib-3a7x`,
+> `bd-gj-kv8` and `livespec-runtime-0u8` all read back as `backlog`, checked individually before
+> reporting, precisely because filing four items and then reporting `open`-status drift would
+> otherwise be reporting one's own mess as a finding. Note for whoever automates this: `bd create`
+> echoes `"status": "open"` in its JSON while the stored lifecycle status is `backlog`, so the
+> create output is not a reliable read of what landed — re-read the item.
 >
 > ### 7. Housekeeping facts for the next session
 >
