@@ -153,6 +153,29 @@ would have meant fabricating a spec-touching PR that would not otherwise
 be landed. The next plain propose-change-filing PR exercises it for free;
 read that run's log to close the residual.
 
+### Master CI was red when this thread finished — NOT caused by this work
+
+Surfaced 2026-08-11 rather than left silent. Run `31464485796` on
+`75e332bc` (`chore(master): release 0.30.0`) failed. This thread's merge
+`c4b67063` was CI SUCCESS and `3d6dca95` after it was SUCCESS, so the red
+begins at the release commit, not here.
+
+The failing job is `check-fleet-marketplace-relative-sources`, but its
+`just check-fleet-marketplace-relative-sources` step was SKIPPED — the
+failure is the preceding `mise trust + install` step, where mise could
+not install `aqua:koalaman/shellcheck@0.11.0`: TLS
+`certificate verify failed ... (self-signed certificate)` fetching from
+github.com releases in the HOSTED container lane. That is an
+infrastructure / TLS-interception failure, not a check violation, so a
+re-run may clear it; if it recurs it belongs to the CI-lane work, not to
+this epic.
+
+**A verification trap worth carrying forward:** the GitHub jobs API
+returned 30 of **75** jobs by default, and ALL THIRTY were green. Reading
+that first page would have reported master all-green while it was red —
+the failing job sat outside it. Always request `per_page=100` and check
+`total_count` against the number of jobs returned.
+
 ## Other open items on this epic (unrelated to the above, do not start)
 
 - **`livespec-jvdvx4.2`** — `backlog`. Legs 1/2a/2b closed; leg 2 (the
