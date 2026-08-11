@@ -23,10 +23,12 @@ __all__: list[str] = [
     "_drift_acceptance_shape_error",
     "_revise_decision_shape_error",
     "_spec_pr_merge_shape_error",
+    "_validate_common",
 ]
 
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _SOURCE_VALUES = {"hard-floor", "invocation", "proposal", "global", "default"}
+_OUTCOME_VALUES = {"consumed", "spawned", "selected", "blocked", "failed", "dismissed", "deferred"}
 _REGISTRATION_RESULT_VALUES = {"registered", "blocked", "failed"}
 _REQUIRED_GATE_STATE_VALUES = {"pending", "green", "red", "unavailable"}
 
@@ -123,3 +125,14 @@ def _proposal_stems_error(*, value: object) -> bool:
             return True
         stems.add(item)
     return len(stems) != len(items)
+
+
+def _validate_common(*, event: dict[str, Any], required: set[str]) -> str | None:
+    extra_missing = sorted(required.difference(event))
+    if extra_missing:
+        return f"journal event missing required fields: {extra_missing}"
+    if event.get("effective_source") not in _SOURCE_VALUES:
+        return "journal effective_source is invalid"
+    if event.get("outcome") not in _OUTCOME_VALUES:
+        return "journal outcome is invalid"
+    return None
