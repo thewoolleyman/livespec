@@ -227,7 +227,7 @@ history and dies with a misleading GitHub rejection about "creating"
 dispatch: `git status --short` on the primary, restore tracked churn
 (`git checkout -- uv.lock`), ff-refresh to origin/master, THEN drive.
 
-## Factory dispatch concurrency is governed by the host dispatch cap
+## Factory dispatch concurrency is governed by the per-repo WIP cap
 
 The former "strictly sequential — one Fabro run at a time" mandate rested on
 the claim that sandboxes run `--network host` and collide on the host network
@@ -240,17 +240,41 @@ namespace denial is a host sysctl constant unrelated to concurrency (tracked
 as `bd-ib-blk3`); and two real runs completed green with forced overlap at the
 engine, sandbox, and live-ACP-agent layers.
 
-Concurrency is instead governed by the committed
-`dispatcher.host_dispatch_cap` setting (default **2** — the live-verified
-level), enforced by the Dispatcher's counting admission guard
-(livespec-orchestrator-beads-fabro `SPECIFICATION/contracts.md` v047
-§"Host-level dispatch concurrency cap (`host_dispatch_cap`)"): an over-cap
-dispatch is refused with the cap value, the observed in-flight count, and the
-remedy. Do not hand-serialize dispatches, and do not reach around the guard.
+Ledger-level concurrency is instead governed by the committed **per-repo**
+`dispatcher.wip_cap` setting, read from the governed repo's own
+`.livespec.jsonc` and enforced by the Dispatcher's admission valve
+(livespec-orchestrator-beads-fabro `SPECIFICATION/contracts.md` §"Per-repo WIP
+cap"). Read the default from that clause rather than from here; a value copied
+into this file rots at the next change.
+
+**The cap counts LEDGER ITEMS IN `active` STATUS — never containers.** The
+admission valve computes its free slots as the cap minus the count of items
+already `active`, so a running-but-quiet Fabro container holds NO dispatch
+slot and consumes no capacity. Do not read container liveness as saturation:
+an idle container is not a claim on anything, and treating it as one idles
+dispatchable work behind a ceiling that does not exist.
+
+There is NO host-level dispatch cap, and this is deliberate rather than an
+omission. Per livespec-orchestrator-beads-fabro `SPECIFICATION/contracts.md`
+§"Host concurrency belongs to the Fabro scheduler", the Orchestrator owns no
+host-level ceiling, MUST NOT enforce one, and MUST NOT expose a committed
+configuration key purporting to bound host-wide dispatch concurrency. Host
+concurrency is the Fabro server's own `server.scheduler.max_concurrent_runs`,
+host-scoped configuration read by the long-lived daemon that actually owns
+runs. Because the cap is per-repo, total fleet ledger concurrency is the SUM of
+the per-repo caps, not a single fleet-wide number.
+
+Do not hand-serialize dispatches, and do not reach around the valve.
 `drive --action impl:<id>` still emits `--budget 1 --parallel 1` per
 invocation — run CONCURRENT invocations, up to the cap, for parallel drains.
-Raising the cap beyond 2 is a config-only edit and should follow
-observed-safe operation.
+
+> A retired key to recognise: earlier revisions of this section described a
+> `dispatcher.host_dispatch_cap` governed by a counting host-level guard. That
+> key was RETIRED BY DESIGN, not renamed — the clause above now forbids the
+> Orchestrator from exposing any such key, and `host_dispatch` appears nowhere
+> in the shipped build. Reading the stale guidance alongside a marker entry
+> recording two idle containers as "saturated capacity" once came within a step
+> of idling a dispatchable item behind a cap that does not exist.
 
 ## Never hand-edit a beads `admission:*` label — use the valve
 
