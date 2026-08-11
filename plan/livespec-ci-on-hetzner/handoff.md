@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:2xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:3xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -428,6 +428,52 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > **Why it stayed invisible is the now-familiar answer:** #404 has auto-merge ARMED and simply
 > cannot fire, which produces no alert, no red master, and no notification — that repo's master is
 > **green**. Cross-referenced to `livespec-39h1` as a fifth instance, this time on the RELEASE path.
+>
+> ### 6f. 🔴 FLEET CONFORMANCE IS RED (2 days) — and running the READER is what found it
+>
+> After five findings all pointing at `livespec-39h1`'s *"the missing piece is a READER"*, this
+> session **ran the reader**: livespec's local maintainer skill `needs-attention-internal`. Its
+> Signal 2 caught a fleet-wide break on the first invocation.
+>
+> **`Fleet conformance` (a SCHEDULED workflow in `livespec-dev-tooling`) has failed twice:**
+> `31260328680` success 08-08 → `31316709750` **FAILURE** 08-09 → `31395722152` **FAILURE** 08-10.
+> One error finding, `blind_rows: 0`, so this single row reddens the whole fleet:
+> **`livespec-runtime`'s `cross_repo_public_api` omits three `spec_governance.py` functions
+> livespec consumes** — `documented_defaults`, `manifest_rows`, `verify_default_block`, across five
+> named consumer files. Filed **`livespec-runtime-0u8`** (P1); no item in that tenant's 58 owned it.
+>
+> **Do NOT bulk-fill that key if you touch it.** The check's own finding warns: *"FINDING THE
+> IMPORT IS NOT FINDING THE GUARD — a consumer's `if x is None` does not FAIL against a Result, it
+> is permanently False, so the guard stops being a guard."* And the three names are a **floor**:
+> the oracle is blind to `getattr`/`importlib`/string dispatch.
+>
+> ### 6g. ⭐ THE READER QUESTION IS NOW DECOMPOSED — `livespec-39h1` should not be closed by half
+>
+> Running the skill answered a question the five earlier findings only posed. **The reader exists
+> and works; it is not run.** That splits the gap into two problems with different fixes:
+>
+> - **(a) A SCHEDULING gap.** For signals the skill already covers, the detector is correct and
+>   nothing invokes it. Evidence: Signal 1 **would** have caught the two fleet masters red on
+>   2026-08-11 (§6b); Signal 2 **did** catch the conformance break above. Both surfaced only
+>   because a plan ran the skill by hand for an unrelated reason.
+> - **(b) A SIGNAL-SET gap.** Some failures sit outside the six signals, so scheduling alone would
+>   never surface them: the **release gate** (`release-tag.yml`) is invisible because Signal 1 reads
+>   only the workflow named `CI` — it failed four consecutive PUBLISHED releases while `CI` stayed
+>   green (§3); a **blocked `release-please` PR** is invisible because Signal 3 matches only bump
+>   branches — one sat 18.6 days (§6e).
+>
+> **And a third hazard any "just schedule it" fix would inherit:** the skill's Signal 3 filter
+> matched only `chore/bump-*`, so it saw **exactly half** of the four lingering bump PRs (§6d),
+> missing every `chore/freshness-bump-*` one. Fixed in
+> [PR #2170](https://github.com/thewoolleyman/livespec/pull/2170) and **verified live** — the
+> corrected filter now surfaces all four. **A detector that runs on a schedule while silently
+> under-reporting is worse than one nobody runs, because its green is believed.** Both coverage
+> gaps are now recorded in the skill itself rather than left implied, and it now states that a
+> clean run means *"the six signals are green"*, not *"the fleet is healthy"*.
+>
+> **Live-run result at 2026-08-11T10:2xZ, corrected skill:** Signal 1 green (livespec mid-run),
+> Signal 2 **RED** (above), Signal 3 four bump PRs (§6d), Signal 6 green — no fleet repo routes
+> gating CI to self-hosted capacity, so the fork-approval precondition is not engaged anywhere.
 >
 > ### 7. Housekeeping facts for the next session
 >
@@ -1152,6 +1198,7 @@ creators).
 | `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | **PAIRED WITH `-53t` — see §6e; that repo is frozen INBOUND and OUTBOUND and neither item mentioned the other before 2026-08-11.** P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 | `livespec-console-beads-fabro-53t` | `livespec-console-beads-fabro` | P1 — **the OUTBOUND half of §6e, and not previously recorded in this file.** Release PRs there cannot auto-merge **by construction**: `docs_release_version_lockstep` asserts `DOCS_REVIEWED_AGAINST` equals the released version, and a release PR is what makes that version current. #404 blocked ~18.6 days. Filed 2026-08-03 and untouched since; still has NO acceptance criteria. **Not this thread's to drive** — clearing it needs a human judgement about published install docs. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
+| `livespec-runtime-0u8` | `livespec-runtime` | **P1 — filed by this thread 2026-08-11, and it is the one currently REDDENING FLEET CONFORMANCE.** `cross_repo_public_api` omits three `spec_governance.py` functions livespec consumes; sole error finding, `blind_rows: 0`, red since 2026-08-09. Carries the five consumer sites and the check's own warning against bulk-filling (the named set is a FLOOR — the oracle is blind to dynamic dispatch). **Not this thread's to drive.** |
 | `livespec-dev-tooling-el7g` | `livespec-dev-tooling` | P2 — **filed by this thread 2026-08-11.** `uv` dev-dep downloads time out often enough to leave fleet MASTER red, and the only current remedy is a human noticing and re-running. Seven instances across two sessions and five repos; two left a fleet master red at HEAD on 2026-08-11 and were found only by an unrelated sweep. `UV_HTTP_RETRIES: 5` is already set and already insufficient. Three candidate directions recorded, none chosen. Cross-referenced on `livespec-39h1`. **Not this thread's to drive.** |
 | `bd-ib-3a7x` | `livespec-orchestrator-beads-fabro` | P2 — **filed by this thread 2026-08-11.** PRs #1335/#1336 are obsolete `livespec-runtime` v0.18.0 bump no-ops, red ~45h, their branches arming `xdyh`. Master already pins v0.18.0 and is green, so the library is NOT broken. Recommends confirm-then-close; carries the one-command confirmation. **Not this thread's to drive.** |
 | `bd-gj-kv8` | `livespec-orchestrator-git-jsonl` | P2 — **filed by this thread 2026-08-11.** The identical pair (#576/#577) in the sibling repo, same version, same two naming schemes, same obsolescence — confirmed by an EMPTY `pyproject.toml` diff against master and a branch 8 commits behind. **Not this thread's to drive.** |
