@@ -55,11 +55,34 @@ exercise that only ever observes the floor proves nothing about the fold.**
 The WORKFLOW half is still unimplemented, so no pull request is yet governed by
 the new floor.
 
-### WHAT REMAINS — ONE item, and it is NOT factory-dispatchable
+### WHAT REMAINS — and the P1 comes first
 
-| Item | State | Note |
-|---|---|---|
-| `livespec-jvdvx4.6` | open at `backlog`, P2 | The workflow half, in both `auto-enable-merge.yml` and the template `.yml.jinja`. **Maintainer-side only — see the boundary below.** |
+`livespec-jvdvx4.6` and the v201 ratification are DONE. What is left:
+
+| Item | Why it matters |
+|---|---|
+| **`livespec-jvdvx4.13` (P1)** | **The gate does not work on a real ratification, and the obvious fix makes it FAIL OPEN.** Do this first. |
+| `livespec-jvdvx4.9` | Template half + the core-to-CI distribution mechanism that does not exist yet. |
+| `livespec-jvdvx4.11` | A false design-record citation still live in `auto-enable-merge.yml`. |
+| `livespec-jvdvx4.10`, `.12`, `livespec-0ybg` | Review-methodology and diagnostic-trap guidance; doc drift. |
+
+**`.13` IS THE ONE THAT BITES.** A real ratifying pull request MOVES the
+proposal into `history/vNNN/proposed_changes/`; both derivations filter to ADDED
+files only, so both miss the rename and both AGREE — the filter-level residual
+`spec.md` names. Today the step also CRASHES (`bash -e` + `pipefail` +
+no-match `grep`), so auto-merge is skipped as a side effect and the floor LOOKS
+like it holds. **Repair the rename derivation BEFORE the crash.** Fix the crash
+alone and every ratifying spec pull request silently auto-merges.
+
+**EVERY REMAINING ITEM IS MAINTAINER-SIDE, NOT FACTORY-DISPATCHABLE**, because
+each touches `.github/workflows/` or `.ai/`. The factory sandbox's DISPATCH
+CREDENTIAL deliberately withholds the `workflows` grant, so GitHub refuses a
+sandbox push that creates or updates anything under `.github/workflows/`. That
+rejection IS the boundary working and must NEVER be requested, granted, or
+worked around — see `.ai/ci-gate-discipline.md` §"The `workflows` grant withheld
+from the DISPATCH CREDENTIAL is a deliberate boundary". An earlier revision of
+this binder called such work "factory-safe in principle"; that was false and
+would burn a dispatch on a guaranteed push rejection.
 
 **AN EARLIER REVISION OF THIS BINDER SAID BOTH REMAINING ITEMS WERE "product
 `.py` / workflow work and factory-safe in principle". THAT WAS FALSE FOR `.6`,
@@ -97,9 +120,10 @@ ledger rather than citing a count here — a count in a binder rots at the next
 filing, which is why the totals that used to sit on this line are gone.
 Do NOT archive `plan/spec-side-autonomy/`.
 
-### A pending proposal is queued and NOT ratified
+### The durability-locus clause is RATIFIED as v201
 
-`SPECIFICATION/proposed_changes/spec-pr-merge-durable-evidence-locus.md` adds a
+Ratifying commit `f55feb6b`, PR #2153, rebase-merge `edadee1e`. The pending
+queue is drained to `README.md` alone. The clause adds a
 durability-locus clause to the `spec_pr_merge` journal event: the pull-request
 timeline MAY serve as the durable final-evidence leg, so the journal is a
 DECISION GATE — it records which setting governed the attempt and refuses to
@@ -118,12 +142,23 @@ restoration of text v200 had dropped. That was FALSE — the language comes from
 at v190 and ordered redesigned and refiled, and v200 WAS that refile. The
 proposal has since been renamed and reframed; the old file no longer exists.
 
-It is FILED ONLY. Ratification requires the independent read-only adversarial
-review by a separately-spawned agent that authored neither the proposal nor the
-brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. Two rounds have run
-and each returned exactly one blocker — first the false lineage, then a
-lines-versus-occurrences miscount inside the corrective Lineage section itself.
-Both are fixed. Do not accept without a clean re-review.
+THE REVIEW PIPELINE THAT CLEARED IT — reuse this shape. Two separately-spawned
+read-only reviewers on the PROPOSAL, each returning exactly one blocker (the
+false lineage, then a lines-versus-occurrences miscount inside the corrective
+Lineage section itself), plus a THIRD review of the exact FINAL BYTES. Four
+distinct actors end to end: author, two reviewers, ratifier. Nobody reviewed or
+ratified their own work.
+
+**The final-bytes review is STRUCTURALLY REQUIRED, not optional diligence.**
+`_revise_ratification.py` binds evidence to a canonical digest over
+`proposal_bytes + sorted(resulting_files)`, so a proposal-level approval CANNOT
+satisfy it no matter how thorough. Budget for that third review.
+
+**TWO REVIEWERS IS NOT AUTOMATICALLY TWO OPINIONS.** On the miscount, reviewer A
+ran `grep -o | wc -l` (occurrences) and filed a blocker; reviewer B ran `grep -c`
+(lines), saw it match the stated figure, and confirmed it — reproducing the
+author's own unit conflation. A second NO-BLOCKERS verdict is independent
+evidence only if the instruments differ. Tracked as `livespec-jvdvx4.10`.
 
 ### THE FACTORY CANNOT REACH THREE ADOPTER TENANTS — root cause NAMED
 
@@ -286,24 +321,29 @@ record — an out-of-band edit to the very artifact the governance protects.
 
 ### Next concrete action
 
-Two, independent of each other:
+**Drive `livespec-jvdvx4.13` (P1) first.** The spec-PR merge gate is shipped but
+does NOT work on a real ratification, and the obvious repair makes it fail OPEN.
+Fix the rename derivation BEFORE the crash; read the item, which carries the
+ordering as its first section. Re-test against a REAL ratification shape (a
+proposal MOVED into `history/vNNN/proposed_changes/`), not a hand-added file —
+and confirm the policy step emitted its own output AND the run concluded
+success, because a silent exit 1 is indistinguishable from a pass when the only
+check is that auto-merge is off.
 
-1. **Finish `livespec-jvdvx4.6`** — MAINTAINER-SIDE, never dispatched, both
-   files in one PR, closed only on the LIVE exercise described above. Read the
-   ratified bytes in `contracts.md` §"Spec-governance control wrapper" (the
-   journal clause) and §"Spec pull-request merge-registration mechanics", plus
-   `spec.md` `effective_spec_pr_merge` and its dual-source hardening paragraph.
-   Do not reconstruct the semantics from a work-item summary or from this
-   binder. Implement the journal append as a GATE; do NOT invent a persistence
-   mechanism.
-2. **Get the pending restoration proposal reviewed and ratified** — it needs the
-   independent adversarial review first, and the reviewer must be neither its
-   author nor whoever briefs the ratifier.
+Then `.11` (the false citation in the same workflow — natural to fold into the
+same pass), then `.9`, then the guidance items `.10` and `.12` and
+`livespec-0ybg`.
 
-`.6` is NOT factory-dispatchable; see the boundary above. That is a property of
-the CHANGE (it touches `.github/workflows/`), not of the tenant: livespec's own
-tenant dispatches product-`.py` work fine — `livespec-jvdvx4.7` and
-`livespec-jvdvx4.8` both shipped through it this way. Only the three adopter
+Read the ratified bytes in `contracts.md` §"Spec-governance control wrapper"
+(the journal clause, now carrying the v201 durability-locus sentence) and
+§"Spec pull-request merge-registration mechanics", plus `spec.md`
+`effective_spec_pr_merge` and its dual-source hardening paragraph. Do not
+reconstruct the semantics from a work-item summary or from this binder.
+
+**None of the remaining items is factory-dispatchable.** That is a property of
+the CHANGES (they touch `.github/workflows/` and `.ai/`), NOT of the tenant:
+livespec's own tenant dispatches product-`.py` work fine — `livespec-jvdvx4.7`
+and `livespec-jvdvx4.8` both shipped through it this way. Only the three adopter
 tenants are credential-blocked, for the separate reason recorded above.
 
 ## Shared Protocol

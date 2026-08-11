@@ -38,7 +38,12 @@ committed, merged, and removed.
   unaffected.
 - **`spec-pr-merge-durable-evidence-locus`** proposal — first filed as
   `restore-spec-pr-merge-durable-evidence` (PR #2139), then renamed and
-  reframed. **Filed, NOT ratified.** ADDS one sentence to the
+  reframed. **RATIFIED as v201** — ratifying commit `f55feb6b`, PR #2153,
+  rebase-merge `edadee1e`. Cleared by TWO independent adversarial
+  reviewers plus a third review of the exact final bytes (the revise CLI
+  binds evidence to a digest over `proposal_bytes + sorted(resulting_files)`,
+  so proposal-level approvals structurally cannot satisfy it). ADDS one
+  sentence to the
   `spec_pr_merge` journal clause in `contracts.md`: the GitHub PR
   timeline MAY be the durable final-evidence leg, so the journal is a
   decision GATE (append before mutation, append-failure blocks
@@ -47,10 +52,15 @@ committed, merged, and removed.
   intentional, not a defect. **It is a NEW clause, not a restoration** —
   the first filing claimed to restore text v200 had dropped, which was
   FALSE: that language came from a v190 proposal that was REJECTED and
-  ordered refiled, and v200 was the refile. Sits
-  pending in `SPECIFICATION/proposed_changes/`; needs an independent
-  adversarial review + `/livespec:revise` before it ratifies. Do not
-  ratify it yourself — that is a separately-spawned-reviewer step.
+  ordered refiled, and v200 was the refile. **The lesson, because that
+  error reached six artifacts before a reviewer stopped it:** a file under
+  `history/vNNN/proposed_changes/` is NOT a design record. A history cut
+  archives accepted and rejected proposals side by side; only the paired
+  `<stem>-revision.md` `decision:` field distinguishes them. Read it, and
+  grep the cut's own ratified spec files, before treating any archived
+  clause as prior art. One of the six — a false citation in
+  `.github/workflows/auto-enable-merge.yml` — is still live, tracked as
+  `livespec-jvdvx4.11`.
 
 ## LANDED — `livespec-jvdvx4.6` (ROOT-REPO-ONLY), closed on both live legs
 
@@ -117,6 +127,39 @@ observed with their evidence recorded. Nothing on this item remains open.
   adopter runner can reach `spec_governance.py` today, so writing the
   template now would fail closed in every adopter and silently disable
   spec-PR auto-merge fleet-wide. Do not start `.9` without a fresh brief.
+
+### ⚠ READ THIS BEFORE THE LEG EVIDENCE BELOW — the gate is BROKEN on the shape that matters
+
+Both legs below passed honestly and their evidence is accurate. **They do
+not prove the gate works on a real ratification**, and the FIRST real
+ratification through it (v201, PR #2153) proved it does not. Tracked as
+**`livespec-jvdvx4.13` (P1)**.
+
+- Leg 1's probe ADDED a proposal file. A real ratifying PR **MOVES** the
+  proposal into `history/vNNN/proposed_changes/` — git records `R100`,
+  the API reports `renamed`. The workflow derives stems from ADDED files
+  only, on BOTH sources (`--diff-filter=A` and `status=="added"`), so both
+  miss it and both AGREE they miss it. Dual-source hardening cannot catch
+  a filter-level bug; `spec.md` states that residual honestly. Derived
+  stem set on a real ratification: EMPTY.
+- On PR #2153 the policy step CRASHED (run `31466134643` concluded
+  FAILURE, step exited 1 emitting zero output) because the runner shell is
+  `bash -e`, the script sets `pipefail`, and a no-match `grep` kills the
+  assignment. Auto-merge was correctly absent — but only because a crashed
+  step writes no `decision` output and the enable step is guarded on
+  `!= 'blocked'`. **The floor held by accident.**
+- **FIX ORDER IS LOAD-BEARING.** Repair the rename derivation FIRST. Fix
+  the crash alone and an empty stem set reaches the KNOWN-EMPTY branch,
+  resolves `auto`, and silently auto-merges EVERY ratifying spec PR.
+- Consequence: on the real path the CLI is never invoked and no
+  `spec_pr_merge` journal event is appended, so the journal-as-gate
+  behavior v201 ratified is itself unexercised in production.
+- Diagnostic rule for whoever re-tests: **a silent exit 1 looks exactly
+  like a pass if the only check is that auto-merge is off.** Verify the
+  policy step emitted its own output AND that the run concluded success.
+
+The generalizable lesson: a synthetic probe validates the shape you
+built, not the shape the system generates.
 
 ### The LIVE exercise — both legs observed, evidence recorded
 
