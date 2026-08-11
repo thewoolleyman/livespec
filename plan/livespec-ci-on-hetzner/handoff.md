@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–09:1xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:2xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -394,6 +394,40 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > days** — that last one corroborates `-3ej` from a new angle, since that repo cannot cut releases
 > either. `homelab` #311 (166h) is the ratification question the gate section already records as
 > escalated to the maintainer.
+>
+> ### 6e. 🧊 `livespec-console-beads-fabro` IS FROZEN IN BOTH DIRECTIONS, and neither item knew
+>
+> Chasing the 18.6-day release PR from §6d's sweep produced the session's second compounding pair.
+> Two **P1** items in that repo, both `backlog`, and — verified by searching each one's full text —
+> **neither mentions the other**:
+>
+> | direction | item | state |
+> |---|---|---|
+> | **INBOUND** — cannot RECEIVE pin bumps | `livespec-console-beads-fabro-3ej` | pin frozen at livespec `v0.26.0`, now **15 releases** behind |
+> | **OUTBOUND** — cannot CUT releases | `livespec-console-beads-fabro-53t` | release PR #404 blocked **~448h ≈ 18.6 days** |
+>
+> Each reads as a contained annoyance alone. Together the repo **can neither consume its siblings'
+> work nor publish its own**, and the inbound gap widens (~3 releases/day at 2026-08-11's rate)
+> while the ability to close it is disabled on the other side.
+>
+> **The outbound blocker is a genuine red-by-construction deadlock, and the test is NOT at fault.**
+> `crates/console-cli/tests/docs_release_version_lockstep.rs:115` asserts `left == right` with
+> `left: "0.4.0"` (the released version) and `right: "0.3.0"` (`DOCS_REVIEWED_AGAINST`, a
+> hand-maintained constant recording which release `docs/installing.md`'s version-scoped claims
+> were last read against). **A release PR is precisely what makes a new version current, so it is
+> the one commit that cannot satisfy the guard it must pass.** Only a human editing the install doc
+> clears it, and release-please will never author that edit. Same shape as livespec's own TODO half
+> being red by construction.
+>
+> **`-53t` was filed 2026-08-03 and has not been touched since** — its `updated_at` is one second
+> after its `created_at`. This session re-measured it independently eight days later and found
+> every value byte-identical. Both items now carry the cross-reference; `-53t` still has **no
+> acceptance criteria**, which is that repo's to write. **Nothing was changed there** — the fix
+> requires a human judgement about published install instructions that no sweep should make.
+>
+> **Why it stayed invisible is the now-familiar answer:** #404 has auto-merge ARMED and simply
+> cannot fire, which produces no alert, no red master, and no notification — that repo's master is
+> **green**. Cross-referenced to `livespec-39h1` as a fifth instance, this time on the RELEASE path.
 >
 > ### 7. Housekeeping facts for the next session
 >
@@ -1115,7 +1149,8 @@ creators).
 | `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
 | `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
 | `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | **CHAINED TO `el7g` — see §6c; a transient that reddens a bump PR arms this defect, and neither description mentioned the other before 2026-08-11.** P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
-| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
+| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | **PAIRED WITH `-53t` — see §6e; that repo is frozen INBOUND and OUTBOUND and neither item mentioned the other before 2026-08-11.** P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
+| `livespec-console-beads-fabro-53t` | `livespec-console-beads-fabro` | P1 — **the OUTBOUND half of §6e, and not previously recorded in this file.** Release PRs there cannot auto-merge **by construction**: `docs_release_version_lockstep` asserts `DOCS_REVIEWED_AGAINST` equals the released version, and a release PR is what makes that version current. #404 blocked ~18.6 days. Filed 2026-08-03 and untouched since; still has NO acceptance criteria. **Not this thread's to drive** — clearing it needs a human judgement about published install docs. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
 | `livespec-dev-tooling-el7g` | `livespec-dev-tooling` | P2 — **filed by this thread 2026-08-11.** `uv` dev-dep downloads time out often enough to leave fleet MASTER red, and the only current remedy is a human noticing and re-running. Seven instances across two sessions and five repos; two left a fleet master red at HEAD on 2026-08-11 and were found only by an unrelated sweep. `UV_HTTP_RETRIES: 5` is already set and already insufficient. Three candidate directions recorded, none chosen. Cross-referenced on `livespec-39h1`. **Not this thread's to drive.** |
 | `bd-ib-3a7x` | `livespec-orchestrator-beads-fabro` | P2 — **filed by this thread 2026-08-11.** PRs #1335/#1336 are obsolete `livespec-runtime` v0.18.0 bump no-ops, red ~45h, their branches arming `xdyh`. Master already pins v0.18.0 and is green, so the library is NOT broken. Recommends confirm-then-close; carries the one-command confirmation. **Not this thread's to drive.** |
