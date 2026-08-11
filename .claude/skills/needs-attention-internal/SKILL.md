@@ -112,16 +112,62 @@ gh run list --repo thewoolleyman/livespec --workflow "Pin freshness sweep" --bra
 # open bump PRs, read by the bump-PR BRANCH convention (precise), not free text:
 gh pr list --repo thewoolleyman/livespec --state open \
   --json number,title,headRefName \
-  --jq '.[] | select(.headRefName | startswith("chore/bump-"))'
+  --jq '.[] | select(.headRefName | test("^chore/(freshness-)?bump-"))'
 ```
 
 A failed sweep is one item; each OPEN bump PR is one item (the pin is stale until
-that PR merges). Read the open bump PRs by their **head-branch convention**
-(`chore/bump-*`, the branch name the pin-freshness automation uses) — NOT a
-free-text `--search "bump pin"`, which false-positives on any unrelated PR whose
+that PR merges). Read the open bump PRs by their **head-branch convention** — NOT
+a free-text `--search "bump pin"`, which false-positives on any unrelated PR whose
 title or body merely mentions those words (verified: it matched an unrelated
 skills PR during this skill's own live-exercise). Repeat the query per fleet repo
 whose pins you want covered, or scope it to the repos the sweep targets.
+
+> **THERE ARE TWO BUMP-BRANCH CONVENTIONS, AND MATCHING ONLY THE OBVIOUS ONE
+> MISSES HALF THE PRs.** This filter read `startswith("chore/bump-")` until
+> 2026-08-11, when a fleet stale-PR sweep found four lingering bump PRs and this
+> query would have surfaced exactly two of them:
+>
+> ```
+> chore/bump-livespec-runtime-v0.18.0             MATCHED
+> chore/freshness-bump-livespec-runtime-v0.18.0   MISSED
+> chore/bump-livespec-v0.30.2                     MATCHED
+> chore/freshness-bump-livespec-v0.10.1           MISSED
+> ```
+>
+> Both `chore/bump-<pkg>-<ver>` and `chore/freshness-bump-<pkg>-<ver>` are minted
+> for the SAME bump, roughly twelve minutes apart, so a half-blind filter reports
+> a repo as having one stale pin when it has two branches outstanding. The `test`
+> form above matches both. **Note the trap's shape: the previous wording was a
+> CORRECTION — it had just replaced a false-positive-prone free-text search with a
+> "precise" prefix — and precision on the wrong axis reintroduced the miss in the
+> other direction.** Narrowing a query is not the same as making it right; check
+> the narrowed form against real values before trusting it. This is the same
+> failure as hardcoding `ci.yml` when one fleet repo's gating workflow is
+> `check.yml` (see `.ai/verifying-against-the-right-source.md` instance 22).
+>
+> **A lingering bump PR is also `livespec-dev-tooling-xdyh`'s arming condition** —
+> while its branch sits on origin, the next sweep cannot fast-forward over it — so
+> an item here is worth more than "a pin is stale": it marks a window in which the
+> stale-pin safety net can silently disable itself.
+
+> **KNOWN COVERAGE GAPS — this skill does NOT currently see these, and the
+> omission is recorded rather than implied away.** All three were found on
+> 2026-08-11 by ad-hoc sweeps, not by this skill:
+>
+> - **A failing RELEASE gate.** Signal 1 reads only the workflow named `CI`.
+>   livespec's release gate is `release-tag.yml`, which fires on TAG PUSH; it
+>   failed on four consecutive published releases (v0.29.0 → v0.30.0) while every
+>   `CI` run stayed green. Nothing here would have said so.
+> - **A blocked `release-please` PR.** Signal 3 matches only bump branches, so a
+>   release PR stuck on a red check is invisible. One sat open **18.6 days** in
+>   `livespec-console-beads-fabro` with auto-merge armed and unable to fire.
+> - **An adopter's gating workflow under a different name.** The fleet is
+>   non-uniform: `resume`'s gating workflow is `check.yml`, not `ci.yml`.
+>
+> Adding signals for these is a design decision, not a bug fix, and belongs with
+> `livespec-39h1` (whose thesis is precisely that nothing reads these). Until then,
+> **a clean run of this skill means "the six signals are green", not "the fleet is
+> healthy"** — say the former when reporting.
 
 ### Signal 4 — cross-repo consistency drift
 
