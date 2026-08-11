@@ -609,3 +609,52 @@ def test_journal_shapes_module_is_a_leaf() -> None:
         "the shapes module must not import from `journal`; keeping the "
         "dependency one-way is what prevents an import cycle"
     )
+
+
+def test_journal_mutation_events_module_is_a_leaf() -> None:
+    """The spec-mutation validators must not import back into `journal`.
+
+    They take `_validate_common` and their shape helpers from
+    `_journal_shapes`, the shared-primitives leaf, rather than from
+    `journal`. That is what keeps the dependency one-way; importing the
+    parent here would form a cycle.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+        / "_journal_mutation_events.py"
+    ).read_text(encoding="utf-8")
+    assert "spec_governance.journal" not in source, (
+        "the mutation-events module must not import from `journal`; the "
+        "one-way dependency is what prevents an import cycle"
+    )
+
+
+def test_every_journal_event_type_still_resolves_a_validator() -> None:
+    """Every dispatch entry must name a validator that actually exists.
+
+    The extraction moved three validators out and left the dispatch table
+    behind, so a mis-wired import would surface only when that event type
+    is journalled. This walks the table itself rather than trusting that
+    the imports look right — an earlier pass of this refactor DID drop the
+    table entirely, and only a runtime NameError revealed it.
+    """
+    from livespec.spec_governance import journal as journal_module
+
+    table = journal_module._EVENT_VALIDATORS  # noqa: SLF001
+    assert set(table) == {
+        "authoring_auto_consumption",
+        "doctor_disposition",
+        "ratification_review",
+        "revise_decision",
+        "spec_pr_merge",
+    }, f"dispatch table event types changed: {sorted(table)}"
+    for event_type, validator in table.items():
+        assert callable(validator), f"{event_type} maps to a non-callable"
+        assert validator({}) is not None, (
+            f"{event_type}'s validator accepted an empty event, which means it "
+            f"is not actually reachable through the table"
+        )

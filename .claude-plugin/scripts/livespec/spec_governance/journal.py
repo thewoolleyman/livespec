@@ -9,13 +9,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from livespec.spec_governance._journal_shapes import (
-    _SOURCE_VALUES,
-    _digest,
-    _revise_decision_shape_error,
-    _spec_pr_merge_shape_error,
+from livespec.spec_governance._journal_mutation_events import (
+    _validate_ratification,
+    _validate_revise_decision,
+    _validate_spec_pr_merge,
 )
-from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, PROPOSAL_STEM_PATTERN
+from livespec.spec_governance._journal_shapes import (
+    _digest,
+    _validate_common,
+)
+from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN
 
 __all__: list[str] = [
     "JournalAppend",
@@ -25,7 +28,6 @@ __all__: list[str] = [
 ]
 
 _JOURNAL_PATH = Path("tmp") / "livespec-spec-governance-journal.jsonl"
-_OUTCOME_VALUES = {"consumed", "spawned", "selected", "blocked", "failed", "dismissed", "deferred"}
 _DOCTOR_VERB_VALUES = {
     "fix-now",
     "capture-as-work-item",
@@ -107,17 +109,6 @@ def _validate_event(*, event: dict[str, Any]) -> str | None:
     return validator(event)
 
 
-def _validate_common(*, event: dict[str, Any], required: set[str]) -> str | None:
-    extra_missing = sorted(required.difference(event))
-    if extra_missing:
-        return f"journal event missing required fields: {extra_missing}"
-    if event.get("effective_source") not in _SOURCE_VALUES:
-        return "journal effective_source is invalid"
-    if event.get("outcome") not in _OUTCOME_VALUES:
-        return "journal outcome is invalid"
-    return None
-
-
 def _validate_authoring(*, event: dict[str, Any]) -> str | None:
     common = _validate_common(
         event=event,
@@ -165,74 +156,6 @@ def _validate_doctor(*, event: dict[str, Any]) -> str | None:
     if event["selected_verb"] not in _DOCTOR_VERB_VALUES:
         return "doctor selected_verb is invalid"
     return None
-
-
-def _validate_ratification(*, event: dict[str, Any]) -> str | None:
-    common = _validate_common(
-        event=event,
-        required={
-            "event_type",
-            "proposal_stem",
-            "content_digest",
-            "reviewer_identity",
-            "reviewer_model",
-            "verdict",
-            "effective_source",
-            "outcome",
-        },
-    )
-    if common is not None:
-        return common
-    if (
-        not isinstance(event["proposal_stem"], str)
-        or PROPOSAL_STEM_PATTERN.fullmatch(event["proposal_stem"]) is None
-    ):
-        return "ratification proposal_stem is invalid"
-    if not _digest(value=event.get("content_digest")):
-        return "content_digest must be lowercase sha256 hex"
-    return None
-
-
-def _validate_revise_decision(*, event: dict[str, Any]) -> str | None:
-    common = _validate_common(
-        event=event,
-        required={
-            "event_type",
-            "proposal_stem",
-            "content_digest",
-            "effective_mode",
-            "effective_source",
-            "selected_decision",
-            "decider_identity",
-            "decider_model",
-            "review_outcome",
-            "final_outcome",
-            "escalation_reason",
-            "outcome",
-        },
-    )
-    if common is not None:
-        return common
-    return _revise_decision_shape_error(event=event)
-
-
-def _validate_spec_pr_merge(*, event: dict[str, Any]) -> str | None:
-    common = _validate_common(
-        event=event,
-        required={
-            "event_type",
-            "pull_request_identity",
-            "proposal_stems",
-            "effective_policy",
-            "effective_source",
-            "registration_result",
-            "required_gate_state",
-            "outcome",
-        },
-    )
-    if common is not None:
-        return common
-    return _spec_pr_merge_shape_error(event=event)
 
 
 _EVENT_VALIDATORS: dict[object, _EventValidator] = {
