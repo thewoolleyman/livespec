@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -12,6 +13,7 @@ from livespec.spec_governance._journal_shapes import (
     _SOURCE_VALUES,
     _digest,
     _revise_decision_shape_error,
+    _spec_pr_merge_shape_error,
 )
 from livespec.spec_governance.config import DOCTOR_CHECK_ID_PATTERN, PROPOSAL_STEM_PATTERN
 
@@ -38,12 +40,14 @@ _RAW_FIELD_DENYLIST = {
     "message",
     "input_envelope",
     "finding_message",
+    "merge_evidence",
     "proposal_content",
     "resulting_files",
     "resulting_file_content",
     "consensus_evidence",
     "raw_content",
 }
+_EventValidator = Callable[[dict[str, Any]], str | None]
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -97,19 +101,10 @@ def append_journal_payload(*, project_root: Path, event: dict[str, Any]) -> str 
 def _validate_event(*, event: dict[str, Any]) -> str | None:
     if any(field in event for field in _RAW_FIELD_DENYLIST):
         return "journal event must carry digests, not raw intent/message fields"
-    event_type = event.get("event_type")
-    if event_type == "authoring_auto_consumption":
-        return _validate_authoring(event=event)
-    if event_type == "doctor_disposition":
-        return _validate_doctor(event=event)
-    if event_type == "ratification_review":
-        return _validate_ratification(event=event)
-    if event_type == "revise_decision":
-        return _validate_revise_decision(event=event)
-    return (
-        "journal event_type must be authoring_auto_consumption, "
-        "doctor_disposition, ratification_review, or revise_decision"
-    )
+    validator = _EVENT_VALIDATORS.get(event.get("event_type"))
+    if validator is None:
+        return "journal event_type is unsupported"
+    return validator(event)
 
 
 def _validate_common(*, event: dict[str, Any], required: set[str]) -> str | None:
@@ -219,3 +214,31 @@ def _validate_revise_decision(*, event: dict[str, Any]) -> str | None:
     if common is not None:
         return common
     return _revise_decision_shape_error(event=event)
+
+
+def _validate_spec_pr_merge(*, event: dict[str, Any]) -> str | None:
+    common = _validate_common(
+        event=event,
+        required={
+            "event_type",
+            "pull_request_identity",
+            "proposal_stems",
+            "effective_policy",
+            "effective_source",
+            "registration_result",
+            "required_gate_state",
+            "outcome",
+        },
+    )
+    if common is not None:
+        return common
+    return _spec_pr_merge_shape_error(event=event)
+
+
+_EVENT_VALIDATORS: dict[object, _EventValidator] = {
+    "authoring_auto_consumption": lambda event: _validate_authoring(event=event),
+    "doctor_disposition": lambda event: _validate_doctor(event=event),
+    "ratification_review": lambda event: _validate_ratification(event=event),
+    "revise_decision": lambda event: _validate_revise_decision(event=event),
+    "spec_pr_merge": lambda event: _validate_spec_pr_merge(event=event),
+}

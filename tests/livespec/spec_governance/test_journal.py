@@ -197,6 +197,107 @@ def test_revise_decision_event_rejects_missing_required_fields(*, tmp_path: Path
     )
 
 
+def test_spec_pr_merge_event_validates_and_appends(*, tmp_path: Path) -> None:
+    event = {
+        "event_type": "spec_pr_merge",
+        "pull_request_identity": "thewoolleyman/livespec#123",
+        "proposal_stems": ["spec-pr-merge", "spec-pr-merge-2"],
+        "effective_policy": "auto-on-green",
+        "effective_source": "proposal",
+        "registration_result": "registered",
+        "required_gate_state": "pending",
+        "merge_evidence_digest": "e" * 64,
+        "outcome": "selected",
+    }
+
+    result = append_journal_payload(project_root=tmp_path, event=event)
+
+    assert isinstance(result, JournalAppend)
+    journal = tmp_path / "tmp" / "livespec-spec-governance-journal.jsonl"
+    [line] = journal.read_text(encoding="utf-8").splitlines()
+    assert json.loads(line) == event
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("pull_request_identity", "", "pull_request_identity"),
+        ("proposal_stems", [], "proposal_stems"),
+        ("proposal_stems", ["Bad"], "proposal_stems"),
+        ("proposal_stems", ["same", "same"], "proposal_stems"),
+        ("effective_policy", "manual", "effective_policy"),
+        ("registration_result", "maybe", "registration_result"),
+        ("required_gate_state", "maybe", "required_gate_state"),
+        ("merge_evidence_digest", "not-a-digest", "merge_evidence_digest"),
+    ],
+)
+def test_spec_pr_merge_event_rejects_invalid_fields(
+    *,
+    tmp_path: Path,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    event = {
+        "event_type": "spec_pr_merge",
+        "pull_request_identity": "thewoolleyman/livespec#123",
+        "proposal_stems": ["spec-pr-merge"],
+        "effective_policy": "auto-on-green",
+        "effective_source": "global",
+        "registration_result": "registered",
+        "required_gate_state": "green",
+        "outcome": "selected",
+    }
+    event[field] = value
+
+    result = append_journal_payload(project_root=tmp_path, event=event)
+
+    assert isinstance(result, str)
+    assert message in result
+
+
+def test_spec_pr_merge_event_rejects_raw_content_and_missing_required_fields(
+    *,
+    tmp_path: Path,
+) -> None:
+    event = {
+        "event_type": "spec_pr_merge",
+        "pull_request_identity": "thewoolleyman/livespec#123",
+        "proposal_stems": ["spec-pr-merge"],
+        "effective_policy": "auto-on-green",
+        "effective_source": "global",
+        "registration_result": "registered",
+        "required_gate_state": "green",
+        "outcome": "selected",
+    }
+
+    raw_result = append_journal_payload(
+        project_root=tmp_path,
+        event={**event, "proposal_content": "raw text forbidden"},
+    )
+    missing_result = append_journal_payload(
+        project_root=tmp_path,
+        event={"event_type": "spec_pr_merge", "effective_source": "global"},
+    )
+
+    assert isinstance(raw_result, str)
+    assert "digests" in raw_result
+    assert isinstance(missing_result, str)
+    assert "missing required fields" in missing_result
+
+
+def test_unknown_event_type_rejection_message_does_not_enumerate_known_types(
+    *,
+    tmp_path: Path,
+) -> None:
+    result = append_journal_payload(
+        project_root=tmp_path,
+        event={"event_type": "unknown", "effective_source": "global", "outcome": "failed"},
+    )
+
+    assert result == "journal event_type is unsupported"
+
+
 def test_append_authoring_event_writes_canonical_jsonl(*, tmp_path: Path) -> None:
     event_path = tmp_path / "event.json"
     event_path.write_text(
