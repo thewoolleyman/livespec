@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.2](https://github.com/thewoolleyman/livespec/compare/v0.30.1...v0.30.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **ci:** derive spec-PR stems across renames and stop the step crashing ([f8c98ce](https://github.com/thewoolleyman/livespec/commit/f8c98ced76291e69729f23c7d72b853cbee8e5cd))
+
 ## [0.30.1](https://github.com/thewoolleyman/livespec/compare/v0.30.0...v0.30.1) (2026-08-11)
 
 
