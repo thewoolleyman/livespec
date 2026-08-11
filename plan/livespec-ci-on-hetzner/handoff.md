@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–08:4xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–09:1xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -338,6 +338,62 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > was running a fleet sweep for an unrelated reason and followed a branch name to its PR. Nothing
 > detected it; nothing would have closed it. **The next release cuts the next bump PR into the same
 > exposure.** Both defects remain open and neither's severity is reduced by this instance clearing.
+>
+> ### 6d. 🚩 FOUR OBSOLETE BUMP PRs ARE LINGERING IN TWO SIBLING REPOS — `xdyh` armed, right now
+>
+> A fleet-wide **stale-PR sweep** (the natural follow-on from §6c, since a lingering bump PR is
+> `xdyh`'s arming condition) found four bump PRs open and red for **~45 hours**, auto-merge armed
+> and unable to fire, their branches sitting on origin the whole time:
+>
+> | repo | PR | branch |
+> |---|---|---|
+> | `livespec-orchestrator-beads-fabro` | #1335 | `chore/bump-livespec-runtime-v0.18.0` |
+> | `livespec-orchestrator-beads-fabro` | #1336 | `chore/freshness-bump-livespec-runtime-v0.18.0` |
+> | `livespec-orchestrator-git-jsonl` | #576 | `chore/bump-livespec-runtime-v0.18.0` |
+> | `livespec-orchestrator-git-jsonl` | #577 | `chore/freshness-bump-livespec-runtime-v0.18.0` |
+>
+> **⚠ THE OBVIOUS READING IS WRONG, AND IT IS VERY TEMPTING — I FORMED IT MYSELF BEFORE
+> DISPROVING IT.** Their CI shows *genuine check failures*, not install transients, and they differ
+> per repo: `beads-fabro` fails `check-types` on `No parameter named "awaits_scope_override"` across
+> four modules; `git-jsonl` fails `check-coverage` on `AttributeError: 'str' object has no
+> attribute 'unwrap'` from `_vendor/livespec_runtime/cross_repo/retry.py:90`. That reads
+> unmistakably as **"`livespec-runtime` v0.18.0 is a breaking change and both consumers are
+> stuck."**
+>
+> **It is not. `livespec-runtime` v0.18.0 is fine.** Three independent facts:
+>
+> 1. **Both repos' `origin/master` ALREADY pin v0.18.0** — `beads-fabro` since `6772a162`
+>    (2026-08-09 16:28:57Z), `git-jsonl` since `d03fa06` (15:26:08Z) — both landed by a *different
+>    commit*, hours AFTER these PRs opened at ~13:09Z.
+> 2. **Both masters are GREEN on that pin** (`32f766c2`, `ecd03b10`). A library that broke them
+>    would have reddened master.
+> 3. **`git diff <pr-576-head> origin/master -- pyproject.toml` is EMPTY** — the PR proposes
+>    nothing master lacks. Its branch is 8 commits behind.
+>
+> So they are **obsolete no-ops**, red only because their branches are two days stale and lack
+> master's later code. **The discriminating question was not "what do the logs say" — the logs are
+> honest failures of a stale tree — but "what does MASTER say", and one command answered it.** Bank
+> that: a red PR whose base has moved tells you about the branch, not about the dependency.
+>
+> **Disposition RECOMMENDED, deliberately NOT executed here:** close all four PRs and delete the
+> four branches, which removes `xdyh`'s collision material in two repos at once. Not done from this
+> thread — **these are other repositories' PRs and their bump machinery**, per the ownership
+> boundary, and a wrong close would drop a real bump. Filed where it stays open instead:
+> **`bd-ib-3a7x`** (`livespec-orchestrator-beads-fabro`) and **`bd-gj-kv8`**
+> (`livespec-orchestrator-git-jsonl`), each carrying the one-command confirmation to re-run first.
+>
+> **A systemic side-observation:** each repo has TWO PRs for the SAME bump under TWO naming schemes
+> (`chore/bump-…` and `chore/freshness-bump-…`), opened ~12 minutes apart. That doubles the branches
+> available to collide and doubles the litter when neither merges. Both schemes already appear in
+> `xdyh`'s recorded debris inventory. Whether that duplication is intended is a question for those
+> repos, not this thread.
+>
+> **Other lingering PRs found by the same sweep**, listed so the next session need not re-derive
+> them: `livespec` #2069 (130h), `livespec-dev-tooling` #285 (**806h**) and #1299 (148h),
+> `livespec-console-beads-fabro` #317 (544h) and **#404, a `release-please` PR open 448h ≈ 18.6
+> days** — that last one corroborates `-3ej` from a new angle, since that repo cannot cut releases
+> either. `homelab` #311 (166h) is the ratification question the gate section already records as
+> escalated to the maintainer.
 >
 > ### 7. Housekeeping facts for the next session
 >
@@ -1062,6 +1118,8 @@ creators).
 | `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
 | `livespec-dev-tooling-el7g` | `livespec-dev-tooling` | P2 — **filed by this thread 2026-08-11.** `uv` dev-dep downloads time out often enough to leave fleet MASTER red, and the only current remedy is a human noticing and re-running. Seven instances across two sessions and five repos; two left a fleet master red at HEAD on 2026-08-11 and were found only by an unrelated sweep. `UV_HTTP_RETRIES: 5` is already set and already insufficient. Three candidate directions recorded, none chosen. Cross-referenced on `livespec-39h1`. **Not this thread's to drive.** |
+| `bd-ib-3a7x` | `livespec-orchestrator-beads-fabro` | P2 — **filed by this thread 2026-08-11.** PRs #1335/#1336 are obsolete `livespec-runtime` v0.18.0 bump no-ops, red ~45h, their branches arming `xdyh`. Master already pins v0.18.0 and is green, so the library is NOT broken. Recommends confirm-then-close; carries the one-command confirmation. **Not this thread's to drive.** |
+| `bd-gj-kv8` | `livespec-orchestrator-git-jsonl` | P2 — **filed by this thread 2026-08-11.** The identical pair (#576/#577) in the sibling repo, same version, same two naming schemes, same obsolescence — confirmed by an EMPTY `pyproject.toml` diff against master and a branch 8 commits behind. **Not this thread's to drive.** |
 | `livespec-915y` | `livespec` | P2 (`backlog`) — the owned-heading-coverage-TODO cross-repo epic; owns the TODO half of the release gate and its by-construction mechanism. Its child `livespec-915y.1` (the original soft-band emptying) **CLOSED 2026-08-07**. The TODO half is now measured PASSING in CI on the v0.30.0 gate run, so what remains here is the cross-repo half, not livespec's. |
 | `livespec-dev-tooling-i3ub` | `livespec-dev-tooling` | **OPEN, BLOCKED** — per-commit tightening of BOTH release-gate halves, behind fleet-backfill epic `livespec-dev-tooling-7j1g` (304 unowned entries, 9 repos). This is the item that would stop the regrowth loop at its source: today the per-commit tier only WARNS while the tier that FAILS is release-only. |
 
