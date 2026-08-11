@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–10:5xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–12:0xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -42,6 +42,38 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >
 > **If you read only one thing: §1.** It tells you what to do first. Everything else is evidence
 > you may need *while* doing it, or context so you do not re-derive a finding that already exists.
+>
+> > #### ✅ STATE AT SESSION CLOSE — 2026-08-11T12:0xZ. Read this before anything else.
+> >
+> > **NOTHING IS IN FLIGHT. There is no half-finished work to pick up.** Every pull request this
+> > session opened is MERGED (livespec #2149, #2152, #2162, #2163, #2164, #2165, #2167, #2168,
+> > #2169, #2170, #2171, #2172, #2173, #2174), the primary checkout `/data/projects/livespec` is
+> > clean on `master`, and **no worktree under `~/.worktrees/livespec/` is this thread's** — the
+> > ones that remain belong to other sessions, so do not touch them.
+> >
+> > **This whole ⛔ block is ONE session's output** (2026-08-11, 06:26Z–12:0xZ). §2 says "the
+> > previous session's first action" — that means the session before this one, i.e. two back from
+> > you. It is historical and closed; do not re-run it.
+> >
+> > **Your first action is §1, unchanged: re-run the census.** Both halves of this thread are at
+> > rest, for different reasons:
+> >
+> > - **Hetzner half — PARKED, and that is correct.** Twelfth consecutive reading found the
+> >   external homelab gate shut with all five values byte-identical and all three conditions
+> >   unmet. **There is no unblocked implementation work in this epic.** If the census confirms
+> >   the gate is still shut, **say so plainly and stop — that is the correct output.** Do not
+> >   manufacture work. If it has OPENED, the next slice is `livespec-3on57g`.
+> > - **Non-Hetzner half — FINISHED.** The release-gate repair that occupied the last week is
+> >   **done and proven live** on two consecutive releases (§3). Nothing on that track is waiting.
+> >
+> > **Everything in §6a–§6h is a finding this session made while doing the above — none of it is
+> > this thread's to drive.** Each is filed in the tenant that owns it WITH acceptance criteria,
+> > and each has a row under "Open descendants". They are recorded so you do not rediscover them
+> > at the cost this session paid. **Do not adopt them as work.**
+> >
+> > **The one dated thing that may now be overdue:** `livespec-dev-tooling-y6e2` carried a review
+> > date of **2026-08-12**. If you are reading this on or after that date it is due, and it is
+> > that tenant's to action — surface it, do not drive it.
 >
 > **The `§6a`–`§6h` run is not a designed hierarchy** — those sections were appended one at a time
 > as a single session found things, so the lettering records discovery order, not importance. They
