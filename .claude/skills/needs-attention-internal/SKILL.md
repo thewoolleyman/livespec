@@ -95,23 +95,52 @@ workflows and reports a misleading green.
 > writing the loop into a script file to change what the guard sees is evasion,
 > however defective the guard. Ask GitHub *once* instead:
 >
-> ```bash
-> gh api graphql -f query="$(cat <<'Q'
-> query { r0: repository(owner:"thewoolleyman", name:"livespec") {
->           nameWithOwner
->           defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } } }
->         r1: repository(owner:"thewoolleyman", name:"livespec-dev-tooling") { nameWithOwner
->           defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } } }
->         # …one alias per fleet member, derived from the manifest…
+> **GENERATE the query from the manifest — do NOT hand-write the aliases**, or the
+> member list silently forks from `.livespec-fleet-manifest.jsonc` the moment a
+> member is added. Write this to a file and run it (the generator itself is local
+> Python — no `gh`, so it trips nothing):
+>
+> ```python
+> # genquery.py — emits the one-call fleet query. `ci` for Signal 1, `prs` for Signal 3.
+> import json, re, sys
+> from pathlib import Path
+>
+> OWNER = "thewoolleyman"
+> SELECTIONS = {
+>     "ci":  "defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } }",
+>     "prs": "pullRequests(states: OPEN, first: 50) { nodes { number headRefName createdAt } }",
 > }
-> Q
-> )" > /tmp/fleetci.json
+>
+> raw = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc").read_text()
+> txt = "\n".join(l for l in raw.splitlines() if not l.strip().startswith("//"))
+> members = json.loads(re.sub(r",(\s*[}\]])", r"\1", txt))["fleet"]
+> names = [m["repo"] if isinstance(m, dict) else m for m in members]
+>
+> selection = SELECTIONS[sys.argv[1] if len(sys.argv) > 1 else "ci"]
+> print("query {")
+> for index, repo in enumerate(names):
+>     print(f'  r{index}: repository(owner: "{OWNER}", name: "{repo}") '
+>           f"{{ nameWithOwner {selection} }}")
+> print("}")
+> print(f"# members: {len(names)}", file=sys.stderr)   # CONTROL — expect the manifest's count
+> ```
+>
+> ```bash
+> python3 genquery.py ci > /tmp/q.graphql          # prints "# members: N" to stderr as a control
+> gh api graphql -f query="$(cat /tmp/q.graphql)" > /tmp/fleetci.json
 > ```
 >
 > One call, no loop, and **fewer** API reads than the per-repo form — which is the
 > guard's own stated concern. Parse the JSON in a SEPARATE call (a comprehension
 > in the same command as a `gh` invocation is itself denied — the matcher keys on
 > the `for` token).
+>
+> **Live-exercised 2026-08-11, both selections**, generated → executed → parsed.
+> The `ci` run returned all 9 members and its result was identical to a
+> hand-written equivalent except for one repo's HEAD, which had genuinely moved
+> mid-session — i.e. the delta was real-world state, not a query defect. The `prs`
+> run fed the Signal 3 parser unchanged and reproduced 4 bump PRs against 10 open
+> PRs fleet-wide.
 >
 > **THIS SCREEN IS NOT EQUIVALENT TO SIGNAL 1, IN BOTH DIRECTIONS, AND BOTH
 > MATTER:**
@@ -179,17 +208,13 @@ whose pins you want covered, or scope it to the repos the sweep targets.
 >    matches substrings, not behaviour. So even a single-repo invocation of the
 >    command as written fails.
 >
-> Sweep all members in ONE call and filter locally instead:
+> Sweep all members in ONE call and filter locally instead, reusing the SAME
+> manifest-driven generator Signal 1 defines above — its `prs` selection exists
+> for exactly this, so the member list cannot fork between the two signals:
 >
 > ```bash
-> gh api graphql -f query="$(cat <<'Q'
-> query { r0: repository(owner:"thewoolleyman", name:"livespec") {
->           nameWithOwner
->           pullRequests(states: OPEN, first: 50) { nodes { number headRefName createdAt } } }
->         # …one alias per fleet member, derived from the manifest…
-> }
-> Q
-> )" > /tmp/fleetprs.json
+> python3 genquery.py prs > /tmp/q.graphql         # prints "# members: N" to stderr as a control
+> gh api graphql -f query="$(cat /tmp/q.graphql)" > /tmp/fleetprs.json
 > ```
 >
 > Then match `^chore/(freshness-)?bump-` in a SEPARATE call (Python/`jq` over the
