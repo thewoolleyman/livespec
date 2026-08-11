@@ -156,7 +156,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > | 6c | 🔗 `el7g` **arms** `xdyh` — the flaky defect enables the dangerous one | read this |
 > | 6d | 🚩 Four obsolete bump PRs lingering in two sibling repos (`bd-ib-3a7x`, `bd-gj-kv8`) | not ours to close |
 > | 6e | 🧊 `livespec-console-beads-fabro` frozen INBOUND and OUTBOUND | not ours to fix |
-> | 6f | 🔴 Fleet conformance RED 2 days (`livespec-runtime-0u8`) | not ours to fix |
+> | 6f | 🔴 Fleet conformance RED every run since 08-09 (`livespec-runtime-0u8`); **cause now measured** | not ours to fix |
 > | 6g | ⭐ The "missing reader" splits into a SCHEDULING gap and a SIGNAL-SET gap | read this |
 > | 6h | Signal 5: four drifted ledger items; none normalized, and why | not ours to touch |
 > | 7 | Housekeeping that saves real time (guard behaviour, worktree creation, timings) | read before working |
@@ -563,12 +563,44 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > session **ran the reader**: livespec's local maintainer skill `needs-attention-internal`. Its
 > Signal 2 caught a fleet-wide break on the first invocation.
 >
-> **`Fleet conformance` (a SCHEDULED workflow in `livespec-dev-tooling`) has failed twice:**
-> `31260328680` success 08-08 → `31316709750` **FAILURE** 08-09 → `31395722152` **FAILURE** 08-10.
+> **`Fleet conformance` (a SCHEDULED workflow in `livespec-dev-tooling`) has failed on every
+> scheduled run since 08-09** — `31260328680` success 08-08 → `31316709750` **FAILURE** 08-09 →
+> `31395722152` **FAILURE** 08-10 → `31499118397` **FAILURE** 08-11 (this last one measured
+> 14:4xZ; the "failed twice" this paragraph used to say expired the next morning, so it is
+> phrased as an onset now rather than a count — a duration re-stales every day, an onset does
+> not). Today's summary line is byte-identical to the filing's:
+> `error_findings: 1, blind_rows: 0, out_of_vantage_rows: 3`, same three functions, same five
+> edges — **the break is stable, not spreading.** It is also **not** an `el7g` install
+> transient: the step list shows `Install Python dev deps via uv` success and
+> `just check-fleet-conformance` FAILURE, so the check executed and convicted.
 > One error finding, `blind_rows: 0`, so this single row reddens the whole fleet:
 > **`livespec-runtime`'s `cross_repo_public_api` omits three `spec_governance.py` functions
 > livespec consumes** — `documented_defaults`, `manifest_rows`, `verify_default_block`, across five
 > named consumer files. Filed **`livespec-runtime-0u8`** (P1); no item in that tenant's 58 owned it.
+>
+> > **⭐ THE CAUSE IS NOW MEASURED, and it removes the whole diagnosis cost for whoever picks
+> > this up.** The item was filed with its causal reading flagged as *"an inference from timing
+> > plus the ledger, not a measurement"*. It is now measured, by two facts that are conclusive
+> > together:
+> >
+> > 1. **The last GREEN run and the first RED run have the SAME `head_sha`** —
+> >    `082944a393608e9f99181efd7e14ae1b1398009e` on both 08-08 (success) and 08-09 (failure).
+> >    **`livespec-dev-tooling` did not move between the pass and the fail, so nothing in that
+> >    repo caused it.** This is a central-vantage row working as designed: it re-measures the
+> >    fleet's real consumption graph, so a SIBLING's commit flips it with no local change.
+> >    **Bisecting `livespec-dev-tooling` would have found nothing** — that is the trap this
+> >    fact removes.
+> > 2. **The sibling commit is identified and the timing is tight.** `livespec` commit
+> >    **`d2ab3cbf`** *"fix: consume runtime spec governance defaults"* landed
+> >    **2026-08-09 13:43:25Z**, and the failing run started **13:47:03Z — 3 minutes 38 seconds
+> >    later.** Found via `git log -S"from livespec_runtime.spec_governance import"`, and it is
+> >    the FIRST commit introducing that import, so the attribution is to the introducing change
+> >    rather than a later edit. It touches **exactly the four consumer files the finding names**,
+> >    deleting ~507 lines and adding ~155 — precisely the "stop hand-rolling this, consume the
+> >    runtime's version" change its subject describes.
+> >
+> > So there is **one sibling commit, one missing declaration, and no second regression hiding
+> > behind the first.** Journaled on the item.
 >
 > **Do NOT bulk-fill that key if you touch it.** The check's own finding warns: *"FINDING THE
 > IMPORT IS NOT FINDING THE GUARD — a consumer's `if x is None` does not FAIL against a Result, it
