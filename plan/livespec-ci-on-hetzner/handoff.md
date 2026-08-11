@@ -31,37 +31,194 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-11T06:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-11T06:4xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
 >
-> **This thread now has TWO halves, and only one of them is parked.** The Hetzner half is
-> still blocked on an external homelab gate. The NON-Hetzner half — repairing livespec's
-> release gate — has been the actual work for the last week and is nearly finished.
+> **The previous block's named first action is DISCHARGED. All three of its steps are done and
+> verified — do not re-run them.** What follows is what that discharge found.
 >
-> ### 1. YOUR FIRST ACTION: verify PR #2149 merged, then clean up after it
+> ### 1. YOUR FIRST ACTION: re-run the census, and expect to confirm rather than to find work
 >
-> [`livespec` PR #2149](https://github.com/thewoolleyman/livespec/pull/2149)
-> (`refactor: re-empty the 201-250 LLOC soft band`, two commits, branch
-> `refactor/lloc-band-regrowth`) was **OPEN with auto-merge armed (rebase)** at session close,
-> BLOCKED only on pending checks. It should have landed on its own. Verify and finish:
+> Run the census in the **"Next-session command"** section (the `bash` block under "Open
+> descendants"). Run it to CONFIRM the picture below, not to hunt for a slice. **If it shows the
+> gate still shut, say so plainly and stop — that is the correct output.** If it shows the gate
+> open, the next slice is `livespec-3on57g`.
 >
-> 1. Confirm it MERGED — and **verify by CONTENT, not by the pull message**. A rebase-merge
->    rewrites the SHA, so `git pull` reporting *"Already up to date"* is the documented
->    stale-read shape; this thread has been caught by it twice. Check that
->    `.claude-plugin/scripts/livespec/spec_governance/_editing_spec_pr_merge.py` and
->    `_journal_mutation_events.py` exist on `origin/master`.
-> 2. Run the post-merge live exercise against MERGED master, not a worktree:
->    `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST=true mise exec -- just check-no-lloc-soft-warnings`
->    → expect **exit 0, zero findings**. Also run the TODO half
->    (`LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST=true … check-no-todo-registry`) → expect
->    **exit 0**. Both green together is the goal state.
-> 3. **Remove my worktree** `~/.worktrees/livespec/refactor/lloc-band-regrowth` and delete the
->    local branch. It is MINE and safe to remove. **Every other worktree under
->    `~/.worktrees/livespec/` belongs to another session — do not touch any of them.**
+> **The release-gate track is CLOSED — do not re-drive it, and do not re-verify v0.30.1.**
+> The proof this thread was waiting on ARRIVED IN-SESSION: see §3. The only thing left on that
+> track is to expect the band to regrow (§4), which is `livespec-dev-tooling-1w5c`'s problem and
+> not yours.
 >
-> If #2149 did NOT merge, read its checks before assuming anything; the branch was rebased onto
-> `3d6dca95` and `just check` was green 78/78 locally at push time.
+> ### 2. What the previous session's first action found — all three steps discharged
 >
-> ### 2. The release-gate repair track — what landed, and what is still open
+> | step | outcome |
+> |---|---|
+> | Confirm PR #2149 merged | **MERGED** 2026-08-11T06:28:41Z as `7f353f0a`. Verified BY CONTENT (`git ls-tree -r origin/master` shows both `_editing_spec_pr_merge.py` and `_journal_mutation_events.py`), not by a pull message. It had been blocked only on `ci-green` waiting for a runner. |
+> | Post-merge live exercise on MERGED master | **BOTH GREEN TOGETHER**, the stated goal state. `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST=true just check-no-lloc-soft-warnings` → exit 0, zero findings. `LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST=true just check-no-todo-registry` → exit 0 (five `warning`-level `failing: false` lines, which is the owned-TODO path working, not a failure). |
+> | Remove the `refactor/lloc-band-regrowth` worktree | **ALREADY DONE** by the authoring session — worktree absent from `git worktree list`, local branch absent, remote branch deleted by auto-merge. Nothing to clean. |
+>
+> The primary checkout `/data/projects/livespec` was fast-forwarded to `7f353f0a` and is clean.
+>
+> ### 3. ✅ THE RELEASE GATE IS REPAIRED AND PROVEN LIVE — v0.30.1, run 31466895349
+>
+> **The gate concluded SUCCESS on v0.30.1** (run
+> [31466895349](https://github.com/thewoolleyman/livespec/actions/runs/31466895349), created
+> 2026-08-11T06:55:21Z, completed 06:59:18Z) — **the first green release gate since v0.28.5, and
+> the end of a four-release red streak.** v0.30.1 is the first release cut from a master
+> containing #2149, so this is the live exercise of the shipped repair, not a local rehearsal.
+>
+> **AND IT WAS VERIFIED THE WAY THIS THREAD HAS BEEN BURNED FOUR TIMES FOR NOT DOING.** A run
+> conclusion is not health: `livespec-dev-tooling-zi29` is precisely a required context reporting
+> SUCCESS while skipping its own command step. So the STEP LIST was read, in all four jobs. All
+> four concluded success and **not one step in the entire run is `skipped`** — in particular
+> `just check-no-lloc-soft-warnings` and `just check-no-todo-registry` each have step conclusion
+> `success`, i.e. they actually EXECUTED. This green is earned, not vacuous.
+>
+> | job | conclusion | its `just …` step |
+> |---|---|---|
+> | `check-no-lloc-soft-warnings` | success | **executed**, success |
+> | `check-no-todo-registry` | success | **executed**, success |
+> | `check-mutation` | success | **executed**, success |
+> | `export-telemetry` | success | executed, success |
+>
+> So **both halves of the release gate are now discharged in CI, on the real artifact.** Nothing
+> on this track is waiting on the next session.
+>
+> > **Retained because the expiry is the lesson, not the fact.** This block was first written to
+> > say the repair was *"NOT YET PROVEN"* and that the proof would have to wait for an unrelated
+> > `feat:`/`fix:`, since **#2149 is a `refactor:` and `refactor:` cuts no release**. It also
+> > said there was *"no pending release-please PR (its branch was deleted when v0.30.0 was
+> > cut)"*. That last clause was **true when measured at 06:26Z and FALSE by 06:42Z** —
+> > release-please had re-opened
+> > [PR #2151](https://github.com/thewoolleyman/livespec/pull/2151) at 06:36Z with auto-merge
+> > armed; it merged 06:55:06Z and the gate ran fifteen seconds later. **A sixteen-minute-old
+> > reading of a bot-driven queue was already stale, and acting on it would have deferred to the
+> > next session a proof that was four minutes away.** State the invariant and give the reader a
+> > command; never a snapshot of a queue.
+>
+> **The failure count in older blocks is understated — the red streak ran to FOUR consecutive
+> failed-but-published releases before v0.30.1 ended it**, measured from
+> `gh run list --workflow release-tag.yml`:
+>
+> | release | run | conclusion |
+> |---|---|---|
+> | v0.28.3 / v0.28.4 / v0.28.5 | 31188507975 / 31219874372 / 31316681896 | **success** — the control that proves the gate is fail-capable, not permanently red |
+> | v0.29.0 | 31363553642 | failure |
+> | v0.29.1 | 31459690200 | failure |
+> | v0.29.2 | 31462654739 | failure |
+> | v0.30.0 | 31464506573 (2026-08-11T06:16:51Z) | failure — **twelve minutes before #2149 merged** |
+> | **v0.30.1** | **31466895349** (2026-08-11T06:55:21Z) | **✅ SUCCESS — streak broken; first release cut from a master containing #2149** |
+>
+> **v0.30.0 failed on `check-no-lloc-soft-warnings` ALONE** — 1 of its 4 jobs non-success; the
+> TODO half PASSED. So `livespec-dev-tooling-xxvw`'s ownership repair is holding in CI, and the
+> LLOC band was the **sole** remaining cause of a red release gate. The job log names exactly the
+> two files #2149 split (`editing.py` 208, `journal.py` 209) and no others.
+>
+> ### 4. THE BAND EDGE IS TWICE AS CROWDED AS PREVIOUSLY RECORDED — this bears on the ratchet
+>
+> The superseded block below records **three** files at the band edge. Measured 2026-08-11 across
+> the check's own universe (159 `.py` files, via `resolve_check_universe()` + `_count_lloc()`),
+> **EIGHT** files sit at 191-200, one of them exactly AT the 200 soft ceiling:
+>
+> ```
+> 200  .claude-plugin/scripts/livespec/doctor/static/_out_of_band_edits_writes.py
+> 199  .claude-plugin/scripts/livespec/doctor/static/out_of_band_edits.py
+> 199  .claude-plugin/scripts/livespec/doctor/static/master_direct_uncommitted_spec_edits.py
+> 195  .claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_cross_repo_helpers.py
+> 195  .claude-plugin/scripts/livespec/commands/_revise_railway_emits.py
+> 194  .claude-plugin/scripts/livespec/commands/revise.py
+> 193  .claude-plugin/scripts/livespec/spec_governance/config_edit.py
+> 191  .claude/hooks/livespec_footgun_guard.py
+> ```
+>
+> **A ratchet keyed on the COUNT of band members would start at zero with eight files one
+> ordinary commit from making it one.** That is a hair trigger, not headroom. It is journaled on
+> `livespec-dev-tooling-1w5c` as sizing evidence. **The ratchet is still NOT THIS THREAD'S — do
+> not install it; its design questions are genuinely open.**
+>
+> Expect the band to regrow again. The first cycle ran four days (emptied 2026-08-07, two files
+> back by 2026-08-11, from two ordinary feature commits). The second cycle started
+> 2026-08-11T06:28Z and **nothing in the per-commit tier changed between them**, so there is no
+> reason to expect it to run longer.
+>
+> ### 5. The Hetzner half — TWELFTH reading, still shut, but the critical path genuinely moved
+>
+> **All five gate values are byte-identical to the eighth through eleventh readings** —
+> `hl-wkyeqg` `pending-approval` (2026-08-04T04:07:29Z), `hl-euzuhb` `pending-approval`
+> (2026-08-03T01:14:47Z), `hl-xuu5j3` `backlog` (2026-08-03T10:06:45Z), `hl-6uldtn` `backlog`
+> (2026-08-04T10:12:12Z), `hl-75f` `backlog`/P1 (2026-08-04T20:58:11Z). **All three gate
+> conditions remain unmet.** Forge unchanged: `actions/runners` `total_count=0` (a NINTH zero),
+> `CI_RUNNER_LABELS` `["ubuntu-latest"]` at 2026-07-18T11:34:31Z, fork approval
+> `all_external_contributors`.
+>
+> **But the discrimination came out the OTHER way this time, for the first time.** Eleven prior
+> readings answered "did `homelab` move?" with *busy neighbour*. `origin/main` went `7a6a7277` →
+> `e8ed045`, 154 commits, and the `hetzner`-path commits are **not prose** — they carry
+> `hl-r6hihy.1/.2/.5/.6` as delivered work (control: 82 `hetzner` paths exist on `main`). The
+> Thread 17 subtree is **six of seven closed**, with `hl-r6hihy.7` `open` and updated
+> **2026-08-11T06:29:47Z — during the census itself**.
+>
+> **This does NOT open the gate**, and the reason is worth carrying: `hl-75f` — the ESP
+> declaration fix all of Thread 17 is building toward — is **still `backlog`, still unstarted
+> after seven days at P1**, and `hl-xuu5j3` (gate condition 3, the furthest from met) has not
+> moved at all. Consume this; never act on it. Sizing consequence unchanged: **expect a
+> destructive repartition between here and a serving runner.**
+>
+> > **A TRAP THIS CENSUS WALKED INTO — carry it.** Reading `hl-r6hihy` ALONE shows
+> > `updated_at` 2026-08-06T10:48:44Z and looks five days static; its children moved on four
+> > separate days. **A parent's `updated_at` is not a subtree activity measure.** Enumerate the
+> > subtree (`bd list --all -n 0`, then filter on the id prefix) before concluding a lane is idle.
+> > This is the same shape as every other entry in `.ai/verifying-against-the-right-source.md`:
+> > a green-looking signal read off the wrong source.
+>
+> ### 6. Banked completion evidence — FULLY RE-MEASURED 2026-08-11, all of it holds
+>
+> Every bullet is a live observation of external state that expires, so each carries a
+> fail-capable control. Full figures are journaled on `livespec-h22nve`; the controls are the
+> point. Bullet 4 (fork approval, protection contexts exactly `["ci-green"]`, `enforce_admins`,
+> triggers exactly `pull_request` + `push: [master]`) holds. Bullet 7 (factory host) holds, with
+> **one newly-measured strengthening**: `gate-runner-supervisor.service` reports
+> **`ConditionResult=no`**, so the second gate is not merely present but *actively refusing* —
+> previous readings only established the runfile was absent. `system-gate-runner.slice` is
+> `TasksCurrent=0`, an empty cgroup. `livespec-dev-tooling-uw3h`'s three-copy lockstep still
+> holds (`ci.yml` lines 67, 138, 276).
+>
+> **The bullet-7 listener scan needs its corrected method every time**: snapshot the process
+> table to a file FIRST, then grep the file, so the grep's own argv is not in the snapshot. A
+> bare `pgrep -f` self-matches and reports a listener that is only itself. Controls used: 87
+> entries in `/etc/systemd/system`, 63 in `/run`, 1146 processes in the snapshot, and a positive
+> control (`systemd` matches 16) proving the zero is a real absence rather than a broken filter.
+>
+> ### 7. Housekeeping facts for the next session
+>
+> - `just check` in livespec is **~3 minutes** (78 targets), not the ~34 min `livespec-dev-tooling`
+>   takes. Budget accordingly.
+> - `master` moves under you often — it moved twice during a single 30-minute task on 2026-08-11.
+>   Re-fetch and rebase before pushing rather than trusting an earlier reading.
+> - Create worktrees with **`just worktree-create <branch> master`**, never raw `git worktree add`
+>   — a raw worktree has no discipline pack and its first push is refused after a full `just check`.
+> - The `github_rate_limit_guard` (`livespec-driver-claude-mu5`) denied a `gh run view` this
+>   session **purely for containing `select(` in its `--jq`** — no loop, one GitHub call. Write the
+>   JSON to a file and post-process with `python3` in a separate call. Use `-F`/`--body-file`/
+>   `--append-notes "$(cat <file>)"` for anything carrying prose.
+> - `bd` auto-backup warns `command denied to user '<tenant>'@'%'` on every write. That is
+>   **correct-by-design**, not a fault — `DOLT_BACKUP` needs SUPER, confined to a dedicated user.
+>
+> ### 8. Disciplines earned earlier this week — still apply
+>
+> - **"Every moved function is byte-identical" does NOT prove a refactor was complete.** Also diff
+>   the set of TOP-LEVEL NAMES before vs after, across all resulting files. An extraction helper
+>   cutting from a `def` to the next one runs to END OF FILE for the last function in a module.
+> - **A behaviour-preserving refactor of product `.py` is a FIRST-CLASS supported shape** —
+>   `red_green_replay` branch 5 routes it to `TDD-Suite-Green-*`. Subject is `refactor:`. No faked
+>   Red, no forged trailer. But `check-commit-pairs-source-and-test` still requires a `tests/**`
+>   touch; discharge it with a REAL invariant test, proven fail-capable.
+>
+> ---
+>
+> ## ⬇ SUPERSEDED — the 2026-08-11T06:2xZ session-close block. Its named first action is
+> ## DISCHARGED (see §2 above). Retained for its release-gate ownership table.
+>
+> ### 2a. The release-gate repair track — what landed, and what is still open
 >
 > livespec's release gate fires on TAG PUSH, after the release object exists, so a failure
 > cannot retract a release siblings then consume via the pin fan-out. It had two failing
@@ -81,52 +238,17 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > release-only, so a normal commit lands → a warning nobody reads → a later release fails
 > *after* its tag exists. Expect this to recur until the ratchet lands.
 >
-> **The band's edge is CROWDED, which matters for sizing the ratchet:** measured
+> ~~**The band's edge is CROWDED, which matters for sizing the ratchet:** measured
 > 2026-08-11T05:4xZ, `_out_of_band_edits_writes.py` sits at EXACTLY 200 and two more files
 > (`out_of_band_edits.py`, `master_direct_uncommitted_spec_edits.py`) at 199. Three files are
-> within one or two LLOC of re-entry.
+> within one or two LLOC of re-entry.~~ **SUPERSEDED — the count is EIGHT, not three. The
+> three named here are real and still at those values; the reading simply stopped at the top
+> three instead of enumerating the check's universe. See §4 above.**
 >
-> ### 3. The Hetzner half — STALE, and that is the point
->
-> **Every gate figure below this block was measured 2026-08-06 and is now FIVE DAYS OLD. Do
-> not quote any of it as current.** The eleventh reading found the gate shut with nothing
-> moved; whether that still holds is unmeasured. Re-run the census in the
-> "Next-session command" section before drawing any conclusion, and remember the eighth
-> census's rule: `homelab` repository movement counts as gate motion only when it moves the
-> gate's OWN items.
->
-> One live lead from the eleventh reading worth re-checking first: `hl-r6hihy` (Thread 17,
-> hetzner-prod storage repair) measured **`active`** and had begun editing
-> `nix/hosts/hetzner-prod/storage.nix` — the first genuine motion on the gate's critical path
-> in eleven readings. It did NOT open the gate, and all three gate conditions were still unmet.
->
-> ### 4. Two disciplines this week's work earned — apply them, they both caught real defects
->
-> - **"Every moved function is byte-identical" does NOT prove a refactor was complete.** It
->   says nothing about module-level code that travelled along or vanished. My extraction
->   helper cut from a `def` to the next one, which for the LAST function in a module runs to
->   END OF FILE — it both DROPPED `journal.py`'s trailing `_EVENT_VALIDATORS` dispatch table
->   and COPIED it into the child. Caught by a runtime `NameError` and by ruff, not by the
->   byte-identity check I was relying on. **Also diff the set of TOP-LEVEL NAMES before vs
->   after, across all resulting files.**
-> - **A behaviour-preserving refactor of product `.py` is a FIRST-CLASS supported shape** —
->   `red_green_replay` branch 5 routes it to `TDD-Suite-Green-*`, and the pre-push range check
->   accepts that shape as an alternative to the Red/Green pair. No faked Red, no forged
->   trailer, no carve-out. Subject is `refactor:`. But note `check-commit-pairs-source-and-test`
->   still requires every source-touching commit to ALSO touch `tests/**`; discharge that with a
->   REAL leaf-boundary invariant test, proven fail-capable, not a token touch.
->
-> ### 5. Housekeeping facts for the next session
->
-> - **The primary checkout `/data/projects/livespec` carries another thread's dirty tracked
->   file** (`plan/spec-side-autonomy/handoff.md`). Leave it alone — do not clean, stash, or
->   check out over it. Work in a worktree.
-> - `just check` in livespec is **~3 minutes** (78 targets), not the ~34 min that
->   `livespec-dev-tooling` takes. Budget accordingly; five files fit comfortably in one session.
-> - `master` moves under you often — it moved twice during a single 30-minute task on
->   2026-08-11. Re-fetch and rebase before pushing rather than trusting an earlier reading.
-> - The `github_rate_limit_guard` (`livespec-driver-claude-mu5`) still denies on PROSE and on a
->   second `gh` call in the same Bash invocation. Split the calls; use `-F`/`--body-file`.
+> **The remaining sections of this block — its Hetzner-half staleness notice, its two earned
+> disciplines, and its housekeeping list — are fully carried forward into §5, §8 and §7 of the
+> current block above, re-measured where they were figures. They are removed here rather than
+> left to be read twice at different values.**
 >
 > ---
 >
@@ -787,6 +909,9 @@ creators).
 | `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
 | `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
 | `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0, latest v0.28.2): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
+| `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
+| `livespec-915y` | `livespec` | P2 (`backlog`) — the owned-heading-coverage-TODO cross-repo epic; owns the TODO half of the release gate and its by-construction mechanism. Its child `livespec-915y.1` (the original soft-band emptying) **CLOSED 2026-08-07**. The TODO half is now measured PASSING in CI on the v0.30.0 gate run, so what remains here is the cross-repo half, not livespec's. |
+| `livespec-dev-tooling-i3ub` | `livespec-dev-tooling` | **OPEN, BLOCKED** — per-commit tightening of BOTH release-gate halves, behind fleet-backfill epic `livespec-dev-tooling-7j1g` (304 unowned entries, 9 repos). This is the item that would stop the regrowth loop at its source: today the per-commit tier only WARNS while the tier that FAILS is release-only. |
 
 > **The three rows above were added 2026-08-06 to close a gap that cost a supervisor real
 > work, and the gap is the lesson.** All three were FILED BY THIS THREAD that morning and
