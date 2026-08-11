@@ -31,7 +31,107 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-06T23:3xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — 2026-08-11T06:2xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+>
+> **This thread now has TWO halves, and only one of them is parked.** The Hetzner half is
+> still blocked on an external homelab gate. The NON-Hetzner half — repairing livespec's
+> release gate — has been the actual work for the last week and is nearly finished.
+>
+> ### 1. YOUR FIRST ACTION: verify PR #2149 merged, then clean up after it
+>
+> [`livespec` PR #2149](https://github.com/thewoolleyman/livespec/pull/2149)
+> (`refactor: re-empty the 201-250 LLOC soft band`, two commits, branch
+> `refactor/lloc-band-regrowth`) was **OPEN with auto-merge armed (rebase)** at session close,
+> BLOCKED only on pending checks. It should have landed on its own. Verify and finish:
+>
+> 1. Confirm it MERGED — and **verify by CONTENT, not by the pull message**. A rebase-merge
+>    rewrites the SHA, so `git pull` reporting *"Already up to date"* is the documented
+>    stale-read shape; this thread has been caught by it twice. Check that
+>    `.claude-plugin/scripts/livespec/spec_governance/_editing_spec_pr_merge.py` and
+>    `_journal_mutation_events.py` exist on `origin/master`.
+> 2. Run the post-merge live exercise against MERGED master, not a worktree:
+>    `LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST=true mise exec -- just check-no-lloc-soft-warnings`
+>    → expect **exit 0, zero findings**. Also run the TODO half
+>    (`LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST=true … check-no-todo-registry`) → expect
+>    **exit 0**. Both green together is the goal state.
+> 3. **Remove my worktree** `~/.worktrees/livespec/refactor/lloc-band-regrowth` and delete the
+>    local branch. It is MINE and safe to remove. **Every other worktree under
+>    `~/.worktrees/livespec/` belongs to another session — do not touch any of them.**
+>
+> If #2149 did NOT merge, read its checks before assuming anything; the branch was rebased onto
+> `3d6dca95` and `just check` was green 78/78 locally at push time.
+>
+> ### 2. The release-gate repair track — what landed, and what is still open
+>
+> livespec's release gate fires on TAG PUSH, after the release object exists, so a failure
+> cannot retract a release siblings then consume via the pin fan-out. It had two failing
+> halves. **Both are now repaired in tooling; only adoption/regrowth remains.**
+>
+> | piece | state |
+> |---|---|
+> | TODO half (`check-no-todo-registry` ownership) | **DONE** — `livespec-dev-tooling-xxvw`, merged `dd5112e`, reached livespec via pin v1.20.3+. Verified green THROUGH THE PIN. |
+> | LLOC half (`check-no-lloc-soft-warnings` ownership) | **DONE** — `livespec-dev-tooling-7ins`, merged `6e0efb5`. |
+> | Emptying livespec's soft band | **DONE** `livespec-915y.1` (PR #2117, five files) — **then it REGREW in four days** and PR #2149 re-empties it. |
+> | The ratchet | **OPEN, NOT MINE** — `livespec-dev-tooling-1w5c`. Do not install it; its design questions are genuinely open. |
+> | Per-commit tightening (both halves) | **OPEN, BLOCKED** — `livespec-dev-tooling-i3ub` behind fleet-backfill epic `livespec-dev-tooling-7j1g` (304 unowned entries, 9 repos). |
+>
+> **The regrowth is the live finding, and it is structural rather than anyone's negligence.**
+> The band was emptied 2026-08-07 and was back to two files by 2026-08-11 — from two ordinary
+> feature commits. The mechanism: the per-commit LLOC tier only WARNS, the tier that FAILS is
+> release-only, so a normal commit lands → a warning nobody reads → a later release fails
+> *after* its tag exists. Expect this to recur until the ratchet lands.
+>
+> **The band's edge is CROWDED, which matters for sizing the ratchet:** measured
+> 2026-08-11T05:4xZ, `_out_of_band_edits_writes.py` sits at EXACTLY 200 and two more files
+> (`out_of_band_edits.py`, `master_direct_uncommitted_spec_edits.py`) at 199. Three files are
+> within one or two LLOC of re-entry.
+>
+> ### 3. The Hetzner half — STALE, and that is the point
+>
+> **Every gate figure below this block was measured 2026-08-06 and is now FIVE DAYS OLD. Do
+> not quote any of it as current.** The eleventh reading found the gate shut with nothing
+> moved; whether that still holds is unmeasured. Re-run the census in the
+> "Next-session command" section before drawing any conclusion, and remember the eighth
+> census's rule: `homelab` repository movement counts as gate motion only when it moves the
+> gate's OWN items.
+>
+> One live lead from the eleventh reading worth re-checking first: `hl-r6hihy` (Thread 17,
+> hetzner-prod storage repair) measured **`active`** and had begun editing
+> `nix/hosts/hetzner-prod/storage.nix` — the first genuine motion on the gate's critical path
+> in eleven readings. It did NOT open the gate, and all three gate conditions were still unmet.
+>
+> ### 4. Two disciplines this week's work earned — apply them, they both caught real defects
+>
+> - **"Every moved function is byte-identical" does NOT prove a refactor was complete.** It
+>   says nothing about module-level code that travelled along or vanished. My extraction
+>   helper cut from a `def` to the next one, which for the LAST function in a module runs to
+>   END OF FILE — it both DROPPED `journal.py`'s trailing `_EVENT_VALIDATORS` dispatch table
+>   and COPIED it into the child. Caught by a runtime `NameError` and by ruff, not by the
+>   byte-identity check I was relying on. **Also diff the set of TOP-LEVEL NAMES before vs
+>   after, across all resulting files.**
+> - **A behaviour-preserving refactor of product `.py` is a FIRST-CLASS supported shape** —
+>   `red_green_replay` branch 5 routes it to `TDD-Suite-Green-*`, and the pre-push range check
+>   accepts that shape as an alternative to the Red/Green pair. No faked Red, no forged
+>   trailer, no carve-out. Subject is `refactor:`. But note `check-commit-pairs-source-and-test`
+>   still requires every source-touching commit to ALSO touch `tests/**`; discharge that with a
+>   REAL leaf-boundary invariant test, proven fail-capable, not a token touch.
+>
+> ### 5. Housekeeping facts for the next session
+>
+> - **The primary checkout `/data/projects/livespec` carries another thread's dirty tracked
+>   file** (`plan/spec-side-autonomy/handoff.md`). Leave it alone — do not clean, stash, or
+>   check out over it. Work in a worktree.
+> - `just check` in livespec is **~3 minutes** (78 targets), not the ~34 min that
+>   `livespec-dev-tooling` takes. Budget accordingly; five files fit comfortably in one session.
+> - `master` moves under you often — it moved twice during a single 30-minute task on
+>   2026-08-11. Re-fetch and rebase before pushing rather than trusting an earlier reading.
+> - The `github_rate_limit_guard` (`livespec-driver-claude-mu5`) still denies on PROSE and on a
+>   second `gh` call in the same Bash invocation. Split the calls; use `-F`/`--body-file`.
+>
+> ---
+>
+> ## ⬇ SUPERSEDED — the 2026-08-06 session-close block. Retained for its census method and its
+> ## gate history; every FIGURE in it is five days stale.
 >
 > **The Hetzner half is parked at an external gate and there is nothing here to drive.**
 > That is the correct, expected state — not a stall. **Eleven** consecutive readings across
