@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.30.1](https://github.com/thewoolleyman/livespec/compare/v0.30.0...v0.30.1) (2026-08-11)
+
+
+### Refactoring
+
+* **spec-governance:** extract spec-mutation event validators ([7f353f0](https://github.com/thewoolleyman/livespec/commit/7f353f0aee872a2c936d53e229cfb17e1252728f))
+* **spec-governance:** extract spec-PR-merge policy edits ([cbe1944](https://github.com/thewoolleyman/livespec/commit/cbe194402a620ba8e3c7ee9d0372afa82c944ac1))
+
 ## [0.30.0](https://github.com/thewoolleyman/livespec/compare/v0.29.2...v0.30.0) (2026-08-11)
 
 
