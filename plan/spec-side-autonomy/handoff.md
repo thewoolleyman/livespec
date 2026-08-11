@@ -35,14 +35,18 @@ before doing anything, especially before touching any worktree.
   generic rejection message (enumeration removed, not extended, so it
   can't rot again), and the four pre-existing event types are
   unaffected.
-- **`restore-spec-pr-merge-durable-evidence`** proposal — PR #2139,
-  merge `43df3761a6f1f014d3b95aefdd240b2ca52d8996`. **Filed, NOT
-  ratified.** Restores one sentence to the `spec_pr_merge` journal
-  clause in `contracts.md`: the GitHub PR timeline MAY be the durable
-  final-evidence leg, so the journal is a decision GATE (append before
-  mutation, append-failure blocks registration) rather than a durable
-  archive. This resolves why the journal living under ephemeral
-  `tmp/` in a CI runner is correct-by-design, not a defect. Sits
+- **`spec-pr-merge-durable-evidence-locus`** proposal — first filed as
+  `restore-spec-pr-merge-durable-evidence` (PR #2139), then renamed and
+  reframed. **Filed, NOT ratified.** ADDS one sentence to the
+  `spec_pr_merge` journal clause in `contracts.md`: the GitHub PR
+  timeline MAY be the durable final-evidence leg, so the journal is a
+  decision GATE (append before mutation, append-failure blocks
+  registration) rather than that event's durable archive. This settles
+  why the journal living under ephemeral `tmp/` in a CI runner is
+  intentional, not a defect. **It is a NEW clause, not a restoration** —
+  the first filing claimed to restore text v200 had dropped, which was
+  FALSE: that language came from a v190 proposal that was REJECTED and
+  ordered refiled, and v200 was the refile. Sits
   pending in `SPECIFICATION/proposed_changes/`; needs an independent
   adversarial review + `/livespec:revise` before it ratifies. Do not
   ratify it yourself — that is a separately-spawned-reviewer step.
