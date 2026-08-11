@@ -91,6 +91,35 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >
 > **`livespec-dev-tooling-y6e2`'s review date of 2026-08-12 was NOT yet due** at this reading.
 > If you are reading this on or after that date, it is due — surface it, do not drive it.
+>
+> ### ⭐ ONE RELEASE WAVE ON 2026-08-09 SPAWNED BOTH OF THE FLEET'S CURRENTLY-OPEN FINDINGS
+>
+> §6c/§6d (the lingering bump PRs arming `xdyh`) and §6f (the fleet-conformance break) were filed
+> as unrelated defects in different repos. **They share a root event, and it is one forty-minute
+> window:**
+>
+> | 2026-08-09 | event |
+> |---|---|
+> | 13:06:17Z | `livespec-runtime` cuts **v0.18.0** — the **FIRST tag containing** `spec_governance.py` (added by `e60b0a9`; confirmed with `git tag --contains`) |
+> | 13:09:44Z | the v0.18.0 fan-out opens bump PRs in two consumer repos, 3.5 minutes later |
+> | 13:22:xx | the second naming scheme opens its duplicate pair |
+> | 13:43:25Z | `livespec`'s `d2ab3cbf` consumes the newly-released functions — `cross_repo_public_api` **not** extended |
+> | 13:47:03Z | the scheduled `Fleet conformance` run goes **RED** on exactly that gap |
+>
+> **Why this is worth more than "someone forgot a declaration": it names the recurring moment.** A
+> release that RELOCATES functions into the runtime brings three cross-repo invariants due at once,
+> in three different repositories:
+>
+> 1. the CONSUMING repo lands its import — **done**, 37 minutes later;
+> 2. the PRODUCING repo owes a declaration — **not done** (`livespec-runtime-0u8`);
+> 3. every consumer owes a pin bump — **not done in two repos**, whose bump PRs are still open
+>    **~50 hours** later (verified: `livespec-runtime` has cut nothing past v0.18.0, so `xdyh`'s
+>    only recovery path has been unavailable that whole time).
+>
+> **Two of the three went unfinished from the same wave, and nothing surfaced either** — both were
+> found days later by ad-hoc sweeps. Obligation 1 is the only one whose omission breaks a build
+> immediately, which is exactly why it is the only one that reliably gets done. Journaled on both
+> `livespec-runtime-0u8` and `livespec-dev-tooling-xdyh`; **neither is this thread's to drive.**
 
 > ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–12:0xZ. Read this block SECOND,
 > ## after the 🟢 block above it (which is newer and shorter); EVERYTHING BELOW IT IS OLDER.
@@ -785,6 +814,33 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   `--append-notes "$(cat <file>)"` for anything carrying prose.
 > - `bd` auto-backup warns `command denied to user '<tenant>'@'%'` on every write. That is
 >   **correct-by-design**, not a fault — `DOLT_BACKUP` needs SUPER, confined to a dedicated user.
+> - **⭐ TO SWEEP THE FLEET WITHOUT TRIPPING THE GUARD, USE ONE `gh api graphql` CALL WITH NINE
+>   ALIASES — do not loop `gh` over repos.** `needs-attention-internal`'s Signals 1 and 3 are
+>   written as a per-repo `gh run list` / `gh pr list`, i.e. a looped GitHub read, and
+>   `github_rate_limit_guard` denies exactly that — **including via its own prescribed
+>   `gh api --cache`**, which it also refuses (a fresh `mu5` instance, journaled there). Rather
+>   than shape a command to slip past the matcher — that is evasion, however defective the guard —
+>   ask GitHub once:
+>
+>   ```graphql
+>   query { r0: repository(owner:"thewoolleyman", name:"livespec") {
+>             nameWithOwner
+>             defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } } }
+>           r1: repository(owner:"thewoolleyman", name:"livespec-dev-tooling") { … }  # …r8
+>   }
+>   ```
+>
+>   One call, no loop, **fewer** API reads than the prescribed form — which is the guard's own
+>   stated concern — and it is not denied. The PR variant swaps in
+>   `pullRequests(states: OPEN, first: 50) { nodes { number headRefName createdAt } }`.
+>
+>   **Two caveats, both load-bearing.** `statusCheckRollup` is on the HEAD COMMIT, so (a) it is
+>   BROADER than Signal 1 — it also catches non-`CI` workflows red on that commit, a gap the skill
+>   records — but (b) it cannot see a **scheduled** workflow's failure at all, because that failure
+>   attaches to no commit. That is precisely why all nine repos read `SUCCESS` here while
+>   `Fleet conformance` is red, and why a HEAD-only sweep also misses a red run on an EARLIER
+>   commit (§6b's self-concealing shape). Treat non-`SUCCESS` as "drill into this repo", never as
+>   "the CI workflow is red", and never read a green rollup as "the fleet is healthy".
 >
 > ### 8. Disciplines earned earlier this week — still apply
 >
