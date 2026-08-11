@@ -23,10 +23,10 @@ The test to apply before trusting any passing signal:
 
 If the answer is no, the signal is not evidence, however green it looks.
 
-## Twenty-eight instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
+## Twenty-nine instances — 1-8 observed 2026-07-20, 9-12 on 2026-07-21, 13 on
 ## 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23 on 2026-08-05,
-## 24-28 on 2026-08-06; instances 1-16 span five repos and four independent
-## operators
+## 24-28 on 2026-08-06, 29 on 2026-08-11; instances 1-16 span five repos and
+## four independent operators
 
 Two gaps in that heading are deliberate rather than oversights. **Instances 17
 and 18 carry no recorded observation date**, so none is assigned to them here — a
@@ -293,6 +293,26 @@ actively moving — releases cutting, fan-outs dispatching, other sessions
 landing — treat any state assertion older than the current turn as a hypothesis.
 Prefer writing the INVARIANT ("gap zero") over the reading ("both at v0.20.0"),
 because the invariant survives the next release and the reading does not.
+
+**A third case, added 2026-08-11, because it sharpens WHICH readings expire
+fastest — and it is deliberately not a new instance number, since the class is
+already this one.** A session recorded that a repaired release gate could not
+prove itself for some time, evidencing this with *"there is no pending
+release-please PR — its branch was deleted when the last release was cut."* The
+deletion was real and correctly observed at `06:26Z`. By `06:36Z` release-please
+had re-opened the PR; it merged at `06:55:06Z` and the gate ran fifteen seconds
+later, green. Acting on the sixteen-minute-old reading would have deferred to a
+later session a proof that was four minutes away.
+
+**What makes this one worse than the two above is that the reading was of an
+ABSENCE.** "Both at v0.20.0" announces itself as a snapshot; "the branch was
+deleted" reads as a settled historical fact, because deletion feels terminal. It
+is not — anything a bot creates on a schedule or a trigger, a bot will create
+again. So the expiry rule applies with FULL force to absences, and the shorter
+half-life belongs to whatever a bot owns: a release-please PR, an auto-merge
+queue, a bump branch, a scheduled sweep's artifacts. **Never evidence a claim
+about the future with the current absence of a bot-managed artifact.** Evidence
+it with the condition that would produce the artifact.
 
 ### 13. An UNTRACKED file is invisible to a git-derived check universe
 
@@ -896,9 +916,55 @@ re-derive the path before reading the content.
 (Recorded from a supervisor's own near-miss on this thread, self-reported and then
 verified independently against both files before being written up here.)
 
+### 29. A parent record's `updated_at` does not aggregate its children
+
+Every other entry here concerns reading the wrong SOURCE. This one concerns
+reading the right source's wrong FIELD — a timestamp that is real, current, and
+accurate, and still answers a different question than the one being asked.
+
+A thread had spent eleven consecutive readings establishing that an external gate
+had not moved, using each blocking item's `updated_at` as the motion test. On the
+twelfth reading the gate's critical-path item measured:
+
+    hl-r6hihy   active   P2   updated_at 2026-08-06T10:48:44Z
+
+Five days stale, on a day when everything else in the census was also unmoved. The
+natural reading — and the one the thread's own eleven-reading method invited — is
+*that lane is idle too*.
+
+It was the opposite. Enumerating the subtree found **six of seven children closed
+across four separate days**, and the seventh (`hl-r6hihy.7`) carrying
+`updated_at 2026-08-11T06:29:47Z` — updated roughly ninety seconds before the
+census read it. The lane was not merely active; it was the single busiest thing in
+the repository at that moment.
+
+**The mechanism is that beads (like most trackers) stamps `updated_at` on writes to
+THAT record.** Closing a child writes the child. Nothing touches the parent, so a
+parent can sit untouched for days while its subtree is delivered underneath it. The
+field is not lying — it faithfully reports when the parent row last changed. It
+simply is not a subtree activity measure, and nothing in its name says so.
+
+**Why it survives a careful reader:** the value is fresh-looking data from the
+authoritative store, it agrees with every other reading in the census, and the
+census method itself had been validated over eleven prior runs. Corroboration from
+a method that shares the defect is not corroboration.
+
+**Counter-move:** when asking "has this lane moved?", enumerate the SUBTREE, never
+the parent — `bd list --all -n 0`, then filter on the id prefix (`<id>` and
+`<id>.*`), and take the MAXIMUM `updated_at` across the set. The generalisation
+beyond ledgers: before using any timestamp as an activity signal, ask *what write
+sets this field?* If the answer is "writes to this row" but the question is about a
+tree, a directory, an epic, or any other container, the field cannot answer it. The
+same trap sits in `git log -1 <dir>` on a path whose children moved in commits that
+did not touch the directory entry, and in a container image's created-at versus its
+layers'.
+
+(Observed 2026-08-11 by the `livespec-ci-on-hetzner` plan, on the twelfth reading of
+a gate whose eleven prior readings had all been correct.)
+
 ## Why this file exists in livespec CORE
 
-The twenty-eight instances span EIGHT repositories — `livespec`,
+The twenty-nine instances span EIGHT repositories — `livespec`,
 `livespec-dev-tooling`, `livespec-runtime`,
 `livespec-orchestrator-beads-fabro`,
 `livespec-console-beads-fabro`, `livespec-overseer`, `openbrain` and
