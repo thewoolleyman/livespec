@@ -31,7 +31,9 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — 2026-08-11T06:4xZ. READ THIS BLOCK FIRST; EVERYTHING BELOW IT IS OLDER.
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–08:3xZ. READ THIS BLOCK FIRST;
+> ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
+> ## old each reading is — instance 27's own counter-move applied to this file.)
 >
 > **The previous block's named first action is DISCHARGED. All three of its steps are done and
 > verified — do not re-run them.** What follows is what that discharge found.
@@ -107,6 +109,13 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > | v0.29.2 | 31462654739 | failure |
 > | v0.30.0 | 31464506573 (2026-08-11T06:16:51Z) | failure — **twelve minutes before #2149 merged** |
 > | **v0.30.1** | **31466895349** (2026-08-11T06:55:21Z) | **✅ SUCCESS — streak broken; first release cut from a master containing #2149** |
+> | **v0.30.2** | **31470805352** (2026-08-11T07:53:05Z) | **✅ SUCCESS — second consecutive green, verified the same way (zero `skipped` steps, all three `just …` steps executed)** |
+>
+> **Two independent greens, not one, and the difference matters.** A single green gate could be a
+> fluke of timing — a band that happened to be empty at one tag. Two consecutive releases green,
+> an hour apart with ordinary commits in between, establishes the repair. **But it establishes
+> only that the band was EMPTY AT TWO TAGS; it says nothing about whether it STAYS empty**, and
+> an hour of green is not evidence against a four-day recurrence interval. See §4.
 >
 > **v0.30.0 failed on `check-no-lloc-soft-warnings` ALONE** — 1 of its 4 jobs non-success; the
 > TODO half PASSED. So `livespec-dev-tooling-xxvw`'s ownership repair is holding in CI, and the
@@ -187,6 +196,42 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > bare `pgrep -f` self-matches and reports a listener that is only itself. Controls used: 87
 > entries in `/etc/systemd/system`, 63 in `/run`, 1146 processes in the snapshot, and a positive
 > control (`systemd` matches 16) proving the zero is a real absence rather than a broken filter.
+>
+> ### 6a. ✅ THE "OPEN DESCENDANTS" TABLE WAS AUDITED WHOLESALE — it is accurate; do not re-audit
+>
+> This file demands that *"a handoff sentence asserting that something is CLOSED is a claim about
+> a ledger at a past instant — verify every closure claim before relying on it"*, and records that
+> **two such claims in this file had already expired.** So the whole table was re-measured against
+> the live ledger on 2026-08-11, across all five tenants. **Result: it is clean — no claim in it
+> has expired.**
+>
+> - **All four closure claims VERIFY**, at the exact `closed_at` stamps recorded: `livespec-opwqmy`
+>   (2026-08-06T04:15:50Z), `livespec-f3tf` (2026-08-06T03:42:18Z), plus `livespec-uyfggr` and
+>   `livespec-hhx4gl` cited elsewhere in this file.
+> - **All seventeen open items verify OPEN** (`closed_at` null), across `livespec-dev-tooling`
+>   (`idlx`, `zi29`, `y6e2`, `7ix8`, `z68f`, `uw3h`, `a9xp`, `olwk`, `xdyh`, `i3ub`, `7j1g`),
+>   `livespec` (`cpqi`, `39h1`, `915y`), `livespec-driver-claude` (`mu5`),
+>   `livespec-orchestrator-beads-fabro` (`bd-ib-te4h`), and `livespec-console-beads-fabro` (`3ej`).
+>
+> **This is a point-in-time result like every other, so it expires too** — but it means the next
+> session can spend its budget elsewhere rather than re-deriving a table that was just checked.
+>
+> **⏰ ONE DATED COMMITMENT COMES DUE IMMEDIATELY: `livespec-dev-tooling-y6e2` carries a
+> review date of 2026-08-12**, which is the day after this block was written. It measures `ready`,
+> P1, `updated_at` 2026-08-05T09:04:13Z. It is in the `livespec-dev-tooling` tenant and is not
+> this thread's to drive, but nothing else in this file surfaces the date, and a review date that
+> passes unread is how an item becomes invisible.
+>
+> **AND ONE FIGURE IN THE TABLE HAD EXPIRED — not a closure claim, a magnitude.** The
+> `livespec-console-beads-fabro-3ej` row says *"`livespec` pinned v0.26.0, latest v0.28.2"*. The
+> pin is still `v0.26.0` (read from `.livespec.jsonc` `compat.pinned` on that repo's
+> `origin/master`) but latest is now **v0.30.2**, so the repo is **15 releases behind**, not 6
+> (control: livespec carries 101 release tags, so a 15-element slice is a real subset). Three of
+> those 15 were cut on 2026-08-11 alone. **The cost is not static, it accumulates without bound**,
+> because a normal stale pin is self-limiting — the next successful bump collapses the whole gap
+> in one step — and here no bump can ever succeed, so there is no such step. Journaled on the
+> item. This sharpens the filing; it does NOT change the remedy, which stays entangled with
+> `livespec-cpqi`'s undecided set question. **Do not "just add the canonical slugs."**
 >
 > ### 7. Housekeeping facts for the next session
 >
@@ -908,7 +953,7 @@ creators).
 | `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
 | `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
 | `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
-| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0, latest v0.28.2): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
+| `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
 | `livespec-915y` | `livespec` | P2 (`backlog`) — the owned-heading-coverage-TODO cross-repo epic; owns the TODO half of the release gate and its by-construction mechanism. Its child `livespec-915y.1` (the original soft-band emptying) **CLOSED 2026-08-07**. The TODO half is now measured PASSING in CI on the v0.30.0 gate run, so what remains here is the cross-repo half, not livespec's. |
 | `livespec-dev-tooling-i3ub` | `livespec-dev-tooling` | **OPEN, BLOCKED** — per-commit tightening of BOTH release-gate halves, behind fleet-backfill epic `livespec-dev-tooling-7j1g` (304 unowned entries, 9 repos). This is the item that would stop the regrowth loop at its source: today the per-commit tier only WARNS while the tier that FAILS is release-only. |
