@@ -1,8 +1,9 @@
 # spec-side-autonomy — handoff
 
-Session wind-down as of 2026-08-11T07:2xZ, mid-task. There is real,
-tested, uncommitted work sitting in a worktree — read this whole file
-before doing anything, especially before touching any worktree.
+Updated 2026-08-11 after `livespec-jvdvx4.6` landed and BOTH live-exercise
+legs were observed. There is no uncommitted work in any worktree belonging
+to this thread; the worktree the previous handoff described has been
+committed, merged, and removed.
 
 **Ledger anchor:** epic `livespec-jvdvx4`
 
@@ -51,126 +52,106 @@ before doing anything, especially before touching any worktree.
   adversarial review + `/livespec:revise` before it ratifies. Do not
   ratify it yourself — that is a separately-spawned-reviewer step.
 
-## IN PROGRESS — `livespec-jvdvx4.6` (now ROOT-REPO-ONLY), UNBLOCKED, not yet landed
+## LANDED — `livespec-jvdvx4.6` (ROOT-REPO-ONLY), closed on both live legs
 
-**This is the live task. Read `brief-32-implement-jvdvx4.6.md`,
-`brief-34-restore-evidence-leg-then-resume.md` (phase 2), AND
-`brief-35-land-root-workflow.md` in full before touching it, IN THAT
-ORDER** — 35 is the current authorization and narrows scope; 32/34
-still carry the ratified-contract pointers, the four easy-to-get-wrong
-items, and the live-exercise procedure brief-35 explicitly keeps in
-force. Do NOT dispatch this item and do NOT mark it `ready` — its
-scope is a `.github/workflows/` file, the factory sandbox's dispatch
-credential deliberately withholds the `workflows` grant, and that
-rejection is the boundary working (`.ai/ci-gate-discipline.md`). You
-implement this one yourself, maintainer-side.
+Driven under `brief-36-finish-jvdvx4.6.md`, which superseded briefs
+32/34/35. The root-repo workflow shipped and both live-exercise legs were
+observed with their evidence recorded. Nothing on this item remains open.
 
-**What exists right now, uncommitted:**
+- **Implementation:** PR #2145, rebase-merge
+  `c4b6706324f2f415287de004170107e57998ba6a`, branch commit `e2d97df7`.
+  Scope was the root file `.github/workflows/auto-enable-merge.yml` only,
+  +209 lines, zero lines removed — so no pre-existing gate was weakened.
+- The worktree the previous handoff described as holding uncommitted work
+  (`feat-spec-pr-merge-auto-enable-workflow`) has been committed, merged,
+  and REMOVED, and its branch deleted.
 
-```
-$HOME/.worktrees/livespec/feat-spec-pr-merge-auto-enable-workflow
-  branch: feat/spec-pr-merge-auto-enable-workflow
-  based on primary at 43df3761 (post restore-durable-evidence merge)
-```
-
-- `.github/workflows/auto-enable-merge.yml` — **fully implemented and
-  locally tested**, uncommitted, modified in the worktree. It adds a
-  checkout step (`fetch-depth: 0`, deliberately — a shallow checkout is
-  a named SOURCE-level failure) and a "Resolve spec-PR effective
-  policy" step implementing: touches-no-spec-root fall-through,
-  merge-base computation, the entirely-empty-diff hardening, the
-  REQUIRED dual-source hardening (local-git derivation vs. the hosting
-  API's `pulls/.../files` listing MUST agree — disagreement is
-  derivation FAILURE), stem derivation, KNOWN-EMPTY fall-through
-  (distinct from FAILURE — conflating them would silently revert the
-  2026-05-26 cadence fix), the CLI invocation
+- **What shipped.** A checkout step (`fetch-depth: 0`, deliberately — a
+  shallow checkout is a named SOURCE-level failure) plus a "Resolve
+  spec-PR effective policy" step implementing: touches-no-spec-root
+  fall-through, merge-base computation, the entirely-empty-diff
+  hardening, the REQUIRED dual-source hardening (local-git derivation
+  vs. the hosting API's `pulls/.../files` listing MUST agree —
+  disagreement is derivation FAILURE), stem derivation, KNOWN-EMPTY
+  fall-through (kept distinct from FAILURE — conflating them would
+  silently revert the 2026-05-26 cadence fix), the CLI invocation
   (`spec_governance.py --show-effective --pr-effective-policy
   --proposal-stem <stem>...`), and the journal-as-GATE append (append
   BEFORE registering; append failure blocks registration; no invented
-  persistence — the PR timeline is the durable leg per the restored
-  v190 design record above). The final "Enable auto-merge" step is
-  gated on `steps.policy.outputs.decision != 'blocked'`.
-- I tested the **exact embedded script** (extracted byte-for-byte from
-  the YAML via a Python `yaml.safe_load`, not a hand-copy) against six
-  scenarios in disposable scratch git repos, using the real
-  `spec_governance.py` from this worktree: a PR not touching
-  `SPECIFICATION/` (falls through immediately), a `manual`-floored
-  ratified proposal (blocked, no journal append), an `auto-on-green`
-  proposal (journal event appended correctly, `decision=auto`),
-  KNOWN-EMPTY (touches spec root but adds no proposal — falls through,
-  CLI never invoked), a dual-source disagreement (blocked), and a
-  journal-write failure via a read-only `tmp/` dir (blocked, per
-  contract). All six passed. This file is ready to commit as-is unless
-  you find a defect re-reading it.
+  persistence — the PR timeline is the durable leg). The "Enable
+  auto-merge" step is gated on
+  `steps.policy.outputs.decision != 'blocked'`.
+- **A fail-open defect was found and fixed while adopting the inherited
+  worktree.** Three error paths captured output with
+  `$(cmd | grep ...)`, which reports only the LAST pipeline stage — so a
+  git or hosting-API error became an empty file list rather than an
+  error. When the other source was also legitimately empty, the two
+  "agreed" into a false KNOWN-EMPTY and auto-enabled. `spec.md` requires
+  a git or hosting-API error to be derivation FAILURE, which blocks.
+  Each source is now captured and status-checked BEFORE any filtering.
+  A no-match `grep` still exits 1 and that remains an empty RESULT
+  rather than an error, so the filters stay deliberately exempt.
+- **Verification before merge:** the embedded script was extracted
+  byte-for-byte from the YAML via `yaml.safe_load` (not hand-copied) and
+  run in disposable git repos with a controlled `gh`, against EIGHT
+  scenarios — non-spec-touching PR, `manual`-floored proposal,
+  `auto-on-green` proposal (journal event appended and validated),
+  KNOWN-EMPTY, dual-source disagreement, journal-write failure,
+  hosting-API error with an empty local derivation, and a git error.
+  All eight resolved as the spec requires; the last two are the
+  regression cases for the defect above.
 - `templates/orchestrator-plugin/.github/workflows/auto-enable-merge.yml.jinja`
-  — deliberately **not touched by this item.** See "The split" below —
-  it is now tracked separately as `livespec-jvdvx4.9`, not this item's
-  scope.
+  — deliberately NOT touched. Tracked as `livespec-jvdvx4.9` (see below).
+  The asymmetry is documented in the shipped workflow's header comment so
+  it does not read as an oversight.
 
-### THE BLOCKER IS RESOLVED — read `brief-35-land-root-workflow.md` in full
+### The split (decided, do not re-litigate)
 
-Brief-35 verified the cross-repo CLI-distribution gap independently
-(confirmed: no adopter runner can reach `spec_governance.py` today;
-the fleet's established shared-CI pattern is a reusable workflow —
-`release-dispatch.yml.jinja` / `pin-freshness.yml.jinja` both `uses:
-thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-*.yml
-@master` — and core hosts no such workflow yet) and made the call:
-**halting instead of inventing a fleet-wide mechanism was correct, and
-the fix is to split the work, not to guess.**
+- `livespec-jvdvx4.6` was NARROWED to the ROOT-REPO file only. The
+  one-PR/no-drift rule from briefs 32/34 is RETIRED for this item — with
+  the template half deliberately deferred and TRACKED, there is one
+  implementation and one recorded gap, not two drifting ones.
+- The template half plus the core-to-CI distribution mechanism (reusable
+  workflow vs. shipping the module via the pip package — both named for
+  evaluation) is **`livespec-jvdvx4.9`**, filed and still open. No
+  adopter runner can reach `spec_governance.py` today, so writing the
+  template now would fail closed in every adopter and silently disable
+  spec-PR auto-merge fleet-wide. Do not start `.9` without a fresh brief.
 
-**The split (decided, do not re-litigate):**
+### The LIVE exercise — both legs observed, evidence recorded
 
-- `livespec-jvdvx4.6` is NARROWED to the ROOT-REPO file only
-  (`.github/workflows/auto-enable-merge.yml`). The one-PR/no-drift rule
-  from brief-32/34 is explicitly RETIRED for this item — with the
-  template half deliberately deferred and TRACKED elsewhere, there is
-  one implementation and one recorded gap, not two drifting ones.
-- The template half plus the distribution mechanism (reusable workflow
-  vs. shipping the module via the pip package — both named for
-  evaluation) is now **`livespec-jvdvx4.9`**, filed and explicitly NOT
-  this item's scope. Do not start `.9` under this brief.
+- **Leg 1 — PASSED.** PR #2147 (head `a2e5594b`) added a synthetic
+  non-`-revision` file at
+  `SPECIFICATION/history/v999-live-exercise/proposed_changes/live-exercise-floor-probe.md`
+  carrying no `spec_pr_merge_policy` key, confirmed to resolve `manual`
+  against the shipped CLI before opening. Run `31463749002` logged
+  `pull-request effective policy: manual (source: default)` and the
+  human-merge fall-through line; job step 5 "Enable auto-merge" reported
+  `conclusion=skipped`; the API reported `.auto_merge` null. Auto-merge
+  was NOT registered. The PR carried NO `do-not-merge` label on purpose —
+  that label is evaluated by the job-level `if:` and would have skipped
+  the whole job, proving nothing, so the `spec_pr_merge` floor had to be
+  the only blocker. The PR was CLOSED, its branch deleted, and its
+  worktree removed; nothing reached `master`.
+- **Leg 2 — PASSED.** The control still auto-enables. Recorded twice:
+  first on PR #2145 itself (because `pull_request` events run the HEAD
+  branch's workflow definition, #2145 exercised the new step on itself),
+  where run `31462961430` logged
+  `PR does not touch SPECIFICATION; spec_pr_merge does not apply` then
+  `Auto-merge enabled on PR #2145 (rebase strategy)` with the API
+  reporting `auto_merge` SET (rebase); and again on the post-merge
+  control PR that carried this handoff refresh.
 
-**Next action, in order (all still pending — nothing further landed
-after this handoff was written; if a later session already did some of
-this, re-verify against the forge/ledger before repeating any of it):**
+### One residual, stated rather than overclaimed
 
-1. Add ONE more code comment to the already-tested root workflow file
-   in the worktree, naming `livespec-jvdvx4.9` as the reason the
-   template twin is not yet aligned (so the asymmetry reads as tracked,
-   not as an oversight), then commit it in the existing worktree
-   (`feat/spec-pr-merge-auto-enable-workflow`, based on `43df3761`
-   — rebase onto current `origin/master` first if it has moved), open a
-   PR, and land it through the normal reviewed rebase-merge path. The
-   implementation itself does not need re-writing — it was tested
-   against six scenarios (see above) and brief-35 didn't ask for
-   changes beyond the one comment.
-2. Then run the LIVE exercise below and close `livespec-jvdvx4.6` only
-   after both legs are observed with their evidence recorded.
-3. Do NOT start `livespec-jvdvx4.9` under this same thread of work
-   unless a fresh brief authorizes it.
-
-Do NOT close `livespec-jvdvx4.6` on unit tests. Per brief-32/34/35, run
-the LIVE exercise:
-
-- **Leg 1** — open a PR that adds a non-`-revision` file under
-  `SPECIFICATION/history/*/proposed_changes/<stem>.md` with no
-  `spec_pr_merge_policy` override (floors to `manual`). Confirm
-  auto-merge is NOT registered (read the actual evidence — the
-  workflow run log / journal — not an inference from the PR not yet
-  having merged). **This PR must never merge. Close it and delete its
-  branch as soon as you have the observation.** If it DOES register
-  auto-merge, that is an implementation defect: close the PR
-  immediately, treat it as a defect, and report rather than retry.
-- **Leg 2** — a genuinely harmless, genuinely mergeable PR that touches
-  no `SPECIFICATION/history/*/proposed_changes/` files (or none at
-  all) must still auto-enable exactly as today. Do not fabricate
-  something you would not otherwise land.
-- If leg 2 fails (the control is wrongly blocked), you have broken
-  auto-merge for the whole repository: **REVERT immediately**, then
-  re-land correctly. Never a lever, flag, or severity demotion — that
-  rule is absolute (`.ai/ci-gate-discipline.md`).
-- Close `livespec-jvdvx4.6` only after BOTH legs are observed with
-  their evidence recorded.
+Both live legs exercised the **step-1 fall-through** control path (a PR
+touching no spec root). The **KNOWN-EMPTY** control sub-path — a PR that
+DOES touch the spec root but ratifies nothing, which is the shape the
+2026-05-26 cadence fix specifically protects — is covered by the
+extracted-script harness but was NOT exercised live, because doing so
+would have meant fabricating a spec-touching PR that would not otherwise
+be landed. The next plain propose-change-filing PR exercises it for free;
+read that run's log to close the residual.
 
 ## Other open items on this epic (unrelated to the above, do not start)
 
@@ -192,13 +173,19 @@ the LIVE exercise:
   refresh → cleanup; halt on hook failure.
 - Never touch another session's worktree, branch, sandbox, ledger
   item, or admission label. Peer worktrees currently present that are
-  NOT this thread's (re-enumerate — this list drifts):
+  NOT this thread's, re-enumerated 2026-08-11 (this list drifts — run
+  `git worktree list` rather than trusting it):
   `ci-concurrency-group`, `docs-refresh-spec-side-autonomy-binder`,
-  `fabro-handoff-ci-capacity`, `fix/spec-governance-config-railway`,
-  `phase0-selfhosted-shadow-lane`.
+  `fabro-handoff-ci-capacity`, `fix-spec-governance-config-railway`,
+  `phase0-selfhosted-shadow-lane`, `refactor/lloc-band-regrowth`,
+  `spec-ratify-durable-evidence-locus`.
 - Never kill the acting overseer daemon (tmux `livespec-overseer:1.1`).
-- Do not run the worktree reaper while `feat-spec-pr-merge-auto-enable-workflow`
-  sits uncommitted — it is real work, not stale.
+- This thread now holds NO worktree of its own. The former
+  `feat-spec-pr-merge-auto-enable-workflow` worktree was committed,
+  merged as `c4b67063`, and removed, so the previous handoff's
+  "do not reap while it sits uncommitted" caveat is spent. Every
+  remaining worktree in this repo belongs to another session — do not
+  enter, edit, push, remove, or reap any of them.
 - Verify against the forge after a fetch, never a possibly stale
   working tree. This repo rebase-merges: one change has two SHAs; test
   the merge commit or ask the forge, never `--is-ancestor` on a branch
