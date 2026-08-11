@@ -233,6 +233,49 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > item. This sharpens the filing; it does NOT change the remedy, which stays entangled with
 > `livespec-cpqi`'s undecided set question. **Do not "just add the canonical slugs."**
 >
+> ### 6b. ⚠ A FLEET MASTER-CI SWEEP FOUND TWO REPOS RED — both repaired, and the CAUSE is now filed
+>
+> The last recorded fleet sweep in this file claims *"Fleet CI green, complete and fresh."* **That
+> claim had expired.** Re-run 2026-08-11T08:2xZ over all 13 manifest repos (9 fleet + 4 adopters),
+> **two were red on master AT THEIR CURRENT HEAD** — verified as current by reading each repo's
+> `origin/master` and matching it to the failing run's `head_sha`, so neither was a stale run:
+>
+> | repo | master head | red since |
+> |---|---|---|
+> | `livespec-dev-tooling` | `05f271bd` | 07:08Z (run 31467774243) |
+> | `livespec-orchestrator-beads-fabro` | `32f766c2` | 08:02Z (run 31471498446) |
+>
+> **Both were transient `uv` package-download timeouts, and both are now GREEN again** on a bare
+> `gh run rerun --failed` with no code change. The repair was verified by reading the STEP list,
+> not the conclusion: in `livespec-dev-tooling`'s `check-commit-pairs-source-and-test`, both
+> `Install Python dev deps via uv` AND `just check-commit-pairs-source-and-test` show `success` —
+> the check EXECUTED rather than reporting success while skipping (`livespec-dev-tooling-zi29`'s
+> shape). Two `skipped` steps in that job are conditional hook-installs, by design.
+>
+> **The existing rule in this file still stands and it worked** — *"when a red job fails in a
+> setup/install step rather than in the check itself, re-run before diagnosing."* **What changed is
+> that the rule is no longer a sufficient response.** Seven instances are now recorded across two
+> sessions and five repos, three of them on 2026-08-11 within seventy minutes
+> (`python-multipart==0.0.29`, `pytest-xdist==3.8.0`, `copier==9.6.0` — all "after 5 retries", all
+> despite `UV_HTTP_RETRIES: 5` already set). A rule telling every future session to re-run BY HAND
+> is a workaround, and `AGENTS.md` is explicit that a normal recurring failure mode **must be
+> handled automatically at its source**. So the cause is now filed as **`livespec-dev-tooling-el7g`**
+> (P2) with the measurements, a prior-art scan of that tenant's 433 items showing no existing
+> owner, and three candidate directions left deliberately unchosen. **It is not this thread's to
+> drive.**
+>
+> **The part worth carrying past the incident:** both reds were on a REQUIRED gate on master, and
+> both were still invisible — found only because this sweep ran for an unrelated reason, after
+> eighty and twenty-five minutes respectively. That widens `livespec-39h1`'s claim, and it has been
+> cross-referenced there: **the gap is not that non-required workflows go unwatched, it is that
+> nothing is watched — including the required gate whose whole purpose is to be the post-merge
+> safety net.** A required context that goes red after merge has no PR left to block; like the
+> release gate's post-tag firing, there is nothing left to prevent, only something to notice.
+>
+> Two adopters are **excluded rather than claimed green**: `openbrain` and `resume` have no
+> `ci.yml` runs at all. `homelab` (`main`) and `livespec` were mid-run at sweep time. Everything
+> else was green.
+>
 > ### 7. Housekeeping facts for the next session
 >
 > - `just check` in livespec is **~3 minutes** (78 targets), not the ~34 min `livespec-dev-tooling`
@@ -955,6 +998,7 @@ creators).
 | `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
 | `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
+| `livespec-dev-tooling-el7g` | `livespec-dev-tooling` | P2 — **filed by this thread 2026-08-11.** `uv` dev-dep downloads time out often enough to leave fleet MASTER red, and the only current remedy is a human noticing and re-running. Seven instances across two sessions and five repos; two left a fleet master red at HEAD on 2026-08-11 and were found only by an unrelated sweep. `UV_HTTP_RETRIES: 5` is already set and already insufficient. Three candidate directions recorded, none chosen. Cross-referenced on `livespec-39h1`. **Not this thread's to drive.** |
 | `livespec-915y` | `livespec` | P2 (`backlog`) — the owned-heading-coverage-TODO cross-repo epic; owns the TODO half of the release gate and its by-construction mechanism. Its child `livespec-915y.1` (the original soft-band emptying) **CLOSED 2026-08-07**. The TODO half is now measured PASSING in CI on the v0.30.0 gate run, so what remains here is the cross-repo half, not livespec's. |
 | `livespec-dev-tooling-i3ub` | `livespec-dev-tooling` | **OPEN, BLOCKED** — per-commit tightening of BOTH release-gate halves, behind fleet-backfill epic `livespec-dev-tooling-7j1g` (304 unowned entries, 9 repos). This is the item that would stop the regrowth loop at its source: today the per-commit tier only WARNS while the tier that FAILS is release-only. |
 
