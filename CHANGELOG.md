@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.2](https://github.com/thewoolleyman/livespec/compare/v0.29.1...v0.29.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **spec:** correct false v190 lineage in the durable-evidence proposal ([89515be](https://github.com/thewoolleyman/livespec/commit/89515be514100fb4003a852bcd8595972e92d1f1))
+
 ## [0.29.1](https://github.com/thewoolleyman/livespec/compare/v0.29.0...v0.29.1) (2026-08-11)
 
 
