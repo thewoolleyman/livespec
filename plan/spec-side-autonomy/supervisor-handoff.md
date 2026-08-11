@@ -100,22 +100,30 @@ Do NOT archive `plan/spec-side-autonomy/`.
 ### A pending proposal is queued and NOT ratified
 
 `SPECIFICATION/proposed_changes/restore-spec-pr-merge-durable-evidence.md`
-(filed PR #2139, merge `43df3761`) restores one sentence the v200 redesign
-dropped silently: the pull-request timeline MAY serve as the durable
-final-evidence leg, so the journal is a DECISION GATE — it records which setting
-governed the attempt and refuses to proceed when unwritable — rather than the
-durable archive.
+(filed PR #2139, merge `43df3761`) adds a durability-locus clause to the
+`spec_pr_merge` journal event: the pull-request timeline MAY serve as the
+durable final-evidence leg, so the journal is a DECISION GATE — it records which
+setting governed the attempt and refuses to proceed when unwritable.
 
-Why it matters operationally: without it, an implementer has no ratified basis
-for treating the ephemeral `<project-root>/tmp/` journal path (inside a GitHub
-Actions runner's discarded `$GITHUB_WORKSPACE`) as intentional rather than a
-bug. A worker halted on exactly that. The design record is
-`SPECIFICATION/history/v190/proposed_changes/spec-governance-pr-merge.md`.
+Why it matters operationally: the v200-ratified text is SILENT on where the
+durable record lives, so an implementer has no ratified basis for treating the
+ephemeral `<project-root>/tmp/` journal path (inside a GitHub Actions runner's
+discarded `$GITHUB_WORKSPACE`) as intentional rather than a bug. A worker halted
+on exactly that.
+
+**Its filed framing is WRONG and must be fixed before it can be ratified.** It
+calls itself a restoration of text v200 dropped. It is not: the language comes
+from `history/v190/proposed_changes/spec-governance-pr-merge.md`, which was
+REJECTED at v190 and ordered redesigned and refiled — v200 was that refile. This
+is a NEW normative clause and must be judged on its merits at new-clause
+scrutiny, not waved through as a restoration. The file stem still says
+`restore-`; renaming it is optional but the prose must not claim restoration.
 
 It is FILED ONLY. Ratification requires the independent read-only adversarial
 review by a separately-spawned agent that authored neither the proposal nor the
-brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. Do not accept it
-without that.
+brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. That review has run
+once and returned one blocker — the lineage claim above. Do not accept without a
+clean re-review.
 
 ### THE FACTORY CANNOT REACH THREE ADOPTER TENANTS — root cause NAMED
 
@@ -187,24 +195,29 @@ match.
 
 ### Standing hazards
 
-- **A REDESIGN CAN DELETE A GUARANTEE AND PASS EVERY REVIEW.** The v200
-  redesign rewrote the `spec_pr_merge` journal paragraph and silently dropped
-  v190's durable-evidence leg — no stated reason anywhere; the v200 proposal
-  mentions `spec_pr_merge` dozens of times and durability zero times. It
-  survived FOUR adversarial proposal rounds plus TWO byte-level reviews,
-  because every reviewer checked whether the NEW text was correct and none
-  diffed it against what the SUPERSEDED text had guaranteed. A worker later
-  halted on a wall the design had already cleared. **When a change REWRITES a
-  paragraph rather than adding one, diff the old clause set against the new and
-  account for every dropped guarantee.** "The new text is correct" and "nothing
-  load-bearing was removed" are different claims, and only the second is
-  checkable by diff.
-- **Research the DESIGN RECORD before escalating a design question.** I put the
-  journal's CI-durability problem to the maintainer as a three-way doctrine
-  decision. All three options rested on the premise that the question was
-  unanswered. It had been answered in v190 and I had not looked. The maintainer
-  asking "why does this journal live in `tmp/` and not the ledger or git?" is
-  what sent me to look.
+- **A FILE UNDER `history/vNNN/proposed_changes/` IS NOT A DESIGN RECORD. READ
+  ITS PAIRED `-revision.md` FIRST.** A history cut archives BOTH accepted and
+  REJECTED proposals side by side in the same directory; only the
+  `<stem>-revision.md` front matter says which (`decision: accept|reject`).
+  I read `history/v190/proposed_changes/spec-governance-pr-merge.md`, found a
+  durable-evidence sentence in it, and built a whole narrative on v200 having
+  "silently dropped" it — then wrote that narrative into a filed proposal, a PR
+  body, this binder, and a report to the maintainer. **It was REJECTED at v190**
+  (`decision: reject`, "must be redesigned and refiled separately"), and v190's
+  ratified `contracts.md` contains ZERO occurrences of `spec_pr_merge`
+  (positive control: v200's contains six). Nothing was dropped; v200 WAS the
+  mandated refile. An independent reviewer caught it; I had not checked the
+  disposition.
+  **The check is two commands and it is not optional:** read the
+  `-revision.md` for `decision:`, and grep the cut's own ratified spec files for
+  the clause. A sentence that never reached a ratified file was never a
+  guarantee, and "restore" is the wrong verb for adding it.
+- **Research the design record before escalating a design question — and verify
+  it is a design record.** I put the journal's CI-durability problem to the
+  maintainer as a three-way doctrine decision when I had not read the design
+  history at all. Then, having read it, I over-corrected into treating a
+  rejected draft as authority. Both errors were the same root cause: acting on
+  the first artifact I found instead of establishing its status.
 - **A work-item's embedded evidence EXPIRES exactly like a stale handoff.** I
   took `livespec-bhammf`'s week-old blocker text ("scenarios.md says three error
   paths") as live fact and briefed TWO agents on it. Live line 3 carries NO
