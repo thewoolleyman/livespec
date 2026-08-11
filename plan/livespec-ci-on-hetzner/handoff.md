@@ -771,6 +771,26 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   `red_green_replay` branch 5 routes it to `TDD-Suite-Green-*`. Subject is `refactor:`. No faked
 >   Red, no forged trailer. But `check-commit-pairs-source-and-test` still requires a `tests/**`
 >   touch; discharge it with a REAL invariant test, proven fail-capable.
+> - **⭐ NEVER PRINT A `grep -c` COUNT WITHOUT THE LISTING THAT WOULD FALSIFY IT.** Earned
+>   2026-08-11 while re-measuring the banked completion evidence, where **the same session's own
+>   patterns misled it TWICE, once in each direction** — and both were caught only because the raw
+>   listing sat beside the count:
+>   - **False NEGATIVE.** `grep -c "ubuntu-latest'"` over `ci.yml` returned **0**, which reads as
+>     *"`uw3h`'s three-copy lockstep has broken."* The pattern was wrong — the literal is
+>     `'["ubuntu-latest"]'`, so the character after `ubuntu-latest` is `"`, not `'`. Correctly
+>     anchored, the count is **3** (control: 6 lines mention `CI_RUNNER_LABELS`) and the lockstep
+>     holds.
+>   - **False POSITIVE.** `grep -E "ci-runner|runner@"` over `/etc/systemd/system` matched
+>     `gate-runner@.service`, which reads as *"a CI runner unit exists on the factory host"* —
+>     bullet 7's whole claim inverted. `runner@` is a SUBSTRING of `gate-runner@`. Anchored to
+>     `^ci-runner` and `^runner@`, both are empty, and the only matches are the four expected
+>     `gate-runner*` files of the out-of-scope privileged tier.
+>
+>   Both would have been reported as findings by a session that printed only the number. This is
+>   the same shape as every entry in `.ai/verifying-against-the-right-source.md` — a signal read
+>   off an instrument nobody validated — except that here the instrument was *hand-written seconds
+>   earlier*, which is precisely when it is least suspected. **A count is a claim about a pattern
+>   as much as about the world.**
 >
 > ---
 >
