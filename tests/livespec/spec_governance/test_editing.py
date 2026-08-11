@@ -390,3 +390,25 @@ def test_editing_decision_modes_module_is_a_leaf() -> None:
         "the decision-modes module must not import from `editing`; the "
         "one-way dependency is what prevents an import cycle"
     )
+
+
+def test_editing_spec_pr_merge_module_is_a_leaf() -> None:
+    """The spec-PR-merge handlers must not import back into `editing`.
+
+    They take `EditResult` and `_edit_result` from the
+    `_editing_decision_modes` sibling rather than from `editing`, which is
+    what keeps this module a leaf alongside it. Importing the parent here
+    would form a cycle.
+    """
+    source = (
+        Path(__file__).resolve().parents[3]
+        / ".claude-plugin"
+        / "scripts"
+        / "livespec"
+        / "spec_governance"
+        / "_editing_spec_pr_merge.py"
+    ).read_text(encoding="utf-8")
+    assert "spec_governance.editing" not in source, (
+        "the spec-PR-merge module must not import from `editing`; the one-way "
+        "dependency is what prevents an import cycle"
+    )
