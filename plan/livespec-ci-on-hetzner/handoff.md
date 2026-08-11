@@ -31,7 +31,7 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 
 ## Named first action
 
-> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–08:3xZ. READ THIS BLOCK FIRST;
+> ## ⛔ SESSION-CLOSE STATE — measurements span 2026-08-11T06:26Z–08:4xZ. READ THIS BLOCK FIRST;
 > ## EVERYTHING BELOW IT IS OLDER. (Stated as a RANGE, not a point, so a later reader can see how
 > ## old each reading is — instance 27's own counter-move applied to this file.)
 >
@@ -275,6 +275,49 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > Two adopters are **excluded rather than claimed green**: `openbrain` and `resume` have no
 > `ci.yml` runs at all. `homelab` (`main`) and `livespec` were mid-run at sweep time. Everything
 > else was green.
+>
+> ### 6c. 🔗 THE SHARPEST FINDING OF THE SESSION: `el7g` and `xdyh` are CAUSALLY CHAINED
+>
+> Two separately-filed defects in `livespec-dev-tooling` are not independent. **The flaky one
+> silently ARMS the dangerous one**, and neither item's description mentioned the other until this
+> session cross-referenced both. This was found by following a stray branch name, not by looking
+> for it.
+>
+> The chain, every step measured on 2026-08-11:
+>
+> 1. livespec cut **v0.30.2** at 07:53Z.
+> 2. The pin-freshness sweep opened `livespec-dev-tooling` **PR #1360** (branch
+>    `chore/bump-livespec-v0.30.2`) at 07:56:26Z, auto-merge armed by the bot three seconds later.
+>    **Correct behaviour.**
+> 3. That PR's `check-partition-completeness` failed at 08:00:07Z — **not on partitions at all**,
+>    but on `Failed to download linkify-it-py==2.1.0 … after 5 retries … operation timed out`.
+>    That is `livespec-dev-tooling-el7g`, its **fourth** occurrence that morning.
+> 4. `ci-green` failed, auto-merge could not fire, and the PR sat `BLOCKED` **with its bump branch
+>    present on origin.**
+>
+> **Step 4 is `livespec-dev-tooling-xdyh`'s precondition exactly.** `xdyh` fires when the sweep
+> meets its own leftover bump branch and cannot fast-forward; its recorded recurrence condition is
+> "a bump PR that lingers". And `xdyh`'s own note says recovery comes from **the source version
+> moving past the stale branch, not from the workflow recovering** — so while livespec sat at
+> v0.30.2, that recovery was unavailable.
+>
+> **Why this changes how to read `el7g`:** alone it is a flaky-download nuisance. Chained, it is an
+> **arming mechanism** — every transient that reddens a bump PR extends the window in which the
+> stale-pin safety net can silently disable itself. Fixing `el7g` removes one of `xdyh`'s two
+> triggers. Both items now carry the chain.
+>
+> **Disarmed, and verified BY CONTENT rather than by the merge message.** A `gh run rerun --failed`
+> cleared the transient; PR #1360 merged 08:41:16Z; `git fetch --prune` reported the branch
+> `[deleted]` and `git branch -r --list 'origin/chore/*bump*'` now returns **zero** rows; and
+> `git show origin/master:.livespec.jsonc` shows `"pinned": "v0.30.2"`, so the bump actually
+> **landed** rather than merely merging. That also corroborates `xdyh`'s mechanism from the
+> positive side: **a bump that DOES merge leaves nothing behind**, which is why surviving
+> `chore/*bump*` branches are a census of past NON-merges.
+>
+> **What it does NOT resolve.** The window was open ~45 minutes and closed only because this thread
+> was running a fleet sweep for an unrelated reason and followed a branch name to its PR. Nothing
+> detected it; nothing would have closed it. **The next release cuts the next bump PR into the same
+> exposure.** Both defects remain open and neither's severity is reduced by this instance clearing.
 >
 > ### 7. Housekeeping facts for the next session
 >
@@ -995,7 +1038,7 @@ creators).
 | `livespec-dev-tooling-a9xp` | `livespec-dev-tooling` | P1 — `pretooluse_background_guard` prescribes `just gate-start` / `gate-wait` and an `.ai/` doc that exist in **1 of the 7** repos arming the hook. Filed 2026-08-06 with the armed-vs-remedy sweep and the two-commit root cause. **The third guard whose prescribed remedy does not work where it fires** — with `livespec-driver-claude-mu5` and `livespec-f3tf`, a pattern the maintainer named rather than three incidents. |
 | `livespec-dev-tooling-olwk` | `livespec-dev-tooling` | P3 — `check-shell-quality` validates recipe SHAPE but never whether the body parses under `just`'s default `sh`, which is why `livespec-f3tf` shipped and stayed green on every PR and master push. Filed 2026-08-06 with a measured containment sweep (**11 justfiles, 0 findings**, control proven) and a prototype predicate. Prevention only — nothing is broken today. |
 | `livespec-39h1` | `livespec` | P2 — **the synthesis of five chronic NON-REQUIRED workflow failures**, each of which sat red for days-to-weeks while its repo reported green CI. Its own sharpest line: a dedicated early-warning job existed, worked, and fired daily for a week, and nothing acted — *"the missing piece is a READER."* Acceptance criteria filled 2026-08-06, outcome-based, including a positive-control clause. Do NOT read it as owning the five underlying failures; it owns making them VISIBLE. |
-| `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
+| `livespec-dev-tooling-xdyh` | `livespec-dev-tooling` | **CHAINED TO `el7g` — see §6c; a transient that reddens a bump PR arms this defect, and neither description mentioned the other before 2026-08-11.** P1 — `Pin freshness sweep` dies on a **non-fast-forward push** when its own leftover bump branch already exists, silently disabling the stale-pin safety net. Hit four repos on the same two dates via one `livespec-runtime` v0.16.0 fan-out. Instance #1 of `livespec-39h1`. **Prediction READ 2026-08-06T23:2xZ and journaled: 3 of 4 repos succeeded with real pushes; the mechanism did not fire anywhere. STILL OPEN** — recovery is the source version moving past the stale branch, not the workflow recovering. Also learned: auto-merge deletes the bump branch on success, so surviving debris is a census of past NON-merges. |
 | `livespec-console-beads-fabro-3ej` | `livespec-console-beads-fabro` | P1 — that repo **cannot receive pin bumps at all** (`livespec` pinned v0.26.0; latest was v0.28.2 when filed and is **v0.30.2 as of 2026-08-11 — 15 releases behind, and the count only grows**): its `ci.yml` matrix lacks the canonical slugs, so the guard correctly refuses every bump. The refusal is right; that it is terminal and silent is the defect. Remedy is entangled with `livespec-cpqi`'s undecided set question — do not "just add the 53". Instance #2 of `livespec-39h1`. **Fresh instance journaled 2026-08-06 (run 31106710043), and it WIDENED: `livespec-dev-tooling` bumps now fail there too, not only `livespec`.** It also **masks `xdyh`** in that repo — the matrix guard refuses strictly before the push, so no bump branch is ever pushed there and its clean `xdyh` record is evidence of nothing. |
 | `livespec-dev-tooling-1w5c` | `livespec-dev-tooling` | P1 — **the LLOC soft-band ratchet.** The band cannot be kept empty by hand: emptied 2026-08-07, regrown to two files by 2026-08-11 from two ordinary feature commits, reddening four consecutive releases. **NOT this thread's to drive — do not install it; its design questions are genuinely open.** This thread journaled the measured evidence on it 2026-08-11: the fourth failure (v0.30.0), the re-emptying merge, and the **eight-file** band-edge distribution that argues against a count-keyed design. |
 | `livespec-dev-tooling-el7g` | `livespec-dev-tooling` | P2 — **filed by this thread 2026-08-11.** `uv` dev-dep downloads time out often enough to leave fleet MASTER red, and the only current remedy is a human noticing and re-running. Seven instances across two sessions and five repos; two left a fleet master red at HEAD on 2026-08-11 and were found only by an unrelated sweep. `UV_HTTP_RETRIES: 5` is already set and already insufficient. Three candidate directions recorded, none chosen. Cross-referenced on `livespec-39h1`. **Not this thread's to drive.** |
