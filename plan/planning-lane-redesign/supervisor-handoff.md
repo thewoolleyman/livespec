@@ -490,91 +490,84 @@ echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 
 ## Resume state — POINTERS ONLY, re-measure every one
 
-Written at session wrap 2026-08-06T13:05Z. These are pointers to things that
-existed then, NOT status. Re-measure each with the commands above before acting
-on it; this plan has already been bitten three times by state that moved
-underneath a written-down claim. The full obligation record and every finding
-live in the supervisor marker the cold-open boot block already reads — read it,
-it is the detail this section deliberately does not duplicate.
+Written at session wrap 2026-08-11T04:2xZ. These are pointers to things that
+existed then, NOT status. Re-measure each with the commands above before acting;
+this plan has been bitten repeatedly by state that moved underneath a written
+claim. The supervisor marker the cold-open block reads carries the detail this
+section deliberately does not duplicate.
 
-**THE IMMEDIATE NEXT ACTION.** `livespec-driver-claude-wgi3uy` (repository
-`livespec-driver-claude`) is now `ready` and a confirmed dispatch candidate, and
-nothing blocks it. Dispatch it:
+**THE 48-HOUR GROOMING BLOCK IS GONE.** `bd-ib-mrqoy2` (repository
+`livespec-orchestrator-beads-fabro`) was groomed on maintainer authorization
+into eight children. The parent stays OPEN by design; it is the epic.
 
-```sh
-PR=$(python3 -c "import json,pathlib;d=json.loads((pathlib.Path.home()/'.claude/plugins/installed_plugins.json').read_text());print([e['installPath'] for e in d['plugins']['livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro'] if e.get('projectPath')=='/data/projects/livespec-driver-claude'][0])")
-python3 "$PR/scripts/bin/drive.py" --repo /data/projects/livespec-driver-claude \
-  --action impl:livespec-driver-claude-wgi3uy --json
-```
-
-Its scope is ONE prose line in `.ai/beads-tenant.md`. Preflight: the checkout
-must be clean on `master` and current, or the engine falls back to a synthetic
-base that exists nowhere on origin.
-
-**THE FIVE RENAME ITEMS — three disposed, one ready, one blocked.** All
-verified from three sources plus each acceptance criterion, never a drive
-summary line:
-
-| item | repository | state |
+| child | state at wrap | what it is |
 |---|---|---|
-| `livespec-driver-codex-4y5ijl` | `livespec-driver-codex` | CLOSED as re-scoped — zero prose hits ever existed |
-| `livespec-runtime-gp3ppk` | `livespec-runtime` | MERGED, PR #495, `8b2c14c4` |
-| `bd-gj-mbde5p` | `livespec-orchestrator-git-jsonl` | MERGED, PR #570, `8a8a3c45` |
-| `livespec-driver-claude-wgi3uy` | `livespec-driver-claude` | READY — dispatch it, see above |
-| `livespec-dev-tooling-jaut4y` | `livespec-dev-tooling` | BLOCKED, see below |
+| `.1` | CLOSED — PR #1333, merge `40ce44e5` | authored the realization spec proposal |
+| `.7` | CLOSED — PR #1334, merge `9f3d053d` | fixed a review blocker in the proposal's section K |
+| `.2` | BLOCKED — deliberately | the ratification valve; see below |
+| `.8` | **IN FLIGHT ON THE WORKER** | documents the v059 attestation deviation |
+| `.3` `.4` `.5` `.6` | pending-approval, dependency-gated | the implementation slices |
 
-Their filed "at capture" counts were all measured with a pattern set that
-included the IDENTIFIER forms, but the landed ban (`AGENTS.md`:689) governs
-PROSE only. The identifier forms (`check-plan-thread-*`,
-`plan_thread_*.py`) are stamped projections of `livespec-dev-tooling` module
-filenames and are NOT a consumer's to rename — they restamp automatically via
-fan-out once `jaut4y` lands. The full measurement is journaled on all five
-items.
+**THE IMMEDIATE NEXT ACTION.** Re-measure `bd-ib-mrqoy2.8`. At wrap the WORKER
+was executing it under `brief-20-document-v059-deviation.md` (worktree created
+2026-08-11T04:19:49Z; the worker was at ~15% context, so it may have stopped
+part-way — the brief is self-contained and resumable by anyone).
 
-**`livespec-dev-tooling-jaut4y` IS NOT FACTORY-BUILDABLE, and that is not its
-fault.** A dispatch ran ~2h and died: the repo's own justfile records the commit
-aggregate at **593s/1043s**, while Fabro's checkpoint commit caps at **600s**,
-and Fabro exposes no timeout knob (`run --help`, `settings.toml`, the workflow —
-none). It also carries a clause-lockstep trap: renaming
-`checks/plan_thread_epic_parity.py` invalidates `_WORLD_GATE_CHECK_SLUGS`, whose
-`_validate_world_gate_subset` asserts every entry is a real canonical slug. The
-complete 15-file co-edit set is journaled on the item. It was left stranded at
-`active`/`fabro` and has been reset to `pending-approval`; note `drive --action
-reject:<id>:rework` REFUSES a run-stranded item (`expected acceptance source
-state; found active`), so no sanctioned valve reclaims one. Route: build it on a
-worker via Red-Green-Replay (the fallback this binder sanctions), or fix the
-gate-cost mismatch first. Do NOT bare-retry.
+**`.8` IS NOT FACTORY-DISPATCHABLE. Do not retry the dispatch.** A Fabro run
+already failed on it (`01KZQGC1QXADJVZYEQ7FRW243T`) for a correct reason: its
+input artifact lives at a HOST path under `tmp/overseer/`, which a sandbox
+cannot read, and `bd` is unavailable in-sandbox so the ledger was no fallback
+either. The sandbox agent searched, found no legitimate source, and STOPPED
+rather than fabricating the verdict — exactly right, and not a fault to
+re-trigger. Execute `.8` where the host filesystem is reachable.
 
-**The cross-repo manifest gap — fixed in three repositories, still open in
-three.** Every sibling item of this plan depends on `{repo: livespec}`, and
-`resolve_ref` returns `UNKNOWN` (fail-closed) for any repo absent from the
-CONSUMER's own `.livespec.jsonc` `cross_repo_targets`. Registered now in
-`livespec-runtime` (#494), `livespec-orchestrator-git-jsonl` (#569) and
-`livespec-driver-claude` (#439). Still ABSENT in `livespec-overseer`,
+**WHEN `.8` MERGES, CLOSE `.2` AND `.3` BECOMES DISPATCHABLE.** `.2`'s
+acceptance criterion has four clauses; three are already satisfied (v059 exists,
+the queue holds only `.gitkeep`, doctor static green). The fourth — "the
+revision record's ratification-review section reflects a review that verifiably
+happened" — is precisely what `.8` repairs. Do NOT close `.2` before then; that
+clause is doing real work and is the only thing correctly gating `.3`–`.6`.
+
+**WHAT LANDED ON MASTER, and the one thing wrong with it.** The Planning Lane
+realization ratified as `livespec-orchestrator-beads-fabro`
+`SPECIFICATION/history/v059` (PR #1337, merge `6fae8205`). Its CONTENT is clean
+and independently attested. Its ratification RECORD is not: `reviewed_at`
+`2026-08-09T12:01:11Z` timestamps a review of the PROPOSAL bytes only, while the
+`content_digest` beside it spans the RESULTING bytes, recomposed at `revised_at`
+`2026-08-09T13:44:33Z` during a repair. The covering review arrived ~5 minutes
+AFTER ratification. **No conforming correction exists** — the contract requires
+`reviewed_at` strictly before `revised_at`, and a content-identical
+re-ratification fails `doctor-accept-decision-snapshot-consistency`. The
+maintainer decided 2026-08-09 to DOCUMENT the deviation rather than revert
+verified-good content. That decision is settled; do not reopen it.
+
+**Filed against core, not this plan's to fix:** `livespec-yrq4` (P1, livespec
+tenant) — the hardening gap the above exposes, carrying a constraint not to
+retroactively fail the accepted deviation. Also open from earlier in this plan:
+`livespec-bpzy` (P2, doctor drops the `external_references` allowlist when a
+cross-repo clone is unreadable), `bd-ib-ll6n` (unattended Fabro dispatch can
+stall on an interview and burn its whole budget), `livespec-driver-claude-61k`
+(the `github_rate_limit_guard` false-positive that denies ordinary
+PR-creation commands containing the word "for" or "while").
+
+**Still open from the older record, re-verify before acting:**
+`livespec-dev-tooling-jaut4y` remains NOT factory-buildable (its commit
+aggregate exceeds Fabro's 600s checkpoint ceiling); the cross-repo
+`cross_repo_targets` manifest gap is still unregistered in `livespec-overseer`,
 `livespec-orchestrator-beads-fabro` and `livespec-console-beads-fabro`, so
 `overseer-ftfhek`, `bd-ib-da4fs2` and `livespec-console-beads-fabro-sisnmx`
-will hit the same wall when their turn comes. Correction to the older record:
-closing `livespec-zsn2xh.4` did NOT unblock the siblings — nine of ten were
-never mechanically dispatchable.
+will hit it when their turn comes.
 
-**Two defects filed against core, neither this plan's to fix.**
-`livespec-bpzy` (P2): an unreadable cross-repo clone maps to an EMPTY heading
-set rather than `None`, so doctor silently drops the entire
-`external_references` allowlist and reports allowlisted citations as "not
-allowlisted". Also: live `SPECIFICATION/spec.md` carries 15 design-record
-citations to `plan/archive/planning-lane-redesign/research/…`, which does not
-exist yet — they resolve only if `livespec-zsn2xh.5` archives to exactly that
-path, which is journaled on that item.
+**Owned elsewhere:** `overseer-pfpfty` (repository `livespec-overseer`) is the
+sibling epic-shaped item; the binder forbids decomposing it from this seat. It
+already covers the `supervise-plan` drift an independent review surfaced — that
+was checked, so do not file a duplicate.
 
-**Owned elsewhere, not this seat's to drive:** grooming `bd-ib-mrqoy2`
-(repository `livespec-orchestrator-beads-fabro`) and `overseer-pfpfty`
-(repository `livespec-overseer`) — maintainer-owned cuts in their own
-repositories, which this binder forbids decomposing from here. `bd-ib-mrqoy2`
-remains the critical path: it gates `livespec-zsn2xh.5`, `overseer-ftfhek`,
-`bd-ib-da4fs2` and transitively `livespec-console-beads-fabro-sisnmx`. The
-maintainer chose it as the first groom on 2026-08-06. Note `livespec-orchestrator-beads-fabro`
-had an active Codex session on a DIFFERENT plan; coordinate before driving
-anything there.
+**Host hygiene, not this plan's but worth someone's attention:** two Fabro
+sandboxes (`fabro-run-01KZ3BEWTS5HERH2N8K3PA90PH`,
+`fabro-run-01KZ2XA9A0C5Z0KH7ADAD1BHR7`) have been up 7–8 days with no
+supervising dispatcher, holding host dispatch capacity. Killing containers is a
+host mutation this seat did not take unilaterally.
 
 ## Corrections
 
@@ -679,3 +672,73 @@ nonexistent path reproduced the CI failure exactly, in seconds). And when a
 first hypothesis is cheap to test, test it rather than act on it — mine here
 was that the apposition wording confused the parser, and it was WRONG; reverting
 it would have degraded the change while leaving the failure untouched.
+
+
+T6. A WHOLE-FILE `resulting_files[]` PAYLOAD MUST BE CHECKED IN BOTH
+DIRECTIONS, AND I ONLY ASKED FOR ONE. I commissioned an independent pre-merge
+check for T3's failure mode — a sentence silently LOST by a whole-file
+replacement. What the reviewer found was the inverse: an OLD sentence silently
+SURVIVING into the clause meant to replace it. The ratified slim-store clause
+shipped as "MUST contain only write-once research inputs under
+`plan/<slug>/research/` (one note MAY sit directly in `plan/<slug>/`)" — the
+parenthetical carried over from the very thread-store prose that change deletes.
+Self-contradictory, absent from the proposal, and forbidden by core's own
+bullet.
+
+Same root cause as T3 (a payload composed from partly-stale prose), same
+absence of signal: no git conflict, no CI failure, gate green locally. And my
+structural checks — declared-file scope, H2 heading sets before/after, counts —
+ALL PASSED on it, because a surviving sentence changes no structure.
+
+So ask both questions of any whole-file payload: what vanished that should have
+stayed, AND what stayed that should have vanished. Only a content read answers
+the second.
+
+T7. `gh pr merge --disable-auto` IS NOT A HOLD IN THIS FLEET. I disabled
+auto-merge to keep a ratification from landing while an independent check ran.
+`app/livespec-pr-bot` re-armed it two minutes later and the PR merged mid-review
+— the reviewer then returned a BLOCKER on bytes already on master.
+
+This is NOT a bot defect, and I initially reported it as one. Reading
+`.github/workflows/auto-enable-merge.yml`, the workflow behaves exactly as
+documented and gates on:
+
+```
+github.event.pull_request.draft == false
+&& !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
+```
+
+So a durable hold exists and I used the wrong tool. `--disable-auto` is a
+one-shot toggle the workflow re-applies on qualifying events. **To hold a PR
+here: mark it DRAFT, or apply the `do-not-merge` label.** I did not file the
+bot defect the maintainer had authorized, because the evidence I gathered
+afterwards did not support the premise I gave them when they authorized it —
+filing it would have sent someone chasing correct behavior.
+
+T8. A SANDBOX CANNOT READ THE HOST, AND I BRIEFED ONE TO TRY. `bd-ib-mrqoy2.8`
+was dispatched to the factory with step 1 pointing at
+`/data/projects/livespec/tmp/overseer/.../review-v059-post-repair-verdict.md`.
+Fabro sandboxes are isolated: no host filesystem outside the repo checkout, and
+no `bd` (the tenant secret is deliberately absent), so the ledger was no
+fallback either. The run failed having produced nothing.
+
+Two things worth carrying. First, the agent behaved WELL — it hunted for a
+legitimate source, established the PR carried only the stale timestamp, and
+STOPPED rather than inventing an artifact, on the one item where fabricated
+evidence would have been most corrosive. Read that failure as correct refusal,
+not misbehavior, and do not bare-retry it.
+
+Second, the dispatchability question is about REACHABILITY OF INPUTS, not just
+item size or phrasing. Before dispatching, ask what the sandbox must READ and
+whether it can. An item whose input exists only on the host belongs on a worker,
+or must be re-scoped so the input travels inside the repo or the work-item.
+
+T9. SIZE THE DISPATCH GOAL, NOT JUST THE DESCRIPTION. I nearly dispatched an
+item whose description (1529) plus notes (5698) totalled 7227 characters —
+essentially identical to the 7196-char item on record for implementing its whole
+change and then dying at the unattended-turn cap mid-publish, losing an hour.
+The dispatcher's sizing warning fires on the DESCRIPTION alone, but the goal
+ships description AND notes. Condensing the notes to the actionable directive
+brought it to 3549 and the depth lost nothing — it already lived in the
+supervisor marker and a preserved artifact. Measure `description + notes` before
+every dispatch; the warning will not do it for you.
