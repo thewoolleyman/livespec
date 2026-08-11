@@ -834,6 +834,23 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   | 2 | a `for` token in a `python3 -c` that ALSO invokes `gh` — including inside a comprehension, with no loop statement present | same: fetch to a file in one call, parse in the next |
 >   | 3 | `until …; do sleep …; done` around any `gh` read (e.g. waiting for a PR to merge) | **poll `git`, not `gh`** — see below |
 >   | 4 | **`gh api --cache 20s` inside a loop — the guard's OWN prescribed remedy**, refused by the same message that recommends it | there is no compliant `gh` form; restructure the question |
+>   | 5 | **`gh pr create` denied because its TITLE contained the English word "for"** — a WRITE, no loop, no `--jq`, `--body-file` already in use | reword the title, or `--fill` to take it from the commit |
+>
+>   **Shape 5 is the one to remember, and it was isolated by a controlled single-variable test.**
+>   Two `gh pr create` invocations, identical in every argument except the title text: the one
+>   reading *"the reason **for** leaving the ledger drift expired"* was DENIED; with those three
+>   words replaced and nothing else changed, the same command created the PR. It closes off the
+>   remaining charitable readings — this is a **write**, the message speaks of *"looped or sleeping
+>   GitHub READS"*; there is **no loop, sleep, or iteration** anywhere, so the token is not a
+>   construct but a word in a sentence a human will read; and **`--body-file` was already in use**,
+>   so obeying this item's documented prose workaround in full still leaves the denial reachable,
+>   because `gh pr create` has no file-based form for a title.
+>
+>   **So the working heuristic is simpler and broader than "is my loop over GitHub reads?"** —
+>   that question does not even apply here. Treat the guard as a **substring filter over the whole
+>   command line**, not a behavioural check, and expect ordinary English prose to trip it.
+>   (Cost of the reword, noted so it is not a surprise: the PR title no longer matches its own
+>   commit subject.)
 >
 >   **The two counter-moves worth keeping, because both cost a cycle to derive:**
 >
