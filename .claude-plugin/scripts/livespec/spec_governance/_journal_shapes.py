@@ -14,7 +14,7 @@ and required the cycle.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 from livespec.spec_governance.config import PROPOSAL_STEM_PATTERN
 
@@ -22,10 +22,13 @@ __all__: list[str] = [
     "_digest",
     "_drift_acceptance_shape_error",
     "_revise_decision_shape_error",
+    "_spec_pr_merge_shape_error",
 ]
 
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _SOURCE_VALUES = {"hard-floor", "invocation", "proposal", "global", "default"}
+_REGISTRATION_RESULT_VALUES = {"registered", "blocked", "failed"}
+_REQUIRED_GATE_STATE_VALUES = {"pending", "green", "red", "unavailable"}
 
 
 def _digest(*, value: object) -> bool:
@@ -82,3 +85,41 @@ def _drift_acceptance_shape_error(*, event: dict[str, Any]) -> str | None:
     if not _digest(value=event.get("consensus_evidence_digest")):
         return "consensus_evidence_digest must be lowercase sha256 hex"
     return None
+
+
+def _spec_pr_merge_shape_error(*, event: dict[str, Any]) -> str | None:
+    basic_error = _spec_pr_merge_basic_shape_error(event=event)
+    if basic_error is not None:
+        return basic_error
+    if "merge_evidence_digest" in event and not _digest(
+        value=event.get("merge_evidence_digest"),
+    ):
+        return "merge_evidence_digest must be lowercase sha256 hex"
+    return None
+
+
+def _spec_pr_merge_basic_shape_error(*, event: dict[str, Any]) -> str | None:
+    identity = event.get("pull_request_identity")
+    if not isinstance(identity, str) or not identity:
+        return "spec_pr_merge pull_request_identity is invalid"
+    if _proposal_stems_error(value=event.get("proposal_stems")):
+        return "spec_pr_merge proposal_stems is invalid"
+    if event.get("effective_policy") != "auto-on-green":
+        return "spec_pr_merge effective_policy is invalid"
+    if event.get("registration_result") not in _REGISTRATION_RESULT_VALUES:
+        return "spec_pr_merge registration_result is invalid"
+    if event.get("required_gate_state") not in _REQUIRED_GATE_STATE_VALUES:
+        return "spec_pr_merge required_gate_state is invalid"
+    return None
+
+
+def _proposal_stems_error(*, value: object) -> bool:
+    if not isinstance(value, list) or not value:
+        return True
+    stems: set[str] = set()
+    items = cast(list[object], value)
+    for item in items:
+        if not isinstance(item, str) or PROPOSAL_STEM_PATTERN.fullmatch(item) is None:
+            return True
+        stems.add(item)
+    return len(stems) != len(items)
