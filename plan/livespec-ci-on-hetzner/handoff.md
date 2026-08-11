@@ -411,10 +411,25 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >
 > **The existing rule in this file still stands and it worked** — *"when a red job fails in a
 > setup/install step rather than in the check itself, re-run before diagnosing."* **What changed is
-> that the rule is no longer a sufficient response.** Seven instances are now recorded across two
-> sessions and five repos, three of them on 2026-08-11 within seventy minutes
+> that the rule is no longer a sufficient response.** ~~Seven instances are now recorded across two
+> sessions and five repos~~, three of them on 2026-08-11 within seventy minutes
 > (`python-multipart==0.0.29`, `pytest-xdist==3.8.0`, `copier==9.6.0` — all "after 5 retries", all
-> despite `UV_HTTP_RETRIES: 5` already set). A rule telling every future session to re-run BY HAND
+> despite `UV_HTTP_RETRIES: 5` already set).
+>
+> > **⚠ THE STRUCK COUNT DRIFTED THE SAME DAY, AND SO DID THE MECHANISM IT IMPLIES — both are
+> > corrected on the item, which is the source of truth for how many exist.** Two more instances
+> > landed on 2026-08-11 after this paragraph was written, both on THIS repo's master, and the
+> > second was **not a timeout at all**: a git TLS trust failure cloning the cross-repo pin
+> > (`server certificate verification failed. CAfile: none`), which fails IMMEDIATELY rather than
+> > after exhausting `UV_HTTP_RETRIES`. **That matters more than the number: a remedy scoped to
+> > retry budgets would not cover it**, so the item's title was widened to name both mechanisms.
+> > **No replacement tally is written here** — this file's own ruling is to state the invariant
+> > and give the reader a command, never a count, and a tally in a handoff is wrong the moment
+> > the next instance lands. The invariants that DO hold: every instance is on a REQUIRED gate on
+> > master, every one has cleared on a bare re-run with no code change, and every one is
+> > **self-concealing within one commit** — the next green commit buries it.
+>
+> A rule telling every future session to re-run BY HAND
 > is a workaround, and `AGENTS.md` is explicit that a normal recurring failure mode **must be
 > handled automatically at its source**. So the cause is now filed as **`livespec-dev-tooling-el7g`**
 > (P2) with the measurements, a prior-art scan of that tenant's 433 items showing no existing
