@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/thewoolleyman/livespec/compare/v0.29.0...v0.29.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* accept spec pr merge journal events ([12a8136](https://github.com/thewoolleyman/livespec/commit/12a8136523fd9083d7336dd8b6f5f2c5a2487118))
+
 ## [0.29.0](https://github.com/thewoolleyman/livespec/compare/v0.28.5...v0.29.0) (2026-08-10)
 
 
