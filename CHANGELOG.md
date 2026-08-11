@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.30.0](https://github.com/thewoolleyman/livespec/compare/v0.29.2...v0.30.0) (2026-08-11)
+
+
+### Features
+
+* **ci:** derive spec-PR merge policy in auto-enable-merge ([c4b6706](https://github.com/thewoolleyman/livespec/commit/c4b6706324f2f415287de004170107e57998ba6a))
+
+
+### Bug Fixes
+
+* **spec:** drop the rotting count from the Lineage section, sweep stale refs ([3d6dca9](https://github.com/thewoolleyman/livespec/commit/3d6dca953f563749620b745016545cd1cfca0662))
+
 ## [0.29.2](https://github.com/thewoolleyman/livespec/compare/v0.29.1...v0.29.2) (2026-08-11)
 
 
