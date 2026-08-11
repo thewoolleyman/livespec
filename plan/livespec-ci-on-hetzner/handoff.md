@@ -598,8 +598,29 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 > imports it (tracked, non-vendored, outside the tests tree). The three named functions have no
 > such local importer; inside livespec-runtime they appear only in their own defining module and
 > in tests. **So the set of exactly three is CORRECT, and adding the fourth would manufacture a
-> declaration the criterion does not owe.** Stated as an inference from reading the criterion,
-> not from re-running the check.
+> declaration the criterion does not owe.**
+>
+> **✅ AND THAT IS NOW MEASURED, NOT INFERRED — the hedge that stood here is discharged.** This
+> paragraph first said the conclusion was "an inference from reading the criterion, not from
+> re-running the check". Rather than re-run the whole fleet row, the oracle's OWN deciding
+> function was called directly — `repo_local_public_names` from
+> `livespec_dev_tooling.checks._public_api_consumption`, against livespec-runtime's real
+> first-party non-test universe (40 files, exactly one under `.github/`). It returned 47
+> `(path, name)` pairs and split the four names exactly as predicted:
+>
+> | function | verdict |
+> |---|---|
+> | `documented_defaults` | NOT local-public → **declaration OWED** |
+> | `manifest_rows` | NOT local-public → **declaration OWED** |
+> | `verify_default_block` | NOT local-public → **declaration OWED** |
+> | `verify_livespec_jsonc_default_block` | **EXEMPT** — already local-public |
+>
+> `verify_livespec_jsonc_default_block` is the ONLY `spec_governance.py` name in the local-public
+> set. **The result is self-controlling**, which is why it is worth more than the reading it
+> replaced: the call DISCRIMINATED rather than returning a blanket verdict — 47 pairs, not zero,
+> and one-of-four inside the module in question. A broken or empty universe cannot produce that
+> shape; it would mark all four not-public. So the negative on the three is load-bearing rather
+> than vacuous.
 >
 > **Still owed on that item:** clauses 1, 2 and 5. Clause 3 was discharged earlier by this
 > thread, clause 4 now. **None of them is this thread's to drive** — it supplies measured
