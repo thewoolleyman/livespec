@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-10T06:0xZ at session wrap-up
+## Resume state — written 2026-08-11T05:3xZ at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth (per-session findings,
@@ -9,13 +9,15 @@ verbatim review verdicts) is in the supervisor marker at
 (gitignored, same host, read by the cold-open boot block). This section is
 self-sufficient; the marker is extra, not required.
 
-### THREE THINGS ARE COMPLETE. Do not re-do any of them.
+### THESE ARE COMPLETE. Do not re-do any of them.
 
 | Piece | Evidence |
 |---|---|
 | Increment 3 (doctrine + `drift_acceptance_mode`) | `livespec` v196 PR #2033 `0f06129f`; orchestrator v058 PR #1307 `a269345c`; PR #2058 `b6e8d4d8` |
 | Leg 2 — the twelve-repo `spec_governance` backfill | `livespec-jvdvx4.2` **CLOSED** |
 | `spec_pr_merge` redesign (`livespec-bhammf`) | **v200 RATIFIED**, PR #2131, commit `2970ad0a`; `livespec-bhammf` CLOSED |
+| The conservative-fold CLI surface (`livespec-jvdvx4.7`) | **CLOSED**, PR #2133, merge `91bd0754`; live-exercised, see below |
+| The `spec_pr_merge` journal event type (`livespec-jvdvx4.8`) | **CLOSED**, PR #2137, merge `12a81365` |
 
 **Leg 2 is 12 of 12 and closed.** Verified two ways at 2026-08-10T03:46Z: all
 twelve children read `closed` in THEIR OWN tenants, and core's
@@ -38,22 +40,46 @@ stems a PR introduces (non-`-revision` files its merge-base diff adds under
 conservative fold (any `manual` floors the whole PR) alongside the global
 effective value. An explicitly-empty or underivable set resolves `manual`.
 
-**PR #2131 auto-merged through the repo's EXISTING bot, not the new path — which
-is not implemented.** A green v200 is NOT evidence the mechanism works. Nobody
-should read it as such.
+**PR #2131 auto-merged through the repo's EXISTING bot, not the new path.** A
+green v200 is NOT evidence the mechanism works. Nobody should read it as such.
 
-### WHAT REMAINS — two items, correctly ordered, and one is blocked
+The CLI half of that path now exists and was exercised live across the zero-match
+floor, the real multi-match fold, the all-`auto-on-green` fold, the any-`manual`
+floor, the explicitly-empty floor, and the usage error. Note WHY the all-auto
+case had to be built as a synthetic fixture: every real proposal in
+`history/*/proposed_changes/` lacks the `spec_pr_merge_policy` key, so every
+real-world case floors to `manual` and an acceptance run using only real
+proposals would pass identically against a fold hardcoded to `manual`. **An
+exercise that only ever observes the floor proves nothing about the fold.**
+
+The WORKFLOW half is still unimplemented, so no pull request is yet governed by
+the new floor.
+
+### WHAT REMAINS — ONE item, and it is NOT factory-dispatchable
 
 | Item | State | Note |
 |---|---|---|
-| `livespec-jvdvx4.7` | open, P2 | The CLI half: `--proposal-stem`, `--pr-effective-policy`, the fold. **Do this first.** |
-| `livespec-jvdvx4.6` | open, P2 | The workflow half, in both `auto-enable-merge.yml` and the template `.yml.jinja`. Depends on `.7` (`via blocks`). |
+| `livespec-jvdvx4.6` | open at `backlog`, P2 | The workflow half, in both `auto-enable-merge.yml` and the template `.yml.jinja`. **Maintainer-side only — see the boundary below.** |
 
-MEASURED 2026-08-10T05:5xZ: the shipped `spec_governance.py --help` offers
-`--show-effective` and 8 flags; NEITHER `--proposal-stem` NOR
-`--pr-effective-policy` exists. So v200 currently mandates a surface the code
-does not provide. That is expected — livespec ratifies contracts ahead of
-implementation — but the workflow item cannot call flags that are absent.
+**AN EARLIER REVISION OF THIS BINDER SAID BOTH REMAINING ITEMS WERE "product
+`.py` / workflow work and factory-safe in principle". THAT WAS FALSE FOR `.6`,
+and acting on it burns a dispatch on a guaranteed push rejection.** `.6`'s whole
+scope is workflow files, and the factory sandbox's DISPATCH CREDENTIAL
+deliberately withholds the `workflows` grant, so GitHub refuses a sandbox push
+that creates or updates anything under `.github/workflows/`. That rejection IS
+the boundary working and must NEVER be requested, granted, or worked around —
+see `.ai/ci-gate-discipline.md` §"The `workflows` grant withheld from the
+DISPATCH CREDENTIAL is a deliberate boundary".
+
+So `.6` is deliberately parked at `backlog`, NOT `ready`: this repo sets
+`dispatcher.auto_approve_ready: true`, so marking it ready would admit it
+straight into that rejection. It lands maintainer-side via worktree → reviewed
+PR, with BOTH files in ONE pull request — their acceptance demands identical
+logic with no drift, and splitting them is how that drift starts.
+
+The CLI surface `.6` calls now EXISTS: `--proposal-stem` (repeatable) and
+`--pr-effective-policy` shipped in `livespec-jvdvx4.7`. Re-measure
+`spec_governance.py --help` rather than citing this sentence.
 
 **`livespec-jvdvx4.6` does NOT discharge on unit tests.** Its recorded
 acceptance requires a LIVE exercise: a real PR carrying a `manual`-floored
@@ -65,8 +91,31 @@ a FILTER-level one — the same faulty pathspec over both sources agrees and is
 wrong, yielding a false KNOWN-EMPTY that skips the fold. Only execution closes
 that.
 
-Epic `livespec-jvdvx4`: 12 children, 10 closed, these 2 open.
+Epic `livespec-jvdvx4` had exactly one open child when this was written
+(`livespec-jvdvx4.6`); every other child was closed. Re-enumerate from the
+ledger rather than citing a count here — a count in a binder rots at the next
+filing, which is why the totals that used to sit on this line are gone.
 Do NOT archive `plan/spec-side-autonomy/`.
+
+### A pending proposal is queued and NOT ratified
+
+`SPECIFICATION/proposed_changes/restore-spec-pr-merge-durable-evidence.md`
+(filed PR #2139, merge `43df3761`) restores one sentence the v200 redesign
+dropped silently: the pull-request timeline MAY serve as the durable
+final-evidence leg, so the journal is a DECISION GATE — it records which setting
+governed the attempt and refuses to proceed when unwritable — rather than the
+durable archive.
+
+Why it matters operationally: without it, an implementer has no ratified basis
+for treating the ephemeral `<project-root>/tmp/` journal path (inside a GitHub
+Actions runner's discarded `$GITHUB_WORKSPACE`) as intentional rather than a
+bug. A worker halted on exactly that. The design record is
+`SPECIFICATION/history/v190/proposed_changes/spec-governance-pr-merge.md`.
+
+It is FILED ONLY. Ratification requires the independent read-only adversarial
+review by a separately-spawned agent that authored neither the proposal nor the
+brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. Do not accept it
+without that.
 
 ### THE FACTORY CANNOT REACH THREE ADOPTER TENANTS — root cause NAMED
 
@@ -138,6 +187,24 @@ match.
 
 ### Standing hazards
 
+- **A REDESIGN CAN DELETE A GUARANTEE AND PASS EVERY REVIEW.** The v200
+  redesign rewrote the `spec_pr_merge` journal paragraph and silently dropped
+  v190's durable-evidence leg — no stated reason anywhere; the v200 proposal
+  mentions `spec_pr_merge` dozens of times and durability zero times. It
+  survived FOUR adversarial proposal rounds plus TWO byte-level reviews,
+  because every reviewer checked whether the NEW text was correct and none
+  diffed it against what the SUPERSEDED text had guaranteed. A worker later
+  halted on a wall the design had already cleared. **When a change REWRITES a
+  paragraph rather than adding one, diff the old clause set against the new and
+  account for every dropped guarantee.** "The new text is correct" and "nothing
+  load-bearing was removed" are different claims, and only the second is
+  checkable by diff.
+- **Research the DESIGN RECORD before escalating a design question.** I put the
+  journal's CI-durability problem to the maintainer as a three-way doctrine
+  decision. All three options rested on the premise that the question was
+  unanswered. It had been answered in v190 and I had not looked. The maintainer
+  asking "why does this journal live in `tmp/` and not the ledger or git?" is
+  what sent me to look.
 - **A work-item's embedded evidence EXPIRES exactly like a stale handoff.** I
   took `livespec-bhammf`'s week-old blocker text ("scenarios.md says three error
   paths") as live fact and briefed TWO agents on it. Live line 3 carries NO
@@ -206,16 +273,25 @@ record — an out-of-band edit to the very artifact the governance protects.
 
 ### Next concrete action
 
-Drive `livespec-jvdvx4.7` (the CLI surface) — ordinary implementation work
-against a ratified contract, no spec amendment needed. Read the ratified bytes
-in `contracts.md` §"Spec pull-request merge-registration mechanics" and
-`spec.md` `effective_spec_pr_merge`; do not reconstruct the semantics from the
-work-item's summary. Then `livespec-jvdvx4.6`, which is blocked on it, and close
-that one only on the LIVE exercise described above.
+Two, independent of each other:
 
-Both are product `.py` / workflow work and factory-safe in principle — but note
-that livespec's own tenant dispatches fine; only the three adopter tenants are
-blocked. Nothing on this thread is waiting on a human decision.
+1. **Finish `livespec-jvdvx4.6`** — MAINTAINER-SIDE, never dispatched, both
+   files in one PR, closed only on the LIVE exercise described above. Read the
+   ratified bytes in `contracts.md` §"Spec-governance control wrapper" (the
+   journal clause) and §"Spec pull-request merge-registration mechanics", plus
+   `spec.md` `effective_spec_pr_merge` and its dual-source hardening paragraph.
+   Do not reconstruct the semantics from a work-item summary or from this
+   binder. Implement the journal append as a GATE; do NOT invent a persistence
+   mechanism.
+2. **Get the pending restoration proposal reviewed and ratified** — it needs the
+   independent adversarial review first, and the reviewer must be neither its
+   author nor whoever briefs the ratifier.
+
+`.6` is NOT factory-dispatchable; see the boundary above. That is a property of
+the CHANGE (it touches `.github/workflows/`), not of the tenant: livespec's own
+tenant dispatches product-`.py` work fine — `livespec-jvdvx4.7` and
+`livespec-jvdvx4.8` both shipped through it this way. Only the three adopter
+tenants are credential-blocked, for the separate reason recorded above.
 
 ## Shared Protocol
 
