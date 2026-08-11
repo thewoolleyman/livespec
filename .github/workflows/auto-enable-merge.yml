@@ -58,6 +58,29 @@
 # companion auto-update-branches.yml was retired — it injected merge
 # commits into BEHIND PRs via the update-branch endpoint, violating
 # linear history.)
+#
+# SPEC-GOVERNANCE GATE (livespec-jvdvx4.6, SPECIFICATION/non-functional-
+# requirements.md §"Spec pull-request auto-merge requirement"): for a PR
+# whose diff touches SPECIFICATION/, this workflow additionally resolves
+# the pull-request effective `spec_pr_merge` policy before enabling
+# auto-merge, per SPECIFICATION/spec.md `effective_spec_pr_merge`. A PR
+# that ratifies a `manual`-floored proposal is left for a human merge; a
+# PR that touches no spec root, or ratifies nothing, is unaffected and
+# keeps today's behavior exactly. See the "Resolve spec-PR effective
+# policy" step below for the full derivation.
+#
+# ASYMMETRY WITH THE COPIER TEMPLATE — TRACKED, NOT AN OVERSIGHT. The spec
+# requires this logic in BOTH this root-repo file and the orchestrator-plugin
+# template's templates/orchestrator-plugin/.github/workflows/auto-enable-
+# merge.yml.jinja. Only the root file carries it today, because a sibling
+# repo's CI runner has no way to obtain core's spec_governance.py: core ships
+# as an interactive plugin, and livespec-dev-tooling (the pip package the
+# siblings do consume) does not carry that module. Writing the template to
+# call a path that is not there would fail closed in every adopter and
+# silently disable spec-PR auto-merge fleet-wide. The template half, together
+# with the core-to-CI distribution mechanism it requires, is tracked as
+# `livespec-jvdvx4.9`; the spec requirement is satisfied by this file plus
+# that item, and stays partially unimplemented until it lands.
 
 name: Auto-enable merge
 
@@ -103,7 +126,193 @@ jobs:
           client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      - name: Checkout (full history for a real merge-base)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # fetch-depth 0 (full history), deliberately: a shallow checkout
+          # is named in SPECIFICATION/spec.md `effective_spec_pr_merge`'s
+          # dual-source hardening as a SOURCE-level failure the derivation
+          # below must not silently produce.
+          fetch-depth: 0
+
+      - name: Resolve spec-PR effective policy (spec_pr_merge)
+        id: policy
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          SPEC_ROOT="SPECIFICATION"
+
+          # 1. Does this PR touch the spec root at all? If not, spec_pr_merge
+          #    does not apply — fall through to today's behavior unchanged.
+          #    The git invocation's exit status is checked SEPARATELY from the
+          #    emptiness of its output: `$(...)` swallows a git error into an
+          #    empty string, and "git failed" must NOT be read as "touches no
+          #    spec root" (spec.md effective_spec_pr_merge: a git or
+          #    hosting-API error is derivation FAILURE, never a KNOWN-EMPTY).
+          touched=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- "$SPEC_ROOT") || {
+            echo "::error::cannot diff base..head — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ -z "$touched" ]; then
+            echo "PR does not touch $SPEC_ROOT; spec_pr_merge does not apply"
+            echo "decision=auto" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 2. Merge-base. A failure here is itself a derivation FAILURE.
+          MERGE_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA") || {
+            echo "::error::cannot compute merge-base — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # 3. HARDENING: an entirely-empty computed PR diff (zero changed
+          #    files IN TOTAL, not merely zero matched proposal-change
+          #    stems) is impossible for a genuine pull request, so it is
+          #    treated as derivation FAILURE — a safe, costless signal of a
+          #    broken or mis-scoped diff computation (spec.md
+          #    effective_spec_pr_merge, dual-source hardening paragraph).
+          total_changed=$(git diff --name-only "$MERGE_BASE" "$HEAD_SHA" | wc -l | tr -d ' ')
+          if [ "$total_changed" -eq 0 ]; then
+            echo "::error::derivation FAILURE: entirely-empty computed PR diff (impossible for a real PR)"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 4. DUAL-SOURCE HARDENING (spec.md effective_spec_pr_merge,
+          #    required, not optional): derive the added, non-`-revision`
+          #    proposed-change stems under <spec-root>/history/*/proposed_
+          #    changes/ across every configured spec root (the main spec
+          #    plus any <spec-root>/templates/<name>/ sub-specs) from BOTH
+          #    a local-git derivation AND the hosting API's file listing,
+          #    and require the two to AGREE. Disagreement is derivation
+          #    FAILURE — this closes the source-level failure class (a
+          #    wrong base ref, a shallow-checkout artifact, API/git
+          #    divergence), never a filter-level bug where an identical
+          #    faulty pathspec applied to both sources would still agree
+          #    and be wrong (spec.md states that residual limit honestly).
+          #
+          #    Each SOURCE is fetched into a variable of its own and its exit
+          #    status checked BEFORE any filtering, because `$(cmd | grep ...)`
+          #    reports only the last pipeline stage and would silently turn a
+          #    git or hosting-API error into an empty file list — which, when
+          #    the other source is also empty, would agree its way to a false
+          #    KNOWN-EMPTY and auto-enable. Per spec.md, such an error is
+          #    derivation FAILURE and MUST block. Filtering is applied only
+          #    after both sources have been obtained successfully.
+          STEM_PATTERN="^${SPEC_ROOT}/(templates/[^/]+/)?history/[^/]+/proposed_changes/[^/]+\.md\$"
+          local_files=$(git diff --name-only --diff-filter=A "$MERGE_BASE" "$HEAD_SHA" -- "$SPEC_ROOT") || {
+            echo "::error::local-git file listing failed — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          api_files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate -q '.[] | select(.status=="added") | .filename') || {
+            echo "::error::hosting-API file listing failed — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          # A no-match `grep` exits 1; that is an EMPTY RESULT, not an error,
+          # and is the KNOWN-EMPTY path — so these filters are deliberately
+          # exempt from the exit-status checks above.
+          local_added=$(printf '%s\n' "$local_files" \
+            | grep -E "$STEM_PATTERN" | grep -v -- '-revision\.md$' | sort)
+          api_added=$(printf '%s\n' "$api_files" \
+            | grep -E "$STEM_PATTERN" | grep -v -- '-revision\.md$' | sort)
+
+          if [ "$local_added" != "$api_added" ]; then
+            echo "::error::derivation FAILURE: local-git and hosting-API derivations disagree"
+            echo "local-git: $local_added"
+            echo "hosting-API: $api_added"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 5. Derive stems from the agreed file list.
+          stems=()
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            stems+=("$(basename "$f" .md)")
+          done <<< "$local_added"
+
+          # 6. KNOWN-EMPTY: the PR touches the spec root but ratifies no
+          #    proposal. This is NOT a fold case — spec_pr_merge does not
+          #    govern a PR that ratifies nothing, so it falls through
+          #    unchanged to the non-spec eligibility gates, exactly as a
+          #    non-spec PR does. Conflating this with derivation FAILURE
+          #    would silently revert the 2026-05-26 cadence fix for every
+          #    plain propose-change-filing PR.
+          if [ ${#stems[@]} -eq 0 ]; then
+            echo "KNOWN-EMPTY: PR touches $SPEC_ROOT but ratifies no proposal; falls through unchanged"
+            echo "decision=auto" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 7. Resolve the pull-request effective policy (the conservative
+          #    fold) via the deterministic control CLI. The CLI never
+          #    inspects git state itself — it only folds over the stem set
+          #    this workflow derived and supplies.
+          args=()
+          for s in "${stems[@]}"; do args+=(--proposal-stem "$s"); done
+          effective_json=$(python3 .claude-plugin/scripts/bin/spec_governance.py \
+            --project-root "$GITHUB_WORKSPACE" --show-effective --pr-effective-policy "${args[@]}") || {
+            echo "::error::spec_governance.py --show-effective failed — derivation FAILURE"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          effective_policy=$(printf '%s' "$effective_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['pr_effective_policy']['spec_pr_merge'])")
+          effective_source=$(printf '%s' "$effective_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['pr_effective_policy']['source'])")
+          echo "pull-request effective policy: $effective_policy (source: $effective_source)"
+
+          if [ "$effective_policy" != "auto-on-green" ]; then
+            echo "effective policy is $effective_policy; leaving for human merge"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 8. JOURNAL AS GATE (SPECIFICATION/contracts.md §"Spec pull-
+          #    request merge-registration mechanics"; the journal is the
+          #    decision gate, not a durable archive — the GitHub pull-
+          #    request timeline serves that role, per the restored v190
+          #    design record). Append the event BEFORE registering. If the
+          #    append fails, do NOT register — journal failure requires
+          #    human input and prevents registration. Do not invent a
+          #    persistence mechanism beyond this append.
+          stems_json=$(printf '%s\n' "${stems[@]}" | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
+          event_file=$(mktemp)
+          PULL_REQUEST_IDENTITY="$REPO#$PR" EFFECTIVE_SOURCE="$effective_source" STEMS_JSON="$stems_json" python3 -c "
+          import json, os
+          print(json.dumps({
+              'event_type': 'spec_pr_merge',
+              'pull_request_identity': os.environ['PULL_REQUEST_IDENTITY'],
+              'proposal_stems': json.loads(os.environ['STEMS_JSON']),
+              'effective_policy': 'auto-on-green',
+              'effective_source': os.environ['EFFECTIVE_SOURCE'],
+              'registration_result': 'registered',
+              'required_gate_state': 'pending',
+              'outcome': 'consumed',
+          }))
+          " > "$event_file"
+
+          if ! python3 .claude-plugin/scripts/bin/spec_governance.py \
+            --project-root "$GITHUB_WORKSPACE" --journal-event-json "$event_file"; then
+            echo "::error::journal append FAILED — per contract this PREVENTS registration"
+            rm -f "$event_file"
+            echo "decision=blocked" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          rm -f "$event_file"
+
+          echo "decision=auto" >> "$GITHUB_OUTPUT"
+
       - name: "Enable auto-merge (rebase) on PR #${{ github.event.pull_request.number }}"
+        if: steps.policy.outputs.decision != 'blocked'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
