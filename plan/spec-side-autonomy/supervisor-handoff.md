@@ -99,11 +99,11 @@ Do NOT archive `plan/spec-side-autonomy/`.
 
 ### A pending proposal is queued and NOT ratified
 
-`SPECIFICATION/proposed_changes/restore-spec-pr-merge-durable-evidence.md`
-(filed PR #2139, merge `43df3761`) adds a durability-locus clause to the
-`spec_pr_merge` journal event: the pull-request timeline MAY serve as the
-durable final-evidence leg, so the journal is a DECISION GATE — it records which
-setting governed the attempt and refuses to proceed when unwritable.
+`SPECIFICATION/proposed_changes/spec-pr-merge-durable-evidence-locus.md` adds a
+durability-locus clause to the `spec_pr_merge` journal event: the pull-request
+timeline MAY serve as the durable final-evidence leg, so the journal is a
+DECISION GATE — it records which setting governed the attempt and refuses to
+proceed when unwritable.
 
 Why it matters operationally: the v200-ratified text is SILENT on where the
 durable record lives, so an implementer has no ratified basis for treating the
@@ -111,19 +111,19 @@ ephemeral `<project-root>/tmp/` journal path (inside a GitHub Actions runner's
 discarded `$GITHUB_WORKSPACE`) as intentional rather than a bug. A worker halted
 on exactly that.
 
-**Its filed framing is WRONG and must be fixed before it can be ratified.** It
-calls itself a restoration of text v200 dropped. It is not: the language comes
-from `history/v190/proposed_changes/spec-governance-pr-merge.md`, which was
-REJECTED at v190 and ordered redesigned and refiled — v200 was that refile. This
-is a NEW normative clause and must be judged on its merits at new-clause
-scrutiny, not waved through as a restoration. The file stem still says
-`restore-`; renaming it is optional but the prose must not claim restoration.
+It is a NEW normative clause, judged at new-clause scrutiny. Its FIRST filing
+(as `restore-spec-pr-merge-durable-evidence.md`, PR #2139) called itself a
+restoration of text v200 had dropped. That was FALSE — the language comes from
+`history/v190/proposed_changes/spec-governance-pr-merge.md`, which was REJECTED
+at v190 and ordered redesigned and refiled, and v200 WAS that refile. The
+proposal has since been renamed and reframed; the old file no longer exists.
 
 It is FILED ONLY. Ratification requires the independent read-only adversarial
 review by a separately-spawned agent that authored neither the proposal nor the
-brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. That review has run
-once and returned one blocker — the lineage claim above. Do not accept without a
-clean re-review.
+brief, per `AGENTS.md` and `.ai/spec-proposal-review.md`. Two rounds have run
+and each returned exactly one blocker — first the false lineage, then a
+lines-versus-occurrences miscount inside the corrective Lineage section itself.
+Both are fixed. Do not accept without a clean re-review.
 
 ### THE FACTORY CANNOT REACH THREE ADOPTER TENANTS — root cause NAMED
 
