@@ -808,10 +808,45 @@ The groom operation closed the epic as “regroomed out” as its normal final s
 >   Re-fetch and rebase before pushing rather than trusting an earlier reading.
 > - Create worktrees with **`just worktree-create <branch> master`**, never raw `git worktree add`
 >   — a raw worktree has no discipline pack and its first push is refused after a full `just check`.
-> - The `github_rate_limit_guard` (`livespec-driver-claude-mu5`) denied a `gh run view` this
->   session **purely for containing `select(` in its `--jq`** — no loop, one GitHub call. Write the
->   JSON to a file and post-process with `python3` in a separate call. Use `-F`/`--body-file`/
->   `--append-notes "$(cat <file>)"` for anything carrying prose.
+> - **⛔ THE `github_rate_limit_guard` DENIAL TAXONOMY — FOUR DISTINCT SHAPES, all hit in the
+>   2026-08-11 afternoon session, with the counter-move for each.** This is
+>   `livespec-driver-claude-mu5` (P1); the guard matches SUBSTRINGS, not behaviour, so the
+>   question "does my command actually read GitHub in a loop?" does not predict the verdict.
+>
+>   | # | what gets denied | counter-move |
+>   |---|---|---|
+>   | 1 | `select(` anywhere in a `--jq` — no loop, ONE GitHub call | write the JSON to a file; parse in a SEPARATE call |
+>   | 2 | a `for` token in a `python3 -c` that ALSO invokes `gh` — including inside a comprehension, with no loop statement present | same: fetch to a file in one call, parse in the next |
+>   | 3 | `until …; do sleep …; done` around any `gh` read (e.g. waiting for a PR to merge) | **poll `git`, not `gh`** — see below |
+>   | 4 | **`gh api --cache 20s` inside a loop — the guard's OWN prescribed remedy**, refused by the same message that recommends it | there is no compliant `gh` form; restructure the question |
+>
+>   **The two counter-moves worth keeping, because both cost a cycle to derive:**
+>
+>   - **Waiting for your own PR to merge** — shape 3 has no `gh` answer, but the merge commit lands
+>     on `origin/master` either way, so poll git and make ZERO GitHub API calls:
+>
+>     ```bash
+>     until git -C /data/projects/livespec fetch -q --prune origin master 2>/dev/null \
+>       && git -C /data/projects/livespec log origin/master --oneline -40 \
+>          | grep -q "<your commit subject>"; do sleep 60; done
+>     ```
+>
+>     Run it with `run_in_background: true` and carry on; the completion notification is the signal.
+>   - **Sweeping many repos** — one `gh api graphql` with one alias per member. See the ⭐ bullet
+>     below.
+>
+>   **⚠ AND THE TEMPTING MOVE THAT IS NOT SANCTIONED, recorded because it is obvious, easy, and
+>   was deliberately declined:** the guard inspects the COMMAND STRING, so writing the loop into a
+>   script file and running `bash sweep.sh` sails through. **Do not.** That is structuring a
+>   command to evade a PreToolUse guard — evasion regardless of how defective the guard is, and
+>   the defect is filed and P1 precisely so it gets FIXED rather than routed around. Reshaping the
+>   question so it genuinely is not a looped read (GraphQL, git-polling) is the honest path and
+>   happens to be cheaper on the guard's own stated concern. Executing a bounded, explicit set of
+>   one-shot calls — e.g. nine separate `gh api` invocations with no loop token — is fine: that is
+>   what the skill prescribes, and it is not polling.
+>
+>   Also use `-F` / `--body-file` / `--append-notes "$(cat <file>)"` for anything carrying prose;
+>   the guard denies purely local `git commit` and `bd update` on their message text.
 > - `bd` auto-backup warns `command denied to user '<tenant>'@'%'` on every write. That is
 >   **correct-by-design**, not a fault — `DOLT_BACKUP` needs SUPER, confined to a dedicated user.
 > - **⭐ TO SWEEP THE FLEET WITHOUT TRIPPING THE GUARD, USE ONE `gh api graphql` CALL WITH NINE
