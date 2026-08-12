@@ -1044,6 +1044,50 @@ the query answers the question being asked. Reviewing a proposal, the same
 distinction appears as the shared-instrument defect class in
 `.ai/spec-proposal-review.md`.
 
+### 31. `gh api -q` on a 404 prints `null`, which is NOT empty, so every row passes
+
+A failed lookup that still produces output defeats an emptiness test, and a
+sweep built on one reports the same verdict for every repository it visits —
+including the verdict you were hoping for.
+
+Sweeping all thirteen `.livespec-fleet-manifest.jsonc` repositories to establish
+which are generated from the copier template, the probe was
+`ans="$(gh api "repos/$OWNER/$r/contents/.copier-answers.yml" -q '.name' 2>/dev/null)"`,
+classified as a consumer when `$ans` was non-empty. Every one of the thirteen
+came back a consumer.
+
+On a 404, `gh api` still prints the error body — `{"message":"Not Found", ...}` —
+and `-q '.name'` is a jq filter over THAT object. jq emits `null` for a missing
+key, so `$ans` is the four-character string `null`. Non-empty. `2>/dev/null`
+suppressed the human-readable `gh: Not Found (HTTP 404)` on stderr, removing the
+one signal that would have shown the lookup failing.
+
+What exposed it was a CONTRADICTION rather than suspicion: the sweep called
+`livespec` itself a template consumer, while a `git ls-tree origin/master`
+moments earlier had found no `.copier-answers.yml` there. Two sources
+disagreeing is what forced the re-check. Had the wrong answer been merely
+plausible everywhere — as it was for the other twelve — it would have shipped.
+
+**The counter-move:** branch on the command's EXIT STATUS, not on whether its
+output is empty:
+
+```sh
+if gh api "repos/$OWNER/$r/contents/$PATH" >/dev/null 2>&1; then ...
+```
+
+Re-run that way, the true answer was two consumers, not thirteen. Note the
+original conclusion drawn from a three-repository spot-check had been RIGHT;
+the thirteen-repository sweep meant to upgrade it from inference to measurement
+is what nearly replaced a correct claim with a false one. A verification step
+is not automatically safer than the claim it audits.
+
+The generalisation is the part worth carrying: **any wrapper that prints a
+structured error to stdout turns "no output" into an unreliable proxy for
+"not found".** The same shape sits behind instance 22, where a ref that does not
+exist returns empty and reads as out-of-scope; here the polarity is inverted —
+absence returns something — which is worse, because the tell is a passing test
+rather than a suspicious blank.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,

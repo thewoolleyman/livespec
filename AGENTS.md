@@ -664,7 +664,12 @@ existing file):
   three agreeing queries all answered the wrong question — a CONFLICTED pull
   request producing zero workflow runs, because a conflict leaves no merge ref
   for `pull_request` workflows to run against, so read `mergeable_state` before
-  concluding a trigger broke.
+  concluding a trigger broke, and — the one entry where the FAILED lookup PRINTS
+  instead of returning empty, inverting every empty-result trap above — `gh api
+  -q '.name'` on a 404 emitting the literal string `null`, non-empty and so
+  passing an emptiness test for every row, which classified all thirteen fleet
+  repositories as copier-template consumers when only two are; branch on the
+  command's exit status, never on whether its output is empty.
 
 ## Working with the maintainer
 
