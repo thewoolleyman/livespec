@@ -4,16 +4,46 @@ Updated 2026-08-12. **Epic `livespec-jvdvx4` is FULLY CLOSED.** The thread took
 `livespec-4kwu`, decided its fix shape on evidence, moved it upstream as
 `livespec-dev-tooling-ep8n`, and has HANDED that item off.
 
-**The thread owns exactly ONE live item: `livespec-5qu1`.** Its direction is
-decided and its template change has landed and RELEASED; it is open on a single
-named leg, the live auto-merge exercise, which **will not discharge on its own**
-— see §"Open items". An earlier revision of this paragraph said the thread
-"owns no in-flight work at all"; that was written before the maintainer chose
-the `app-id:` direction and is retracted.
+## START HERE — nothing is in flight, and NOTHING here is autonomously actionable
 
-There is NO uncommitted work and NO worktree belonging to this thread. Every
-worktree under `$HOME/.worktrees/livespec/` is FOREIGN — **enumerate rather
-than trusting this sentence**, it drifts. Never run the reaper in this repo.
+**Read this section before planning anything.** The thread is at a clean stop:
+no uncommitted work of its own, no branch, no worktree, every pull request
+merged, master CI green. Every worktree under `$HOME/.worktrees/livespec/` is
+FOREIGN — **enumerate rather than trusting this sentence**, it drifts. Never run
+the reaper in this repo. A dirty
+`plan/planning-lane-redesign/supervisor-handoff.md` may be present in the
+primary; it belongs to ANOTHER live session — examine, never discard.
+
+The thread owns three things, and **every one of them is gated on a human**:
+
+| What | State | Why you cannot just do it |
+|---|---|---|
+| `livespec-5qu1` (open, P2) | direction decided, template fix landed AND released in `v0.33.1` | Its ONE remaining leg is a LIVE auto-merge exercise in a consumer. It **will not discharge on its own** — propagation is manual, and doing it means a `copier update` in a consumer, which is OUT of scope. |
+| `SPECIFICATION/proposed_changes/doctor-spec-target-drift.md` | filed 2026-08-12 | Ratifying needs the independent adversarial review a session must be AUTHORISED to spawn. Its direction is also an open design call. |
+| `SPECIFICATION/proposed_changes/spec-governance-flag-drift.md` | filed 2026-08-12 | Same review gate. Direction is NOT open on this one. |
+
+`livespec-jvz8` needs a maintainer design call; `livespec-dev-tooling-ep8n` is
+handed off; `livespec-jvdvx4.2` leg 2 is not authorised. So **the correct first
+move is to ask the maintainer what they want**, not to pick from this list.
+
+**If you are told to keep working anyway** — the standing instruction to a
+worker above the wind-down line — do NOT invent ledger work. What actually
+produced value on 2026-08-12, in order of yield:
+
+1. **Exercise shipped surfaces rather than reading them.** Running
+   `doctor_static.py` with a relative `--spec-target` found a crash that had
+   survived because every caller and test passed an absolute path. Two real bug
+   fixes came out of it.
+2. **Audit contract text against actual behaviour.** Comparing
+   `contracts.md` §"Wrapper CLI surface" row-by-row against each wrapper's real
+   `--help` found BOTH filed drifts. **That audit is COMPLETE — do not redo
+   it**; see §"Open items".
+3. **Re-run the cheap health checks**: master CI (`--workflow CI`, and read the
+   STEP list, not the job colour), and `doctor-static`.
+
+Whatever you do, re-measure before acting. This document has been wrong three
+times in one session — each time because the session that wrote a fact then
+changed the state behind it.
 
 **Ledger anchor:** epic `livespec-jvdvx4` (closed).
 
@@ -306,6 +336,22 @@ the fuller record.
   ordinary prose.** "be**for**e" and "**for** audit" both trip it. Write bodies
   to a file in one call and run `gh` in another; `map`/`filter` instead of a
   list comprehension; no `jq select(...)`.
+- **You cannot background a gate command, and the hook's suggested remedy does
+  not exist in this repo.** `pretooluse_background_guard` DENIES bare
+  backgrounding of `just check*`, `git commit`, `git push` and `gh pr …`, and
+  its hint tells you to use `just gate-start` / `just gate-wait`. **This repo's
+  justfile has no such recipes** — confirmed by `just --list`. So the working
+  pattern is a FOREGROUND call with a generous explicit timeout
+  (`gh pr checks <n> --watch --interval 30`, timeout ~1800000ms; a push running
+  full `just check` took ~220s). Do not go hunting for the recipe, and do not
+  try to satisfy the hook by wrapping the command differently.
+- **CI egress/install flakes are frequent — six on 2026-08-12 alone.** The
+  signature: a dependency- or network-touching step fails (checkout TLS, `uv`
+  fetching the `livespec-runtime` git dependency, `mise` installing shellcheck)
+  and the check that NAMES the job is left `skipped`, so the job reads red
+  having never run its own command. Read the step list, re-run, and expect it to
+  pass. All six did. Threads `phase0-selfhosted-shadow-lane` and
+  `livespec-ci-on-hetzner` own that surface; report, do not file into their lanes.
 
 ## Standing constraints
 
