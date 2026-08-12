@@ -167,6 +167,46 @@ def test_run_static_main_accepts_spec_target(
     assert spec_roots == {str(custom_spec_root)}
 
 
+def test_run_static_main_accepts_relative_spec_target(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A RELATIVE --spec-target resolves to an absolute spec root.
+
+    The sibling wrappers `revise` and `propose-change` already anchor a
+    relative --spec-target to `Path.cwd()`; doctor static returned the
+    raw relative path instead. Any check that computes the spec root
+    relative to the project root then raised ValueError before a single
+    check had run, so the operation produced NO findings at all rather
+    than a usable result or an actionable error.
+    """
+    project_root = tmp_path / "project"
+    default_spec_root = _seed_fully_valid_project(project_root=project_root)
+    custom_spec_root = project_root / "CUSTOM_SPEC"
+    default_spec_root.rename(custom_spec_root)
+    monkeypatch.chdir(project_root)
+
+    exit_code = run_static.main(
+        argv=[
+            "--project-root",
+            str(project_root),
+            "--spec-target",
+            "CUSTOM_SPEC",
+        ],
+    )
+    out = capsys.readouterr().out
+
+    assert exit_code == 0, f"expected exit 0, got {exit_code}; stdout: {out}"
+    payload = json.loads(out)
+    spec_roots = {finding["spec_root"] for finding in payload["findings"]}
+    assert len(spec_roots) == 1, f"expected one spec root, got {spec_roots}"
+    resolved = Path(next(iter(spec_roots)))
+    assert resolved.is_absolute(), f"spec root must be absolute, got {resolved}"
+    assert resolved.name == "CUSTOM_SPEC", f"unexpected spec root {resolved}"
+
+
 def test_run_static_main_emits_findings_json_to_stdout(
     *,
     tmp_path: Path,
