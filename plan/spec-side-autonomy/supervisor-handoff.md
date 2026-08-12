@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T05:50Z at session wrap-up
+## Resume state — written 2026-08-12T06:13Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -61,12 +61,12 @@ pass on its own.
 - **The `.jinja` template pins are outside pin automation.** Five pins are
   correct today and will NOT be bumped. That is `livespec-dev-tooling-ep8n`.
 
-### WHAT REMAINS — three items, none of them this thread's to finish alone
+### WHAT REMAINS — none of it this thread's to finish alone
 
 | Item | Tenant | State |
 |---|---|---|
-| `livespec-dev-tooling-ep8n` | `livespec-dev-tooling` | Pin autodiscovery misses `.jinja` template pins on BOTH directory and suffix. Shape decided (generic scanner extension). **BLOCKED** on a ratified amendment in THAT repo: its `contracts.md` §"Pin autodiscovery rules" names `.github/workflows/*.yml`/`*.yaml`, and a `.jinja` renders a workflow rather than being one. |
-| `livespec-5qu1` | `livespec` | The template's generated workflow mints its App token with `create-github-app-token@v3` + `client-id:`, while consumers carry `@v1` + `app-id:`. The next `copier update` swaps both. `app-id` and `client-id` are NOT interchangeable and which one a consumer's secret holds is unreadable from livespec. |
+| `livespec-dev-tooling-ep8n` | `livespec-dev-tooling` | **HANDED OFF** to whoever grooms `livespec-dev-tooling`, by maintainer decision 2026-08-12; listed here for continuity only and NOT this thread's to advance. Pin autodiscovery misses `.jinja` template pins on BOTH directory and suffix. Shape decided (generic scanner extension). The recorded reason it is blocked, kept so the receiving groomer need not re-derive it: it needs a ratified amendment in THAT repo, because its `contracts.md` §"Pin autodiscovery rules" names `.github/workflows/*.yml`/`*.yaml`, and a `.jinja` renders a workflow rather than being one. |
+| `livespec-5qu1` | `livespec` | The template's generated workflow mints its App token with `create-github-app-token@v3` + `client-id:`, while consumers carry `@v1` + `app-id:`. The next `copier update` swaps both, and `app-id` and `client-id` are NOT interchangeable. **Which FORM each repository uses is now measured — see `handoff.md` §"Open items"; that half is closed.** What each consumer's `APP_ID` secret actually HOLDS is still unreadable from outside those repositories, so the item stays OPEN on that half and needs the maintainer. |
 | `livespec-jvz8` | `livespec` | Spec ratifications auto-merge UNGATED in `livespec-dev-tooling` and `livespec-runtime`. PRE-EXISTING, not fix-created; neither consumes the copier template, so the ratified applicable set already excluded them. Banned resolution recorded on the item. |
 
 `livespec-dev-tooling-ep8n` was MOVED (not mirrored) out of the `livespec` tenant
@@ -128,12 +128,29 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 
 ### Next concrete action
 
-**There is no urgent action.** The thread's stated work is complete and the P1 is
-validated in production. Pick up whichever of the three remaining items the
-maintainer prefers; absent direction, `livespec-dev-tooling-ep8n` is the most
-consequential, because until it lands the five `.jinja` pins are correct today
-and silently rotting — and it needs a spec amendment in a repo that governs
-itself, so it is a cross-repo track rather than a continuation of this one.
+**There is no urgent action, and there is nothing for a successor to pick up
+without asking the maintainer first.** The thread's stated work is complete and
+the P1 is validated in production.
+
+**`livespec-dev-tooling-ep8n` was HANDED OFF by maintainer decision on
+2026-08-12. This thread does not carry it further, and the choice that produced
+that hand-off must NOT be re-offered.** The maintainer was asked whether to
+authorise the independent adversarial review this thread needed in order to
+ratify the amendment and land the fix, or to hand the item to whoever grooms
+`livespec-dev-tooling`; they chose to hand it off. The authority is
+`plan/spec-side-autonomy/handoff.md` §"Disposition of the one open decision —
+SETTLED, do not reopen" — read it before forming any plan that touches `ep8n`.
+
+An earlier revision of this section recommended `ep8n` as the most consequential
+thing to pick up absent direction. That recommendation was written at
+2026-08-12T05:50Z, four minutes BEFORE the hand-off landed, and acting on it
+would reverse a maintainer decision. It is retracted, not merely superseded.
+
+Neither remaining item is available either: `livespec-5qu1` is blocked on the
+maintainer for the half that cannot be read from outside the consumer
+repositories, and `livespec-jvz8`'s obvious resolution is BANNED and needs a
+maintainer design call. So the correct next action is to ask the maintainer what
+they want, not to select from this list.
 
 Do NOT archive `plan/spec-side-autonomy/`.
 
