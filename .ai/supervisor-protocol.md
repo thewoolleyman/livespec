@@ -88,6 +88,23 @@ socket, and never kill the acting overseer daemon. The daemon runs in tmux
 `livespec-overseer:1.1`, supervises every tracked fleet session, and is the
 shipped product rather than part of one thread.
 
+## Session adoption keys
+
+Adopt a worker by the runtime's own identity key, not by the tmux session that
+hosts it. A tmux session name is not an adoption key.
+
+Claude: adoption joins on the registry name.
+
+- Fresh launch: `claude --dangerously-skip-permissions -n <topic>`.
+- Live repair: `/rename <topic>` only when the session is not at a structured
+  permission or numbered-cursor gate.
+
+Codex: adoption joins on the `session_index.jsonl` `thread_name`.
+
+- Restart: `codex resume --dangerously-bypass-approvals-and-sandbox <session-id> "<kick>"`,
+  recovering the UUID from `session_index.jsonl` by topic.
+- Fresh launch: immediately use `/rename <topic>`.
+
 ## Decision-vetting rubric
 
 Escalate only a genuinely BLOCKING decision: no legitimate action can proceed
