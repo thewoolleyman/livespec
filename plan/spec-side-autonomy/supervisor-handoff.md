@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T12:38Z at session wrap-up
+## Resume state — written 2026-08-12T13:52Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -140,22 +140,32 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 **One item is live and has a named next step: `livespec-5qu1`. One item needs a
 maintainer design call: `livespec-jvz8`. Nothing else is this thread's.**
 
-**The spec tree is HEALTHY, and its queue holds ONE pending proposal.**
-`doctor-static` passes every check. An earlier revision of this paragraph said
-the queue was EMPTY; that was true when written, and this same session then
-filed into it — so it is retracted rather than corrected.
+**The spec tree is HEALTHY, and its queue holds TWO pending proposals.**
+`doctor-static` passes every check. Earlier revisions of this paragraph said the
+queue was EMPTY, then that it held ONE; each was true when written and this same
+session filed past it — retractions of its own claims, not corrections.
 
-The pending proposal is
-`SPECIFICATION/proposed_changes/doctor-spec-target-drift.md` (PR #2229, merge
-`3ae4123e`): `contracts.md` says twice that `doctor` takes only
-`--project-root`, while the shipped wrapper has accepted `--spec-target` since
-2026-07-01. **FILED, NOT RATIFIED** — accepting it needs the independent
-adversarial review, and the direction (document the flag vs delete it from the
-implementation) is a design call the proposal deliberately leaves open. Do not
-ratify it as routine queue-clearing.
+- `doctor-spec-target-drift.md` (PR #2229, merge `3ae4123e`) — `contracts.md`
+  says twice that `doctor` takes only `--project-root`; the wrapper has accepted
+  `--spec-target` since 2026-07-01. **Direction deliberately left OPEN**:
+  document the flag, or delete it from the implementation and its test.
+- `spec-governance-flag-drift.md` (PR #2232, merge `6a5f5435`) — `contracts.md`
+  enumerates three spec-governance modes as a closed list; the CLI has a fourth,
+  `--check-default-block`, absent from the spec entirely. **No alternative
+  direction** — an enforcement check in `just check` consumes it.
 
-`next` now ranks TWO actions, both LOW urgency: that `revise`, and
-`prune-history` over 202 unpruned versions. Neither is work waiting.
+**BOTH FILED, NOT RATIFIED.** Accepting either needs the independent adversarial
+review. Do not clear them as routine queue-keeping.
+
+**The §"Wrapper CLI surface" audit is COMPLETE — all nine rows checked against
+actual `--help`. Do not redo it.** Six rows match exactly. `revise` carries three
+flags absent from the spec, but that is incompleteness rather than contradiction
+(the table preamble allows wrappers to add flags), so it was deliberately NOT
+filed — the two above each contradict an explicit completeness claim, which is
+what made them drift.
+
+`next` now ranks `revise` (queue depth 2) and `prune-history`, both LOW urgency.
+Neither is work waiting.
 
 Two `doctor-static` path-resolution crashes were found and fixed along the way
 (`6180d10b`, `be4cd0b1`); they carried no work-item, and `handoff.md` §"Also
