@@ -1,9 +1,15 @@
 # spec-side-autonomy — handoff
 
-Updated 2026-08-12. **Epic `livespec-jvdvx4` is FULLY CLOSED, and NOTHING here
-is waiting on a human.** The thread took `livespec-4kwu`, decided its fix shape
-on evidence, moved it upstream as `livespec-dev-tooling-ep8n` — and has now
-HANDED that item off, so the thread owns no in-flight work at all.
+Updated 2026-08-12. **Epic `livespec-jvdvx4` is FULLY CLOSED.** The thread took
+`livespec-4kwu`, decided its fix shape on evidence, moved it upstream as
+`livespec-dev-tooling-ep8n`, and has HANDED that item off.
+
+**The thread owns exactly ONE live item: `livespec-5qu1`.** Its direction is
+decided and its template change has landed and RELEASED; it is open on a single
+named leg, the live auto-merge exercise, which **will not discharge on its own**
+— see §"Open items". An earlier revision of this paragraph said the thread
+"owns no in-flight work at all"; that was written before the maintainer chose
+the `app-id:` direction and is retracted.
 
 There is NO uncommitted work and NO worktree belonging to this thread. Every
 worktree under `$HOME/.worktrees/livespec/` is FOREIGN — **enumerate rather
@@ -100,13 +106,32 @@ Full evidence is on the ledger item; it is not repeated here.
   which only the maintainer can do. That is why nothing here reads a secret.
 
   **Still OPEN and P2 on ONE named leg: the LIVE auto-merge exercise.**
-  Rendering is not evidence. The `@v3` + `app-id:` pairing exists in no
-  repository yet — it reaches a consumer only after livespec releases
-  `88842637` and that consumer takes a `copier update`. Consumer pull requests
-  open today cannot serve as the exercise, because each runs its own committed
-  `@v1` + `app-id:` workflow, so a green one would prove only that the OLD form
-  works. The ledger item records what discharges the leg and the order to read
-  it in.
+  Rendering is not evidence.
+
+  **Propagation step 1 is DONE: release `v0.33.1` carries the fix.** Measured
+  with a control that DISCRIMINATES rather than a bare presence check — at
+  `v0.32.0` and `v0.33.0` the template's token step is `client-id:` with
+  `app-id:` ABSENT, and at `v0.33.1` it is `app-id:` with `client-id:` ABSENT.
+  Do not re-derive this by date; re-run the containment check if you doubt it.
+
+  **Propagation step 2 is MANUAL and will NOT happen on its own.** The template
+  ships `copier-update-drift.yml`, and it only DETECTS: it runs `copier update
+  --dry-run --vcs-ref=master` on pull requests, pushes to master, and a weekly
+  Monday cron, then tells a human to run `copier update --vcs-ref=master`
+  locally and resolve conflicts. **It opens no pull request.** So no consumer
+  will pick up `@v3` + `app-id:` until someone deliberately re-syncs one. A
+  session that waits for this leg to discharge by itself will wait forever.
+
+  (The workflow's `--vcs-ref=master` pin looks like it contradicts the fleet
+  rule that pins track the latest RELEASE, and it does not: a bare `copier
+  update` resolves the latest git TAG, which is `v1.0.0` — semver-greater than
+  every `v0.x` release and predating the entire template workflow set. Checked,
+  so it is not re-raised as a defect.)
+
+  Consumer pull requests open today cannot serve as the exercise either, because
+  each runs its own committed `@v1` + `app-id:` workflow, so a green one would
+  prove only that the OLD form works. The ledger item records what discharges
+  the leg and the order to read it in.
 - **`livespec-jvz8`** (P2) — `livespec-dev-tooling` and `livespec-runtime`
   ratify their own specs with no merge-policy gate, permanently excluded by
   v202. Pre-existing and architecturally forced. **Do NOT close it by having

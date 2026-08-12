@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T06:38Z at session wrap-up
+## Resume state — written 2026-08-12T07:53Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -66,7 +66,7 @@ pass on its own.
 | Item | Tenant | State |
 |---|---|---|
 | `livespec-dev-tooling-ep8n` | `livespec-dev-tooling` | **HANDED OFF** to whoever grooms `livespec-dev-tooling`, by maintainer decision 2026-08-12; listed here for continuity only and NOT this thread's to advance. Pin autodiscovery misses `.jinja` template pins on BOTH directory and suffix. Shape decided (generic scanner extension). The recorded reason it is blocked, kept so the receiving groomer need not re-derive it: it needs a ratified amendment in THAT repo, because its `contracts.md` §"Pin autodiscovery rules" names `.github/workflows/*.yml`/`*.yaml`, and a `.jinja` renders a workflow rather than being one. |
-| `livespec-5qu1` | `livespec` | **Direction chosen by the maintainer 2026-08-12 and the template change LANDED** (PR #2214, merge `88842637`): the copier template mints with `@v3` + `app-id:`, which is auth-neutral for both consumers because both already carry `app-id:`. `app-id` and `client-id` are NOT interchangeable, and `app-id` is deprecated-but-accepted at `@v3` — that warning is carried deliberately. The `client-id:` migration is decoupled, not cancelled. **Still OPEN on ONE leg: the LIVE auto-merge exercise**, which no consumer pull request open today can serve. |
+| `livespec-5qu1` | `livespec` | **Direction chosen by the maintainer 2026-08-12 and the template change LANDED** (PR #2214, merge `88842637`): the copier template mints with `@v3` + `app-id:`, which is auth-neutral for both consumers because both already carry `app-id:`. `app-id` and `client-id` are NOT interchangeable, and `app-id` is deprecated-but-accepted at `@v3` — that warning is carried deliberately. The `client-id:` migration is decoupled, not cancelled. **Still OPEN on ONE leg: the LIVE auto-merge exercise.** Release `v0.33.1` already carries the fix, but propagation into a consumer is MANUAL — `copier-update-drift.yml` only detects and opens no pull request — so the leg will not discharge on its own, and no consumer pull request open today can serve it. |
 | `livespec-jvz8` | `livespec` | Spec ratifications auto-merge UNGATED in `livespec-dev-tooling` and `livespec-runtime`. PRE-EXISTING, not fix-created; neither consumes the copier template, so the ratified applicable set already excluded them. Banned resolution recorded on the item. |
 
 `livespec-dev-tooling-ep8n` was MOVED (not mirrored) out of the `livespec` tenant
@@ -141,12 +141,27 @@ consumer's `APP_ID` secret reset to the App's OAuth client ID first, which only
 the maintainer can do.
 
 **The item stays OPEN on ONE named leg: the LIVE auto-merge exercise.** Rendering
-is not evidence. The `@v3` + `app-id:` pairing exists in no repository yet; it
-reaches a consumer only after livespec cuts a release carrying `88842637` and
-that consumer takes a `copier update`. Consumer pull requests open today cannot
-serve — each runs its own committed `@v1` + `app-id:` workflow, so a green one
-would prove the OLD form works. What discharges the leg, and in what order to
-read it, is recorded on the ledger item itself.
+is not evidence.
+
+**Release `v0.33.1` ALREADY carries the fix** — propagation step 1 is done.
+Measured with a discriminating control: `v0.32.0` and `v0.33.0` carry
+`client-id:` with `app-id:` absent; `v0.33.1` carries `app-id:` with
+`client-id:` absent. An earlier revision of this section said the pairing
+"reaches a consumer only after livespec cuts a release carrying `88842637`",
+which read as pending; that release exists now, and the sentence is retracted.
+
+**Step 2 is MANUAL and will NOT happen on its own.** `copier-update-drift.yml`
+only DETECTS — it runs `copier update --dry-run` on pull requests, master
+pushes, and a weekly cron, and tells a human to re-sync locally. It opens NO
+pull request. A successor waiting for this leg to discharge by itself will wait
+forever; someone must deliberately run `copier update --vcs-ref=master` in a
+consumer. That re-sync is OUT of the current scope, so it is a maintainer call,
+not a successor's to take unasked.
+
+Consumer pull requests open today cannot serve either — each runs its own
+committed `@v1` + `app-id:` workflow, so a green one would prove the OLD form
+works. What discharges the leg, and in what order to read it, is recorded on the
+ledger item itself.
 
 **`livespec-dev-tooling-ep8n` was HANDED OFF by maintainer decision on
 2026-08-12. This thread does not carry it further, and the choice that produced
