@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T10:57Z at session wrap-up
+## Resume state — written 2026-08-12T11:07Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -76,12 +76,21 @@ is not a duplicate, and re-filing it here would create one.
 
 ### NOT THIS THREAD'S — surface, do not adopt
 
-**CI egress failures are an infrastructure pattern, not flakes to re-run.** Four
-across 2026-08-11/12: two TLS "certificate is not valid for any names" on
-checkout, one `uv` dependency-install failure, and one `mise` cannot-install-
-shellcheck TLS failure. Threads `phase0-selfhosted-shadow-lane` and
-`livespec-ci-on-hetzner` own that surface. Report it; do NOT file into their
-lanes unilaterally.
+**CI egress failures are an infrastructure pattern, not flakes to re-run.** They
+recur across 2026-08-11/12 in several shapes: TLS "certificate is not valid for
+any names" on checkout, `uv` dependency-install failures (including on the
+`livespec-runtime` git dependency), and `mise` cannot-install-shellcheck TLS
+failures. Threads `phase0-selfhosted-shadow-lane` and `livespec-ci-on-hetzner`
+own that surface. Report it; do NOT file into their lanes unilaterally.
+
+**The count that used to sit in this paragraph has been DELETED, deliberately.**
+It said "Four", and a single later session observed four more — on master and on
+its own pull requests — which would have made a corrected number wrong again
+within the hour. §"Standing hazards" already records the rule this applies:
+delete a count, never correct it. What is durable is the SIGNATURE, not the
+tally: a dependency- or network-touching step fails and the check that gives the
+job its name is left SKIPPED, so the job is red having never run its own
+command. Re-run first; a genuine failure survives the re-run.
 
 When master CI is red, **read the STEP list, not the job colour.** The
 2026-08-12 red on `check-copier-template-smoke` was step 7 "Install Python dev
