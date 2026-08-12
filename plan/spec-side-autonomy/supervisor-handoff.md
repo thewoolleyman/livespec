@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T11:07Z at session wrap-up
+## Resume state — written 2026-08-12T12:38Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -140,12 +140,26 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 **One item is live and has a named next step: `livespec-5qu1`. One item needs a
 maintainer design call: `livespec-jvz8`. Nothing else is this thread's.**
 
-**The spec tree is HEALTHY and its queue is EMPTY** — `doctor-static` passes
-every check, `proposed_changes/` holds nothing, and the only action `next` ranks
-is `prune-history` at LOW urgency. That is not work waiting. Two `doctor-static`
-path-resolution crashes were found and fixed along the way (`6180d10b`,
-`be4cd0b1`); they carried no work-item, and `handoff.md` §"Also landed" is their
-only record.
+**The spec tree is HEALTHY, and its queue holds ONE pending proposal.**
+`doctor-static` passes every check. An earlier revision of this paragraph said
+the queue was EMPTY; that was true when written, and this same session then
+filed into it — so it is retracted rather than corrected.
+
+The pending proposal is
+`SPECIFICATION/proposed_changes/doctor-spec-target-drift.md` (PR #2229, merge
+`3ae4123e`): `contracts.md` says twice that `doctor` takes only
+`--project-root`, while the shipped wrapper has accepted `--spec-target` since
+2026-07-01. **FILED, NOT RATIFIED** — accepting it needs the independent
+adversarial review, and the direction (document the flag vs delete it from the
+implementation) is a design call the proposal deliberately leaves open. Do not
+ratify it as routine queue-clearing.
+
+`next` now ranks TWO actions, both LOW urgency: that `revise`, and
+`prune-history` over 202 unpruned versions. Neither is work waiting.
+
+Two `doctor-static` path-resolution crashes were found and fixed along the way
+(`6180d10b`, `be4cd0b1`); they carried no work-item, and `handoff.md` §"Also
+landed" is their only record.
 
 **`livespec-5qu1` — the maintainer chose the `app-id:` direction on 2026-08-12,
 and the template change has LANDED** (PR #2214, merge `88842637`). The copier

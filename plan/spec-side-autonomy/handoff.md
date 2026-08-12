@@ -100,10 +100,31 @@ so they have no work-item and would otherwise leave no trace here.
   `AGENTS.md` enumeration extended in lockstep.
 
 **The spec tree itself is HEALTHY.** `doctor-static` passes every check
-(20 pass, 1 skipped, exit 0), the `proposed_changes/` queue is empty — one queue
-only; the repo has no sub-spec trees — and the sole action `next` ranks is
-`prune-history` at LOW urgency over 202 unpruned history versions. Nobody should
-read that as work waiting.
+(20 pass, 1 skipped, exit 0). There is one `proposed_changes/` queue only; the
+repo has no sub-spec trees.
+
+**A spec→implementation DRIFT was found and FILED, so the queue is no longer
+empty.** An earlier revision of this paragraph said it was; that was true when
+written and this same session then filed into it, which is the retraction rather
+than a correction of someone else's claim.
+
+`SPECIFICATION/proposed_changes/doctor-spec-target-drift.md` (PR #2229, merge
+`3ae4123e`) records that `contracts.md` states in TWO places that the `doctor`
+static wrapper takes only `--project-root`, while the shipped
+`doctor_static.py` has accepted and honoured `--spec-target` since `8486f955`
+(2026-07-01) — a commit touching only the module and its test, with no
+`SPECIFICATION/` change. Both quoted replacement targets were verified verbatim
+before filing.
+
+**It is FILED, NOT RATIFIED, and must not be accepted casually.** Ratification
+needs the independent adversarial review, and the DIRECTION is a genuine design
+call: document the flag (what the proposal recommends, since every sibling
+spec-tree-scoped wrapper already declares one) or delete it from the
+implementation and its asserting test. The proposal records both.
+
+`next` therefore now ranks TWO actions, both LOW urgency: `revise` against that
+proposal, and `prune-history` over 202 unpruned versions. Neither is urgent, and
+a LOW-urgency ranking is not a mandate.
 
 ## Open items
 
