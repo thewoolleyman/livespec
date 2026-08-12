@@ -490,115 +490,107 @@ echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 
 ## Resume state — POINTERS ONLY, re-measure every one
 
-Written at session wrap 2026-08-12T01:1xZ. These are pointers to things that
-existed then, NOT status. Re-measure each with the commands above before acting;
-this plan has been bitten repeatedly by state that moved underneath a written
-claim. The supervisor marker the cold-open block reads carries the detail this
-section deliberately does not duplicate.
+Written at session wrap 2026-08-12T09:2xZ. These are pointers to things that
+existed then, NOT status. Re-measure each with the commands above before acting.
+The supervisor marker the cold-open block reads carries the detail this section
+deliberately does not duplicate.
 
-**TWO THINGS WERE IN FLIGHT AT WRAP AND NEITHER WILL NOTIFY YOU.** Re-measure
-both before doing anything else.
+**NOTHING IS IN FLIGHT ON A SANDBOX OR A SUB-AGENT.** Every background task this
+seat started was stopped at wrap. Two tracks are parked at clean points and one
+maintainer-authorized investigation is open.
 
-1. **`bd-ib-mrqoy2.5` IS `ready` AND WANTS A REDISPATCH — nothing is stranded.**
-   It was in flight at wrap; rather than leave a dispatch orphaned by the
-   restart, this seat STOPPED it deliberately, reset the item to `ready` with
-   its assignee cleared, and confirmed NO `feat/bd-ib-mrqoy2.5` remote branch
-   survives — so a redispatch cannot hit the non-fast-forward death described in
-   T11. Roughly 8 minutes of sandbox work was discarded on purpose; that is
-   cheaper than an orphaned container plus a stranded ledger record.
-   REDISPATCH IT FIRST, and expect the plugin-currency gate to refuse once (T12):
-   run `just ensure-plugins` inside `livespec-orchestrator-beads-fabro`,
-   re-resolve `installPath` from `installed_plugins.json`, then drive
-   `impl:bd-ib-mrqoy2.5`. Do NOT run it concurrently with anything touching
-   `_needs_attention_handoffs.py` or `needs_attention.py` (T10).
-2. **The `overseer-pfpfty.2` round-1 review COMPLETED WITH 6 BLOCKERS.** Do not
-   ratify. Detail below.
+### THE IMMEDIATE NEXT ACTION
 
-**THE ORCHESTRATOR TRACK IS NEARLY DONE.** `bd-ib-mrqoy2` had 6 of 8 children
-closed at wrap: `.1 .2 .3 .4 .7 .8`. Only `.5` (in flight) and `.6` (the
-residual prose sweep, gated on `.3/.4/.5`) remain. `.5` closing releases `.6`,
-and `.6` closing completes the whole cross-repo realization chain.
+Hand `overseer-pfpfty.10` to the worker. It is FILED and READY and has never been
+briefed — it is the round-5 amendment clearing three round-4 review blockers, and
+its notes carry the required fix for each. It is HOST-ONLY in practice: the
+authoritative 565-line verdict is tracked at
+`plan/planning-lane-redesign/research/review-pfpfty-proposal-round4.md` in
+repository `livespec`, but the item's own working context exceeds the factory's
+unattended-turn size band. Brief the worker; do not dispatch it.
 
-| landed this session | evidence |
-|---|---|
-| `.8` documented the v059 deviation | PR #1341, merge `e782054454e6` |
-| `.2` the ratification valve, closed on all four clauses | verified against `origin/master` |
-| `.3` rewrote the plan operation to ledger-held handoffs | PR #1345, merge `6b5d01f9` |
-| `.4` renamed the list surface to `list-plans` | PR #1351, merge `eaeb0008` |
+### The overseer track — `overseer-pfpfty` in repository `livespec-overseer`
 
-**THE OVERSEER TRACK HAS ONE SLICE DOWN AND A REAL BLOCKER.**
-`overseer-pfpfty.1` landed (PR #793, merge `422251fa`), filing
-`SPECIFICATION/proposed_changes/planning-lane-realization.md` and correctly NOT
-ratifying — its merge touched exactly one file and zero `history/` paths.
+`.1`, `.6`, `.8` CLOSED. `.2` (ratification, human valve) is `blocked` and now
+depends on `.1 .6 .8 .9 .10`. `.9` is `pending-approval`; `.10` is `open`; `.7`
+is `backlog` and correctly gated on `.2`; `.3/.4/.5` are `pending-approval`
+behind `.2`.
 
-`overseer-pfpfty.2` is the ratification valve and **its round-1 independent
-review returned 6 BLOCKERS**. The full 31 KB verdict is at
-`tmp/overseer/planning-lane-redesign/review-pfpfty-proposal-round1.md`, which is
-GITIGNORED — **the summary is journaled on `overseer-pfpfty.2` itself**, so read
-the item, not just the file. Headlines: the restart prompt becomes unresolvable
-and "ledger" is never defined; a scenario is rewritten to contradict its bound
-integration test; `supervise-plan`'s `.ai/supervisor-protocol.md` authoring
-permission is silently revoked; `handoff`/`resume` are misdescribed as legacy
-when both are live; the banned term is replaced with "Planning Lane" (the
-convention) where the ratified vocabulary requires "plan" (the artifact); and the
-Control Plane is granted a direct ledger append bypassing the sanctioned plan
-surface.
+**THE REVIEW HAS RUN THREE ROUNDS AND IS CONVERGING, NOT THRASHING.** Round 1
+returned 6 blockers (Opus), round 2 returned 4 (Opus), round 4 returned 3
+(Fable 5, the model `AGENTS.md` requires). Every round's new findings sat in the
+PREVIOUS round's fix text, and each round re-derived the earlier clearances as
+holding. All three verdicts are TRACKED on `livespec` master under
+`plan/planning-lane-redesign/research/review-pfpfty-proposal-round{1,2,4}.md` —
+they are no longer gitignored and cannot be lost to a scratch sweep.
 
-NEXT STEP THERE is an amendment slice against `.1`'s proposal, then a round-2
-review over the AMENDED bytes. Budget for more rounds: the core proposal on this
-plan took THREE, and its round-1 count was also six. Do NOT close `.1` — it
-delivered correctly; amending is separate work.
+**A round-5 review is owed once `.10` lands, and the reviewer question recurs.**
+The worker cannot review an amendment it authored. The maintainer's Opus
+authorizations were each scoped to ONE round; round 4 returned to Fable
+deliberately. Ask again rather than assuming.
 
-**THE REVIEWER WAS OPUS, BY MAINTAINER AUTHORIZATION.** `AGENTS.md` requires a
-Fable-model reviewer; the maintainer authorized Opus as a deliberate ONE-OFF on
-2026-08-12. It is not a rule change. **Any ratification record for this proposal
-MUST read `reviewer_model: opus`, never `fable`** — writing `fable` is the T1
-minted-attestation defect with a new author. Journaled on `overseer-pfpfty.2`.
+**THE ATTESTATION RULE, and it is the one a CLI cannot catch:** the ratification
+record names the model PER ROUND — rounds 1 and 2 Opus 5, round 4 Fable 5. NO
+blanket value is honest for this history. Round 4's blocker 3 exists because the
+proposal's own "MUST read `reviewer_model: opus`, never `fable`" EXPIRED the
+moment a Fable round was commissioned, and followed literally would now mandate a
+false attestation about the very review the accept gates on.
 
-**`livespec-zsn2xh.5` is still the last item in this repo's own epic** (7 of 8
-closed). Its true unblocker is **`overseer-pfpfty.4` landed AND RELEASED**, not
-`.3` and not `.5` — a cross-repo retarget journaled on `overseer-pfpfty`'s parent
-for a deliberate maintainer decision, not to be taken unilaterally.
+### The orchestrator track — `bd-ib-mrqoy2` in repository `livespec-orchestrator-beads-fabro`
 
-**`livespec-dev-tooling-jaut4y` WAS SPLIT** (maintainer-authorized) into `.1`
-prose-only, `.2` invariant re-derivation, `.3` check-module rename gated on `.2`.
-None dispatched. `.1` stages zero `.py` so it takes the fast doc-only pre-commit
-path and is the safe one to start with. `.2`/`.3` touch `.py` and still race the
-~593s gate against Fabro's 600s engine ceiling — if either dies on a checkpoint
-TIMEOUT rather than a test failure, that is the known ceiling, so route to the
-worker fallback rather than bare-retrying. Both say so in their own descriptions.
+Seven of eight children CLOSED. Only `.6` remains, and it is HALF DONE: its
+DOC-ONLY prose half MERGED as PR #1363, merge `3cd4dde2`. The item is `ready`.
 
-**FILED THIS SESSION, none of them this plan's to fix:**
-`livespec-ck8c` (P2, core — the `uv` dependency-fetch TLS failure that reds a
-master and blocks the factory; hit TWO repos in five minutes),
-`livespec-gfjh` (P3, core — the truncated-page evidence trap),
-`bd-ib-xw34` (P2 — a dispatch reporting `failed` over complete, published work),
-`bd-ib-eqxt` (P2 — the plugin-currency gate self-blocking after every green
-dispatch), `overseer-zuhv` (P3 — a rotted core citation in the overseer
-justfile). `livespec-driver-claude-61k` was EXTENDED with the `select` trigger
-rather than duplicated.
+**The deferred `.py` half is SIX lines, not the two an earlier note of mine
+said** — `_needs_attention_handoffs.py:39`, `test_needs_attention.py:256`, and
+`commands/plan.py:1,38,68,78`, the last including a SECOND shipped operator
+string. Re-enumerate again rather than trusting that list either; the item's own
+description says to.
 
-**Still open from the older record, re-verify before acting:** the cross-repo
-`cross_repo_targets` manifest gap remains in exactly three repos —
-`livespec-overseer`, `livespec-orchestrator-beads-fabro`,
-`livespec-console-beads-fabro` (re-measured from committed config 2026-08-11).
-It blocks `overseer-ftfhek`, `bd-ib-da4fs2` and
-`livespec-console-beads-fabro-sisnmx`. It is NOT the binding constraint yet —
-all three sit behind ungroomed parents — and fixing it stays hazardous while
-`livespec-bpzy` (P2) is open, because registering a target arms citation
-resolution. This is the largest unfinished structural item with no owner.
+**It is blocked by `check-master-ci-green` whenever that repo's master CI is
+red**, because the gate sits in the COMMIT path — see correction T14 for the
+scope clause that made the doc-only half landable anyway. Do not weaken, lever,
+or exempt that gate.
 
-**A correction the old record needs:** "nine of ten siblings can never be
-dispatched" is too flat. The manifest gap blocks only items whose dependency is
-a CROSS-REPO `sibling_work_item` ref. `bd-ib-mrqoy2.3` dispatched fine from a
-repo MISSING the registration because its dependency was a local beads edge.
+### `livespec-ck8c` — nine occurrences, and the diagnosis moved
 
-**Host hygiene:** several Fabro containers were up at wrap, including the dead
-`bd-ib-mrqoy2.5` run parked on an unanswered interview (its PR #1353 is closed
-and branch deleted) and `01KZSPSTPFX69K664YHR1B9C0M`, which this seat could not
-attribute to any of its dispatches. Killing containers is a host mutation; the
-maintainer authorized reaping three specific ones earlier and that approval was
-not extended to these.
+The maintainer authorized fixing the CI dependency-install step. **Confirm the
+hypothesis before spending that fix.** Occurrence nine was
+`tls: failed to verify certificate: x509: certificate is not valid for any
+names, but wanted to match api.github.com`, from the auto-merge automation — a
+certificate valid for NO name, beside git-side failures reporting
+`CAfile: none CRLfile: none`. Both are consistent with TLS INTERCEPTION on the
+runner network, which neither a wheel cache nor a retry policy would fix. The
+container-cache finding recorded on the item explains the pythonhosted TIMEOUT
+cluster and the frequency; it does not explain the certificate class. Full
+evidence, both symptom tallies, and the reframing are on the item.
+
+### Ledger corrections this seat made and verified — do not re-litigate
+
+Round 4 falsified two claims this seat wrote when the `.9` split was authorized:
+that population happens "at the moment a track is discovered/assigned" (discovery
+is the DAEMON's act, which the proposal expressly bars from the anchor), and that
+it "contradicts no clause of the CURRENT spec" (the live persisted-facts
+ONLY-enumeration excludes a populated epic id — proven by the proposal's own
+EDIT 4 adding it). BOTH ARE CORRECTED in `.9`'s description and `.2`'s comment.
+The `.9`-first ORDER still stands; only the argument was wrong. The sharpened
+consequence: the accept must follow `.9` IMMEDIATELY or land with it, because a
+doctor pass in the gap would legitimately flag the populated epic.
+
+### Environment notes
+
+- `/data/projects/livespec-overseer` is ~28 commits behind and CANNOT be
+  refreshed: `.livespec.jsonc` and two `plan/*/handoff.md` files are other live
+  sessions' uncommitted work. Do NOT force it — that would discard two handoffs.
+  Branch worktrees from `origin/master` directly; this blocks nothing.
+- `overseer-pfpfty.9` and `.7` were filed via `bd create`, which defaults to
+  `open` and normalizes to `backlog` — outside the ready queue. `.9` was set to
+  `pending-approval` to match its siblings. Check filed status before assuming an
+  item is runnable.
+- Other lanes land in `livespec-overseer` and
+  `livespec-orchestrator-beads-fabro` continuously. Master moved under this
+  plan's work repeatedly, once invalidating four line-number citations in the
+  proposal. Re-pin and re-derive.
 
 ## Corrections
 
@@ -842,3 +834,94 @@ consistent, correct-as-far-as-it-goes answer to a question I had not asked.
 Always pass an explicit `per_page` and reconcile the row count against
 `total_count` — that reconciliation is the control. Recorded as `livespec-gfjh`;
 the guard evidence went onto `livespec-driver-claude-61k` rather than a duplicate.
+
+T14. A CORRECT GATE CAN BE ROUTED AROUND WITHOUT BEING WEAKENED, AND I NEARLY
+MISSED THE ROUTE. `check-master-ci-green` sits in the COMMIT path, so while a
+repo's master CI is red NOTHING commits there — not in a Fabro sandbox, not on a
+host session. Two consecutive dispatches of `bd-ib-mrqoy2.6` completed their work
+in-sandbox and died at the Green amend, roughly 30 minutes of factory time
+producing nothing publishable. Both agents refused to bypass the hook, which is
+correct and must never be "fixed" at the agent.
+
+The route was in `livespec-dev-tooling-8o8e.22` all along: **the gate binds any
+commit STAGING `.py` and any push CARRYING `.py`; a zero-`.py` changeset routes
+to `check-pre-commit-doc-only`, whose targets do not include it.** Splitting
+`.6`'s prose half from its `.py` half landed the prose immediately, red master
+and all, with no gate change and no new ledger artifact. The worker verified the
+claim in-repo before relying on it and measured the staged `.py` count at 0 with
+a positive control showing the same counter reporting 7 for `.md`.
+
+Two things worth carrying. The item's `.py` scope existed only because I had
+transferred two `.py` lines into it hours earlier — I created the blockage I then
+had to route around. And I was one step from proposing the FORBIDDEN repair:
+`export-telemetry` reddening master is DELIBERATE ("a broken pipeline can't die
+silently"), so pointing the check at the `ci-green` context would restore exactly
+the silent death that job prevents. Checking for an existing item before filing
+is what stopped me; the existing analysis was better than mine.
+
+T15. MY POSITIVE CONTROL WAS A NO-OP AND REPORTED SUCCESS ON BOTH ARMS. To prove
+my replace-target harness could report a MISS, I mutated a target with
+`.replace("path", "pathway")`. The target contained no "path", so the mutation
+changed nothing and both arms scored a hit — a control that could not fail,
+sitting inside a verification I was about to certify 24/24 on.
+
+Fixed by pairing every target with a mutation that PROVABLY changes it (append a
+sentinel; assert `mutant != real`), then asserting 0 mutant matches against 24
+real ones. This is protocol correction C5 — put the control on the READER —
+applied to my own instrument rather than someone else's, and I had already told
+the worker to do exactly this in the brief I wrote an hour earlier. A rule you
+enforce on others and skip yourself is not a rule.
+
+The same family bit twice more the same day: a case-insensitive `plan.thread`
+grep also matches the vendored identifier `PlanThreadOutput`, conflating a banned
+prose form with an API that must be PRESERVED; and a note written to the ledger
+with backticks in it was silently holed by shell command substitution, leaving
+"died at  fetching dunamai" with the step name gone and the write returning
+success. Quote ledger bodies from a FILE, and separate prose-form from
+identifier-form greps.
+
+T16. AN INSTRUCTION WRITTEN TO PREVENT A FALSE ATTESTATION BECAME ONE. The
+proposal carried "the ratification record MUST therefore read
+`reviewer_model: opus`, never `fable`" — true when written, because the only
+reviews then in existence were Opus. Commissioning a Fable round 4 EXPIRED it:
+followed literally it now instructs the ratifier to attest that the review the
+accept gates on was Opus, which is correction T1's defect pointing the other way.
+
+I caused it by commissioning the round, and the reviewer caught it. The rule that
+replaces it is per-round: the record names the model that performed EACH review
+round, and no blanket value is honest for a mixed history.
+
+The general form is worth more than the instance: **a claim about the review
+history is clause-lockstep like any other count, and must be re-derived at accept
+time.** The classes this plan already tracked — claims that expire, enumerations
+that rot — apply to the attestation prose itself, which is the last place anyone
+thinks to look because it is the thing doing the guarding.
+
+T17. "RESET THE STRANDED ITEM" IS RIGHT OR CATASTROPHIC DEPENDING ON ONE
+QUESTION, AND THE STANDING REMEDY DOES NOT ASK IT. Both `bd-ib-mrqoy2.5` and
+`.6` ended at `status=active assignee=fabro` with no live dispatcher — the
+documented stranding shape, whose remedy is `bd update <id> -s ready -a ""`.
+
+Applying it to `.5` would have been destructive: `.5` had PUBLISHED work, a real
+PR whose head equalled the remote branch tip, so a reset invites a second sandbox
+onto an existing branch — the non-fast-forward death of T11. Applying it to `.6`
+was correct: `.6` published NOTHING, its commit lived only inside a container,
+and `git ls-remote` confirmed no surviving branch with a positive control showing
+12 heads exist.
+
+**The test is "did anything reach the forge", not "did the dispatcher say
+failed".** Both said `failed`. Read the forge, then decide.
+
+T18. TWO OF THREE ROUND-4 BLOCKERS WERE INVISIBLE TO TARGET-MATCHING. A junction
+defect has an individually-correct replace-target AND an individually-correct
+replacement while the seam between them is wrong — an orphaned referent, a
+purpose clause that no longer covers the duty grafted onto it. No amount of
+verbatim-and-unique target checking sees it. Round 2 found half its blockers the
+same way, and round 4 found two of three.
+
+So a review of a whole-file or many-target payload owes THREE questions, not the
+two T6 records: what vanished that should have stayed, what stayed that should
+have vanished, and **what is now adjacent that was never adjacent before.** Only
+simulating the applied result answers the third. Any round that reports clean
+without simulating has not checked the class that produced most of this
+proposal's findings.
