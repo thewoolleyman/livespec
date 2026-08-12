@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T07:53Z at session wrap-up
+## Resume state — written 2026-08-12T10:57Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -130,6 +130,13 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 
 **One item is live and has a named next step: `livespec-5qu1`. One item needs a
 maintainer design call: `livespec-jvz8`. Nothing else is this thread's.**
+
+**The spec tree is HEALTHY and its queue is EMPTY** — `doctor-static` passes
+every check, `proposed_changes/` holds nothing, and the only action `next` ranks
+is `prune-history` at LOW urgency. That is not work waiting. Two `doctor-static`
+path-resolution crashes were found and fixed along the way (`6180d10b`,
+`be4cd0b1`); they carried no work-item, and `handoff.md` §"Also landed" is their
+only record.
 
 **`livespec-5qu1` — the maintainer chose the `app-id:` direction on 2026-08-12,
 and the template change has LANDED** (PR #2214, merge `88842637`). The copier

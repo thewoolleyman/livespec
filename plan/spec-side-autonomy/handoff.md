@@ -72,6 +72,39 @@ auto-merge registered) and governed (PR #593, run `31566136098`, a true `R100`
 rename, `decision: blocked`, auto-merge correctly withheld, closed unmerged).
 Full evidence is on the ledger item; it is not repeated here.
 
+## Also landed — opportunistic repairs, NOT ledger items
+
+These were found by exercising shipped surfaces rather than by working an item,
+so they have no work-item and would otherwise leave no trace here.
+
+- **`livespec-5qu1`'s template fix** — `88842637` (PR #2214), released in
+  `v0.33.1`. See §"Open items" for what remains.
+- **Two `doctor-static` path-resolution crashes**, found by running the shipped
+  CLI while checking whether the spec tree was healthy:
+  - `fix(doctor)` `6180d10b` (PR #2222) — a RELATIVE `--spec-target` raised an
+    unhandled `ValueError` from `spec_root.relative_to(project_root)` and
+    produced ZERO findings. Only an absolute target had ever been exercised.
+  - `fix(doctor)` `be4cd0b1` (PR #2225) — a relative `--project-root` left the
+    spec root relative, so a finding's `spec_root` was absolute or not depending
+    on how an unrelated flag was spelled. **The two had to be normalised
+    together**: fixing only the spec root would have reintroduced the first
+    crash under a different flag.
+
+  Both follow the `revise` / `propose-change` idiom already in the repository —
+  `is_absolute()`, else anchor to `Path.cwd()`. Scope was checked, not
+  pattern-matched: every `relative_to(project_root)` call site lives under
+  `doctor/static/`, and `next` was exercised live to confirm it is unaffected.
+
+- **A verification trap** filed as instance 31 in
+  `.ai/verifying-against-the-right-source.md` — `4c603e86` (PR #2220), with the
+  `AGENTS.md` enumeration extended in lockstep.
+
+**The spec tree itself is HEALTHY.** `doctor-static` passes every check
+(20 pass, 1 skipped, exit 0), the `proposed_changes/` queue is empty — one queue
+only; the repo has no sub-spec trees — and the sole action `next` ranks is
+`prune-history` at LOW urgency over 202 unpruned history versions. Nobody should
+read that as work waiting.
+
 ## Open items
 
 - **`livespec-dev-tooling-ep8n`** (P2, in the `livespec-dev-tooling` tenant) —
