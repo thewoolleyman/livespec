@@ -12,11 +12,16 @@ from livespec.spec_governance.config import SpecGovernanceConfig
 from livespec.spec_governance.policy import EffectivePolicy, Source
 
 __all__: list[str] = [
+    "SPEC_ROOT",
     "awaits_manual_spec_pr_merge",
     "effective_spec_pr_merge",
 ]
 
-_SPEC_ROOT = "SPECIFICATION"
+# The spec root this resolver folds over. Public because the spec pull-request
+# merge gate must derive its stems from the SAME root the fold reads them
+# under; two copies of the literal would drift into a gate that resolves
+# proposals it never derived.
+SPEC_ROOT = "SPECIFICATION"
 _OVERRIDE_KEY = "spec_pr_merge_policy"
 _AUTO = "auto-on-green"
 _MANUAL = "manual"
@@ -34,7 +39,7 @@ def effective_spec_pr_merge(
         return _manual(source="default", reason="empty proposal-stem set resolves safely to manual")
     policies = [
         _single_proposal_policy(
-            spec_root=project_root / _SPEC_ROOT,
+            spec_root=project_root / SPEC_ROOT,
             config=config,
             proposal_stem=stem,
         )

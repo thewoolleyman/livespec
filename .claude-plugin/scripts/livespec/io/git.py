@@ -62,16 +62,18 @@ from returns.io import IOResult, impure_safe
 
 from livespec.errors import LivespecError, PreconditionError
 
-# `list_remote_branches` lives in the private sibling `_git_remote`
-# module (extracted to keep this file under the per-file LLOC
-# ceiling) and is re-exported here so the public seam stays
-# `io.git.list_remote_branches` for remote-branch-reading consumers.
+# `list_remote_branches`, `diff_name_only` and `merge_base` live in the
+# private siblings `_git_remote` and `_git_pull_request` (extracted to
+# keep this file under the per-file LLOC ceiling) and are re-exported
+# here so the public seam stays `io.git.<name>` for every consumer.
+from livespec.io._git_pull_request import diff_name_only, merge_base
 from livespec.io._git_remote import list_remote_branches
 from livespec.io._git_worktrees import Worktree, list_worktrees
 from livespec.io.proc import run_subprocess
 
 __all__: list[str] = [
     "Worktree",
+    "diff_name_only",
     "get_default_branch_name",
     "get_git_user",
     "is_git_repo",
@@ -80,6 +82,7 @@ __all__: list[str] = [
     "list_remote_branches",
     "list_status_porcelain",
     "list_worktrees",
+    "merge_base",
     "show_at_head",
 ]
 

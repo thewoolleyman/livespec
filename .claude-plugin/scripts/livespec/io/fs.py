@@ -23,6 +23,7 @@ from returns.io import IOResult, impure_safe
 from livespec.errors import LivespecError, PreconditionError
 
 __all__: list[str] = [
+    "append_text",
     "copy_file",
     "list_dir",
     "list_tree",
@@ -81,6 +82,29 @@ def write_text(*, path: Path, text: str) -> IOResult[None, LivespecError]:
     """
     return _raw_write_text(path=path, text=text).alt(
         lambda exc: PreconditionError(f"fs.write_text: {exc}"),
+    )
+
+
+@impure_safe(exceptions=(OSError,))
+def _raw_append_text(*, path: Path, text: str) -> None:
+    """Decorator-lifted append to an existing or new UTF-8 text file.
+
+    Parent directories are created on demand, matching `_raw_write_text`.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        _ = handle.write(text)
+
+
+def append_text(*, path: Path, text: str) -> IOResult[None, LivespecError]:
+    """Append UTF-8 text to a file and return IOSuccess(None) on completion.
+
+    Exists for append-only sinks a caller does not own exclusively — the CI
+    runner's step-output file being the case in hand, where an overwrite would
+    discard output parameters written by an earlier step of the same job.
+    """
+    return _raw_append_text(path=path, text=text).alt(
+        lambda exc: PreconditionError(f"fs.append_text: {exc}"),
     )
 
 
