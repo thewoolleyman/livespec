@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.2](https://github.com/thewoolleyman/livespec/compare/v0.33.1...v0.33.2) (2026-08-12)
+
+
+### Bug Fixes
+
+* **doctor:** anchor a relative --spec-target the way sibling wrappers do ([6180d10](https://github.com/thewoolleyman/livespec/commit/6180d10bfd68659d197b78872529da29ed20452c))
+
 ## [0.33.1](https://github.com/thewoolleyman/livespec/compare/v0.33.0...v0.33.1) (2026-08-12)
 
 
