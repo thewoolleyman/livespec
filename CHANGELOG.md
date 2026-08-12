@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.3](https://github.com/thewoolleyman/livespec/compare/v0.30.2...v0.30.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* **template:** pin the four reusable workflows to a release tag ([5685466](https://github.com/thewoolleyman/livespec/commit/5685466442fbb88ceea67db1311f2ae263f796a1))
+
 ## [0.30.2](https://github.com/thewoolleyman/livespec/compare/v0.30.1...v0.30.2) (2026-08-11)
 
 
