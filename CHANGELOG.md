@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/thewoolleyman/livespec/compare/v0.31.0...v0.32.0) (2026-08-12)
+
+
+### Features
+
+* **ci:** host the spec-PR merge policy as a reusable workflow ([97b9bdd](https://github.com/thewoolleyman/livespec/commit/97b9bddf08208c0b2f281cb1d63af80c53939560))
+
 ## [0.31.0](https://github.com/thewoolleyman/livespec/compare/v0.30.3...v0.31.0) (2026-08-12)
 
 
