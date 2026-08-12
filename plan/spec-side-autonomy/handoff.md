@@ -1,12 +1,24 @@
 # spec-side-autonomy — handoff
 
-Updated 2026-08-12. **`livespec-jvdvx4.9` is mid-implementation, and its safe
-half has landed.** The pure derivation module is merged; what remains is the
-workflow wiring, which is the part that can break a merge gate. Read the
-ledger note on `livespec-jvdvx4.9` before starting — it carries the confirmed
-design, the ratified clauses, and the corrected acceptance.
+Updated 2026-08-12. **`livespec-jvdvx4.9` is mid-implementation: its safe half
+is written and reviewed-by-CI, and what remains is the workflow wiring — the
+part that can break a merge gate.** Read the ledger note on
+`livespec-jvdvx4.9` before starting; it carries the confirmed design, the
+ratified clauses quoted from the live spec, and the corrected acceptance.
 
-There is NO uncommitted work and NO worktree belonging to this thread.
+**FIRST, RESOLVE TWO PULL REQUESTS THAT WERE IN FLIGHT WHEN THIS WAS WRITTEN.**
+They were opened green and left to auto-merge, but do NOT assume they landed —
+if you are reading this file, PR #2201 merged, which says nothing about #2200.
+
+- **PR #2200** — `.9` slice 1, the derivation module. Check it merged. If it
+  did, slice 2 builds on it. If it did not, find out why before doing anything
+  else; a red or conflicted #2200 changes what slice 2 is.
+- **PR #2201** — this handoff. Merged by definition if you are reading it.
+
+There is NO uncommitted work and NO worktree belonging to this thread. Two of
+this thread's branches may still exist on the forge pending those merges:
+`spec-pr-merge-derivation-module` and `wrapup-jvdvx4-9-slice1`. Delete them
+once merged; they are MINE, not foreign.
 
 **Ledger anchor:** epic `livespec-jvdvx4`
 
@@ -18,9 +30,9 @@ There is NO uncommitted work and NO worktree belonging to this thread.
   four reusable-workflow pins now read `@v1.20.4`, matching core's own five.
 - **`.9` slice 1** (PR #2200, `9ba72d13`) — the pure derivation module
   `.claude-plugin/scripts/livespec/spec_governance/pr_merge_derivation.py`
-  plus 11 unit tests. **Touches zero workflow files by design.** Opened green
-  on `just check` (78 targets, 100% coverage) and left to auto-merge; confirm
-  it landed before building on it.
+  plus 11 unit tests. **Touches zero workflow files by design**, so it cannot
+  alter any gate decision. Opened green on `just check` (78 targets, 100%
+  coverage) and left to auto-merge — CONFIRM IT LANDED, per the note above.
 
   **Measured, and it constrains slice 2:** the module runs under bare system
   `python3` with no venv, pip, or install step — but a NAKED import fails,
