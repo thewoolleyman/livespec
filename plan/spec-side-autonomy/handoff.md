@@ -1,9 +1,9 @@
 # spec-side-autonomy — handoff
 
-Updated 2026-08-12. **Epic `livespec-jvdvx4` is FULLY CLOSED.** The thread then
-took `livespec-4kwu`, decided its fix shape on evidence, and MOVED it upstream.
-**There is exactly one thing waiting on a human, stated at the top of "The live
-question" below. Read that first — everything else here is context.**
+Updated 2026-08-12. **Epic `livespec-jvdvx4` is FULLY CLOSED, and NOTHING here
+is waiting on a human.** The thread took `livespec-4kwu`, decided its fix shape
+on evidence, moved it upstream as `livespec-dev-tooling-ep8n` — and has now
+HANDED that item off, so the thread owns no in-flight work at all.
 
 There is NO uncommitted work and NO worktree belonging to this thread. Every
 worktree under `$HOME/.worktrees/livespec/` is FOREIGN — **enumerate rather
@@ -12,24 +12,36 @@ than trusting this sentence**, it drifts. Never run the reaper in this repo.
 **Ledger anchor:** epic `livespec-jvdvx4` (closed).
 
 Also live, and NOT under that epic: `livespec-4kwu` (closed as MOVED),
-`livespec-dev-tooling-ep8n` (open, in the `livespec-dev-tooling` tenant), and
-`livespec-5qu1` (open, P2).
+`livespec-dev-tooling-ep8n` (open in the `livespec-dev-tooling` tenant, and NO
+LONGER this thread's), and `livespec-5qu1` (open, P2).
 
-## The live question — needs a human, do not self-resolve
+## Disposition of the one open decision — SETTLED, do not reopen
 
-`livespec-dev-tooling-ep8n` is fully designed and blocked on ONE thing: its
-suffix half extends a NORMATIVE clause in `livespec-dev-tooling`'s
-`SPECIFICATION/contracts.md` §"Pin autodiscovery rules", so it needs a ratified
-amendment THERE — and the fleet rule requires an independent adversarial
-review by a separately-spawned reviewer before that accept. The previous
-session was not authorised to spawn one.
+The predecessor left exactly one question for a human: authorise an independent
+adversarial reviewer so this thread could ratify the amendment
+`livespec-dev-tooling-ep8n` needs and land the fix, or hand the item to whoever
+grooms `livespec-dev-tooling`.
 
-So the decision is: **authorise that review so this thread lands the amendment
-and the fix, or hand `livespec-dev-tooling-ep8n` to whoever grooms
-`livespec-dev-tooling`.** Ask; do not pick one unilaterally, and do not
-implement the code without the amendment — shipping widened behaviour
-unamended creates drift in the one document the pin-currency policy calls the
-source of truth for pin-format definitions.
+**The maintainer chose HAND OFF, 2026-08-12.** `livespec-dev-tooling-ep8n`
+stays open in the `livespec-dev-tooling` tenant with its decided shape intact
+and now carries a comment recording that it is unblocked in substance and
+blocked only on that review authorization. This thread does not carry it
+further, and a later session picking this document up should NOT re-offer the
+choice — it was asked and answered.
+
+The reason the item is blocked at all, preserved so the receiving groomer need
+not re-derive it: the SUFFIX half of the scanner widening extends a normative
+clause in `livespec-dev-tooling`'s `SPECIFICATION/contracts.md` §"Pin
+autodiscovery rules", so it needs a ratified amendment THERE, and the fleet
+rule requires an independent adversarial review by a separately-spawned
+reviewer ahead of that accept. Do not implement the code without the amendment
+— shipping widened behaviour unamended creates drift in the one document the
+pin-currency policy calls the source of truth for pin-format definitions.
+
+A third option was put to the maintainer and DECLINED: landing only the
+directory half, on the theory that it needs no amendment. It buys nothing —
+all five missed pins are wrong on both counts, so a one-count fix discovers
+none of them.
 
 ## What landed (epic `livespec-jvdvx4`)
 
@@ -58,8 +70,9 @@ Full evidence is on the ledger item; it is not repeated here.
 
 - **`livespec-dev-tooling-ep8n`** (P2, in the `livespec-dev-tooling` tenant) —
   pin autodiscovery misses workflow-template pins on BOTH directory and suffix.
-  Shape DECIDED, blocked as above. See "What the next session must not
-  re-derive".
+  Shape DECIDED; HANDED OFF to that repo's groomer, so it is listed here for
+  continuity only and is not this thread's to advance. See "What the next
+  session must not re-derive".
 - **`livespec-5qu1`** (P2) — a full `copier update` in any consumer still on the
   old generated form swaps the App-token step from
   `actions/create-github-app-token@v1` + `app-id:` to `@v3` + `client-id:`. The
@@ -78,7 +91,10 @@ Full evidence is on the ledger item; it is not repeated here.
 
 ## What the next session must not re-derive (`ep8n`)
 
-All of this is measured, not reasoned. Re-verify if cheap; do not redo.
+All of this is measured, not reasoned. Re-verify if cheap; do not redo. The
+load-bearing points are ALSO mirrored onto the ledger item itself, so the
+receiving groomer gets them without reading this document — but this remains
+the fuller record.
 
 - **The rewriter needs NO change.** `pin_rewrite._compile_github_workflow_uses`
   matches `^\s+uses: <pin_key>@<current>` against whatever `PIN_FILE` names, so
