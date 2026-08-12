@@ -22,6 +22,8 @@ One correction that the fix itself makes necessary: §"Shared content provenance
 
 ### Proposed Changes
 
+Every target and replacement below is quoted as a Markdown blockquote for legibility. The `> ` markers are quoting syntax belonging to this proposal; they MUST NOT appear in the ratified spec text, including for the whole new sub-section quoted that way in the sibling proposal.
+
 All changes are in `SPECIFICATION/non-functional-requirements.md`. Section §"Shared content provenance" MUST become the single authority for the shared-content channel partition; every other site MUST NOT restate it, and any mention of it MUST be by reference to that section; and no site MAY assert a cardinal count of channels.
 
 **(1) Line 109, §"Shared content provenance" — the partition MUST be stated here and only here, without a count.** Replace the sentence:
@@ -42,7 +44,9 @@ with:
 
 with:
 
-> Drift between `livespec`'s requirements and a consumer repo's content MUST surface via a mechanism keyed to the channel that carries it: static-scaffold drift MUST surface via CI's `copier update --dry-run --vcs-ref=master` check; executable-enforcement-suite drift MUST surface via the compatibility enforcement owned by the fleet/dev-tooling coordination surface — the `compat` block schema and bump-pin policy live in `livespec-dev-tooling`'s spec (see §"Cross-repo coordination — pin-and-bump" for the pointer) — since the static-scaffold and executable-enforcement-suite channels' pins live in the same `compat` mechanism.
+> Drift between `livespec`'s requirements and a consumer repo's content MUST surface via a mechanism keyed to the channel that carries it: static-scaffold drift MUST surface via CI's `copier update --dry-run --vcs-ref=master` check; executable-enforcement-suite and shared-runtime drift MUST surface via the compatibility enforcement owned by the fleet/dev-tooling coordination surface — the `compat` block schema and bump-pin policy live in `livespec-dev-tooling`'s spec (see §"Cross-repo coordination — pin-and-bump" for the pointer) — since those channels pin their consumers through the same `compat` mechanism.
+
+The shared-runtime channel is added to this sentence because the change above makes §"Shared content provenance" the single authority over a channel set that includes it, and the ratified text left its drift mechanism unstated. The addition is not an invention: `livespec-runtime` already MUST declare a `compat` block conforming to the same fleet-coordination schema (§"Shared runtime — livespec-runtime"), so it already pins through the mechanism this clause names.
 
 **(4) Line 216, §"Conformance Pattern" — the cross-reference MUST NOT carry a count.** Replace the sentence:
 
@@ -68,6 +72,16 @@ with:
 
 > This channel's place in livespec's shared-content partition is stated in §"Shared content provenance" and MUST NOT be restated here.
 
+**(7) Line 459, §"Shared content sync — copier template" — a mention of the partition MUST carry the reference the rule above requires.** Replace the fragment:
+
+> such data files are static scaffold content and do NOT violate the channel partition's prohibition on `copier` delivering executable code.
+
+with:
+
+> such data files are static scaffold content and do NOT violate the prohibition on `copier` delivering executable code stated in §"Shared content provenance".
+
+This site is amended rather than left alone because change (1) above requires any mention of the partition to be by reference to the single authority, and a rule violated by unamended text on the day it ratifies is not a rule.
+
 No `## ` heading is added, changed, or removed by this proposal, so `tests/heading-coverage.json` requires no co-edit.
 
 ## Proposal: Shared CI logic channel — core-hosted reusable workflows
@@ -92,15 +106,17 @@ The single-implementation requirement is not stylistic: `livespec-jvdvx4.13` fix
 
 ### Proposed Changes
 
-All changes are in `SPECIFICATION/non-functional-requirements.md`, and depend on the sibling proposal in this file, which makes §"Shared content provenance" the single authority for the channel partition.
+Every target and replacement below is quoted as a Markdown blockquote for legibility. The `> ` markers are quoting syntax belonging to this proposal; they MUST NOT appear in the ratified spec text — change (5) below quotes an entire new sub-section that way, and it lands as ordinary spec prose, not as a blockquote.
 
-**(1) Line 9, §"Boundary" — the self-application enumeration MUST name the channel set completely.** Replace the fragment:
+All changes are in `SPECIFICATION/non-functional-requirements.md`, and depend on the sibling proposal in this file, which makes §"Shared content provenance" the single authority for the channel partition. Changes (2) and (3) anchor on text the sibling proposal PRODUCES, not on text present in the live file, so the sibling proposal's changes MUST be applied first.
+
+**(1) Line 9, §"Boundary" — the self-application enumeration MUST become a reference, not a re-synchronized list.** This site's defect is that it enumerates channels inline, so every channel addition must remember it; adding the new channel to the list would repair this instance by lockstep and leave the defect intact. Replace the fragment:
 
 > its sibling-repo fleet (`livespec-dev-tooling`, `livespec-runtime`, the `livespec-orchestrator-*` registry), the copier scaffold channel, the shared-code and shared-runtime channels, the fleet release-coordination surface, and the sibling registry the doctor cross-repo checks read
 
 with:
 
-> its sibling-repo fleet (`livespec-dev-tooling`, `livespec-runtime`, the `livespec-orchestrator-*` registry), the copier scaffold channel, the shared-code, shared-runtime, and shared-CI-logic channels, the fleet release-coordination surface, and the sibling registry the doctor cross-repo checks read
+> its sibling-repo fleet (`livespec-dev-tooling`, `livespec-runtime`, the `livespec-orchestrator-*` registry), every shared-content provenance channel (§"Shared content provenance"), the fleet release-coordination surface, and the sibling registry the doctor cross-repo checks read
 
 **(2) §"Shared content provenance" — a new requirement-class bullet MUST be added** immediately after the `**Shared-runtime requirements.**` bullet added by the sibling proposal:
 
@@ -108,11 +124,11 @@ with:
 
 **(3) §"Shared content provenance" — the drift-surfacing sentence MUST cover the new channel.** In the sentence as rewritten by the sibling proposal's change (3), replace its final clause:
 
-> since the static-scaffold and executable-enforcement-suite channels' pins live in the same `compat` mechanism.
+> since those channels pin their consumers through the same `compat` mechanism.
 
 with:
 
-> since the static-scaffold and executable-enforcement-suite channels' pins live in the same `compat` mechanism; and CI-enforced core-contract drift MUST surface as a stale pinned reference through the same fleet-coordination pin-freshness surface, per §"Cross-repo coordination — pin-and-bump", the consumer's only local artifact for that channel being the pinned reference itself.
+> since those channels pin their consumers through the same `compat` mechanism; and CI-enforced core-contract drift MUST surface as a stale pinned reference through the same fleet-coordination pin-freshness surface, per §"Cross-repo coordination — pin-and-bump", the consumer's only local artifact for that channel being the pinned reference itself.
 
 **(4) Line 451, §"Shared content sync — copier template" — the pass-through allowance MUST permit the core-hosted target.** Replace the fragment:
 
@@ -120,7 +136,9 @@ with:
 
 with:
 
-> Each enumerated file MAY be a Jinja-templated thin pass-through that delegates to a reusable workflow — at `thewoolleyman/livespec-dev-tooling/.github/workflows/<name>.yml@vX.Y.Z` (per §"Shared code sync — livespec-dev-tooling") when the implementation is fleet-stable enforcement tooling, or at `thewoolleyman/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z` (per §"Shared CI logic — core-hosted reusable workflows") when it enforces a contract `livespec` itself owns —
+> Each enumerated file MAY be a Jinja-templated thin pass-through that delegates to a reusable workflow, either at `thewoolleyman/livespec-dev-tooling/.github/workflows/<name>.yml@vX.Y.Z` (per §"Shared code sync — livespec-dev-tooling") when the implementation is fleet-stable enforcement tooling, or at `thewoolleyman/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z` (per §"Shared CI logic — core-hosted reusable workflows") when it enforces a contract `livespec` itself owns
+
+The live text immediately following the replaced fragment already opens with ` — the reusable-workflow consumption pattern is the canonical sharing mechanism...`; that pre-existing em dash is retained and is the ONLY dash at the join, so the sentence keeps its original single-dash appositive rather than acquiring a dash pair.
 
 **(5) A new sub-section §"Shared CI logic — core-hosted reusable workflows" MUST be added** immediately after §"Shared runtime — livespec-runtime" and before the `## Constraints` heading, with the following body:
 
@@ -128,11 +146,11 @@ with:
 >
 > The shared-CI-logic mechanism between `livespec` and the livespec-governed consumers downstream of it is `livespec` ITSELF: reusable GitHub Actions workflows published from `github.com/thewoolleyman/livespec` at `.github/workflows/reusable-<name>.yml`, invoked as `uses: thewoolleyman/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z` from a consumer's own workflow, together with the `livespec`-shipped scripts those workflows invoke. It is the channel by which a contract `livespec` owns, but which MUST be enforced INSIDE a consumer's CI, reaches that consumer's runner. Its place among livespec's shared-content channels is stated in §"Shared content provenance".
 >
-> **Why core is the producer.** The channels carrying EXECUTABLE content are produced by repositories upstream of `livespec`: both `livespec-dev-tooling` and `livespec-runtime` MUST NOT take a runtime dependency on `livespec` itself, so shipping core's own contract logic through either would place downstream code inside an upstream artifact. Hosting only the WORKFLOW upstream while the script it invokes stays in core is not a lesser version of the same idea but a worse one: the upstream repository would then carry a pinned artifact that resolves and checks out its own downstream consumer. With core as the producer the direction is consumer → producer — the consumer already depends on core — so the channel is cycle-free.
+> **Why core is the producer.** The sibling-produced executable channels — the enforcement suite and the shared runtime — come from repositories upstream of `livespec`: both `livespec-dev-tooling` and `livespec-runtime` MUST NOT take a runtime dependency on `livespec` itself, so shipping core's own contract logic through either would place downstream code inside an upstream artifact. Hosting only the WORKFLOW upstream while the script it invokes stays in core is not a lesser version of the same idea but a worse one: the upstream repository would then carry a pinned artifact that resolves and checks out its own downstream consumer. With core as the producer the direction is consumer → producer — the consumer already depends on core — so the channel is cycle-free.
 >
-> **Consumer set.** This channel's consumers are the livespec-governed repositories DOWNSTREAM of `livespec`. `livespec-dev-tooling` and `livespec-runtime`, which `livespec` itself consumes, MUST NOT consume this channel; for them the dependency direction is inverted and the cycle-free argument above does not hold.
+> **Consumer set.** This channel's consumers are the livespec-governed repositories DOWNSTREAM of `livespec`. `livespec-dev-tooling` and `livespec-runtime`, which `livespec` itself consumes, MUST NOT consume this channel; for them the dependency direction is inverted and the cycle-free argument above does not hold. Those repositories ratify their own specifications, and §"Spec pull-request auto-merge requirement" already excludes them from its derived applicable set, so they carry no spec pull-request merge-policy gate; closing that gap REQUIRES a mechanism other than this channel. Stating the consequence here makes the exclusion a recorded decision rather than a silent omission.
 >
-> **Scope.** This channel MUST carry only logic that (a) derives or enforces a contract `livespec` itself owns, (b) MUST execute inside a consumer repository's CI, and (c) MUST NOT be duplicated per consumer. Content that is a static scaffold MUST go through `copier`; a fleet-stable enforcement-suite check MUST go through `livespec-dev-tooling`; a reusable runtime library module MUST go through `livespec-runtime`. This channel MUST NOT be used to route content away from those channels, and in particular MUST NOT become a second home for enforcement-suite checks.
+> **Scope.** This channel MUST carry only logic that (a) derives or enforces a contract `livespec` itself owns, (b) MUST execute inside a consumer repository's CI, and (c) MUST NOT be duplicated per consumer. Content belonging to another channel per §"Shared content provenance" MUST go through that channel; this channel MUST NOT be used to route content away from it, and in particular MUST NOT become a second home for enforcement-suite checks.
 >
 > **One implementation, never one per consumer.** The derivation a reusable workflow performs MUST live in a `livespec`-shipped script invoked from the checked-out core tree, so that every caller — core's own workflows and every generated sibling's alike — executes the SAME implementation. The logic MUST NOT be embedded in a workflow body that is then copied into the copier template: two copies of one derivation drift, and the drift is silent, because each copy passes its own repository's CI while a defect fixed in one persists in the other. Whether a given consumer file `uses:` the reusable workflow or invokes the shipped script directly is the consumer's choice; carrying a second copy of the logic is not.
 >
