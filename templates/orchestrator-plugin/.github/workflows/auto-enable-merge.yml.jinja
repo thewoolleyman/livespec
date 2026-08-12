@@ -38,6 +38,27 @@
 # App-authored release PRs were never in the author allowlist, so
 # auto-merge never engaged and the release PRs silently parked. The
 # branch-shape-guarded App path closes that gap (livespec-c1k9).
+#
+# SPEC-GOVERNANCE GATE. For a pull request whose diff touches this
+# repository's spec root, auto-merge is registered only when the
+# pull-request effective `spec_pr_merge` policy resolves to `auto-on-green`.
+# A pull request that ratifies a `manual`-floored proposal is left for a
+# human merge; one that touches no spec root, or ratifies nothing, is
+# unaffected.
+#
+# The decision is NOT made here. livespec/SPECIFICATION/non-functional-
+# requirements.md requires exactly ONE implementation that every caller
+# executes, so this workflow calls livespec's core-hosted reusable workflow,
+# which checks livespec out at the revision this pin resolves to and runs the
+# shipped module. Reimplementing any part of that derivation in this file
+# would be a second copy, which ratified text prohibits.
+#
+# The `uses:` ref below is pinned to a RELEASE TAG, never `@master`: a
+# release carries validation that per-commit CI deliberately skips. The
+# calling job grants `actions: read` because the reusable workflow derives
+# which livespec revision to check out from this run's own referenced
+# workflows — that is what makes THIS pin the single pin governing both the
+# workflow and the script it runs.
 
 name: Auto-enable merge
 
@@ -59,8 +80,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  enable-auto-merge:
-    runs-on: ubuntu-latest
+  spec-pr-merge-policy:
     # Composed gate: NOT draft AND do-not-merge label absent AND
     # (author in human allowlist OR the fleet's release-please App on a
     # release-please-- head branch). All continuation lines share one
@@ -73,6 +93,32 @@ jobs:
       || (github.event.pull_request.user.login == 'livespec-pr-bot[bot]'
       && startsWith(github.event.pull_request.head.ref, 'release-please--'))
       )
+    permissions:
+      # `actions: read` lets the reusable workflow read this run's own
+      # referenced workflows, which is how it pins its livespec checkout to
+      # the tag below. Without it the job fails with a named cause rather
+      # than silently running livespec's default branch.
+      actions: read
+      contents: read
+      pull-requests: read
+    uses: thewoolleyman/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@v0.32.0
+    with:
+      repository: ${{ '{{' }} github.repository {{ '}}' }}
+      pull-request: ${{ '{{' }} github.event.pull_request.number {{ '}}' }}
+      base-sha: ${{ '{{' }} github.event.pull_request.base.sha {{ '}}' }}
+      head-sha: ${{ '{{' }} github.event.pull_request.head.sha {{ '}}' }}
+
+  enable-auto-merge:
+    needs: spec-pr-merge-policy
+    runs-on: ubuntu-latest
+    # Gated on the AFFIRMATIVE value. An explicit `if:` on a job with
+    # `needs:` REPLACES the implicit "only when the needed job succeeded",
+    # so a policy job that was skipped by the composed gate above, or that
+    # failed before deciding anything, yields an empty `decision` — which is
+    # not `auto`, and therefore does not register auto-merge. Written as
+    # `!= 'blocked'` instead, every one of those states would read as
+    # permission.
+    if: needs.spec-pr-merge-policy.outputs.decision == 'auto'
     steps:
       - name: Mint App installation token
         id: app-token
