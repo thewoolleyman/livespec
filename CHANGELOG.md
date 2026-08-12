@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/thewoolleyman/livespec/compare/v0.33.0...v0.33.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* **template:** mint the App token with app-id, not client-id ([8884263](https://github.com/thewoolleyman/livespec/commit/88842637ff16b45d4916465f458949b647c70e77))
+
 ## [0.33.0](https://github.com/thewoolleyman/livespec/compare/v0.32.0...v0.33.0) (2026-08-12)
 
 
