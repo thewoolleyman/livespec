@@ -288,7 +288,26 @@ Measured 2026-08-13 from the factory host:
 
 So the box is reachable at the network layer and not reachable at the SSH layer.
 The maintainer chose adding this host's public key to the target's authorized
-keys over a reverse tunnel. The one-time console action on `poweredge-xubuntu`:
+keys over a reverse tunnel.
+
+**Which account receives the key — state this explicitly.** The commands below
+run **as that account**, not as root, because `~/.ssh/authorized_keys` is
+per-account: appending the key to the wrong user's file leaves the box
+correctly configured for a login nobody will attempt, and the resulting failure
+looks like a network problem rather than a wrong-account problem. Two
+requirements bind the choice:
+
+- The account **must be able to escalate with `sudo`**, because
+  `provision-ci-runner.sh` installs packages and creates a system account.
+- **The connecting side defaults to `ubuntu`.** This host has no
+  `~/.ssh/config` entry for `poweredge-xubuntu`, so an unqualified
+  `ssh poweredge-xubuntu` connects as `ubuntu` — the factory host's own
+  username. If the target account has any other name, either say so, so the
+  connecting side uses `ssh <account>@poweredge-xubuntu`, or add a matching
+  `Host poweredge-xubuntu` / `User <account>` stanza to this host's
+  `~/.ssh/config`. **Do not assume `ubuntu` exists on the target.**
+
+The one-time console action on `poweredge-xubuntu`, run as that account:
 
 ```bash
 sudo systemctl enable --now ssh
@@ -298,11 +317,27 @@ chmod 600 ~/.ssh/authorized_keys
 sudo ufw allow in on tailscale0 to any port 22 proto tcp 2>/dev/null || true
 ```
 
-The account receiving that key must be able to escalate with `sudo`, because
-`provision-ci-runner.sh` installs packages and creates a system account. Note
-the tailnet grant question is owned by `thewoolleyman/tailscale-admin`; runner
-traffic is outbound-only and needs no widened grant, but SSH *to* the box from
-the factory host does traverse the tailnet.
+That key is the factory host's `~/.ssh/id_ed25519.pub`, reproduced verbatim and
+verified byte-identical to the live file on 2026-08-13. Its **private half
+carries no passphrase**, which is what makes the unattended claim below true
+rather than aspirational — a passphrase-protected key would need an agent held
+open across every later step.
+
+Note the tailnet grant question is owned by `thewoolleyman/tailscale-admin`;
+runner traffic is outbound-only and needs no widened grant, but SSH *to* the box
+from the factory host does traverse the tailnet.
+
+**Verify the step landed** before treating it as done — a successful append
+proves nothing on its own, since the sshd and firewall legs can each fail
+independently:
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=10 <account>@poweredge-xubuntu 'hostname; id'
+```
+
+`BatchMode=yes` is what makes this a real test: it refuses any interactive
+password fallback, so a success proves the *key* was accepted rather than
+proving someone could have typed a password.
 
 **Everything downstream of this step can be driven unattended over SSH.**
 
