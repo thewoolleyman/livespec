@@ -76,10 +76,24 @@ Full evidence is on the ledger item; it is not repeated here.
 - **`livespec-5qu1`** (P2) — a full `copier update` in any consumer still on the
   old generated form swaps the App-token step from
   `actions/create-github-app-token@v1` + `app-id:` to `@v3` + `client-id:`. The
-  two inputs are NOT interchangeable, and which one each consumer's `APP_ID`
-  secret holds cannot be read from `livespec`, so it is UNVALIDATED rather than
-  untested. `livespec-orchestrator-beads-fabro`'s form is an open question, not
-  an assumption.
+  two inputs are NOT interchangeable.
+
+  **Which FORM each repository carries is now MEASURED, and that half of the
+  question is CLOSED.** Measured 2026-08-12 against each repository's freshly
+  fetched `origin/master`: BOTH repositories carrying `.copier-answers.yml` —
+  `livespec-orchestrator-git-jsonl` AND `livespec-orchestrator-beads-fabro` —
+  carry the OLD `actions/create-github-app-token@v1` + `app-id:` form, while the
+  `livespec` copier template
+  (`templates/orchestrator-plugin/.github/workflows/auto-enable-merge.yml.jinja`)
+  and `livespec`'s own root `.github/workflows/` both carry `@v3` +
+  `client-id:`. So `livespec-orchestrator-beads-fabro`'s form is no longer an
+  open question — stop describing it as one.
+
+  **Do not overstate that.** What is measured is the FORM each generated
+  workflow uses. What each consumer's `APP_ID` secret actually HOLDS — an App id
+  or a client id — is still unreadable from outside those repositories and still
+  needs the maintainer. `livespec-5qu1` therefore stays OPEN and P2 on that
+  second half, and the risk is UNVALIDATED rather than untested.
 - **`livespec-jvz8`** (P2) — `livespec-dev-tooling` and `livespec-runtime`
   ratify their own specs with no merge-policy gate, permanently excluded by
   v202. Pre-existing and architecturally forced. **Do NOT close it by having
