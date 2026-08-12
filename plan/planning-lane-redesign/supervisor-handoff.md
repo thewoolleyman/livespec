@@ -490,84 +490,115 @@ echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 
 ## Resume state — POINTERS ONLY, re-measure every one
 
-Written at session wrap 2026-08-11T04:2xZ. These are pointers to things that
+Written at session wrap 2026-08-12T01:1xZ. These are pointers to things that
 existed then, NOT status. Re-measure each with the commands above before acting;
 this plan has been bitten repeatedly by state that moved underneath a written
 claim. The supervisor marker the cold-open block reads carries the detail this
 section deliberately does not duplicate.
 
-**THE 48-HOUR GROOMING BLOCK IS GONE.** `bd-ib-mrqoy2` (repository
-`livespec-orchestrator-beads-fabro`) was groomed on maintainer authorization
-into eight children. The parent stays OPEN by design; it is the epic.
+**TWO THINGS WERE IN FLIGHT AT WRAP AND NEITHER WILL NOTIFY YOU.** Re-measure
+both before doing anything else.
 
-| child | state at wrap | what it is |
-|---|---|---|
-| `.1` | CLOSED — PR #1333, merge `40ce44e5` | authored the realization spec proposal |
-| `.7` | CLOSED — PR #1334, merge `9f3d053d` | fixed a review blocker in the proposal's section K |
-| `.2` | BLOCKED — deliberately | the ratification valve; see below |
-| `.8` | **IN FLIGHT ON THE WORKER** | documents the v059 attestation deviation |
-| `.3` `.4` `.5` `.6` | pending-approval, dependency-gated | the implementation slices |
+1. **`bd-ib-mrqoy2.5` IS `ready` AND WANTS A REDISPATCH — nothing is stranded.**
+   It was in flight at wrap; rather than leave a dispatch orphaned by the
+   restart, this seat STOPPED it deliberately, reset the item to `ready` with
+   its assignee cleared, and confirmed NO `feat/bd-ib-mrqoy2.5` remote branch
+   survives — so a redispatch cannot hit the non-fast-forward death described in
+   T11. Roughly 8 minutes of sandbox work was discarded on purpose; that is
+   cheaper than an orphaned container plus a stranded ledger record.
+   REDISPATCH IT FIRST, and expect the plugin-currency gate to refuse once (T12):
+   run `just ensure-plugins` inside `livespec-orchestrator-beads-fabro`,
+   re-resolve `installPath` from `installed_plugins.json`, then drive
+   `impl:bd-ib-mrqoy2.5`. Do NOT run it concurrently with anything touching
+   `_needs_attention_handoffs.py` or `needs_attention.py` (T10).
+2. **The `overseer-pfpfty.2` round-1 review COMPLETED WITH 6 BLOCKERS.** Do not
+   ratify. Detail below.
 
-**THE IMMEDIATE NEXT ACTION.** Re-measure `bd-ib-mrqoy2.8`. At wrap the WORKER
-was executing it under `brief-20-document-v059-deviation.md` (worktree created
-2026-08-11T04:19:49Z; the worker was at ~15% context, so it may have stopped
-part-way — the brief is self-contained and resumable by anyone).
+**THE ORCHESTRATOR TRACK IS NEARLY DONE.** `bd-ib-mrqoy2` had 6 of 8 children
+closed at wrap: `.1 .2 .3 .4 .7 .8`. Only `.5` (in flight) and `.6` (the
+residual prose sweep, gated on `.3/.4/.5`) remain. `.5` closing releases `.6`,
+and `.6` closing completes the whole cross-repo realization chain.
 
-**`.8` IS NOT FACTORY-DISPATCHABLE. Do not retry the dispatch.** A Fabro run
-already failed on it (`01KZQGC1QXADJVZYEQ7FRW243T`) for a correct reason: its
-input artifact lives at a HOST path under `tmp/overseer/`, which a sandbox
-cannot read, and `bd` is unavailable in-sandbox so the ledger was no fallback
-either. The sandbox agent searched, found no legitimate source, and STOPPED
-rather than fabricating the verdict — exactly right, and not a fault to
-re-trigger. Execute `.8` where the host filesystem is reachable.
+| landed this session | evidence |
+|---|---|
+| `.8` documented the v059 deviation | PR #1341, merge `e782054454e6` |
+| `.2` the ratification valve, closed on all four clauses | verified against `origin/master` |
+| `.3` rewrote the plan operation to ledger-held handoffs | PR #1345, merge `6b5d01f9` |
+| `.4` renamed the list surface to `list-plans` | PR #1351, merge `eaeb0008` |
 
-**WHEN `.8` MERGES, CLOSE `.2` AND `.3` BECOMES DISPATCHABLE.** `.2`'s
-acceptance criterion has four clauses; three are already satisfied (v059 exists,
-the queue holds only `.gitkeep`, doctor static green). The fourth — "the
-revision record's ratification-review section reflects a review that verifiably
-happened" — is precisely what `.8` repairs. Do NOT close `.2` before then; that
-clause is doing real work and is the only thing correctly gating `.3`–`.6`.
+**THE OVERSEER TRACK HAS ONE SLICE DOWN AND A REAL BLOCKER.**
+`overseer-pfpfty.1` landed (PR #793, merge `422251fa`), filing
+`SPECIFICATION/proposed_changes/planning-lane-realization.md` and correctly NOT
+ratifying — its merge touched exactly one file and zero `history/` paths.
 
-**WHAT LANDED ON MASTER, and the one thing wrong with it.** The Planning Lane
-realization ratified as `livespec-orchestrator-beads-fabro`
-`SPECIFICATION/history/v059` (PR #1337, merge `6fae8205`). Its CONTENT is clean
-and independently attested. Its ratification RECORD is not: `reviewed_at`
-`2026-08-09T12:01:11Z` timestamps a review of the PROPOSAL bytes only, while the
-`content_digest` beside it spans the RESULTING bytes, recomposed at `revised_at`
-`2026-08-09T13:44:33Z` during a repair. The covering review arrived ~5 minutes
-AFTER ratification. **No conforming correction exists** — the contract requires
-`reviewed_at` strictly before `revised_at`, and a content-identical
-re-ratification fails `doctor-accept-decision-snapshot-consistency`. The
-maintainer decided 2026-08-09 to DOCUMENT the deviation rather than revert
-verified-good content. That decision is settled; do not reopen it.
+`overseer-pfpfty.2` is the ratification valve and **its round-1 independent
+review returned 6 BLOCKERS**. The full 31 KB verdict is at
+`tmp/overseer/planning-lane-redesign/review-pfpfty-proposal-round1.md`, which is
+GITIGNORED — **the summary is journaled on `overseer-pfpfty.2` itself**, so read
+the item, not just the file. Headlines: the restart prompt becomes unresolvable
+and "ledger" is never defined; a scenario is rewritten to contradict its bound
+integration test; `supervise-plan`'s `.ai/supervisor-protocol.md` authoring
+permission is silently revoked; `handoff`/`resume` are misdescribed as legacy
+when both are live; the banned term is replaced with "Planning Lane" (the
+convention) where the ratified vocabulary requires "plan" (the artifact); and the
+Control Plane is granted a direct ledger append bypassing the sanctioned plan
+surface.
 
-**Filed against core, not this plan's to fix:** `livespec-yrq4` (P1, livespec
-tenant) — the hardening gap the above exposes, carrying a constraint not to
-retroactively fail the accepted deviation. Also open from earlier in this plan:
-`livespec-bpzy` (P2, doctor drops the `external_references` allowlist when a
-cross-repo clone is unreadable), `bd-ib-ll6n` (unattended Fabro dispatch can
-stall on an interview and burn its whole budget), `livespec-driver-claude-61k`
-(the `github_rate_limit_guard` false-positive that denies ordinary
-PR-creation commands containing the word "for" or "while").
+NEXT STEP THERE is an amendment slice against `.1`'s proposal, then a round-2
+review over the AMENDED bytes. Budget for more rounds: the core proposal on this
+plan took THREE, and its round-1 count was also six. Do NOT close `.1` — it
+delivered correctly; amending is separate work.
 
-**Still open from the older record, re-verify before acting:**
-`livespec-dev-tooling-jaut4y` remains NOT factory-buildable (its commit
-aggregate exceeds Fabro's 600s checkpoint ceiling); the cross-repo
-`cross_repo_targets` manifest gap is still unregistered in `livespec-overseer`,
-`livespec-orchestrator-beads-fabro` and `livespec-console-beads-fabro`, so
-`overseer-ftfhek`, `bd-ib-da4fs2` and `livespec-console-beads-fabro-sisnmx`
-will hit it when their turn comes.
+**THE REVIEWER WAS OPUS, BY MAINTAINER AUTHORIZATION.** `AGENTS.md` requires a
+Fable-model reviewer; the maintainer authorized Opus as a deliberate ONE-OFF on
+2026-08-12. It is not a rule change. **Any ratification record for this proposal
+MUST read `reviewer_model: opus`, never `fable`** — writing `fable` is the T1
+minted-attestation defect with a new author. Journaled on `overseer-pfpfty.2`.
 
-**Owned elsewhere:** `overseer-pfpfty` (repository `livespec-overseer`) is the
-sibling epic-shaped item; the binder forbids decomposing it from this seat. It
-already covers the `supervise-plan` drift an independent review surfaced — that
-was checked, so do not file a duplicate.
+**`livespec-zsn2xh.5` is still the last item in this repo's own epic** (7 of 8
+closed). Its true unblocker is **`overseer-pfpfty.4` landed AND RELEASED**, not
+`.3` and not `.5` — a cross-repo retarget journaled on `overseer-pfpfty`'s parent
+for a deliberate maintainer decision, not to be taken unilaterally.
 
-**Host hygiene, not this plan's but worth someone's attention:** two Fabro
-sandboxes (`fabro-run-01KZ3BEWTS5HERH2N8K3PA90PH`,
-`fabro-run-01KZ2XA9A0C5Z0KH7ADAD1BHR7`) have been up 7–8 days with no
-supervising dispatcher, holding host dispatch capacity. Killing containers is a
-host mutation this seat did not take unilaterally.
+**`livespec-dev-tooling-jaut4y` WAS SPLIT** (maintainer-authorized) into `.1`
+prose-only, `.2` invariant re-derivation, `.3` check-module rename gated on `.2`.
+None dispatched. `.1` stages zero `.py` so it takes the fast doc-only pre-commit
+path and is the safe one to start with. `.2`/`.3` touch `.py` and still race the
+~593s gate against Fabro's 600s engine ceiling — if either dies on a checkpoint
+TIMEOUT rather than a test failure, that is the known ceiling, so route to the
+worker fallback rather than bare-retrying. Both say so in their own descriptions.
+
+**FILED THIS SESSION, none of them this plan's to fix:**
+`livespec-ck8c` (P2, core — the `uv` dependency-fetch TLS failure that reds a
+master and blocks the factory; hit TWO repos in five minutes),
+`livespec-gfjh` (P3, core — the truncated-page evidence trap),
+`bd-ib-xw34` (P2 — a dispatch reporting `failed` over complete, published work),
+`bd-ib-eqxt` (P2 — the plugin-currency gate self-blocking after every green
+dispatch), `overseer-zuhv` (P3 — a rotted core citation in the overseer
+justfile). `livespec-driver-claude-61k` was EXTENDED with the `select` trigger
+rather than duplicated.
+
+**Still open from the older record, re-verify before acting:** the cross-repo
+`cross_repo_targets` manifest gap remains in exactly three repos —
+`livespec-overseer`, `livespec-orchestrator-beads-fabro`,
+`livespec-console-beads-fabro` (re-measured from committed config 2026-08-11).
+It blocks `overseer-ftfhek`, `bd-ib-da4fs2` and
+`livespec-console-beads-fabro-sisnmx`. It is NOT the binding constraint yet —
+all three sit behind ungroomed parents — and fixing it stays hazardous while
+`livespec-bpzy` (P2) is open, because registering a target arms citation
+resolution. This is the largest unfinished structural item with no owner.
+
+**A correction the old record needs:** "nine of ten siblings can never be
+dispatched" is too flat. The manifest gap blocks only items whose dependency is
+a CROSS-REPO `sibling_work_item` ref. `bd-ib-mrqoy2.3` dispatched fine from a
+repo MISSING the registration because its dependency was a local beads edge.
+
+**Host hygiene:** several Fabro containers were up at wrap, including the dead
+`bd-ib-mrqoy2.5` run parked on an unanswered interview (its PR #1353 is closed
+and branch deleted) and `01KZSPSTPFX69K664YHR1B9C0M`, which this seat could not
+attribute to any of its dispatches. Killing containers is a host mutation; the
+maintainer authorized reaping three specific ones earlier and that approval was
+not extended to these.
 
 ## Corrections
 
@@ -742,3 +773,72 @@ ships description AND notes. Condensing the notes to the actionable directive
 brought it to 3549 and the depth lost nothing — it already lived in the
 supervisor marker and a preserved artifact. Measure `description + notes` before
 every dispatch; the warning will not do it for you.
+
+T10. I DISPATCHED TWO SLICES IN PARALLEL THAT EDIT THE SAME FILES, AND THE
+CAPACITY CHECK IS WHAT FOOLED ME. `bd-ib-mrqoy2.4` and `.5` both modify
+`_needs_attention_handoffs.py` and `needs_attention.py`. I confirmed
+dispatcher-tracked in-flight was ZERO against a cap of 2, concluded parallel was
+safe, and sent both. `.4` merged first, `.5`'s branch went `DIRTY`, CI never ran
+on it at all, and a whole sandbox run was discarded.
+
+The cap answers "may two run at once". It says NOTHING about whether two slices
+touch the same files, and `AGENTS.md` already draws that distinction — dispatch
+independent NON-CONFLICTING items in parallel, "sequence only items that
+conflict on overlapping files". Worse, this cut's OWN groom review had flagged a
+same-file coupling, and the earlier review named
+`_needs_attention_handoffs.py:30` explicitly. The warning was in the record and I
+did not apply it at dispatch time.
+
+One command prevents it: `comm -12` the two items' expected file sets before any
+parallel dispatch. Do it every time two go out together.
+
+T11. A `failed` DISPATCH MAY BE COMPLETE, OR GENUINELY BROKEN, AND ONLY THE
+FORGE TELLS YOU WHICH. Both `.3` and `.5` reported `status=failed`,
+`pr_number=null`, `merge_sha=null` with the identical symptom: the run pushed
+successfully, then rebased and re-pushed, and GitHub rejected the second push
+non-fast-forward because the rewritten HEAD no longer descended from what it had
+already pushed. The run raced itself. In both cases the sandbox refused to
+force-push, which is correct and must not be "fixed" at the agent.
+
+They then diverged completely. `.3`'s PR #1345 was clean, carried the full work
+(PR head SHA equalled the remote branch tip), passed 95 of 97 checks, and merged
+unchanged. `.5`'s PR #1353 was `DIRTY` with ZERO check runs and had to be
+discarded. So "a failed dispatch may actually be green" is TRUE but is not a
+licence to assume it — compare the PR head to the branch tip and read the checks,
+every time. Filed as `bd-ib-xw34`.
+
+And before redispatching: DELETE the surviving remote branch. A branch left in
+place is precisely what kills the next attempt with the same non-fast-forward
+rejection.
+
+T12. EVERY GREEN DISPATCH STALES THE BUILD THE NEXT ONE NEEDS. release-please
+cuts a release on every `feat:`/`fix:` merge; a green dispatch merges exactly
+such a commit; the plugin-currency gate then refuses the next dispatch because
+the executing build predates the new release. Three refusals in one session, the
+second caused by `bd-ib-mrqoy2.4`'s own merge.
+
+Three details compound it. The gate's stated remedy `claude plugin update` FAILS
+with "not installed at scope user" — these plugins are PROJECT-scoped, so the
+working command is `just ensure-plugins` inside the target repo. The install
+record is PER-PROJECTPATH, so updating one repo leaves every other repo stale
+(measured: updating the orchestrator left `livespec-overseer` on the old build).
+And the dispatch names an absolute cache path, so the stale path is baked into
+whatever a handoff recorded. Re-resolve `installPath` from
+`installed_plugins.json` after every update. Filed as `bd-ib-eqxt`.
+
+T13. I MISDIAGNOSED A TOOLING GUARD, AND THE WORKAROUND CORRUPTED MY EVIDENCE.
+The `github_rate_limit_guard` hook kept denying commands. I concluded
+`--paginate` was the trigger and dropped it. WRONG on both counts: `--paginate`
+is allowed, and the real trigger is `select` — a jq builtin sitting in the
+guard's `for|while|until|select` alternation, so most `gh ... --jq` filters are
+refused. My first isolation attempt "proved" the wrong answer because the `echo`
+describing the test contained the words "select" and "for", poisoning its own
+control. Keep the trigger vocabulary OUT of any command that tests for it.
+
+The cost was not friction. Dropping `--paginate` produced a SILENTLY TRUNCATED
+read: 30 of a run's 96 jobs, tallying ALL SUCCESS, beside a run whose conclusion
+was `failure`. The failing jobs were on page 2. A non-empty, internally
+consistent, correct-as-far-as-it-goes answer to a question I had not asked.
+Always pass an explicit `per_page` and reconcile the row count against
+`total_count` — that reconciliation is the control. Recorded as `livespec-gfjh`;
+the guard evidence went onto `livespec-driver-claude-61k` rather than a duplicate.
