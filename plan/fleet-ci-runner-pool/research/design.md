@@ -290,24 +290,27 @@ So the box is reachable at the network layer and not reachable at the SSH layer.
 The maintainer chose adding this host's public key to the target's authorized
 keys over a reverse tunnel.
 
-**Which account receives the key — state this explicitly.** The commands below
-run **as that account**, not as root, because `~/.ssh/authorized_keys` is
-per-account: appending the key to the wrong user's file leaves the box
-correctly configured for a login nobody will attempt, and the resulting failure
-looks like a network problem rather than a wrong-account problem. Two
-requirements bind the choice:
+**The target account is `cwoolley`** (maintainer-stated 2026-08-13). It is
+**not** `ubuntu`, which is the factory host's own username and what an
+unqualified `ssh poweredge-xubuntu` would otherwise use. That difference is
+load-bearing, because `~/.ssh/authorized_keys` is per-account: appending the key
+to `ubuntu` on the target would leave the box correctly configured for a login
+nobody will attempt, and the resulting refusal reads as a network problem rather
+than a wrong-account problem.
 
-- The account **must be able to escalate with `sudo`**, because
-  `provision-ci-runner.sh` installs packages and creates a system account.
-- **The connecting side defaults to `ubuntu`.** This host has no
-  `~/.ssh/config` entry for `poweredge-xubuntu`, so an unqualified
-  `ssh poweredge-xubuntu` connects as `ubuntu` — the factory host's own
-  username. If the target account has any other name, either say so, so the
-  connecting side uses `ssh <account>@poweredge-xubuntu`, or add a matching
-  `Host poweredge-xubuntu` / `User <account>` stanza to this host's
-  `~/.ssh/config`. **Do not assume `ubuntu` exists on the target.**
+Two consequences:
 
-The one-time console action on `poweredge-xubuntu`, run as that account:
+- **The commands below run as `cwoolley`**, not as root, so the key lands in
+  that account's `authorized_keys`. The account must also be able to escalate
+  with `sudo`, because `provision-ci-runner.sh` installs packages and creates a
+  system account.
+- **The connecting side is already configured.** This host's `~/.ssh/config`
+  carries a `Host poweredge-xubuntu` stanza with `User cwoolley` and
+  `IdentityFile ~/.ssh/id_ed25519`, so an unqualified `ssh poweredge-xubuntu`
+  resolves correctly. A session on any *other* machine must either reproduce
+  that stanza or spell the destination `cwoolley@poweredge-xubuntu`.
+
+The one-time console action on `poweredge-xubuntu`, run as `cwoolley`:
 
 ```bash
 sudo systemctl enable --now ssh
@@ -332,12 +335,52 @@ proves nothing on its own, since the sshd and firewall legs can each fail
 independently:
 
 ```bash
-ssh -o BatchMode=yes -o ConnectTimeout=10 <account>@poweredge-xubuntu 'hostname; id'
+ssh -o BatchMode=yes -o ConnectTimeout=10 poweredge-xubuntu 'hostname; id'
 ```
 
 `BatchMode=yes` is what makes this a real test: it refuses any interactive
 password fallback, so a success proves the *key* was accepted rather than
 proving someone could have typed a password.
+
+### The console action is not sufficient — the tailnet policy blocks this direction
+
+Measured 2026-08-13, **after** the maintainer completed the console action on
+`poweredge-xubuntu` and after the client-side stanza was in place: still
+`Connection timed out` on port 22.
+
+The diagnosis is settled, and it is not a fault on the target:
+
+- `tailscale ping poweredge-xubuntu` succeeds in roughly 30–70 milliseconds via
+  a direct path, so the two nodes have working WireGuard reachability.
+- **No TCP port is reachable at all** — 22, 80, 443, 3389, and 5900 all read
+  closed from the factory host. A host firewall that had merely missed the
+  `ufw` rule for 22 would not close every other port in the same way.
+- The factory host carries `tag:vps`; `poweredge-xubuntu` is untagged and
+  user-owned, so it is in `autogroup:member`.
+
+That combination is the signature of a tailnet grant denial rather than a
+host-side one, and reading `thewoolleyman/tailscale-admin`'s `policy.hujson`
+confirms it: **every grant naming `tag:vps` has it as the DESTINATION.** There
+is no grant whose source is `tag:vps` and whose destination is a member device,
+so the factory host cannot open TCP to `poweredge-xubuntu` no matter what sshd
+and `ufw` do on the target. A previously-present narrow `tag:vps` → laptop grant
+survives in that file only as a commented-out block.
+
+This is deliberate, not an oversight. That repository's `AGENTS.md` states the
+posture directly — the VPS is the only internet-facing device, its grants are
+intentionally one-way, and it records: *"NEVER add a grant from `tag:vps` to
+member devices without explicit user approval."* It further warns that tagging a
+device removes it from every `autogroup:member` grant, and that this has caused
+breakages before.
+
+So the access question is **not** "did the console step land" — it did — but
+"which direction is authorized". Three remedies are available and one needs no
+policy change at all; the choice belongs to the maintainer, and the reasoning is
+recorded in the thread's ledger timeline rather than pre-empted here. Whichever
+is chosen, `thewoolleyman/tailscale-admin` manages its policy through GitOps:
+`policy.hujson` is the single source of truth, changes go through a pull request
+that the `tailscale/gitops-acl-action` validates and applies on merge, and the
+admin panel is soft-locked against browser edits.
 
 **Everything downstream of this step can be driven unattended over SSH.**
 
