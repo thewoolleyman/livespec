@@ -84,10 +84,20 @@ def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
 
 
 def _resolve_spec_target(*, namespace: argparse.Namespace, project_root: Path) -> Path:
-    """Resolve --spec-target to a Path; default <project-root>/SPECIFICATION."""
+    """Resolve --spec-target to an ABSOLUTE Path; default <project-root>/SPECIFICATION.
+
+    A relative --spec-target is anchored to `Path.cwd()`, matching the
+    `revise` and `propose-change` wrappers. The result must be absolute:
+    checks that compute the spec root relative to the project root raise
+    ValueError on a relative one, which aborted the whole run before any
+    check had produced a finding.
+    """
     if namespace.spec_target is None:
         return project_root / "SPECIFICATION"
-    return Path(namespace.spec_target)
+    spec_target = Path(namespace.spec_target)
+    if spec_target.is_absolute():
+        return spec_target
+    return Path.cwd() / spec_target
 
 
 def _run_one_check(*, ctx: DoctorContext, module: Any) -> Finding:
