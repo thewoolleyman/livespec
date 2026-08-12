@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/thewoolleyman/livespec/compare/v0.32.0...v0.33.0) (2026-08-12)
+
+
+### Features
+
+* **template:** gate generated auto-enable-merge on the spec-PR policy ([15e52ca](https://github.com/thewoolleyman/livespec/commit/15e52ca1ec2d09ce1d74cc0fe283b26b96cb66a3))
+
 ## [0.32.0](https://github.com/thewoolleyman/livespec/compare/v0.31.0...v0.32.0) (2026-08-12)
 
 
