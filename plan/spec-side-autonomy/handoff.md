@@ -103,28 +103,48 @@ so they have no work-item and would otherwise leave no trace here.
 (20 pass, 1 skipped, exit 0). There is one `proposed_changes/` queue only; the
 repo has no sub-spec trees.
 
-**A spec→implementation DRIFT was found and FILED, so the queue is no longer
-empty.** An earlier revision of this paragraph said it was; that was true when
-written and this same session then filed into it, which is the retraction rather
-than a correction of someone else's claim.
+**TWO spec→implementation DRIFTS were found and FILED, so the queue is no longer
+empty.** An earlier revision of this paragraph said it was, then said one; both
+were true when written and this same session filed past them. These are
+retractions of its own claims, not corrections of anyone else's.
 
-`SPECIFICATION/proposed_changes/doctor-spec-target-drift.md` (PR #2229, merge
-`3ae4123e`) records that `contracts.md` states in TWO places that the `doctor`
-static wrapper takes only `--project-root`, while the shipped
-`doctor_static.py` has accepted and honoured `--spec-target` since `8486f955`
-(2026-07-01) — a commit touching only the module and its test, with no
-`SPECIFICATION/` change. Both quoted replacement targets were verified verbatim
-before filing.
+- **`doctor-spec-target-drift.md`** (PR #2229, merge `3ae4123e`) —
+  `contracts.md` says in TWO places that the `doctor` static wrapper takes only
+  `--project-root`, while `doctor_static.py` has accepted and honoured
+  `--spec-target` since `8486f955` (2026-07-01). **The direction is an open
+  design call**: document the flag (recommended — every sibling
+  spec-tree-scoped wrapper already declares one) or delete it from the
+  implementation and its asserting test. The proposal records both.
+- **`spec-governance-flag-drift.md`** (PR #2232, merge `6a5f5435`) —
+  `contracts.md` enumerates the spec-governance control CLI's modes as a CLOSED
+  list of three, while the CLI has a fourth, `--check-default-block`, appearing
+  ZERO times anywhere under `SPECIFICATION/`, added in `e2f2232d` (2026-08-04).
+  **This one has NO alternative direction**: the mode is consumed by an
+  enforcement check inside `just check`, so deleting it would remove live guard
+  coverage rather than tidy an unused surface.
 
-**It is FILED, NOT RATIFIED, and must not be accepted casually.** Ratification
-needs the independent adversarial review, and the DIRECTION is a genuine design
-call: document the flag (what the proposal recommends, since every sibling
-spec-tree-scoped wrapper already declares one) or delete it from the
-implementation and its asserting test. The proposal records both.
+**BOTH are FILED, NOT RATIFIED, and must not be cleared as routine queue-keeping.**
+Ratification needs the independent adversarial review. For each, the quoted
+replacement targets were verified to exist verbatim and exactly once before
+filing.
 
-`next` therefore now ranks TWO actions, both LOW urgency: `revise` against that
-proposal, and `prune-history` over 202 unpruned versions. Neither is urgent, and
-a LOW-urgency ranking is not a mandate.
+**The audit behind them is COMPLETE — do not redo it.** All nine
+§"Wrapper CLI surface" rows were checked against each wrapper's actual `--help`.
+`seed`, `propose-change`, `critique`, `prune-history`, `resolve-template` and
+`next` match exactly.
+
+One row was deliberately NOT filed. `revise` carries three flags absent from the
+whole spec tree — `--post-step-doctor`, `--skip-stale-branch-check`,
+`--run-stale-branch-check` — but that is INCOMPLETENESS, not contradiction: the
+table's preamble says each wrapper "adds its own flags above that baseline", so
+nothing in the contract is falsified. The two filed drifts are different in kind
+— each contradicts an explicit completeness claim (`takes only`, `one of`). If a
+maintainer wants the table exhaustive, `revise` is the row to add; that is a
+judgement call, not a defect, and it was left rather than inflated into a third
+proposal.
+
+`next` therefore now ranks `revise` (queue depth 2) and `prune-history`, both at
+LOW urgency. Neither is urgent, and a LOW-urgency ranking is not a mandate.
 
 ## Open items
 
