@@ -16,6 +16,16 @@ this thread's branches may still exist on the forge:
 not foreign — every OTHER worktree under `$HOME/.worktrees/livespec/` belongs
 to another session and must not be touched.
 
+**THE PRIMARY CHECKOUT MAY BE BEHIND `origin/master`, AND NOT BY YOUR DOING.**
+At wind-down, `/data/projects/livespec` could not fast-forward: another
+session had a large uncommitted edit to
+`plan/planning-lane-redesign/supervisor-handoff.md`, which is THEIR file and
+was deliberately left alone — do not stash, discard, or commit it. Consequence
+for you: `git -C /data/projects/livespec log master` may lag the forge, so
+create worktrees from `origin/master` after a fetch rather than from the local
+`master` ref, or you will branch from a stale base. Re-check whether the block
+has cleared before assuming it is still there.
+
 **Ledger anchor:** epic `livespec-jvdvx4`
 
 ## What landed
