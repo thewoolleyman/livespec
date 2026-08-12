@@ -73,27 +73,40 @@ Full evidence is on the ledger item; it is not repeated here.
   Shape DECIDED; HANDED OFF to that repo's groomer, so it is listed here for
   continuity only and is not this thread's to advance. See "What the next
   session must not re-derive".
-- **`livespec-5qu1`** (P2) — a full `copier update` in any consumer still on the
-  old generated form swaps the App-token step from
-  `actions/create-github-app-token@v1` + `app-id:` to `@v3` + `client-id:`. The
-  two inputs are NOT interchangeable.
+- **`livespec-5qu1`** (P2) — **RESOLVED IN DIRECTION, and the template change has
+  LANDED.** The maintainer chose on 2026-08-12 to keep `app-id:` in the copier
+  template rather than migrate consumers to `client-id:`. PR #2214 (merge
+  `88842637`) changed
+  `templates/orchestrator-plugin/.github/workflows/auto-enable-merge.yml.jinja`
+  to mint with `actions/create-github-app-token@v3` passing `app-id:`, corrected
+  the auth-model comment block, and inverted the paired assertion in
+  `tests/dev-tooling/checks/test_copier_template_smoke.py` that had pinned the
+  old form. Do NOT re-open the choice.
 
-  **Which FORM each repository carries is now MEASURED, and that half of the
-  question is CLOSED.** Measured 2026-08-12 against each repository's freshly
-  fetched `origin/master`: BOTH repositories carrying `.copier-answers.yml` —
-  `livespec-orchestrator-git-jsonl` AND `livespec-orchestrator-beads-fabro` —
-  carry the OLD `actions/create-github-app-token@v1` + `app-id:` form, while the
-  `livespec` copier template
-  (`templates/orchestrator-plugin/.github/workflows/auto-enable-merge.yml.jinja`)
-  and `livespec`'s own root `.github/workflows/` both carry `@v3` +
-  `client-id:`. So `livespec-orchestrator-beads-fabro`'s form is no longer an
-  open question — stop describing it as one.
+  **Why that is auth-neutral.** Measured 2026-08-12 against each repository's
+  freshly fetched `origin/master`: BOTH repositories carrying
+  `.copier-answers.yml` — `livespec-orchestrator-git-jsonl` AND
+  `livespec-orchestrator-beads-fabro` — carry `@v1` + `app-id:`, so keeping
+  `app-id:` means the next `copier update` changes no input name in either.
+  `livespec`'s OWN root `.github/workflows/` deliberately stays on `@v3` +
+  `client-id:`, because livespec's own `APP_ID` secret holds the client ID;
+  making it "consistent" would break the one repository that is currently
+  correct. `app-id` is deprecated but NOT removed at `@v3` — upstream's
+  `action.yml` declares it `required: false` with `deprecationMessage` — so the
+  fleet carries that warning deliberately.
 
-  **Do not overstate that.** What is measured is the FORM each generated
-  workflow uses. What each consumer's `APP_ID` secret actually HOLDS — an App id
-  or a client id — is still unreadable from outside those repositories and still
-  needs the maintainer. `livespec-5qu1` therefore stays OPEN and P2 on that
-  second half, and the risk is UNVALIDATED rather than untested.
+  **The `client-id:` migration is decoupled, not cancelled.** It requires each
+  consumer's `APP_ID` secret to be reset to the App's OAuth client ID first,
+  which only the maintainer can do. That is why nothing here reads a secret.
+
+  **Still OPEN and P2 on ONE named leg: the LIVE auto-merge exercise.**
+  Rendering is not evidence. The `@v3` + `app-id:` pairing exists in no
+  repository yet — it reaches a consumer only after livespec releases
+  `88842637` and that consumer takes a `copier update`. Consumer pull requests
+  open today cannot serve as the exercise, because each runs its own committed
+  `@v1` + `app-id:` workflow, so a green one would prove only that the OLD form
+  works. The ledger item records what discharges the leg and the order to read
+  it in.
 - **`livespec-jvz8`** (P2) — `livespec-dev-tooling` and `livespec-runtime`
   ratify their own specs with no merge-policy gate, permanently excluded by
   v202. Pre-existing and architecturally forced. **Do NOT close it by having
