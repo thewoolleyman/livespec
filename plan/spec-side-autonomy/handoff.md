@@ -159,8 +159,18 @@ maintainer wants the table exhaustive, `revise` is the row to add; that is a
 judgement call, not a defect, and it was left rather than inflated into a third
 proposal.
 
-`next` therefore now ranks `revise` (queue depth 2) and `prune-history`, both at
-LOW urgency. Neither is urgent, and a LOW-urgency ranking is not a mandate.
+`next` therefore now ranks THREE candidates: a `revise` for each proposal at
+**MEDIUM** urgency, and `prune-history` at LOW.
+
+**An earlier revision of this paragraph said both revises were LOW. That was a
+correct reading of `next` when the queue held ONE proposal, and filing the
+second raised it** — `next` scores partly on queue depth, so the ranking is a
+function of state this session then changed. Do not carry the LOW reading
+forward; re-run `next` rather than citing any urgency written here, including
+this sentence.
+
+MEDIUM is still not a mandate, and neither proposal may be ratified without the
+independent adversarial review and the two pre-ratification checks above.
 
 ## Open items
 
