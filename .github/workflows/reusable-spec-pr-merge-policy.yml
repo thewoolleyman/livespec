@@ -1,0 +1,170 @@
+# Reusable spec-PR merge-policy workflow — resolve whether a pull request
+# may have auto-merge registered on it, for repositories DOWNSTREAM of
+# livespec core.
+#
+# Authority: livespec/SPECIFICATION/non-functional-requirements.md, the
+# shared-CI-logic contract (core-hosted reusable workflows) and the spec
+# pull-request auto-merge requirement. Together they establish that livespec
+# publishes reusable workflows at .github/workflows/reusable-<name>.yml, that
+# consumers invoke them as
+#   uses: thewoolleyman/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z
+# and that the derivation itself lives in ONE core-shipped script every caller
+# executes. Two independent copies of that derivation are PROHIBITED, which is
+# why nothing below re-spells a diff flag, a status filter or a fold rule.
+#
+# WHY THIS WORKFLOW EXISTS AT ALL, while livespec's own root
+# auto-enable-merge.yml invokes the script directly: a sibling repository's CI
+# runner has no other way to obtain the code. livespec ships as an interactive
+# Claude Code / Codex plugin, and livespec-dev-tooling — the pip package the
+# siblings do consume — deliberately does not carry spec-governance modules.
+# The ratified One-implementation clause leaves "reusable workflow or direct
+# invocation" to each consumer; what it forbids is a second copy of the logic.
+#
+# THE TWO-TREE SHAPE. The CALLING repository supplies the DATA: full git
+# history for the merge-base, its .livespec.jsonc, and its spec tree, all at
+# $GITHUB_WORKSPACE. livespec's checkout supplies the EXECUTABLE, under
+# .livespec-core/. The script is told which tree is which by --project-root.
+#
+# NO DEPENDENCY INSTALLATION STEP, deliberately. The invoked script runs under
+# the runner's system python3 with no virtual environment and no package
+# manager, relying only on the dependencies livespec vendors alongside its
+# scripts. Adding a setup-python or a pip install here would silently forfeit
+# that property, and the ratified Bare-runner clause requires it.
+#
+# HOW THE PINNED CHECKOUT IS DERIVED, AND WHY IT IS NOT `job_workflow_sha`.
+# The ratified Pinning clause requires this workflow to check livespec out at
+# the SAME revision through which it was itself resolved, so a consumer's
+# single `uses:` pin governs both the workflow and the script, and the
+# consumer is never asked to pin the checkout separately. The obvious
+# candidate for that revision is the `github.job_workflow_sha` context, which
+# the platform documents for exactly this purpose.
+#
+# IT DOES NOT RESOLVE. Measured 2026-08-12 on GitHub-hosted runners, from BOTH
+# a same-repository caller and a genuine cross-repository caller
+# (thewoolleyman/livespec-orchestrator-git-jsonl): `github.job_workflow_sha`
+# is the EMPTY STRING and `GITHUB_JOB_WORKFLOW_SHA` is unset. Neither
+# neighbouring context substitutes for it — `github.workflow_sha` and
+# `github.workflow_ref` both describe the CALLER's entry workflow, so in a
+# real consumer they name the consumer's own commit, which says nothing about
+# which livespec revision to run.
+#
+# The revision IS recoverable, from the run itself: the Actions API's
+# workflow-run object carries `referenced_workflows[]`, one entry per reusable
+# workflow the run resolved, each with the `path` as written (including the
+# `@ref` the consumer pinned) and the `sha` it resolved to. Selecting this
+# workflow's own entry yields precisely the revision the clause names, still
+# derived from the consumer's single pin rather than from a second one. The
+# cost is one `actions: read` grant, declared below; a consumer whose caller
+# withholds it gets a failed job with a named cause, never a silent fallback.
+#
+# An empty or absent result is FATAL here rather than defaulted. Passing an
+# empty `ref:` to actions/checkout would silently resolve livespec's DEFAULT
+# BRANCH, so a consumer that pinned a release tag would run master and never
+# be told.
+
+name: Reusable spec-PR merge policy
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: The calling repository as <owner>/<name>.
+        required: true
+        type: string
+      pull-request:
+        description: The calling repository's pull-request number.
+        required: true
+        type: number
+      base-sha:
+        description: The pull request's base commit.
+        required: true
+        type: string
+      head-sha:
+        description: The pull request's head commit.
+        required: true
+        type: string
+    outputs:
+      decision:
+        description: >-
+          `auto` when auto-merge may be registered, `blocked` when the pull
+          request is left for a human merge. A caller MUST treat any value
+          other than `auto` as blocking, so that a job which failed before
+          deciding cannot read as permission.
+        value: ${{ jobs.resolve.outputs.decision }}
+
+permissions:
+  # `actions: read` reads this run's own `referenced_workflows`, which is how
+  # the livespec checkout below is pinned to the consumer's single `uses:`
+  # pin. `pull-requests: read` serves the hosting-API half of the derivation's
+  # dual-source hardening.
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.policy.outputs.decision }}
+    steps:
+      - name: Resolve the livespec revision this workflow was reached through
+        id: pin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          # `first // ""` rather than an index: an empty selection yields the
+          # empty string instead of a jq error, so the named diagnostic below
+          # is what the operator sees rather than a parse failure.
+          core_sha=$(gh api "repos/$RUN_REPO/actions/runs/$RUN_ID" \
+            --jq '[.referenced_workflows[]? | select(.path | startswith("thewoolleyman/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@")) | .sha] | first // ""') || {
+            echo "::error::cannot read this run's referenced workflows; grant the calling job actions: read"
+            exit 1
+          }
+          if [ -z "$core_sha" ]; then
+            echo "::error::this run reports no reference to livespec's reusable-spec-pr-merge-policy.yml; refusing to guess a revision"
+            exit 1
+          fi
+          echo "core-sha=$core_sha" >> "$GITHUB_OUTPUT"
+          echo "livespec revision resolved through this workflow's own pin: $core_sha"
+
+      - name: Checkout the calling repository (full history for a real merge-base)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head-sha }}
+          # fetch-depth 0 (full history), deliberately: a shallow checkout is
+          # named in livespec/SPECIFICATION/spec.md's dual-source hardening as
+          # a SOURCE-level failure the derivation must not silently produce.
+          fetch-depth: 0
+
+      - name: Checkout livespec at that revision
+        uses: actions/checkout@v4
+        with:
+          repository: thewoolleyman/livespec
+          ref: ${{ steps.pin.outputs.core-sha }}
+          path: .livespec-core
+
+      - name: Resolve spec-PR effective policy (spec_pr_merge)
+        id: policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ inputs.repository }}
+          PR: ${{ inputs.pull-request }}
+          BASE_SHA: ${{ inputs.base-sha }}
+          HEAD_SHA: ${{ inputs.head-sha }}
+        run: |
+          set -uo pipefail
+          # The script decides; this step only carries inputs to it and lets it
+          # append `decision=<auto|blocked>` to the step-output file. It exits
+          # non-zero only when no decision could be published at all — a
+          # blocked decision is an ordinary success, because failing the job
+          # for it would mark a legitimately human-merged pull request broken.
+          python3 .livespec-core/.claude-plugin/scripts/bin/spec_pr_merge_policy.py \
+            --project-root "$GITHUB_WORKSPACE" \
+            --repo "$REPO" \
+            --pull-request "$PR" \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --github-output "$GITHUB_OUTPUT"
