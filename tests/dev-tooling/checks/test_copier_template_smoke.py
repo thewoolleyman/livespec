@@ -71,9 +71,14 @@ def test_generated_auto_merge_uses_current_github_app_token_action(*, tmp_path: 
     ), f"copier render failed: stdout={result.stdout!r} stderr={result.stderr!r}"
     workflow = (target / ".github/workflows/auto-enable-merge.yml").read_text(encoding="utf-8")
     assert "uses: actions/create-github-app-token@v3" in workflow
-    assert "client-id: ${{ secrets.APP_ID }}" in workflow
+    # `app-id:`, NOT `client-id:`. The two name different values (numeric App
+    # ID vs OAuth client ID) and are not interchangeable, so the pairing is
+    # what keeps a `copier update` auth-neutral for consumers whose APP_ID
+    # secret holds the numeric App ID. `app-id` is deprecated but accepted at
+    # @v3, so the generated workflow mints successfully with a warning.
+    assert "app-id: ${{ secrets.APP_ID }}" in workflow
     assert "create-github-app-token@v1" not in workflow
-    assert "app-id: ${{ secrets.APP_ID }}" not in workflow
+    assert "client-id: ${{ secrets.APP_ID }}" not in workflow
 
 
 def test_smoke_check_passes_against_real_template() -> None:

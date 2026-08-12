@@ -16,6 +16,20 @@
 #     runtime (lasts ~1 hour, discarded after the run).
 #   - Required repo secrets: APP_ID, APP_PRIVATE_KEY (managed via
 #     `gh secret set`).
+#   - The token step passes `app-id:`, NOT `client-id:`. These name
+#     DIFFERENT values — `app-id` takes the numeric App ID, `client-id`
+#     takes the App's OAuth client ID — so they are not interchangeable
+#     and swapping one for the other breaks the mint unless the APP_ID
+#     secret is reset to match. Every generated consumer's APP_ID secret
+#     holds the numeric App ID, so `app-id:` is the pairing that keeps a
+#     `copier update` auth-neutral.
+#   - `app-id` is DEPRECATED (not removed) at @v3: upstream's action.yml
+#     declares it `required: false` with `deprecationMessage: "Use
+#     'client-id' instead."`, so a run emits a deprecation warning and
+#     succeeds. That warning is accepted deliberately. Migrating to
+#     `client-id:` requires resetting each consumer's APP_ID secret to
+#     the App's OAuth client ID FIRST; until that happens, changing this
+#     line is a breaking change, not a cleanup.
 #
 # Why an App instead of GITHUB_TOKEN: the GraphQL
 # `enablePullRequestAutoMerge` mutation requires admin-level repo
@@ -124,7 +138,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ '{{' }} secrets.APP_ID {{ '}}' }}
+          app-id: ${{ '{{' }} secrets.APP_ID {{ '}}' }}
           private-key: ${{ '{{' }} secrets.APP_PRIVATE_KEY {{ '}}' }}
 
       - name: "Enable auto-merge (rebase) on PR #${{ '{{' }} github.event.pull_request.number {{ '}}' }}"
