@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.3](https://github.com/thewoolleyman/livespec/compare/v0.33.2...v0.33.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* **doctor:** anchor a relative --project-root so spec roots stay absolute ([be4cd0b](https://github.com/thewoolleyman/livespec/commit/be4cd0b1124d6c7ff177ea4ff1f07e158bf75a89))
+
 ## [0.33.2](https://github.com/thewoolleyman/livespec/compare/v0.33.1...v0.33.2) (2026-08-12)
 
 
