@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.0](https://github.com/thewoolleyman/livespec/compare/v0.30.3...v0.31.0) (2026-08-12)
+
+
+### Features
+
+* **spec-governance:** derive the spec-PR merge decision in one tested module ([7296709](https://github.com/thewoolleyman/livespec/commit/729670982c37f249fe267fc54679e094a52582d4))
+* **spec-governance:** make the spec-PR merge decision invocable from CI ([28b2850](https://github.com/thewoolleyman/livespec/commit/28b2850e37729a5f3e811775adc88eb49d4a2ad9))
+
 ## [0.30.3](https://github.com/thewoolleyman/livespec/compare/v0.30.2...v0.30.3) (2026-08-12)
 
 
