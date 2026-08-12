@@ -77,10 +77,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
-    """Resolve --project-root to a Path, defaulting to Path.cwd()."""
+    """Resolve --project-root to an ABSOLUTE Path, defaulting to Path.cwd().
+
+    A relative --project-root is anchored to `Path.cwd()`, matching the
+    default. The project root and the spec root must be normalised
+    together: leaving this one relative while the spec root resolves to
+    absolute reintroduces the `spec_root.relative_to(project_root)`
+    ValueError, and it is what makes an emitted finding's `spec_root`
+    absolute regardless of how the caller spelled these flags.
+    """
     if namespace.project_root is None:
         return Path.cwd()
-    return Path(namespace.project_root)
+    project_root = Path(namespace.project_root)
+    if project_root.is_absolute():
+        return project_root
+    return Path.cwd() / project_root
 
 
 def _resolve_spec_target(*, namespace: argparse.Namespace, project_root: Path) -> Path:

@@ -167,6 +167,42 @@ def test_run_static_main_accepts_spec_target(
     assert spec_roots == {str(custom_spec_root)}
 
 
+def test_run_static_main_accepts_relative_project_root(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A RELATIVE --project-root still yields an absolute spec root.
+
+    With --spec-target omitted, the spec root is derived as
+    `<project-root>/SPECIFICATION`, so a relative --project-root produced
+    a relative spec root and every emitted finding carried one. Whether
+    a finding's `spec_root` is absolute then depended on how the caller
+    spelled an unrelated flag.
+
+    Anchoring --project-root is also what keeps the pair CONSISTENT:
+    resolving the spec root to absolute while leaving the project root
+    relative would reintroduce the ValueError from
+    `spec_root.relative_to(project_root)` that the relative
+    --spec-target fix removed.
+    """
+    project_root = tmp_path / "project"
+    _seed_fully_valid_project(project_root=project_root)
+    monkeypatch.chdir(project_root)
+
+    exit_code = run_static.main(argv=["--project-root", "."])
+    out = capsys.readouterr().out
+
+    assert exit_code == 0, f"expected exit 0, got {exit_code}; stdout: {out}"
+    payload = json.loads(out)
+    spec_roots = {finding["spec_root"] for finding in payload["findings"]}
+    assert len(spec_roots) == 1, f"expected one spec root, got {spec_roots}"
+    resolved = Path(next(iter(spec_roots)))
+    assert resolved.is_absolute(), f"spec root must be absolute, got {resolved}"
+    assert resolved.name == "SPECIFICATION", f"unexpected spec root {resolved}"
+
+
 def test_run_static_main_accepts_relative_spec_target(
     *,
     tmp_path: Path,
