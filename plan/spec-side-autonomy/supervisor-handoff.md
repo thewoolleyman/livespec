@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T13:52Z at session wrap-up
+## Resume state — written 2026-08-12T16:06Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -164,8 +164,12 @@ flags absent from the spec, but that is incompleteness rather than contradiction
 filed — the two above each contradict an explicit completeness claim, which is
 what made them drift.
 
-`next` now ranks `revise` (queue depth 2) and `prune-history`, both LOW urgency.
-Neither is work waiting.
+`next` now ranks a `revise` per proposal at **MEDIUM** urgency, plus
+`prune-history` at LOW. An earlier revision said both revises were LOW; that was
+correct at queue depth ONE, and filing the second proposal raised it. **Re-run
+`next` rather than citing any urgency written here** — it scores on queue depth,
+so it moves whenever the queue does. MEDIUM is not a mandate: neither proposal
+may be ratified without the independent adversarial review.
 
 Two `doctor-static` path-resolution crashes were found and fixed along the way
 (`6180d10b`, `be4cd0b1`); they carried no work-item, and `handoff.md` §"Also
