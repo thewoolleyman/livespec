@@ -41,6 +41,7 @@ from pathlib import Path
 
 import pytest
 from livespec.io import git as io_git
+from livespec.spec_governance.pr_merge_derivation import LOCAL_DIFF_ARGS
 from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 
@@ -959,6 +960,161 @@ def test_list_status_porcelain_returns_failure_when_not_a_repo(
     monkeypatch.chdir(tmp_path)
 
     result = io_git.list_status_porcelain(project_root=tmp_path, pathspec=Path())
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_merge_base_returns_the_common_ancestor(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`git merge-base` resolves the fork point of a real two-branch history."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "base.txt", content=b"base\n")
+    ancestor = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _ = subprocess.run(["git", "checkout", "--quiet", "-b", "topic"], cwd=tmp_path, check=True)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "topic.txt", content=b"topic\n")
+
+    result = io_git.merge_base(project_root=tmp_path, base_ref=ancestor, head_ref="topic")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ancestor
+        case _:
+            raise AssertionError(f"expected IOSuccess(<sha>), got {result!r}")
+
+
+def test_merge_base_returns_failure_for_an_unknown_ref(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unresolvable ref is derivation FAILURE, not an empty answer."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "base.txt", content=b"base\n")
+
+    result = io_git.merge_base(project_root=tmp_path, base_ref="HEAD", head_ref="no-such-ref")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_diff_name_only_reports_a_move_as_an_addition_under_no_renames(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The production shape of a ratification, run through the shared constant.
+
+    A ratifying pull request MOVES the proposal, which git scores R100. With
+    rename detection left on, the move is not an addition and the stem is
+    missed entirely — the defect `LOCAL_DIFF_ARGS` exists to prevent.
+    """
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    pending = tmp_path / "SPECIFICATION" / "proposed_changes"
+    pending.mkdir(parents=True)
+    _git_commit_file(cwd=tmp_path, path=pending / "topic.md", content=b"# Topic\n")
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    archived = tmp_path / "SPECIFICATION" / "history" / "v202" / "proposed_changes"
+    archived.mkdir(parents=True)
+    _ = subprocess.run(
+        [
+            "git",
+            "mv",
+            "SPECIFICATION/proposed_changes/topic.md",
+            "SPECIFICATION/history/v202/proposed_changes/topic.md",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    _ = subprocess.run(["git", "commit", "--quiet", "-m", "ratify"], cwd=tmp_path, check=True)
+
+    result = io_git.diff_name_only(
+        project_root=tmp_path,
+        base_ref=base,
+        head_ref="HEAD",
+        diff_args=LOCAL_DIFF_ARGS,
+        pathspec="SPECIFICATION",
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ("SPECIFICATION/history/v202/proposed_changes/topic.md",)
+        case _:
+            raise AssertionError(f"expected IOSuccess(<tuple>), got {result!r}")
+
+
+def test_diff_name_only_without_a_pathspec_lists_every_changed_file(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The total-changed-file count comes from an unscoped listing."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "base.txt", content=b"base\n")
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "second.txt", content=b"second\n")
+
+    result = io_git.diff_name_only(
+        project_root=tmp_path,
+        base_ref=base,
+        head_ref="HEAD",
+        diff_args=("--name-only",),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert value == ("second.txt",)
+        case _:
+            raise AssertionError(f"expected IOSuccess(<tuple>), got {result!r}")
+
+
+def test_diff_name_only_returns_failure_for_an_unknown_ref(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A git error must not be swallowed into an empty file list."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "base.txt", content=b"base\n")
+
+    result = io_git.diff_name_only(
+        project_root=tmp_path,
+        base_ref="no-such-ref",
+        head_ref="HEAD",
+        diff_args=("--name-only",),
+    )
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
         case Failure(_):

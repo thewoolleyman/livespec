@@ -301,3 +301,42 @@ def test_fs_list_tree_returns_precondition_error_on_missing_root(
         case _:
             msg = f"expected Failure(PreconditionError), got {unwrapped}"
             raise AssertionError(msg)
+
+
+def test_append_text_preserves_existing_content(*, tmp_path: Path) -> None:
+    """An append-only sink the caller does not own exclusively must not be clobbered.
+
+    The CI runner's step-output file is the case in hand: an overwrite would
+    discard output parameters an earlier step of the same job already wrote.
+    """
+    path = tmp_path / "step-output.txt"
+    _ = path.write_text("earlier=kept\n", encoding="utf-8")
+
+    result = fs.append_text(path=path, text="decision=auto\n")
+
+    assert result == IOSuccess(None)
+    assert path.read_text(encoding="utf-8") == "earlier=kept\ndecision=auto\n"
+
+
+def test_append_text_creates_missing_parents(*, tmp_path: Path) -> None:
+    """Appending to a path under an absent directory creates the directory."""
+    path = tmp_path / "nested" / "deeper" / "out.txt"
+
+    result = fs.append_text(path=path, text="decision=blocked\n")
+
+    assert result == IOSuccess(None)
+    assert path.read_text(encoding="utf-8") == "decision=blocked\n"
+
+
+def test_append_text_lifts_oserror_to_precondition_error(*, tmp_path: Path) -> None:
+    """A path whose parent is a FILE cannot be created; that is a failure, not a no-op."""
+    blocker = tmp_path / "not-a-directory"
+    _ = blocker.write_text("x", encoding="utf-8")
+
+    result = fs.append_text(path=blocker / "out.txt", text="decision=auto\n")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(PreconditionError()):
+            pass
+        case _:
+            raise AssertionError(f"expected IOFailure(PreconditionError), got {result!r}")

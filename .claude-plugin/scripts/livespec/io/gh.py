@@ -19,10 +19,11 @@ railway flows through `IOResult`. Mirrors the shape of
 proc facade handles OSError → PreconditionError; non-zero exits
 lift to a typed PreconditionError on the IOFailure track.
 
-The gh facade exposes three operations for merged-PR/branch
-introspection (originally pulled into existence by the retired
+The gh facade exposes four read operations. The first three serve merged-PR /
+branch introspection (originally pulled into existence by the retired
 stale-cleanup doctor checks; cleanup discipline moved to the
-orchestrator at v105, and these remain general-purpose reads):
+orchestrator at v105, and these remain general-purpose reads); the
+fourth serves the spec pull-request merge-policy gate:
 
   - `get_repo_name_with_owner` — resolves `<owner>/<name>` for the
     current repo via `gh repo view --json nameWithOwner`. Used to
@@ -35,8 +36,12 @@ orchestrator at v105, and these remain general-purpose reads):
   - `list_merged_pull_request_head_refs` — enumerates the head
     branch names of merged PRs via `gh pr list --state merged`.
     Limit 1000 matches the gh default ceiling.
+  - `list_pull_request_files` — enumerates one pull request's changed
+    files with their statuses via `gh api repos/<repo>/pulls/<n>/files
+    --paginate`, naming the repository explicitly instead of relying
+    on placeholder substitution.
 
-All three pass `cwd=project_root` to `run_subprocess` so gh
+All four pass `cwd=project_root` to `run_subprocess` so gh
 resolves the local origin remote regardless of the calling
 process's actual cwd. The git facade pins scope via `git -C`; gh
 lacks an equivalent flag, so cwd is the documented mechanism.
@@ -44,6 +49,7 @@ lacks an equivalent flag, so cwd is the documented mechanism.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from returns.io import IOResult
@@ -52,10 +58,31 @@ from livespec.errors import LivespecError, PreconditionError
 from livespec.io.proc import run_subprocess
 
 __all__: list[str] = [
+    "PullRequestFile",
     "get_repo_name_with_owner",
     "list_merged_pull_request_head_refs",
+    "list_pull_request_files",
     "list_remote_branches",
 ]
+
+# Field separator for the `@tsv` projection in `list_pull_request_files`. A
+# tab cannot occur in a git path as GitHub reports it, so splitting on it is
+# unambiguous.
+_TSV_SEPARATOR = "\t"
+_TSV_FIELD_COUNT = 2
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PullRequestFile:
+    """One changed file of a pull request as the hosting API reports it.
+
+    Deliberately an io-local record rather than the domain type the derivation
+    consumes: the io layer sits below `livespec.spec_governance`, and this
+    facade must not reach up into it. The caller maps the two fields across.
+    """
+
+    filename: str
+    status: str
 
 
 def get_repo_name_with_owner(
@@ -149,6 +176,75 @@ def list_remote_branches(
                 ),
             )
         ),
+    )
+
+
+def list_pull_request_files(
+    *,
+    project_root: Path,
+    repo: str,
+    pull_request_number: int,
+) -> IOResult[tuple[PullRequestFile, ...], LivespecError]:
+    """Return every changed file of one pull request, with its status intact.
+
+    Composes `gh api repos/<repo>/pulls/<n>/files --paginate --jq '.[] |
+    [.status, .filename] | @tsv'` with `cwd=project_root`. `repo` is passed
+    explicitly rather than through gh's `{owner}`/`{repo}` placeholders because
+    the caller is a CI job that already knows its own repository and must not
+    depend on the checkout carrying an origin remote.
+
+    The projection deliberately does NOT filter by status. The spec pull-request
+    merge derivation applies its own accepted-status set, so filtering here
+    would put a second, silently drifting copy of that rule in the transport.
+
+    Failure modes lifted to IOFailure(PreconditionError):
+      - `gh api` exits non-zero (unauthenticated, network failure, unknown pull
+        request). Per `SPECIFICATION/spec.md` `effective_spec_pr_merge` a
+        hosting-API error is derivation FAILURE, never an empty file list.
+      - A row that does not carry exactly two tab-separated fields, which would
+        otherwise silently become a file with an empty status.
+      - The `gh` binary itself missing: lifts via the proc seam.
+    """
+    return run_subprocess(
+        argv=[
+            "gh",
+            "api",
+            f"repos/{repo}/pulls/{pull_request_number}/files",
+            "--paginate",
+            "--jq",
+            ".[] | [.status, .filename] | @tsv",
+        ],
+        cwd=project_root,
+    ).bind(
+        lambda completed: (
+            _parse_pull_request_files(stdout=completed.stdout)
+            if completed.returncode == 0
+            else IOResult.from_failure(
+                PreconditionError(
+                    f"gh.list_pull_request_files: `gh api repos/{repo}/pulls/"
+                    f"{pull_request_number}/files` exited {completed.returncode}",
+                ),
+            )
+        ),
+    )
+
+
+def _parse_pull_request_files(
+    *,
+    stdout: str,
+) -> IOResult[tuple[PullRequestFile, ...], LivespecError]:
+    rows = [line for line in stdout.splitlines() if line.strip()]
+    fields = [row.split(_TSV_SEPARATOR) for row in rows]
+    malformed = [parts for parts in fields if len(parts) != _TSV_FIELD_COUNT]
+    if malformed:
+        offender = _TSV_SEPARATOR.join(malformed[0])
+        return IOResult.from_failure(
+            PreconditionError(
+                f"gh.list_pull_request_files: malformed changed-file row: {offender!r}",
+            ),
+        )
+    return IOResult.from_value(
+        tuple(PullRequestFile(status=parts[0], filename=parts[1]) for parts in fields),
     )
 
 
