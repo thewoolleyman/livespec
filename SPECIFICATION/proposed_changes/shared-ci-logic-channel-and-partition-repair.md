@@ -78,9 +78,9 @@ with:
 
 with:
 
-> such data files are static scaffold content and do NOT violate the prohibition on `copier` delivering executable code stated in §"Shared content provenance".
+> such data files are static scaffold content and do NOT violate the prohibition on `copier` delivering executable code stated in §"Shared code sync — livespec-dev-tooling".
 
-This site is amended rather than left alone because change (1) above requires any mention of the partition to be by reference to the single authority, and a rule violated by unamended text on the day it ratifies is not a rule.
+This site is amended rather than left alone because change (1) above requires any mention of the partition to be by reference to the single authority, and a rule violated by unamended text on the day it ratifies is not a rule. The replacement drops the words "the channel partition's", so the sentence no longer mentions the partition at all and the rule no longer reaches it. The citation names §"Shared code sync — livespec-dev-tooling" — NOT the authority section — because that is where the prohibition is actually stated; §"Shared content provenance" says which content MUST flow through each channel, never what a channel MUST NOT deliver. Citing the authority section here would have been precise and false.
 
 No `## ` heading is added, changed, or removed by this proposal, so `tests/heading-coverage.json` requires no co-edit.
 
