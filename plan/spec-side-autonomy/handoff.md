@@ -124,9 +124,25 @@ retractions of its own claims, not corrections of anyone else's.
   coverage rather than tidy an unused surface.
 
 **BOTH are FILED, NOT RATIFIED, and must not be cleared as routine queue-keeping.**
-Ratification needs the independent adversarial review. For each, the quoted
-replacement targets were verified to exist verbatim and exactly once before
-filing.
+Ratification needs the independent adversarial review.
+
+**Two mechanical checks BEFORE ratifying either — the filing-time ones do not
+carry over.** At filing, each proposal's quoted replacement targets were
+verified to exist verbatim and exactly once, and each file's front-matter
+`topic` was confirmed equal to its stem. Both were re-verified against
+`origin/master` at 2026-08-12T14:58Z and still held. **Neither result survives
+the next commit to `contracts.md`**, which any session may land, so re-run both
+rather than citing this paragraph:
+
+1. **Replacement-target fidelity.** Read the live file with
+   `git show origin/master:SPECIFICATION/contracts.md`, never the working tree,
+   and confirm each quoted target appears EXACTLY ONCE. A `resulting_files[]`
+   entry replaces the whole file, so a drifted target is not a near-miss — it
+   silently ratifies the wrong bytes.
+2. **Topic/stem equality.** The front-matter `topic` MUST equal the file stem
+   (`doctor-spec-target-drift`, `spec-governance-flag-drift`). A mismatch makes
+   revise exit 3 SILENTLY, which reads as "nothing to do" rather than as an
+   error.
 
 **The audit behind them is COMPLETE — do not redo it.** All nine
 §"Wrapper CLI surface" rows were checked against each wrapper's actual `--help`.
