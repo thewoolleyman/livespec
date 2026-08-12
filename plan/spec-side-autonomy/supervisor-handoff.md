@@ -1,6 +1,6 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T06:13Z at session wrap-up
+## Resume state — written 2026-08-12T06:38Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
@@ -66,7 +66,7 @@ pass on its own.
 | Item | Tenant | State |
 |---|---|---|
 | `livespec-dev-tooling-ep8n` | `livespec-dev-tooling` | **HANDED OFF** to whoever grooms `livespec-dev-tooling`, by maintainer decision 2026-08-12; listed here for continuity only and NOT this thread's to advance. Pin autodiscovery misses `.jinja` template pins on BOTH directory and suffix. Shape decided (generic scanner extension). The recorded reason it is blocked, kept so the receiving groomer need not re-derive it: it needs a ratified amendment in THAT repo, because its `contracts.md` §"Pin autodiscovery rules" names `.github/workflows/*.yml`/`*.yaml`, and a `.jinja` renders a workflow rather than being one. |
-| `livespec-5qu1` | `livespec` | The template's generated workflow mints its App token with `create-github-app-token@v3` + `client-id:`, while consumers carry `@v1` + `app-id:`. The next `copier update` swaps both, and `app-id` and `client-id` are NOT interchangeable. **Which FORM each repository uses is now measured — see `handoff.md` §"Open items"; that half is closed.** What each consumer's `APP_ID` secret actually HOLDS is still unreadable from outside those repositories, so the item stays OPEN on that half and needs the maintainer. |
+| `livespec-5qu1` | `livespec` | **Direction chosen by the maintainer 2026-08-12 and the template change LANDED** (PR #2214, merge `88842637`): the copier template mints with `@v3` + `app-id:`, which is auth-neutral for both consumers because both already carry `app-id:`. `app-id` and `client-id` are NOT interchangeable, and `app-id` is deprecated-but-accepted at `@v3` — that warning is carried deliberately. The `client-id:` migration is decoupled, not cancelled. **Still OPEN on ONE leg: the LIVE auto-merge exercise**, which no consumer pull request open today can serve. |
 | `livespec-jvz8` | `livespec` | Spec ratifications auto-merge UNGATED in `livespec-dev-tooling` and `livespec-runtime`. PRE-EXISTING, not fix-created; neither consumes the copier template, so the ratified applicable set already excluded them. Banned resolution recorded on the item. |
 
 `livespec-dev-tooling-ep8n` was MOVED (not mirrored) out of the `livespec` tenant
@@ -128,9 +128,25 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 
 ### Next concrete action
 
-**There is no urgent action, and there is nothing for a successor to pick up
-without asking the maintainer first.** The thread's stated work is complete and
-the P1 is validated in production.
+**One item is live and has a named next step: `livespec-5qu1`. One item needs a
+maintainer design call: `livespec-jvz8`. Nothing else is this thread's.**
+
+**`livespec-5qu1` — the maintainer chose the `app-id:` direction on 2026-08-12,
+and the template change has LANDED** (PR #2214, merge `88842637`). The copier
+template now mints with `actions/create-github-app-token@v3` passing `app-id:`,
+which is auth-neutral for both generated consumers because both already carry
+`app-id:`. Do NOT re-open that choice, and do NOT propose the `client-id:`
+migration as an alternative — it is decoupled, not cancelled, and needs each
+consumer's `APP_ID` secret reset to the App's OAuth client ID first, which only
+the maintainer can do.
+
+**The item stays OPEN on ONE named leg: the LIVE auto-merge exercise.** Rendering
+is not evidence. The `@v3` + `app-id:` pairing exists in no repository yet; it
+reaches a consumer only after livespec cuts a release carrying `88842637` and
+that consumer takes a `copier update`. Consumer pull requests open today cannot
+serve — each runs its own committed `@v1` + `app-id:` workflow, so a green one
+would prove the OLD form works. What discharges the leg, and in what order to
+read it, is recorded on the ledger item itself.
 
 **`livespec-dev-tooling-ep8n` was HANDED OFF by maintainer decision on
 2026-08-12. This thread does not carry it further, and the choice that produced
@@ -146,11 +162,17 @@ thing to pick up absent direction. That recommendation was written at
 2026-08-12T05:50Z, four minutes BEFORE the hand-off landed, and acting on it
 would reverse a maintainer decision. It is retracted, not merely superseded.
 
-Neither remaining item is available either: `livespec-5qu1` is blocked on the
-maintainer for the half that cannot be read from outside the consumer
-repositories, and `livespec-jvz8`'s obvious resolution is BANNED and needs a
-maintainer design call. So the correct next action is to ask the maintainer what
-they want, not to select from this list.
+A second sentence in this section is also retracted. It read that
+`livespec-5qu1` "is blocked on the maintainer for the half that cannot be read
+from outside the consumer repositories", and that neither remaining item was
+available. That was true when written at 06:13Z and stopped being true minutes
+later, when the maintainer chose the `app-id:` direction — which needs NO secret
+read and therefore unblocked the item. Do not carry that sentence forward from
+any cached reading of this file.
+
+`livespec-jvz8` remains the one item still needing a maintainer DESIGN call: its
+obvious resolution is BANNED, so it is not available for autonomous pickup and
+must not be started on a successor's own initiative.
 
 Do NOT archive `plan/spec-side-autonomy/`.
 
