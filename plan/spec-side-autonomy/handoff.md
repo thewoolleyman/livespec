@@ -6,19 +6,15 @@ part that can break a merge gate.** Read the ledger note on
 `livespec-jvdvx4.9` before starting; it carries the confirmed design, the
 ratified clauses quoted from the live spec, and the corrected acceptance.
 
-**FIRST, RESOLVE TWO PULL REQUESTS THAT WERE IN FLIGHT WHEN THIS WAS WRITTEN.**
-They were opened green and left to auto-merge, but do NOT assume they landed —
-if you are reading this file, PR #2201 merged, which says nothing about #2200.
-
-- **PR #2200** — `.9` slice 1, the derivation module. Check it merged. If it
-  did, slice 2 builds on it. If it did not, find out why before doing anything
-  else; a red or conflicted #2200 changes what slice 2 is.
-- **PR #2201** — this handoff. Merged by definition if you are reading it.
+**Slice 1 IS on `master`** — PR #2200 merged as `72967098`, confirmed against
+the forge rather than assumed. Slice 2 builds directly on it.
 
 There is NO uncommitted work and NO worktree belonging to this thread. Two of
-this thread's branches may still exist on the forge pending those merges:
-`spec-pr-merge-derivation-module` and `wrapup-jvdvx4-9-slice1`. Delete them
-once merged; they are MINE, not foreign.
+this thread's branches may still exist on the forge:
+`spec-pr-merge-derivation-module` (merged via #2200) and
+`wrapup-jvdvx4-9-slice1` (this handoff, #2201). Delete them; they are MINE,
+not foreign — every OTHER worktree under `$HOME/.worktrees/livespec/` belongs
+to another session and must not be touched.
 
 **Ledger anchor:** epic `livespec-jvdvx4`
 
@@ -28,11 +24,10 @@ once merged; they are MINE, not foreign.
   single-authority channel partition. Closed `livespec-n0ka`.
 - **`livespec-odkk` fixed and closed** (`56854664`, PR #2197) — the template's
   four reusable-workflow pins now read `@v1.20.4`, matching core's own five.
-- **`.9` slice 1** (PR #2200, `9ba72d13`) — the pure derivation module
-  `.claude-plugin/scripts/livespec/spec_governance/pr_merge_derivation.py`
+- **`.9` slice 1** — merged as `72967098` (PR #2200). The pure derivation
+  module `.claude-plugin/scripts/livespec/spec_governance/pr_merge_derivation.py`
   plus 11 unit tests. **Touches zero workflow files by design**, so it cannot
-  alter any gate decision. Opened green on `just check` (78 targets, 100%
-  coverage) and left to auto-merge — CONFIRM IT LANDED, per the note above.
+  alter any gate decision. Green on `just check`: 78 targets, 100% coverage.
 
   **Measured, and it constrains slice 2:** the module runs under bare system
   `python3` with no venv, pip, or install step — but a NAKED import fails,
