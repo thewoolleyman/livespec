@@ -59,11 +59,73 @@ is no exception — treat a clean run as progress, never as "done."
 
 ## Named next action
 
-**Investigate and fix Issue C (podman container-state race) before re-flipping
-`CI_RUNNER_LABELS` permanently.** `CI_RUNNER_LABELS` is currently REVERTED to
-`["ubuntu-latest"]` because of this; do not re-flip it without re-reading this
-section. Issues A and B (which occupied this section in the prior round) are
-RESOLVED — see "Issues A and B — RESOLVED" below.
+**Issue C's fix is written, shellcheck-clean, locally scenario-tested,
+deployed to the host, and proven not to break a single-job containerized
+run — but NOT yet validated against the real concurrency that produces the
+race it targets.** That validation (flip `CI_RUNNER_LABELS`, fire real load,
+watch for the exact error signature, revert) is the concrete next action —
+see "Issue C — fix ready, concurrency validation not yet attempted" below.
+`CI_RUNNER_LABELS` stays REVERTED to `["ubuntu-latest"]` in the meantime; do
+not re-flip it without re-reading that section. Issues A and B (which
+occupied this section in the prior round) are RESOLVED — see "Issues A and
+B — RESOLVED" further below.
+
+### Issue C — fix ready, concurrency validation not yet attempted
+
+Root-caused to a genuine, currently-UNFIXED upstream podman bug: libpod's
+`SQLiteState.UpdateContainer`
+(`podman-container-tools/podman`, `libpod/sqlite_state.go`) only returns
+early when its container-state row `Scan` fails with `sql.ErrNoRows`; any
+OTHER scan error falls through silently and unmarshals an EMPTY string,
+producing the exact observed failure. Confirmed still present in podman's
+`main` branch as of 2026-08-13 (traced via the podman GitHub repo's commit
+history and source, not guessed).
+
+**Fix:** `livespec-dev-tooling` PR #1386 (held with the `do-not-merge` label
+pending validation) adds a bounded retry (up to 3 attempts) in the
+dockershim, scoped to `exec` calls whose stderr matches BOTH lines of the
+exact error signature — any other failure forwards on its first attempt with
+the real exit status, exactly as today. `exec` stays deliberately UNLOCKED
+(matching the shim's own documented design for the highest-volume,
+most latency-sensitive operation it handles) — a lock was considered and
+rejected: it would serialize the pool's whole point without even addressing
+a bug that happens entirely inside podman's own SQLite layer, invisible to
+this shim's flock.
+
+**Validated so far:** shellcheck clean; four local scenario tests against a
+fake `docker` binary (fails once then succeeds, exhausts 3 retries on a
+persistent failure without masking the real exit code, a genuinely different
+error forwards immediately with no retry, and the clean-success path); one
+real single-job containerized run on the host via the throwaway
+`poweredge-container-proof` workflow (`success`, confirms the new `exec` path
+doesn't break the ordinary case). **NOT yet validated:** the actual race
+condition, which needs real concurrency (the throwaway workflow runs one job
+at a time) — this needs a live self-hosted run at real matrix scale, the
+same way Issues A and B were validated in round 4.
+
+**Concrete next steps, exactly in this order:**
+1. `livespec-dev-tooling` PR #1386 is open, deployed to the host already
+   (`/usr/local/lib/ci-runner/dockershim/docker` on `poweredge-xubuntu`
+   matches its diff — confirmed byte-identical at deploy time), and held
+   with `do-not-merge`.
+2. Open ANY trivial `livespec` PR (a scratch doc note is enough) labelled
+   `do-not-merge` from creation (learn from this round's auto-merge trap —
+   see the trap section) purely to carry real matrix-scale load for this
+   validation — it must stay open and unmerged while `CI_RUNNER_LABELS` is
+   flipped, or auto-merge will pull it out from under the observation the
+   moment hosted-or-self-hosted CI goes green.
+3. Flip `CI_RUNNER_LABELS` to `["self-hosted","local-ci","poweredge"]`,
+   confirm the PR's own CI run (or a fresh push to it) dispatches to
+   self-hosted, and watch for the exact Issue C error signature
+   (`unmarshalling container state JSON` + `readObjectStart: expect { or n`)
+   — if it recurs, confirm the JOB STILL PASSES (the retry masked it,
+   visible only in step logs, not as a job failure); if the whole run is
+   100%-green with no recurrence, that is inconclusive on its own (the
+   original bug is itself intermittent — see the ~3%-then-0% pattern in
+   round 4) but is still positive evidence.
+4. Revert `CI_RUNNER_LABELS` to `["ubuntu-latest"]` immediately after
+   (trap 6 — do not leave it self-hosted between sessions).
+5. Remove `do-not-merge` from both PRs and let them merge once satisfied.
 
 ### Issue C — podman container-state race under high concurrency (~3% job failure rate observed)
 
