@@ -1,8 +1,12 @@
 # Handoff — fleet-ci-runner-pool
 
 **Ledger anchor:** `livespec-s43svm` (plan anchor, `thewoolleyman/livespec`).
-Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live, and
-amended the same day once the container blocker was root-caused.
+Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live, amended
+the same day once the container blocker was root-caused, and amended again
+the same day once Issues A and B (below) were FIXED, MERGED, and VALIDATED
+against real self-hosted gating CI — including the FIRST 100%-green
+full-matrix self-hosted run this plan has produced — and a NEW Issue C
+(podman container-state race) was discovered in the same pass.
 
 > **Why this file exists.** The `plan` operation's prose says it never authors
 > `handoff.md` and that handoffs are ledger comments. That still governs the
@@ -29,89 +33,166 @@ amended the same day once the container blocker was root-caused.
 
 ## State in one sentence
 
-**The container blocker is fully fixed (three layers, all merged) and `livespec`
-gating CI DOES run real matrix jobs on the self-hosted pool — but
+**Issues A and B are FIXED, MERGED to master, and VALIDATED against real
+self-hosted gating-equivalent CI — including a 100%-green 75/75-job
+full-matrix self-hosted run, the FIRST this plan has ever produced — but
 `CI_RUNNER_LABELS` is REVERTED to `["ubuntu-latest"]` as of this writing,
-because live-firing a real PR against the pool surfaced TWO MORE real, distinct
-issues past the container blocker, at least one of which (a bare `-e HOME`
-regression) got found and fixed IN THE SAME PASS; the other two are still open
-and are the new named next action.** The plan also now explicitly extends to
-every OTHER livespec fleet repo, which today has ZERO self-hosted capacity: the
-supervisor serves `repos=[thewoolleyman/livespec]` only, and `--slots` is PER
-REPO, not a shared pool total, so adding repos is a real capacity decision, not
-a flag flip.
+because the SAME validation pass surfaced a NEW, THIRD issue (Issue C: a
+podman container-state race, ~3% job failure rate, distinct from A and B) that
+reddened master CI minutes before the clean run landed.** Issue C is the new
+named next action. The plan also now explicitly extends to every OTHER
+livespec fleet repo, which today has ZERO self-hosted capacity: the supervisor
+serves `repos=[thewoolleyman/livespec]` only, and `--slots` is PER REPO, not a
+shared pool total, so adding repos is a real capacity decision, not a flag
+flip.
 
-**Do not read "container blocker fixed" as "livespec is ready for permanent
+**Do not read "Issues A and B fixed" as "livespec is ready for permanent
 self-hosted routing."** Those are different claims. The container blocker
-(three layers, `poweredge-container-proof-2`) is closed. Whether the pool can
-CARRY REAL GATING CI reliably is a separate, still-open question — see below.
+(three layers, `poweredge-container-proof-2`) and Issues A and B are closed.
+Whether the pool can carry real gating CI WITHOUT Issue C's intermittent
+container-state race is the new, still-open question — see below. This is
+the plan's recurring shape: every real-PR live-fire round has closed the
+issues found by the PREVIOUS round and surfaced exactly one new one. Round 4
+is no exception — treat a clean run as progress, never as "done."
 
 ---
 
 ## Named next action
 
-**Resolve TWO open issues before `livespec` can carry gating CI on the pool
-permanently.** Both were found by live-firing real gating CI against the pool
-(three times, in one session) rather than trusting the throwaway proof
-workflow — see trap 7. `CI_RUNNER_LABELS` is currently REVERTED because of
-these; do not re-flip it without re-reading this section.
+**Investigate and fix Issue C (podman container-state race) before re-flipping
+`CI_RUNNER_LABELS` permanently.** `CI_RUNNER_LABELS` is currently REVERTED to
+`["ubuntu-latest"]` because of this; do not re-flip it without re-reading this
+section. Issues A and B (which occupied this section in the prior round) are
+RESOLVED — see "Issues A and B — RESOLVED" below.
 
-### Issue A — PyPI download timeouts under concurrent cold `uv sync`
+### Issue C — podman container-state race under high concurrency (~3% job failure rate observed)
 
-The FIRST real-PR run (50-job matrix, fresh slots) failed 4 jobs with
-`uv sync` timing out fetching different packages from
-`files.pythonhosted.org` — `operation timed out`, even after
-`UV_HTTP_RETRIES=5`. Confirmed NOT a content issue: the identical job passed
-50/50 on hosted capacity immediately after. Hypothesis, not yet confirmed: many
-concurrent self-hosted slots cold-syncing `uv` simultaneously contend for ONE
-host's shared outbound bandwidth — unlike GitHub-hosted runners, which are
-separate VMs with independent network paths. This is exactly the scenario the
-plan's ALREADY-SEQUENCED cache-tier work (below, step 2) exists to close —
-treat this as evidence it is a real prerequisite, not polish.
-
-**A SECOND full-matrix self-hosted run, right after, passed 0 content
-failures** — so this may be intermittent/load-dependent rather than
-deterministic. Needs either a deliberate concurrency-heavy repro (many jobs
-launched simultaneously against cold slots) or the cache-tier work landing
-first, whichever is cheaper to attempt next.
-
-### Issue B — `origin/master` unresolvable on a reused self-hosted `_work` dir
-
-The SECOND real-PR run (same PR, re-run after Issue A's transient clearing)
-failed `check-red-green-replay` with:
+Discovered live-firing the master-push CI that landed Issues A and B's
+merge commits (round 4, same session as the fix). The master-push run for
+Issue A's merge commit (`bc97fb9`, 71 jobs, full metadata+python matrix on
+self-hosted) failed exactly 2 jobs — `check-match-keyword-only` and
+`check-no-fmt-directives` — both with the IDENTICAL signature, on different
+containers/slots:
 ```
-range base origin/master is not resolvable; the commit-range validation
-cannot enumerate origin/master..HEAD and MUST NOT silently pass
+Error: syncing container <id> state to update exec session <id>: unmarshalling
+container state JSON: readObjectStart: expect { or n, but found  , error
+found in #0 byte of ...||..., bigger context ...||...
+##[error]Error: The process '/usr/local/lib/ci-runner/dockershim/docker'
+failed with exit code 255
 ```
-Re-running JUST that one job (not the whole matrix) reproduced the SAME
-failure on a DIFFERENT slot (slot 4) — not a one-off. The actual `git fetch`
-command the runner's `actions/checkout@v5` ran was:
-```
-git fetch --no-tags --prune --no-recurse-submodules --depth=1 origin \
-  +<pr-merge-sha>:refs/remotes/pull/2248/merge
-```
-despite the workflow requesting `fetch-depth: 0`. That fetch creates ONLY
-`refs/remotes/pull/2248/merge` — it never fetches `origin/master` (or any
-`refs/remotes/origin/*`) at all. This is consistent with a KNOWN
-`actions/checkout` behavior on a REUSED, persistent working directory (the
-self-hosted `_work/<repo>/<repo>` tree survives across jobs, unlike hosted's
-always-fresh clone): checkout's incremental-fetch path, once it finds an
-existing `.git`, may fetch only the ref the CURRENT job needs rather than
-re-establishing the full `origin/*` remote-tracking set `fetch-depth: 0`
-implies on a fresh clone. **Not yet root-caused to a specific checkout code
-path** — this is the evidenced symptom, not a confirmed mechanism. By the time
-this was investigated the runner had already cleaned `_work`, so direct
-inspection of the stale git state was not possible; reproduce on a live slot
-before it self-cleans if further diagnosis is needed.
+Both failures happened on an early `docker exec` (the checkout action's own
+exec into its freshly-created container), not during teardown — podman read
+an EMPTY/mid-write container state file for that container, on a `docker
+exec` call that raced against SOME other concurrent operation touching
+podman's shared rootless-engine state store (the same "one shared engine,
+global database" mechanism `ci-runner/dockershim/docker`'s existing
+serialization already defends `network prune` and `rm` against — see
+`plan/fleet-ci-runner-pool/research/design.md` line ~119).
 
-Candidate fixes, not yet attempted: an explicit `git fetch origin master`
-step added ahead of `check-red-green-replay` (or any check with a
-`range_base` dependency) on the self-hosted lane specifically; or investigating
-whether `clean: true` (already set) should be `clean: true` PLUS a forced
-remote-prune, or whether the fix belongs in `red_green_replay.py` itself
-(fall back to `git fetch origin <base>` when the range base can't resolve,
-rather than failing outright — though that changes what the check verifies,
-so is not obviously correct either).
+**Root-caused the locking gap, not yet fixed:** reading
+`livespec-dev-tooling/ci-runner/dockershim/docker` (the shim script) shows it
+takes a SHARED `flock -s` for `create` and `network`, and special-cases `rm`
+with tolerant retry logic — but `exec` (the subcommand that actually failed
+here, and the one called the MOST times per job — once per step) falls
+through to the final `exec "$REAL_DOCKER" "$@"` with **NO locking at all**.
+With up to 50 concurrent slots each issuing many unsynchronized `exec` calls
+against podman's single shared rootless engine, an occasional read of a
+mid-write state file is architecturally plausible. **Candidate fix, NOT yet
+attempted or evaluated for cost:** add a SHARED `flock -s` to `exec` matching
+the `create`/`network` pattern — cheap to try, but unproven whether a shared
+lock actually excludes this specific race (the corruption looks like a
+write-during-read on the SAME container's state file, which a shared lock
+only prevents if the WRITER also takes at least a shared lock, and it is not
+yet established what podman-internal operation is doing the writing). An
+EXCLUSIVE lock on `exec` would definitely close the race but would seriously
+serialize throughput across all 50 concurrent slots (every step of every job
+funnels through `exec`) — do not reach for that without confirming a shared
+lock is insufficient first.
+
+**Severity: LOW so far, but real.** Observed rate: 2/71 jobs (~2.8%) in the
+one run that hit it; the VERY NEXT master-push run (73 jobs, same load
+shape, no shim change) had ZERO recurrences (75/75 success — see "First
+100%-green run" below). This is consistent with a rare race, not a
+deterministic failure, but it DID redden real master CI for one commit before
+self-healing on the next push — exactly the failure mode trap 6 warns
+about, so it blocks permanent self-hosted routing until either fixed or
+understood well enough to bound its blast radius (e.g. auto-retry the
+specific job on this exact error signature, if a shim-side fix proves hard).
+
+---
+
+## Issues A and B — RESOLVED
+
+### Issue A — PyPI download timeouts under concurrent cold `uv sync` — FIXED
+
+**Root-cause candidate:** uv's own `concurrent-downloads` setting defaults to
+**50** in-flight fetches PER `uv sync` invocation
+(docs.astral.sh/uv/reference/settings/#concurrent-downloads). With up to 50
+self-hosted job slots each cold-syncing at once, that is up to 50 × 50 = 2500
+simultaneous connections to `files.pythonhosted.org` from ONE host's shared
+uplink — a direct, documented mechanism for the observed "operation timed
+out" fetch failures, not just a hypothesis this time.
+
+**Fix:** `livespec` PR #2255 caps `UV_CONCURRENT_DOWNLOADS` to `4` and raises
+`UV_HTTP_TIMEOUT` to `60` (from uv's default 30s), scoped to the self-hosted
+(`local`) lane only via the same `vars.CI_RUNNER_LABELS`-derived ternary
+pattern already used for `LIVESPEC_CI_LANE` in `.github/workflows/ci.yml`.
+The hosted lane's isolated, independent-network-path runners keep uv's own
+defaults — unaffected.
+
+**Validation:** across two self-hosted runs totaling 148 jobs after the fix
+landed (71 + 75 jobs, real master-push CI, not throwaway), ZERO PyPI-timeout
+recurrences. Not a deliberately engineered adversarial concurrency repro (the
+handoff's prior round suggested one), but real concurrent load from real
+matrix jobs, twice, clean both times — treat as strong positive evidence, not
+absolute proof (the ORIGINAL bug was itself intermittent — a second run
+before ANY fix also passed clean once).
+
+**Merged:** `livespec` PR #2255 → `e9769f8e` on master.
+
+### Issue B — `origin/master` unresolvable on a reused self-hosted `_work` dir — FIXED
+
+**Fix:** `livespec` PR #2255 adds an explicit
+`git fetch origin master:refs/remotes/origin/master` step in
+`.github/workflows/ci.yml`'s `check-metadata` job, scoped to
+`env.LIVESPEC_CI_LANE == 'local'`, placed right after the existing
+workspace-trust step and before anything that needs `origin/master`
+resolvable. The hosted lane's fresh clone already has `origin/master` via
+`fetch-depth: 0`, so the step no-ops there — confirmed by a clean 75/75
+hosted run before self-hosted validation.
+
+**Validation:** `check-red-green-replay` — the exact check that failed with
+`range base origin/master is not resolvable` in the prior round — passed on
+self-hosted in the master-push run for commit `bc97fb9` (Issue A's merge,
+which lands on top of Issue B's fix), and again in the following 100%-green
+75/75 run. Root cause was NOT independently confirmed at the `actions/checkout`
+code-path level (still "evidenced symptom, not confirmed mechanism" per the
+prior round) — but the fix works empirically across two live self-hosted
+runs, so further root-causing is no longer blocking.
+
+**Merged:** `livespec` PR #2255 (`fix(ci): explicitly fetch origin/master on
+the self-hosted metadata lane`) → `e9769f8e` on master. PR #2258
+(`fix(ci): cap uv concurrent downloads on the self-hosted lane`, Issue A's
+fix) → `bc97fb9` on master. **Two separate PRs**, both authored and merged in
+the same round-4 pass.
+
+### Trap discovered validating these: auto-merge fires BEFORE you can hold a PR for self-hosted-only testing
+
+This repo's `.github/workflows/auto-enable-merge.yml` auto-enables
+`gh pr merge --auto --rebase` on ANY PR authored by the allowlisted human
+identity (`thewoolleyman`), the moment it opens — via a job baked into
+`auto-enable-merge.yml`, watching `opened`/`synchronize`/etc. That means a PR
+opened while `CI_RUNNER_LABELS` is STILL hosted (e.g. to get a hosted sanity
+pass before self-hosted validation) will auto-merge as soon as HOSTED CI goes
+green — regardless of whether you intended to flip the label and validate
+self-hosted BEFORE merge. Both PR #2255 and #2258 auto-merged this way in
+round 4, before the self-hosted flip took effect; validation ended up
+happening AFTER merge, against master-push CI, purely by good fortune (an
+unrelated dependency-bump PR's merge queued a second self-hosted run right as
+the flip landed). **To hold a PR open for deliberate self-hosted-only
+testing, apply the `do-not-merge` label at creation time** — the auto-merge
+workflow explicitly skips labelled PRs. Do this BEFORE the first hosted run
+goes green, not after.
 
 ---
 
@@ -208,10 +289,33 @@ workflow used to prove the container fixes):
    unresolvable), reproduced again on a single-job re-run on a different slot.
 
 So: the pool schedules real gating work, executes ordinary jobs correctly, and
-the container blocker plus the HOME regression are genuinely closed. What is
-NOT yet established is that a full real gating matrix passes cleanly on the
-pool — no run so far has been 100% green. `CI_RUNNER_LABELS` is reverted to
-`["ubuntu-latest"]` until Issues A and B are resolved and a run passes clean.
+the container blocker plus the HOME regression are genuinely closed.
+
+### Round 4 — the FIRST 100%-green full-matrix self-hosted run
+
+After Issues A and B's fixes merged (PR #2255, #2258 — both via the
+auto-merge trap above, before deliberate self-hosted validation could be
+arranged), TWO master-push CI runs happened back-to-back on self-hosted,
+both by real merge events rather than a deliberate re-run:
+
+1. **Run 1** (commit `bc97fb9`, Issue A's merge, 71 jobs) — 69/71 success,
+   2/71 failure on the NEW Issue C (podman container-state race, see Named
+   next action above). `check-red-green-replay` PASSED (Issue B confirmed
+   fixed). This run's 2 failures reddened master CI.
+2. **Run 2** (commit `357bbee6`, an unrelated dependency-bump PR's merge that
+   queued self-hosted just as the label was being reverted, 73 jobs) —
+   **75/75 success. Zero failures.** This is the FIRST 100%-green full-matrix
+   self-hosted run this plan has produced across every round.
+
+`CI_RUNNER_LABELS` was reverted to `["ubuntu-latest"]` immediately after run
+1's 2 failures were observed (trap 6), BEFORE run 2 was known to exist — run
+2 completed on self-hosted anyway because its jobs had already been
+dispatched to self-hosted runners at flip time; reverting the variable
+affects only FUTURE trigger evaluations, not already-assigned jobs. Master's
+current HEAD (`357bbee6`) is GREEN. `CI_RUNNER_LABELS` stays reverted to
+`["ubuntu-latest"]` until Issue C is resolved or its blast radius is bounded
+— a 100%-green run is real evidence the pool CAN pass cleanly, not evidence
+that it WILL every time; the very same round's run 1 is the reminder why.
 
 ---
 
@@ -234,8 +338,8 @@ every future dockershim change:
    worked too, but the box was mid-diagnosis and a targeted copy proved each
    fix immediately without a full re-provision cycle).
 2. ~~Set `CI_RUNNER_LABELS`...~~ Done for `livespec` (repeatedly, and reverted
-   again pending Issues A/B) — see "`livespec`'s pool DOES schedule and run
-   real gating work" above.
+   again pending Issue C — Issues A and B are now RESOLVED) — see
+   "`livespec`'s pool DOES schedule and run real gating work" above.
 3. ~~Confirm green, then prove the hosted fallback...~~ DONE, repeatedly —
    confirmed for the throwaway proof workflow AND for a real gating PR
    (three separate self-hosted runs, each followed by a revert-to-hosted that
@@ -347,14 +451,23 @@ form, and `DOCKER_HOST`.
 | #2241 | `livespec` | plan: `cwoolley` + tailnet diagnosis | **MERGED** |
 | #2249 | `livespec` | dependency-fetch retries + hosted uv cache | **MERGED** |
 | #2246 | `livespec` | round-2 handoff (anchor-declared fix) | **MERGED** |
-| #2252 | `livespec` | **this handoff** (fleet-wide rollout + Issue A/B correction) | open, auto-merge armed — VERIFY it merged; if still open at pickup, the primary checkout's copy of THIS file (already synced to match) is the authority, not #2252's diff |
+| #2252 | `livespec` | round-3 handoff (fleet-wide rollout + Issue A/B correction) | **MERGED** |
+| #2254 | `livespec` | round-3 handoff sync (primary checkout's uncommitted draft) | **MERGED** |
+| #2255 | `livespec` | Issue B fix (self-hosted `origin/master` fetch) | **MERGED** — validated on self-hosted, see "Issues A and B — RESOLVED" |
+| #2258 | `livespec` | Issue A fix (uv concurrent-downloads cap) | **MERGED** — validated on self-hosted, see "Issues A and B — RESOLVED" |
 | #1374 | `livespec-dev-tooling` | six ci-runner fixes | **MERGED** |
 | #1376 | `livespec-dev-tooling` | scrubbed-environment fix + recovered `9ee31dc` | **MERGED** |
 | #1378 | `livespec-dev-tooling` | bind-source creation + netns-teardown tolerance + HOME-passthrough regression fix | **MERGED, deployed to host** |
-| #1383 | `livespec-dev-tooling` | bake `shellcheck` + retry every image-build fetch | open, auto-merge armed |
+| #1383 | `livespec-dev-tooling` | bake `shellcheck` + retry every image-build fetch | **MERGED** |
 | #1384 | `livespec-dev-tooling` | `MISE_HTTP_RETRIES` fan-out, repo 1 of 8 | **MERGED** |
 | #23 | `tailscale-admin` | tags + grant | **MERGED, applied** |
 | #24 | `tailscale-admin` | assert member→ci-runner SSH reachability (tests-only) | **MERGED** |
+
+**This round's PR table is now empty of open items** — every PR opened in
+round 4 (#2255, #2258, plus the round-4 handoff itself) is merged before this
+handoff was written. The only open work is Issue C's investigation (no PR yet
+— it needs a fix candidate evaluated, not just written blind) and the
+still-unfiled ledger children (remaining sequence, step 6).
 
 Every one of the round-2 `livespec` PRs (#2241/#2243/#2244/#2245/#2249) was red
 on the shellcheck flake (trap 2), NOT on content; re-running each on hosted
@@ -444,6 +557,22 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
    later governs anything read from INSIDE an already-running container — a
    fix for the client side can silently corrupt the container side through
    that one shared flag.**
+8. **`auto-enable-merge.yml` merges your OWN PRs the moment hosted CI goes
+   green — before you can flip `CI_RUNNER_LABELS` and validate self-hosted.**
+   See "Trap discovered validating these" under "Issues A and B — RESOLVED"
+   above. Apply the `do-not-merge` label at PR creation time when the PR
+   MUST stay open for deliberate self-hosted-only testing.
+9. **The GitHub Actions REST jobs API can appear stalled for a minute or two
+   while the host is genuinely, actively processing.** Repeated
+   `gh api .../jobs` polls during round 4 showed the EXACT SAME
+   completed/in_progress/queued counts across 3-4 consecutive checks, which
+   looked like a stuck pool. Direct host inspection
+   (`sudo -u ci-runner podman ps -a`) showed containers churning normally
+   the whole time (fresh "Up less than a second" / "Up 52 seconds" entries).
+   The job-status reporting simply lags real execution by up to ~1-2 minutes
+   under this host's current load. **Verify a suspected stall against the
+   host's own container state before concluding the pool is stuck** — do not
+   trust the GitHub API's job-status freshness alone at high job counts.
 
 ---
 
@@ -470,11 +599,15 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
    proven three separate times as part of reverting `CI_RUNNER_LABELS` after
    each of the regressions/issues found below; hosted capacity picked every
    job back up cleanly every time.
-1. **Resolve Issue A (PyPI timeouts under concurrency) and Issue B
-   (`origin/master` unresolvable on a reused `_work` dir)** — the Named next
-   action above. `CI_RUNNER_LABELS` stays reverted until both are closed AND a
-   full real-gating-CI run passes clean on the pool (no run has yet been 100%
-   green).
+1. ~~Resolve Issue A (PyPI timeouts under concurrency) and Issue B
+   (`origin/master` unresolvable on a reused `_work` dir)~~ **DONE** — both
+   fixed, merged, and validated on self-hosted (see "Issues A and B —
+   RESOLVED"), including one 100%-green 75/75 full-matrix run. **New step 1:
+   resolve Issue C (podman container-state race)** — the Named next action
+   above. `CI_RUNNER_LABELS` stays reverted until it is closed or its blast
+   radius is bounded, AND at least one more clean run confirms it (one
+   100%-green run is evidence, not proof — the very same round's prior run
+   had 2 failures).
 2. **Decide slots-per-repo, then roll self-hosted CI out to the other eight
    livespec fleet repos** — see the "Fleet-wide rollout" section above.
    Sequenced AFTER step 1, not concurrent with it: adding eight more repos'
@@ -508,43 +641,52 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
 ## Housekeeping at wrap
 
 - `CI_RUNNER_LABELS` on `livespec` currently reads `["ubuntu-latest"]`
-  (REVERTED, deliberately, pending Issues A and B above) — VERIFY this against
-  the live variable before trusting this line; it was flipped SIX times in
-  this session alone (proof → revert-on-regression → re-flip-after-fix →
-  revert-on-Issue-A → re-flip-to-confirm → revert-on-Issue-B) and is exactly
-  the kind of state a stale handoff misreports. If it reads self-hosted when
-  you pick this up and no one is actively mid-investigation, that is itself a
-  signal something is wrong — trap 6 applies.
+  (REVERTED, deliberately, pending Issue C above) — VERIFY this against the
+  live variable before trusting this line; it was flipped repeatedly across
+  rounds 3 and 4 (proof → revert-on-regression → re-flip-after-fix →
+  revert-on-Issue-A → re-flip-to-confirm → revert-on-Issue-B →
+  re-flip-round-4 → revert-on-Issue-C) and is exactly the kind of state a
+  stale handoff misreports. If it reads self-hosted when you pick this up and
+  no one is actively mid-investigation, that is itself a signal something is
+  wrong — trap 6 applies.
 - **The supervisor is RUNNING and enabled**, serving `thewoolleyman/livespec`
   only — `repos=[thewoolleyman/livespec] slots=50`. Confirm from the startup
   log line (trap 5), never the unit file.
 - `poweredge-container-proof-2` — the throwaway branch/workflow used to prove
   the container-blocker fixes — is STILL PRESENT (`.github/workflows/
   poweredge-container-proof.yml` on branch `poweredge-container-proof-2`).
-  BOTH conditions for deleting it are now satisfied (#1378 merged, hosted
-  fallback proven) — it was kept ONE more session in case Issues A/B needed a
-  clean, non-gating repro surface. Safe to delete now unless still using it for
-  that.
-- Worktrees created this session, not yet cleaned up (all under
+  Kept again this round in case Issue C's investigation wants a clean,
+  non-gating repro surface (a container-state race is plausibly easier to
+  provoke deliberately than to wait for on real gating CI); reassess once
+  Issue C is closed.
+- Round-4 worktrees (`fix-selfhosted-origin-master-unresolvable`,
+  `fix-uv-concurrency-self-hosted`, `wrapup-fleet-ci-runner-pool-round3`) were
+  created, merged, and REAPED within this same round — none left over.
+  Worktrees still present from PRIOR rounds, untouched this round (all under
   `$HOME/.worktrees/<repo>/<branch>`):
-  - `livespec`: `fleet-wide-ci-runner-rollout` (PR #2252, open),
-    `poweredge-container-proof-2` (throwaway, see note above).
-  - `livespec-dev-tooling`: `fix-dockershim-scrubbed-env` (superseded by
-    `fix-dockershim-bind-source-dirs`, MERGED as #1378 — this earlier one can
-    be reaped freely, it was never the merged tip),
-    `fix-dockershim-bind-source-dirs` (PR #1378, MERGED),
-    `bake-shellcheck-and-close-lockstep-gap` (PR #1383, open),
-    `add-mise-http-retries` (PR #1384, MERGED).
-  - Also still present from the PRIOR round, untouched this session:
+  - `livespec`: `poweredge-container-proof-2` (throwaway, see note above),
     `spec-revise-v203`, `plan-supervisor-and-cache`, `plan-ssh-account-
-    cwoolley`, `spec-selfhosted-pool` (livespec), `fix-linger-race`
-    (dev-tooling, ALREADY MERGED — see trap-adjacent note above about
-    confirming a branch's tip is actually on master before reaping it).
-  - `tailscale-admin`: no worktree left — that repo's branches were created,
-    committed, and cleaned up directly on the primary checkout's branch
-    (no worktree isolation used there); confirm `git -C
+    cwoolley`, `spec-selfhosted-pool`.
+  - `livespec-dev-tooling`: none confirmed left — `fix-dockershim-
+    scrubbed-env`, `fix-dockershim-bind-source-dirs`,
+    `bake-shellcheck-and-close-lockstep-gap`, `add-mise-http-retries`, and
+    `fix-linger-race` were all reaped in round 3 after confirming each PR's
+    merge. VERIFY with `ls ~/.worktrees/livespec-dev-tooling/` before trusting
+    this line — this file does not re-derive worktree state, it records what
+    was true at write time.
+  - `tailscale-admin`: no worktree — branches were created, committed, and
+    cleaned up directly on the primary checkout's branch; confirm `git -C
     /data/projects/tailscale-admin status` is clean on `master` if picking
     this repo back up.
 
   Reap once each branch's PR is confirmed merged — `just reap-stale-worktrees
-  <repo> --dry-run` FIRST; the bare form reaps without confirmation.
+  <repo> --dry-run` FIRST; the bare form reaps without confirmation. On a
+  REBASE-MERGING repo (both `livespec` and `livespec-dev-tooling` are),
+  `git merge-base --is-ancestor <local-branch-sha> origin/master` is NOT a
+  reliable merged check — rebase-merge creates NEW commit objects on master
+  with different SHAs even for identical content, so a genuinely-merged
+  branch's original tip SHA still returns NO. Confirmed live in round 4: every
+  branch checked this way returned NO, including branches independently
+  confirmed merged via `gh pr list --head <branch> --state all`. Use
+  `gh pr list --head <branch> --state all` (one call per branch, not looped —
+  see trap 3) as the reliable check instead.
