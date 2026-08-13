@@ -29,22 +29,98 @@ amended the same day once the container blocker was root-caused.
 
 ## State in one sentence
 
-**`livespec` gating CI is LIVE on the self-hosted pool — `CI_RUNNER_LABELS`
-flipped to `["self-hosted","local-ci"]` 2026-08-13, real matrix jobs from a real
-open PR observed running on it, all three container-blocker layers fixed — and
-the plan now explicitly extends to every OTHER livespec fleet repo, which today
-has ZERO self-hosted capacity: the supervisor serves `repos=[thewoolleyman/livespec]`
-only, and `--slots` is PER REPO, not a shared pool total, so adding repos is a
-real capacity decision, not a flag flip.**
+**The container blocker is fully fixed (three layers, all merged) and `livespec`
+gating CI DOES run real matrix jobs on the self-hosted pool — but
+`CI_RUNNER_LABELS` is REVERTED to `["ubuntu-latest"]` as of this writing,
+because live-firing a real PR against the pool surfaced TWO MORE real, distinct
+issues past the container blocker, at least one of which (a bare `-e HOME`
+regression) got found and fixed IN THE SAME PASS; the other two are still open
+and are the new named next action.** The plan also now explicitly extends to
+every OTHER livespec fleet repo, which today has ZERO self-hosted capacity: the
+supervisor serves `repos=[thewoolleyman/livespec]` only, and `--slots` is PER
+REPO, not a shared pool total, so adding repos is a real capacity decision, not
+a flag flip.
+
+**Do not read "container blocker fixed" as "livespec is ready for permanent
+self-hosted routing."** Those are different claims. The container blocker
+(three layers, `poweredge-container-proof-2`) is closed. Whether the pool can
+CARRY REAL GATING CI reliably is a separate, still-open question — see below.
 
 ---
 
 ## Named next action
 
-**Roll self-hosted CI out to the other livespec fleet repos.** `livespec` is
-proven live (see "`livespec` is live" below); every OTHER fleet repo still runs
-on paid GitHub-hosted capacity, and the supervisor design means that is a real
-scoping decision, not a one-line change.
+**Resolve TWO open issues before `livespec` can carry gating CI on the pool
+permanently.** Both were found by live-firing real gating CI against the pool
+(three times, in one session) rather than trusting the throwaway proof
+workflow — see trap 7. `CI_RUNNER_LABELS` is currently REVERTED because of
+these; do not re-flip it without re-reading this section.
+
+### Issue A — PyPI download timeouts under concurrent cold `uv sync`
+
+The FIRST real-PR run (50-job matrix, fresh slots) failed 4 jobs with
+`uv sync` timing out fetching different packages from
+`files.pythonhosted.org` — `operation timed out`, even after
+`UV_HTTP_RETRIES=5`. Confirmed NOT a content issue: the identical job passed
+50/50 on hosted capacity immediately after. Hypothesis, not yet confirmed: many
+concurrent self-hosted slots cold-syncing `uv` simultaneously contend for ONE
+host's shared outbound bandwidth — unlike GitHub-hosted runners, which are
+separate VMs with independent network paths. This is exactly the scenario the
+plan's ALREADY-SEQUENCED cache-tier work (below, step 2) exists to close —
+treat this as evidence it is a real prerequisite, not polish.
+
+**A SECOND full-matrix self-hosted run, right after, passed 0 content
+failures** — so this may be intermittent/load-dependent rather than
+deterministic. Needs either a deliberate concurrency-heavy repro (many jobs
+launched simultaneously against cold slots) or the cache-tier work landing
+first, whichever is cheaper to attempt next.
+
+### Issue B — `origin/master` unresolvable on a reused self-hosted `_work` dir
+
+The SECOND real-PR run (same PR, re-run after Issue A's transient clearing)
+failed `check-red-green-replay` with:
+```
+range base origin/master is not resolvable; the commit-range validation
+cannot enumerate origin/master..HEAD and MUST NOT silently pass
+```
+Re-running JUST that one job (not the whole matrix) reproduced the SAME
+failure on a DIFFERENT slot (slot 4) — not a one-off. The actual `git fetch`
+command the runner's `actions/checkout@v5` ran was:
+```
+git fetch --no-tags --prune --no-recurse-submodules --depth=1 origin \
+  +<pr-merge-sha>:refs/remotes/pull/2248/merge
+```
+despite the workflow requesting `fetch-depth: 0`. That fetch creates ONLY
+`refs/remotes/pull/2248/merge` — it never fetches `origin/master` (or any
+`refs/remotes/origin/*`) at all. This is consistent with a KNOWN
+`actions/checkout` behavior on a REUSED, persistent working directory (the
+self-hosted `_work/<repo>/<repo>` tree survives across jobs, unlike hosted's
+always-fresh clone): checkout's incremental-fetch path, once it finds an
+existing `.git`, may fetch only the ref the CURRENT job needs rather than
+re-establishing the full `origin/*` remote-tracking set `fetch-depth: 0`
+implies on a fresh clone. **Not yet root-caused to a specific checkout code
+path** — this is the evidenced symptom, not a confirmed mechanism. By the time
+this was investigated the runner had already cleaned `_work`, so direct
+inspection of the stale git state was not possible; reproduce on a live slot
+before it self-cleans if further diagnosis is needed.
+
+Candidate fixes, not yet attempted: an explicit `git fetch origin master`
+step added ahead of `check-red-green-replay` (or any check with a
+`range_base` dependency) on the self-hosted lane specifically; or investigating
+whether `clean: true` (already set) should be `clean: true` PLUS a forced
+remote-prune, or whether the fix belongs in `red_green_replay.py` itself
+(fall back to `git fetch origin <base>` when the range base can't resolve,
+rather than failing outright — though that changes what the check verifies,
+so is not obviously correct either).
+
+---
+
+## Fleet-wide rollout — roll self-hosted CI out to the other livespec fleet repos
+
+Sequence this AFTER Issues A and B above are resolved and `livespec`'s routing
+is proven stable across multiple real-PR runs, not just one. Every OTHER fleet
+repo still runs on paid GitHub-hosted capacity, and the supervisor design means
+adding them is a real scoping decision, not a one-line change.
 
 ### Why this is not a flag flip
 
@@ -114,16 +190,28 @@ against a repo whose slot allocation is undecided means re-registering them
 
 ---
 
-## `livespec` is live — how it was proven
+## `livespec`'s pool DOES schedule and run real gating work — how far that goes
 
 `CI_RUNNER_LABELS` was flipped to `["self-hosted","local-ci"]` on `livespec`
-2026-08-13, and PR #2248's real gating `CI` workflow was re-run under that
-routing (not the throwaway `poweredge-container-proof` workflow used to prove
-the container fixes) — matrix jobs (`check-lint`, `check-file-lloc`,
-`check-check-mutation`, etc.) were observed `in_progress`, not stuck `queued`,
-proving the pool schedules real gating work. **Verify the run's final
-conclusion before treating this as fully closed** — `in_progress` at write time
-is evidence the pool works, not yet evidence the whole matrix passed.
+2026-08-13, and PR #2248's real gating `CI` workflow was run under that routing
+THREE TIMES in one session (not the throwaway `poweredge-container-proof`
+workflow used to prove the container fixes):
+
+1. **First run** — 18 jobs failed on the bare-`-e HOME` regression (trap 7).
+   Fixed and merged (`livespec-dev-tooling` PR #1378, second commit).
+2. **Second run**, after that fix deployed — the HOME regression was CONFIRMED
+   gone (the jobs that failed on it in run 1 passed cleanly), but 4 DIFFERENT
+   jobs failed on Issue A (PyPI timeouts, above). Confirmed not content-related
+   by an immediate 50/50 pass on hosted capacity.
+3. **Third run**, full matrix on self-hosted again — 0 content failures, 0
+   recurrence of Issue A, but a NEW failure: Issue B (`origin/master`
+   unresolvable), reproduced again on a single-job re-run on a different slot.
+
+So: the pool schedules real gating work, executes ordinary jobs correctly, and
+the container blocker plus the HOME regression are genuinely closed. What is
+NOT yet established is that a full real gating matrix passes cleanly on the
+pool — no run so far has been 100% green. `CI_RUNNER_LABELS` is reverted to
+`["ubuntu-latest"]` until Issues A and B are resolved and a run passes clean.
 
 ---
 
@@ -373,46 +461,55 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
 
 0. ~~Deploy the merged shim fix and prove one containerized job~~ **DONE** —
    `livespec` proved on both the throwaway workflow and real gating CI.
-0b. **Prove the hosted fallback for `livespec`** — unset `CI_RUNNER_LABELS` (or
-   set it back to `["ubuntu-latest"]`) and confirm a job routes to hosted
-   capacity again. Cheap, not yet done, do it before declaring `livespec` fully
-   closed.
-1. **Decide slots-per-repo, then roll self-hosted CI out to the other eight
-   livespec fleet repos** — the Named next action above. This is now the
-   critical-path item; everything numbered below was written when the plan's
-   scope was `livespec`-only and is now correctly understood as "polish that
-   applies fleet-wide once step 1 lands the other repos," not as blocking it.
-2. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
-   cache** (removes GitHub's unraisable 10 GB cap) and a Nix store/binary cache.
-   Do this AFTER the fleet-wide rollout, not before — a shared cache root that
-   only one repo has ever populated is a smaller win than one every repo's jobs
-   warm.
-3. Install observability
+0b. ~~Prove the hosted fallback for `livespec`~~ **DONE, incidentally** —
+   proven three separate times as part of reverting `CI_RUNNER_LABELS` after
+   each of the regressions/issues found below; hosted capacity picked every
+   job back up cleanly every time.
+1. **Resolve Issue A (PyPI timeouts under concurrency) and Issue B
+   (`origin/master` unresolvable on a reused `_work` dir)** — the Named next
+   action above. `CI_RUNNER_LABELS` stays reverted until both are closed AND a
+   full real-gating-CI run passes clean on the pool (no run has yet been 100%
+   green).
+2. **Decide slots-per-repo, then roll self-hosted CI out to the other eight
+   livespec fleet repos** — see the "Fleet-wide rollout" section above.
+   Sequenced AFTER step 1, not concurrent with it: adding eight more repos'
+   worth of concurrent cold `uv sync` traffic to the same host BEFORE Issue A
+   is understood would make diagnosing it strictly harder, not easier.
+3. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
+   cache** (removes GitHub's unraisable 10 GB cap) and a Nix store/binary
+   cache. This may PARTIALLY subsume Issue A (a warm uv cache means less cold
+   PyPI traffic) — attempt Issue A's own fix first and treat this as
+   reinforcement, not a substitute, since Issue A's mechanism (bandwidth
+   contention) isn't fully confirmed yet.
+4. Install observability
    (`ci-runner/observability/install-observability.sh` — the only sanctioned
    way). This discharges v203's requirement that the fleet can observe a host
    that stopped taking jobs, and matters MORE once nine repos depend on the
    host than when one did.
-4. Fan `MISE_HTTP_RETRIES=5` out to the remaining eight fleet repos (see trap
-   2) — **do this in the SAME PASS as step 1**, since both are one-line CI
-   changes to the same set of repos and reopening each repo's workflow twice is
-   wasted motion.
-5. File the supervisor/cache work, AND the fleet-wide rollout itself, as ledger
-   children of `livespec-s43svm` after a scoping event. **Not done** — no
-   scoping event exists, no children filed. The rollout is real enough scope
-   now (nine repos, a slots-per-repo decision, a possible supervisor-script
-   change) that it may warrant becoming its own scoped epic under this plan's
-   anchor rather than staying an unscoped line item.
+5. Fan `MISE_HTTP_RETRIES=5` out to the remaining seven fleet repos (see trap
+   2 — `livespec-dev-tooling` already done, PR #1384) — **do this in the SAME
+   PASS as step 2**, since both are one-line CI changes to the same set of
+   repos.
+6. File the supervisor/cache work, the fleet-wide rollout, AND Issues A/B, as
+   ledger children of `livespec-s43svm` after a scoping event. **Not done** —
+   no scoping event exists, no children filed. This is now real enough scope
+   (nine repos, a slots-per-repo decision, two open reliability issues, a
+   possible supervisor-script change) that it likely warrants becoming its own
+   scoped epic under this plan's anchor rather than staying unscoped line
+   items.
 
 ---
 
 ## Housekeeping at wrap
 
-- `CI_RUNNER_LABELS` on `livespec` currently reads
-  `["self-hosted","local-ci"]` — VERIFY this against the live variable before
-  trusting this line; it has been flipped four times in this session alone
-  (proof → revert-on-regression → re-flip-after-fix) and is exactly the kind of
-  state a stale handoff misreports. If real gating CI is not passing when you
-  read this, revert it immediately (trap 6) before doing anything else.
+- `CI_RUNNER_LABELS` on `livespec` currently reads `["ubuntu-latest"]`
+  (REVERTED, deliberately, pending Issues A and B above) — VERIFY this against
+  the live variable before trusting this line; it was flipped SIX times in
+  this session alone (proof → revert-on-regression → re-flip-after-fix →
+  revert-on-Issue-A → re-flip-to-confirm → revert-on-Issue-B) and is exactly
+  the kind of state a stale handoff misreports. If it reads self-hosted when
+  you pick this up and no one is actively mid-investigation, that is itself a
+  signal something is wrong — trap 6 applies.
 - **The supervisor is RUNNING and enabled**, serving `thewoolleyman/livespec`
   only — `repos=[thewoolleyman/livespec] slots=50`. Confirm from the startup
   log line (trap 5), never the unit file.
