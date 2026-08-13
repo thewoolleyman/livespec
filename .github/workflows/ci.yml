@@ -40,14 +40,29 @@
 
 name: CI
 
+# EVERY dependency fetcher this workflow drives retries a mid-stream CDN drop
+# rather than failing the job on it. A single unretried fetcher is enough to red
+# an unrelated check, and — because `check-master-ci-green` blocks commits behind
+# a red master — to deadlock the repair of the very flake that reddened it.
+#
 # uv occasionally fails when the PyPI file CDN (files.pythonhosted.org)
 # drops a wheel download mid-stream ("broken pipe"). UV_HTTP_RETRIES
 # makes uv retry the fetch in-process instead of failing the job. A
 # self-hosted lane may serve `uv sync` from a warm on-host ~/.cache/uv, in
 # which case an unchanged lock installs from cache without contacting PyPI;
 # the hosted lane always fetches.
+#
+# mise reaches the SAME class of CDN (GitHub releases) for its tool binaries and
+# fails identically — observed 2026-08-13 on `shellcheck`:
+#   Failed to install aqua:koalaman/shellcheck@0.11.0: error sending request
+#   ... (SendRequest): connection closed before message completed
+# which reddened master in BOTH livespec and livespec-dev-tooling. mise's own
+# default is `http_retries = 0`, i.e. one attempt and no retry, so the lesson
+# already learned for uv above had to be spelled out again here. mise paces the
+# retries itself; the knob is the count.
 env:
   UV_HTTP_RETRIES: "5"
+  MISE_HTTP_RETRIES: "5"
   # The plugin-currency staleness gate's severity lever (design D2,
   # plan/fleet-plugin-currency/research/design.md): the _bootstrap.py gate
   # warns on an UNDETERMINABLE currency locally, but CI fails hard on it —
@@ -242,13 +257,30 @@ jobs:
       # Tools are baked into the image; `mise install` is a near-no-op that
       # just confirms the pinned versions. A fresh container does not TRUST the
       # repo .mise.toml, so `mise trust` is required for the shims to resolve.
-      # (Replaces the GitHub-hosted mise-action install + the actions/cache uv
-      # restore — the local runner's persistent ~/.cache/uv is the cache now.)
+      # (Replaces the GitHub-hosted mise-action install — the tools are baked.)
       - name: mise trust + install (baked tools — install is a near-no-op)
         if: needs.setup.outputs.py_changed == 'true'
         run: |
           mise trust
           mise install
+
+      # The uv cache restore was dropped on the reasoning that "the local
+      # runner's persistent ~/.cache/uv is the cache now". That holds only on the
+      # SELF-HOSTED lane. Hosted runners are ephemeral and carry no such cache, so
+      # while CI_RUNNER_LABELS points at hosted capacity every job re-downloads
+      # the entire dependency tree from PyPI — the largest unretried-fetch surface
+      # in the workflow, and the hosted lane is also the permanent fallback that
+      # v203 requires. So restore the cache for the hosted lane ONLY, keyed on the
+      # lockfile; the self-hosted lane keeps using its warm on-host cache and
+      # skips this step.
+      - name: Restore uv cache (hosted lane only — self-hosted uses ~/.cache/uv)
+        if: needs.setup.outputs.py_changed == 'true' && env.LIVESPEC_CI_LANE == 'hosted'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
 
       - name: Install Python dev deps via uv
         if: needs.setup.outputs.py_changed == 'true'
@@ -416,13 +448,22 @@ jobs:
           done
 
       # Baked tools; `mise install` is a near-no-op, `mise trust` is required
-      # for the shims to resolve in a fresh container. (Replaces mise-action +
-      # the actions/cache uv restore — the local runner's ~/.cache/uv is the
-      # cache now.)
+      # for the shims to resolve in a fresh container. (Replaces mise-action.)
       - name: mise trust + install (baked tools — install is a near-no-op)
         run: |
           mise trust
           mise install
+
+      # Hosted-lane uv cache — see the check-python job above for why this is
+      # lane-conditional rather than unconditional.
+      - name: Restore uv cache (hosted lane only — self-hosted uses ~/.cache/uv)
+        if: env.LIVESPEC_CI_LANE == 'hosted'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
 
       - name: Install Python dev deps via uv
         run: uv sync --all-groups
