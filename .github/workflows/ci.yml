@@ -116,7 +116,7 @@ jobs:
           # Need the base ref reachable for the PR diff below.
           fetch-depth: 0
 
-      - name: Detect Python file changes
+      - name: Detect Python validation inputs
         id: detect
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -133,11 +133,20 @@ jobs:
             # network) we still try the diff against whatever
             # origin/${BASE_REF} ref the checkout already populated.
             git fetch origin "$BASE_REF" || true
-            changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if echo "$changeset" | grep -qE '\.py$'; then
+            if ! changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
+              echo "::warning::Could not derive PR changeset; running Python validation" >&2
               echo "py_changed=true" >> "$GITHUB_OUTPUT"
             else
-              echo "py_changed=false" >> "$GITHUB_OUTPUT"
+              py_changed=false
+              while IFS= read -r changed_path; do
+                case "$changed_path" in
+                  *.py|pyproject.toml|uv.lock|.vendor.jsonc|.claude-plugin/scripts/_vendor/*)
+                    py_changed=true
+                    break
+                    ;;
+                esac
+              done <<< "$changeset"
+              echo "py_changed=$py_changed" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "py_changed=true" >> "$GITHUB_OUTPUT"
