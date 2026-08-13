@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.4](https://github.com/thewoolleyman/livespec/compare/v0.33.3...v0.33.4) (2026-08-13)
+
+
+### Bug Fixes
+
+* **ci:** retry every dependency fetch, and cache uv on the lane that needs it ([836eda0](https://github.com/thewoolleyman/livespec/commit/836eda0f61a08e1c11bed811a327ece4daec4f97))
+
 ## [0.33.3](https://github.com/thewoolleyman/livespec/compare/v0.33.2...v0.33.3) (2026-08-12)
 
 
