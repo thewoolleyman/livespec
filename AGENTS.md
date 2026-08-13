@@ -305,6 +305,18 @@ leaving dirty state, committing on the primary checkout, or asking the
 user whether to commit as failures of the workflow, not as acceptable
 stopping points.
 
+The prohibition is about tracked repository changes and other persistent
+primary-checkout edits. The sole operational exception is the gitignored
+runtime subtree `<repo-primary>/tmp/overseer/<topic>/`: a supervisor may
+create or update runtime state there (for example `.supervisor-state`, wait
+channels, watcher logs, and PID files) directly in the primary checkout.
+The exception is exact: the path MUST contain a non-empty single `<topic>`
+component immediately below `tmp/overseer/`, MUST resolve beneath that topic
+directory, and MUST remain ignored by the repository. It does not permit
+writes to `tmp/overseer/` itself, sibling `tmp/` paths, tracked files, or any
+other primary-checkout path. Every tracked change and every other persistent
+write still uses the worktree → PR → merge → cleanup path below.
+
 1. Confirm the primary checkout before editing (a primary checkout's
    git-dir equals its git-common-dir; a secondary worktree's differs —
    the structural test the commit-refuse hook itself uses):
