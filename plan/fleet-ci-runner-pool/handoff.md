@@ -343,10 +343,38 @@ and `gh api app/installations` returns 401 ("A JSON web token could not be
 decoded"). The automation's PAT has NO App-management capability at all.
 Installing the `thewoolleyman-ci-runners` App onto each additional repo is a
 GitHub-App-owner action (web UI, or a JWT-authenticated request) that only
-the maintainer can perform. This is the ONLY blocking step — see "Named next
-action" above.
+the maintainer can perform. This blocks 7 of the 8 repos — see "Named next
+action" above. `dolt-server` has a SECOND, independent blocker — see below.
 
-### What else the rollout needs, per additional repo (once the App is installed)
+### `dolt-server` is a special case: workflow edits are an attended maintainer boundary there, by design
+
+Discovered attempting the `MISE_HTTP_RETRIES` fan-out (below): `dolt-server`'s
+own `justfile` (`check-no-workflow-edits`, wired into `check-pre-push` before
+`just check`) HARD-REFUSES any push whose diff touches `.github/workflows/`
+at all — `"ERROR: factory branches must not modify .github/workflows/
+files"`. This is deliberate, documented policy
+(`plan/governed-repo-bootstrap/handoff.md` §"Safety envelope" in that repo,
+per the justfile's own comment): "Workflow edits are an attended maintainer
+boundary in this plan... That differs from the fleet repos this recipe is
+modelled on, where the App's push token is contents-only and GitHub itself is
+the backstop. Here there is no backstop behind this gate." Unlike the other 8
+fleet repos, `dolt-server`'s CI shape is owned by a separate, still-open
+work-item (`dolt-server-3jhclo`) in ITS OWN plan, not something an
+autonomous agent should push regardless of intent.
+
+**Practical consequence for THIS plan:** `dolt-server` needs its OWN
+CI-workflow edit (adding the `runs-on: fromJSON(vars.CI_RUNNER_LABELS...)`
+pattern — confirmed absent; its workflow hardcodes `runs-on: ubuntu-latest`
+in both jobs) before self-hosted routing is even possible there, and THAT
+edit hits the exact same attended-maintainer wall as `MISE_HTTP_RETRIES`
+did. Treat `dolt-server` as needing a maintainer-driven workflow change
+FIRST, separate from (and before) anything about the GitHub App or
+`CI_RUNNER_LABELS` — it cannot be routed the same way as the other 7 repos
+regardless of App-installation status. (A `MISE_HTTP_RETRIES` fix was
+drafted, correctly, by a dispatched agent — but never pushed, once this
+policy was found; the commit was abandoned rather than forced through.)
+
+### What else the rollout needs, per additional repo (once the App is installed — the 7 non-`dolt-server` repos)
 
 1. `CI_RUNNER_LABELS` set on that repo to `["self-hosted","local-ci"]` (plus
    `poweredge` if per-host targeting is wanted).
@@ -354,7 +382,7 @@ action" above.
    `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}`
    pattern — `check-self-hosted-routing` (already fleet-wide in
    `livespec-dev-tooling`) is the mechanical check; run it per repo, don't
-   assume.
+   assume. (`dolt-server` fails this check today — see above.)
 3. The dockershim + bind-source + netns + Issue-C-retry fixes are ALREADY on
    the host build — shared across every repo the supervisor serves, no
    per-repo work needed there.
@@ -382,16 +410,18 @@ dispatched agents (`livespec-dev-tooling` was already done in round 3, PR
 | `livespec-runtime` | #513 | **MERGED** |
 | `livespec-driver-claude` | #466 | **MERGED or auto-merge armed** — VERIFY |
 | `livespec-driver-codex` | #435 | **MERGED or auto-merge armed** — VERIFY |
-| `dolt-server` | (see below) | **IN FLIGHT — VERIFY** |
+| `dolt-server` | none — **INTENTIONALLY NOT FILED** | see below |
 
-`dolt-server`'s agent stalled mid-task (repeatedly reported "waiting for the
-monitor" without actually finishing — a genuine dispatched-agent failure
-mode, not a task-content problem). Its commit existed locally and was
-correct; this session pushed it and opened the PR manually to finish the
-job. **VERIFY `dolt-server` has an open or merged
-`add-mise-http-retries` PR before trusting this table** — if not, the branch
-and commit are still in `~/.worktrees/dolt-server/add-mise-http-retries`,
-just push and `gh pr create`.
+`dolt-server` is EXCLUDED from this fan-out, deliberately, not by oversight.
+Its dispatched agent drafted the correct fix, but this repo's `justfile`
+(`check-no-workflow-edits`, wired into `check-pre-push`) hard-refuses ANY
+push touching `.github/workflows/` — a documented attended-maintainer
+boundary (`plan/governed-repo-bootstrap/handoff.md` §"Safety envelope" in
+that repo), not a bug to route around. The commit was abandoned rather than
+pushed. See "`dolt-server` is a special case" under "Fleet-wide rollout"
+above — the same policy also blocks `dolt-server` from ever getting the
+`runs-on: fromJSON(vars.CI_RUNNER_LABELS...)` pattern without a maintainer
+doing it directly.
 
 **Trap for future fan-outs across this fleet:** `github_rate_limit_guard.py`
 denies any Bash command containing BOTH a `gh pr`/`gh run` invocation AND a
@@ -610,15 +640,16 @@ their hosted/self-hosted CI runs at write time.
 | #2259 | `livespec` | round-4 handoff (Issue C discovery) | **MERGED** |
 | #1386 | `livespec-dev-tooling` | Issue C fix (dockershim exec retry) | **MERGED** |
 | #2261 | `livespec` | shallow-fetch merge-commit fix | **MERGED** |
-| #1389 | `livespec-dev-tooling` | supervisor per-repo slots | **MERGED or pending ci-green** — VERIFY |
+| #1389 | `livespec-dev-tooling` | supervisor per-repo slots | **MERGED** |
 | #876 | `livespec-overseer` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
 | #1372 | `livespec-orchestrator-beads-fabro` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
 | #603 | `livespec-orchestrator-git-jsonl` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
 | #513 | `livespec-runtime` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #466 | `livespec-driver-claude` | `MISE_HTTP_RETRIES` fan-out | **MERGED or auto-merge armed** — VERIFY |
-| #435 | `livespec-driver-codex` | `MISE_HTTP_RETRIES` fan-out | **MERGED or auto-merge armed** — VERIFY |
-| (n/a) | `dolt-server` | `MISE_HTTP_RETRIES` fan-out | **IN FLIGHT — VERIFY**, see "MISE_HTTP_RETRIES fan-out" above |
-| (this file) | `livespec` | round-5 handoff | open at write time — VERIFY merged |
+| #466 | `livespec-driver-claude` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
+| #435 | `livespec-driver-codex` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
+| #2263 | `livespec` | round-5 handoff | **MERGED** |
+| (n/a) | `dolt-server` | `MISE_HTTP_RETRIES` fan-out | **INTENTIONALLY NOT FILED** — see "MISE_HTTP_RETRIES fan-out" above |
+| (this file) | `livespec` | round-5 correction (this `dolt-server` finding) | open at write time — VERIFY merged |
 
 Earlier-round PRs (#2244, #2245, #2243, #2241, #2249, #2246, #2252, #2254,
 #1374, #1376, #1378, #1383, #1384, `tailscale-admin` #23/#24) are ALL
@@ -687,15 +718,31 @@ history / the round-4 PR if that detail is needed.
    the host's own container state (`podman ps -a`, `uptime`) before concluding
    the pool is stuck.
 10. **A dispatched background agent can get stuck reporting "still waiting"
-    in a loop without actually finishing its task.** One of 7 parallel
-    `MISE_HTTP_RETRIES` fan-out agents (`dolt-server`) did exactly this —
-    its work (commit) was correct and complete, but it never pushed or
-    opened the PR, instead repeatedly reporting it was "waiting for a
-    monitor" across several completion notifications. Check the actual
-    worktree state directly (`git log`, `git status`, `ls-remote`) rather
-    than trusting a stuck agent's self-report; finish the mechanical
-    remainder (push, `gh pr create`) directly if the underlying work is
-    already correct.
+    in a loop without actually finishing its task.** The `dolt-server`
+    `MISE_HTTP_RETRIES` fan-out agent did exactly this — its commit was
+    correct, but it never finished pushing, instead repeatedly reporting it
+    was "waiting for a monitor" across several completion notifications.
+    Check the actual worktree state directly (`git log`, `git status`,
+    `ls-remote`) rather than trusting a stuck agent's self-report.
+11. **`git push` on `dolt-server` hung SILENTLY (zero output, not even the
+    lefthook banner's normal follow-on) for 20+ minutes, twice, from
+    completely separate process trees.** `ps aux` showed the pre-push
+    `lefthook run` process itself alive but producing nothing, alongside a
+    live `git-remote-https` subprocess — consistent with a genuine hang
+    inside the hook or the transport, not a slow-but-working check (compare
+    to `livespec-driver-codex`'s pre-push, which ran a full `just check` and
+    took ~200s but STREAMED output the whole time). Root cause NOT
+    established — killing both stuck process trees (`kill -9` the
+    `lefthook run` and `git-remote-https` PIDs) and retrying is what
+    unstuck it enough to investigate further, at which point the SEPARATE,
+    independent `check-no-workflow-edits` policy (item above) was found by
+    reading the repo's `justfile` directly rather than from the hook's own
+    error output, since every attempt hung before producing any. **Before
+    fanning any change out to a repo not yet touched this session, skim
+    its `justfile`/`lefthook.yml` for repo-specific gates — a fan-out that
+    is safe and mechanical in 8 repos was a hard policy violation in the
+    9th, and nothing about the task description would have predicted
+    which.**
 
 ---
 
@@ -723,7 +770,9 @@ history / the round-4 PR if that detail is needed.
    four fixed, merged, and validated; `CI_RUNNER_LABELS` is now PERMANENTLY
    self-hosted for `livespec`.
 2. ~~Fan `MISE_HTTP_RETRIES=5` out to the remaining fleet repos~~ **DONE**
-   (this round) — verify `dolt-server`'s PR per the table above.
+   (this round) for 7 of 8 — `dolt-server` deliberately excluded, its own
+   `check-no-workflow-edits` policy forbids agent-driven workflow edits
+   entirely (see "Fleet-wide rollout" above).
 3. ~~Install observability~~ **DONE** (this round) — heartbeat needs a
    separate otel-collector prerequisite this plan does not own; cache-prune
    is fully working.
@@ -763,12 +812,17 @@ history / the round-4 PR if that detail is needed.
 - Worktrees created this round, reaped after merge (none left over from this
   round's own work): `wrapup-fleet-ci-runner-pool-round4`,
   `fix-selfhosted-shallow-merge-ref`, `validate-issue-c-fix`,
-  `fix-dockershim-exec-sqlite-race`, `add-per-repo-slots`. Worktrees created
-  by the 7 parallel `MISE_HTTP_RETRIES` fan-out agents (one per repo, branch
+  `fix-dockershim-exec-sqlite-race`, `add-per-repo-slots`,
+  `wrapup-fleet-ci-runner-pool-round5`,
+  `correct-dolt-server-workflow-governance`. Worktrees created by 6 of the 7
+  parallel `MISE_HTTP_RETRIES` fan-out agents (one per repo, branch
   `add-mise-http-retries` in each) were NOT reaped by this session — they
   belong to repos this session's worktree bookkeeping doesn't track the same
   way; reap them individually once each repo's PR is confirmed merged
-  (`just reap-stale-worktrees <repo> --dry-run` first).
+  (`just reap-stale-worktrees <repo> --dry-run` first). `dolt-server`'s
+  `add-mise-http-retries` worktree WAS already removed and its branch deleted
+  this round, since its change was abandoned (see "MISE_HTTP_RETRIES
+  fan-out" above) rather than merged.
 - Worktrees still present from EARLIER rounds, untouched this round: `livespec`:
   `spec-revise-v203`, `plan-supervisor-and-cache`, `plan-ssh-account-cwoolley`,
   `spec-selfhosted-pool`. `tailscale-admin`: no worktree (branches created,
