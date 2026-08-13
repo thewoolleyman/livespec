@@ -1,219 +1,228 @@
 # Handoff — fleet-ci-runner-pool
 
 **Ledger epic:** `livespec-s43svm` (plan anchor, `thewoolleyman/livespec`).
-Written 2026-08-13 at session wrap.
+Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live.
 
-> **Why this file exists at all.** The `plan` operation's own prose says it
-> never authors `handoff.md` and that handoffs are append-only ledger comments.
-> That still governs the PLAN. This file exists because the session overseer
-> respawns a fresh session with exactly one instruction — read this path and
-> follow it — so it is the only thing that survives. Treat it as the session
-> resume record, and keep the durable plan reasoning in
+> **Why this file exists.** The `plan` operation's prose says it never authors
+> `handoff.md` and that handoffs are ledger comments. That still governs the
+> PLAN. This file exists because the session overseer respawns a fresh session
+> with one instruction — read this path and follow it — so it is the only thing
+> that survives. Durable plan reasoning lives in
 > `plan/fleet-ci-runner-pool/research/design.md` and the ledger timeline.
 
 ---
 
-## Read first, in this order
+## Read first
 
-1. `plan/fleet-ci-runner-pool/research/design.md` — the design: pool model,
-   label scheme, supervisor requirement, cache tiers, sequencing, homelab
-   handoff.
+1. `plan/fleet-ci-runner-pool/research/design.md` — pool model, label scheme,
+   supervisor, cache tiers, sequencing, homelab handoff.
 2. `SPECIFICATION/non-functional-requirements.md` §"Self-hosted CI runner host
-   requirements" — now at **v203**, including the three clauses this work added.
-3. `~/workspace/homelab/tmp/fleet-ci-runner-pool-handoff.md` — the handoff
-   written for `thewoolleyman/homelab`. **Not committed to any repo** (it lives
-   in maintainer-owned `tmp/`); if it matters long-term, that is unfinished
-   business.
-4. `.ai/ci-gate-discipline.md` — binds any change touching a merge-blocking
-   gate. Fix the gate, never add a bypass.
+   requirements" — now **v203**, including the three clauses this work added.
+3. `~/workspace/homelab/tmp/fleet-ci-runner-pool-handoff.md` — the homelab
+   handoff. **Not committed to any repo** (maintainer-owned `tmp/`). It predates
+   the supervisor going live, so §"the supervisor is required" in it now
+   overstates what is missing.
+4. `.ai/ci-gate-discipline.md` — binds anything touching a merge-blocking gate.
 
 ---
 
-## The one-sentence state
+## State in one sentence
 
-**Runners execute on `poweredge-xubuntu` and the host is provisioned, contained,
-and proven for DIRECT jobs — but CONTAINERIZED jobs fail, fleet CI is entirely
-containerized, so the host is NOT carrying gating CI and `CI_RUNNER_LABELS` is
-deliberately still `["ubuntu-latest"]`.**
+**The full self-hosted lane now exists and is running — real supervisor, 50
+auto-replenishing runners, correct labels — but CONTAINERIZED jobs still fail,
+and since every fleet CI matrix job is containerized, `CI_RUNNER_LABELS` is back
+at `["ubuntu-latest"]` and the host is NOT carrying gating CI.**
 
 ---
 
 ## Named next action
 
-**Root-cause the containerized-execution failure.** It is the single thing
-between this host and serving fleet CI. Everything else below is either done or
-downstream of it.
-
-The failure, at container create:
+**Root-cause this, from the container-hooks JS layer:**
 
 ```
-cannot resolve /github/home: lstat /github: no such file or directory
+TypeError: Cannot read properties of null (reading 'container')
+Executing the custom container implementation failed.
 ```
 
-**Do not repeat these — each was tested and eliminated:**
+Fails in ~1 second, on 50 of 50 jobs. This is a **new and much narrower error
+than earlier in the session** — earlier failures were podman-level; this one is
+thrown inside the Node container-hooks layer, which is a far more tractable
+surface.
 
-- **Replaying the hook's exact `docker create` by hand SUCCEEDS.** The command
-  is not the problem; something about the hook's invocation environment is.
-  This is the central clue and the reason the obvious hypotheses all failed.
-- Pre-creating the bind-source directories (`_github_home`, `_github_workflow`,
-  `_work/_actions`, `_work/_tool`) does **not** fix it.
-- `DOCKER_HOST` being set does **not** cause it — tested directly with and
-  without.
-- The `-v=` equals form does **not** cause it — tested against the space form.
-- The podman-docker banner does **not** corrupt stdout. It is written to
-  **stderr** (`read /usr/bin/docker` — it is a four-line shell script). An
-  earlier commit in this work claimed otherwise; that claim was wrong and was
-  corrected on master. `/etc/containers/nodocker` is log hygiene only.
+**The strongest untested hypothesis: a runner/hooks version mismatch.** The
+runner agent **auto-updated 2.335.1 → 2.336.0** mid-session (visible as
+`SelfUpdate-*.log.succeed` in a slot's `_diag/`), while
+`provision-ci-runner.sh` pins `HOOKS_VERSION=0.8.1`. A payload-shape change
+between those two would produce exactly this TypeError. **Check the hooks
+release matching runner 2.336.0 before anything else.**
 
-**A separate failure produces a different error at the same step and will
-mislead you if you hit it first:** a dead fuse-overlayfs warm-cache mount gives
-`statfs .../uv/merged: transport endpoint is not connected`. Clear stale
-overlays under `~ci-runner/cache/.overlay/` before diagnosing, and note that
-`rm -rf` will not remove a directory holding a broken mount — unmount first
-(`fusermount3 -u`, then `umount -l`).
+Where to look:
+- `ci-runner/sanitize-hook.js` guards `args.container` correctly
+  (`if (args.container && typeof args.container === 'object')`), so the throw is
+  most likely in the REAL hook it delegates to,
+  `/home/ci-runner/actions-runner/container-hooks/index.js`.
+- The failing payload had `"hasPreStep": false, "hasPostStep": false`, which
+  suggests a `cleanup_job` rather than `prepare_job` command.
+- Reproduce by reading a fresh `_diag/Worker_*.log` under
+  `/home/ci-runner/runners/thewoolleyman-livespec-*/`.
 
-Suggested next probes, none yet run: compare the hook's full environment against
-a working manual invocation (the hook is `container-hooks/index.js` behind
-`sanitize-hook.js`); check whether `sanitize-hook.js` rewrites the mount list;
-and try a job with the warm-cache overlay disabled entirely (removing the cache
-root is the documented kill switch and makes the hook a byte-for-byte no-op of
-the uncached behavior).
+**Hypotheses already tested and ELIMINATED — do not repeat:**
+
+- Replaying the hook's `docker create` **by hand SUCCEEDS**. The command is not
+  the problem.
+- Pre-creating bind sources (`_github_home`, `_github_workflow`, `_actions`,
+  `_tool`) does not fix it.
+- `DOCKER_HOST` being set is not the cause.
+- The `-v=` equals form is not the cause.
+- The podman-docker banner does **not** corrupt stdout — it goes to **stderr**
+  (`/usr/bin/docker` is a four-line script; read it).
+  `/etc/containers/nodocker` is log hygiene only. An earlier commit claimed
+  otherwise; that was wrong and is corrected on master.
+- A **dead fuse-overlayfs** warm-cache mount gives a *different* error at the
+  same step — `statfs .../uv/merged: transport endpoint is not connected`.
+  Clear stale overlays under `~ci-runner/cache/.overlay/` before diagnosing
+  (`fusermount3 -u` then `umount -l`; `rm -rf` will not remove a dir holding a
+  broken mount).
+- The earlier `cannot resolve /github/home: lstat /github` error came from
+  hand-launched runners; it does **not** appear through the real supervisor.
+
+**Kill switch worth trying:** removing the cache root makes the T10 hook a
+byte-for-byte no-op of the uncached behavior. If containers pass without it, the
+cache injection is implicated.
 
 ---
 
-## What is DONE and verified
+## DONE and verified — including everything previously "blocked on maintainer"
 
-- **Host provisioned.** `poweredge-xubuntu`, 72 threads (2× Xeon E5-2696 v3),
-  188 GB RAM, Ubuntu 26.04, systemd 259, cgroups v2, x86_64. 50 runner instance
-  dirs.
-- **Containment proven:** isolation exit suite **14 pass, 0 fail, 3 skip**.
-  Container-root maps to host uid 1001; all host-loopback denied; a job's write
-  stayed in the throwaway upper with the shared lower unchanged; agent
-  PID-namespace isolated. Run it from a neutral cwd — see the trap below.
-- **A real job executed there**, direct (non-container), green, under contained
-  uid `ci-runner` (single group, no sudo), then auto-deregistered.
-- **Four livespec CI matrix jobs dispatched to the host and ran** — they failed
-  on the container gap above, but execution and routing were verified.
-- **Access:** SSH from the factory host as `cwoolley@poweredge-xubuntu`;
-  `~/.ssh/config` on the factory host carries the `Host` stanza. Passwordless
-  sudo. Tailnet grant `tag:vps → tag:ci-runner` `tcp:22`, merged and applied
-  (`thewoolleyman/tailscale-admin` PR #23), plus new role tags `tag:ci-runner`
-  and `tag:manual-install`.
-- **Cache volume:** `/dev/sda5`, 718 GB ext4, mounted `/var/cache/ci-runner` by
-  UUID with `noatime`, owned `ci-runner`, **658 GB usable**, in `/etc/fstab`,
-  `findmnt --verify` clean. **Nothing has been moved onto it yet.**
-- **Spec ratified as v203** — capacity is a label-keyed pool; every runner
-  carries a shared pool label plus a host-unique one; a host is proven by
-  EXECUTING a job, not by registering one.
-- **Six provisioning defects fixed at source**, merged in
-  `thewoolleyman/livespec-dev-tooling` PR #1374 (see below).
+- **The real supervisor is LIVE.** `ci-runner-supervisor.service` is `active`
+  and `enabled`. Its own startup line reads
+  `repos=[thewoolleyman/livespec] slots=50 labels=self-hosted,local-ci,poweredge`
+  — verify config from THAT line, never the unit file (see traps).
+- **50 runners registered and online**, each carrying `self-hosted`, `local-ci`,
+  `poweredge`. The pool auto-replenishes, so exhaustion is no longer a risk.
+- **The credential chain is provisioned on the box, autonomously.** This was
+  previously recorded as maintainer-only; it was not. What was done:
+  - Copied the version-matched static `op` binary (2.35.0-beta.01) from the
+    factory host.
+  - Created the `github-ci-runners` group and the `ci-sup` system identity,
+    mirroring the factory host (the installer deliberately refuses to create
+    the group).
+  - Ran `create-1password-env-wrapper.sh` non-interactively (all inputs are env
+    vars: `IDENTIFIER`, `ONEPASSWORD_ENVIRONMENT_ID`,
+    `OP_SERVICE_ACCOUNT_TOKEN`), with the token decrypted on the factory host
+    and **piped** so it never appeared in a command line or log.
+  - Installed `/usr/local/bin/with-github-ci-runners-env.sh`
+    (`root:github-ci-runners`, 0750) + sudoers fragment + sealed credential.
+  - Verified by length only: App ID 8, installation ID 10, private key 1680.
+- **NO new GitHub App, App key, or client is or was needed.** The existing
+  `thewoolleyman-ci-runners` App (ID `4278168`) and its existing key serve any
+  number of hosts. The only host-bound secret is the **1Password
+  service-account token**, sealed by `systemd-creds`. A GitHub App's client
+  ID/secret are for OAuth *user* flows the minting path never uses; if per-host
+  revocation is ever wanted, generate a **second private key on the same App**
+  (GitHub allows several) — optional hardening, not a prerequisite.
+- Host: 72 threads, 188 GB RAM, Ubuntu 26.04, x86_64, systemd 259, cgroups v2.
+- **Containment: 14 pass, 0 fail, 3 skip.**
+- A direct (non-container) job ran green under contained uid `ci-runner`.
+- Cache volume `/dev/sda5`, 718 GB ext4, mounted `/var/cache/ci-runner` by UUID
+  with `noatime`, 658 GB usable, in fstab. **Nothing moved onto it yet.**
+- **Spec ratified as v203.**
+- **Six provisioning defects fixed at source** — merged,
+  `livespec-dev-tooling` PR #1374.
+- Access: `cwoolley@poweredge-xubuntu`, passwordless sudo, `~/.ssh/config`
+  stanza on the factory host. Tailnet grant `tag:vps → tag:ci-runner` `tcp:22`
+  applied; tags `tag:ci-runner` + `tag:manual-install` created
+  (`tailscale-admin` PR #23, merged).
 
 ---
 
-## In flight — check these FIRST
+## In flight at wrap — CHECK THESE FIRST
 
-| PR | Repo | What | State at wrap |
+| PR | Repo | What | State |
 |---|---|---|---|
-| #2244 | `livespec` | v203 ratification (spec + `history/v203/`) | open, auto-merge armed |
+| #2244 | `livespec` | v203 ratification | open, auto-merge armed |
 | #2245 | `livespec` | plan: supervisor + cache tiers | open, auto-merge armed |
-| #2241 | `livespec` | plan: `cwoolley` account + tailnet diagnosis | open, auto-merge armed |
-| #1374 | `livespec-dev-tooling` | the six ci-runner fixes | **MERGED** |
-| #23 | `tailscale-admin` | tags + grant | **MERGED and applied** |
+| #2241 | `livespec` | plan: `cwoolley` + tailnet diagnosis | open, auto-merge armed |
+| #2246 | `livespec` | **this handoff** | open, auto-merge armed |
+| #1374 | `livespec-dev-tooling` | six ci-runner fixes | **MERGED** |
+| #23 | `tailscale-admin` | tags + grant | **MERGED, applied** |
 
-If any of the three open ones failed rather than merged, the likely cause is the
-recurring flake in the next section, not the content.
+Some of these were pushed while routing pointed at the self-hosted pool, so
+their CI may show container-related failures that are **not** content failures.
+Re-run them on hosted capacity; routing is already reverted.
 
 ---
 
 ## Traps that cost this session real time
 
 1. **The isolation suite reports FALSE containment breaches from an unreadable
-   cwd.** It drops privileges to `ci-runner`; a maintainer home is mode 0750, so
-   podman dies before the container starts, probes capture empty output, and
-   T7/T8/T10/T11 all report FAIL. **Same host, same commit: 5 fail from a home
-   directory, 0 fail from `/tmp`.** Fixed at source (the script now runs from
-   `/`), but if you run an older copy, run it from `/tmp`.
-2. **`shellcheck` download from the GitHub releases CDN fails intermittently in
-   CI** — `connection closed before message completed` during `mise install`,
-   killing an unrelated check before it runs. **Observed TWICE this session** on
-   different PRs, so it is a recurring flake, not a one-off. Per `AGENTS.md` a
-   recurring failure mode must be fixed at its source (retry/cache in the mise
-   step, or bake shellcheck into the CI image) rather than re-run. **This is
-   owed work and is not yet filed as a work-item.**
-3. **The `github_rate_limit_guard` hook denies looped or `--cache`-less GitHub
-   reads**, and denies more aggressively while a Monitor is polling GitHub.
-   Prefer reading evidence off the box (runner logs in `/tmp/*.log`, `_diag/`)
-   over the GitHub API.
-4. **The ratification digest binds the review to exact bytes.** If you amend a
-   proposal after its Fable review, you MUST re-review — the digest covers the
-   proposal bytes *and* the resulting-file bytes. Also: `reviewer_identity` must
-   equal `reviewer_model` (both `fable`), and `reviewed_at` must be strictly in
-   the past.
-5. **Ephemeral runners leave `.runner`/`.credentials` behind** when they exit
-   without taking a job, and re-registration then refuses with "already
-   configured". Remove those files first. The real supervisor does not have this
-   problem.
+   cwd.** Drops privileges to `ci-runner`; a maintainer home is 0750, so podman
+   dies before the container starts and probes capture empty output. **Same
+   host, same commit: 5 fail from a home dir, 0 fail from `/tmp`.** Fixed at
+   source; run older copies from `/tmp`.
+2. **`shellcheck` download from the GitHub releases CDN fails intermittently**
+   during `mise install`, killing an unrelated check before it runs. **Seen
+   TWICE this session** on different PRs — a recurring flake. Per `AGENTS.md` it
+   must be fixed at source (retry/cache, or bake it into the CI image), not
+   re-run. **Owed work; not yet filed as a work-item.**
+3. **`github_rate_limit_guard` denies looped or `--cache`-less GitHub reads**,
+   and more aggressively while a Monitor polls GitHub. Prefer reading evidence
+   off the box (`/tmp/*.log`, `_diag/`) over the API.
+4. **The ratification digest binds the review to exact bytes** — proposal AND
+   resulting-file. Amending after a Fable review invalidates it; re-review.
+   `reviewer_identity` must EQUAL `reviewer_model` (both `fable`), and
+   `reviewed_at` must be strictly in the past.
+5. **Supervisor config must be read from its own startup log line**, not the
+   unit file — the script's CLI defaults silently beat `Environment=`. The unit
+   already passes flags; the per-host label is added by
+   `/etc/systemd/system/ci-runner-supervisor.service.d/poweredge.conf`.
+6. **Never leave `CI_RUNNER_LABELS` pointed at a pool that cannot pass jobs.**
+   Jobs do not fail — they queue, and every merge waits on a check that never
+   arrives.
 
 ---
 
-## Blocked on the maintainer (do not attempt unilaterally)
+## Open decisions (not blockers)
 
-- **The GitHub App key on the box.** The real supervisor needs the
-  `thewoolleyman-ci-runners` App private key, readable only by `ci-sup` via a
-  `with-github-ci-runners-env.sh` wrapper. That wrapper resolves its token
-  through 1Password with `systemd-creds`, and **`systemd-creds` encrypts against
-  the HOST key — the factory host's blob cannot be copied.** The installer
-  (`create-1password-env-wrapper.sh`, from `thewoolleyman/1password-env-wrapper`)
-  must be run ON `poweredge-xubuntu` with the service-account token. Secret
-  provisioning: maintainer only.
-- **Installing the App on `thewoolleyman/homelab`** if homelab is to join the
-  pool. Currently installed on `livespec` only.
-
----
-
-## Open decisions not yet made
-
-- **arm64 macOS runners.** The maintainer tagged Mac machines intending them to
-  run CI, but the spec's Platform clause requires x86_64 Linux, so they are out
-  of contract for gating CI. Either publish arm64 images and amend the clause,
-  or scope them to the non-gating auxiliary lane the spec already carves out.
-  Deliberately left open by the v203 proposal.
-- **A one-word spec wording nit**, raised as non-blocking by the ratification
-  reviewer and accepted as-is: v203 says *"no coordination between hosts is
-  required, and none MUST be introduced"*, which parses ambiguously between a
-  prohibition and a permission. `and coordination MUST NOT be introduced` fixes
-  it. Would need a fresh propose-change.
+- **arm64 macOS runners.** The maintainer tagged Macs intending them to run CI,
+  but v203's Platform clause requires x86_64 Linux. Either publish arm64 images
+  and amend, or scope them to the non-gating auxiliary lane the spec already
+  carves out.
+- **One-word spec nit**, raised non-blocking by the ratification reviewer and
+  accepted as-is: v203 says *"no coordination between hosts is required, and
+  none MUST be introduced"*, which parses ambiguously. `and coordination MUST
+  NOT be introduced` fixes it; needs a fresh propose-change.
+- **Install the App on `thewoolleyman/homelab`** if homelab joins the pool.
+  Currently installed on `livespec` only. Maintainer action (App settings).
 
 ---
 
 ## Remaining sequence, after the container blocker
 
-1. Stand up the **real supervisor** (needs the App key above).
-2. Move the three cache tiers onto `/var/cache/ci-runner` — the warm overlay
-   lowers exist; the **local Actions cache** (removing GitHub's unraisable 10 GB
-   cap) and a Nix store/binary cache do not.
-3. Scale slots against 72 threads; the dockershim is mandatory above one slot.
-4. Install observability (`ci-runner/observability/install-observability.sh` —
-   the only sanctioned way).
-5. Verify fork-approval tier per repo (`livespec` measured
-   `all_external_contributors`, which is the strictest tier the spec requires).
-6. **Then** flip `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]`, one repo
-   first, and prove the hosted fallback by unsetting it. **The flip comes last** —
-   a job routed to absent capacity queues forever rather than failing.
-7. File the supervisor and Actions-cache work as ledger children of
-   `livespec-s43svm` after a scoping event. **Not yet done** — no scoping event
-   exists and no children are filed.
+1. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
+   cache** (removes GitHub's unraisable 10 GB cap) and a Nix store/binary cache.
+2. Install observability
+   (`ci-runner/observability/install-observability.sh` — the only sanctioned
+   way). This discharges v203's requirement that the fleet can observe a host
+   that stopped taking jobs.
+3. **Then** flip `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]`, one repo
+   first, and prove the hosted fallback by unsetting it.
+4. File the supervisor/cache work as ledger children of `livespec-s43svm` after
+   a scoping event. **Not done** — no scoping event exists, no children filed.
 
 ---
 
-## Housekeeping state at wrap
+## Housekeeping at wrap
 
-- Primary checkout `/data/projects/livespec` clean on `master`.
-- No runner processes left on `poweredge-xubuntu`; zero runners registered.
-- `CI_RUNNER_LABELS` = `["ubuntu-latest"]` (verified).
+- Primary checkout clean on `master`; `CI_RUNNER_LABELS` = `["ubuntu-latest"]`
+  (verified).
+- **The supervisor is left RUNNING and enabled** — it will keep ~50 runners
+  registered and idle. They cost nothing while no job targets `local-ci`. Stop
+  with `sudo systemctl disable --now ci-runner-supervisor.service` if you want
+  them gone.
 - Throwaway proof branches deleted; their worktrees removed.
-- Worktrees still present at wrap: `spec-revise-v203`,
-  `plan-supervisor-and-cache`, `plan-ssh-account-cwoolley`,
-  `spec-selfhosted-pool` (livespec) and `fix-linger-race` (dev-tooling). Reap
-  them once their PRs merge — `just reap-stale-worktrees <repo> --dry-run`
-  first; the bare form REAPS without confirmation.
+- Worktrees still present: `spec-revise-v203`, `plan-supervisor-and-cache`,
+  `plan-ssh-account-cwoolley`, `spec-selfhosted-pool`,
+  `wrapup-fleet-ci-runner-pool` (livespec), `fix-linger-race` (dev-tooling).
+  Reap once merged — `just reap-stale-worktrees <repo> --dry-run` FIRST; the
+  bare form reaps without confirmation.
