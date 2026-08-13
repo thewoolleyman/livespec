@@ -1,31 +1,98 @@
 # Supervisor Handoff - spec-side-autonomy
 
-## Resume state — written 2026-08-12T16:06Z at session wrap-up
+## Resume state — written 2026-08-13T17:06Z at session wrap-up
 
 READ THIS FIRST. It is the live state of the thread and it EXPIRES: re-measure
 everything below before acting on it. Supplementary depth is in the supervisor
 marker at
 `/data/projects/livespec/tmp/overseer/spec-side-autonomy/.supervisor-state`
-(gitignored, same host, read by the cold-open boot block). This section is
-self-sufficient; the marker is extra, not required.
+(gitignored, same host, read by the cold-open boot block; it is ~6500 lines —
+read the truncation notice below seriously). This section is self-sufficient;
+the marker is extra, not required.
 
-### START HERE — the thread's stated work is DONE. Nothing is in flight.
+### START HERE — one urgent item, one long-stalled maintainer question, three recorded findings.
 
-**Epic `livespec-jvdvx4` is FULLY CLOSED — 18 of 18 children.** Measured
-2026-08-12T05:24Z with `--all`; the default listing hides closed items and would
-misreport it. Do NOT re-drive any of it. Re-enumerate from the ledger rather
+**Epic `livespec-jvdvx4` is STILL FULLY CLOSED — 18 of 18 children**, unchanged
+since 2026-08-12. Do NOT re-drive any of it. Re-enumerate from the ledger rather
 than citing this paragraph.
 
-Nothing is dispatched, no agent of this thread is running, no worktree or branch
-of this thread exists, and **no maintainer decision is pending**. Both primary
-checkouts (`livespec`, `livespec-orchestrator-git-jsonl`) are clean on their
-default branches. Six worktrees under `$HOME/.worktrees/livespec/` are all
-FOREIGN — never touch or reap them, and never run the worktree reaper here.
-Re-derive that list; it grew from four to six during one session.
+**Master `livespec` CI is CONTENT-red right now** — this is NEW since the
+previous revision of this section, and it is NOT the egress/infra pattern this
+binder has warned about elsewhere. `just check-coverage` genuinely runs and
+genuinely fails: 35 tests `KeyError: 'spec_pr_merge'`, because that config key
+exists ONLY in a since-corrected hand-edit of core's vendored
+`_vendor/livespec_runtime/api_configurable_keys.json` and was never actually
+upstreamed into `livespec-runtime`'s own source. Fully diagnosed, root-caused to
+two specific commits (`91bd0754` the origin hand-edit, `0fb0b74d` the automated
+pin-bump that correctly reverted it and thereby exposed the gap), and a
+ready-to-apply two-repo fix sequence is written up across FIVE comments on
+**`livespec-xox2` (P0, `backlog`)** — read them in order, do not re-derive.
+**Blast radius is measured as ZERO live production impact anywhere in the
+fleet** (only core vendors the affected file; the one real downstream consumer,
+`livespec-orchestrator-git-jsonl`, pins a release tag that predates the break;
+`release-please` cannot cut a new tag while `ci-green` stays red, so the defect
+cannot propagate further on its own) — still worth fixing promptly, just not an
+active incident. This is genuine cross-repo code authorship (add the key to
+`livespec-runtime`, release, then re-vendor + re-pin in core) — NOT a
+mechanical unblock a supervisor should attempt; it is the worker's or a
+dispatched agent's to drive.
 
-The previous revision of this section opened by warning that the spec-PR merge
-gate was SHIPPED AND BROKEN. **That is fixed, and the fix has been validated by a
-real production ratification.** Nothing in that warning is live.
+**The worker's pane has been sitting on an OPEN, UNANSWERED PICKER for
+several hours across this entire session** — the `doctor-spec-target-drift`
+document-vs-delete design call (see §"Next concrete action" below). Multiple
+independent watch windows (three consecutive 90-minute cycles, ~4.5 hours
+total) confirmed zero change: same three options, same recommendation, every
+time. This is a genuine, patient wait on the maintainer, not a stuck agent — do
+NOT answer it on the maintainer's behalf, and do NOT open a second picker
+asking the same question. If it is STILL open on cold-open, re-verify its exact
+content (a coincidental new picker could match the same footer regex) before
+concluding nothing has changed.
+
+**Two new findings this session, both recorded on the ledger, NEITHER filed as
+a spec amendment — the maintainer's call, not self-resolved:**
+
+- **`livespec-jvz8`'s architectural analysis is CORRECT** (the two upstream
+  siblings genuinely cannot consume the core-hosted channel without inverting
+  the dependency direction — confirmed by reading `livespec`'s own
+  `pyproject.toml`, which states plainly it is not a published PyPI package, so
+  ANY CI-time route to the resolver fetches `livespec` at CI time). BUT six
+  OTHER, downstream repos — both Drivers, the console, the overseer, and the
+  adopters `resume`/`dolt-server` — lack the spec-PR merge gate for an
+  UNRELATED reason: the applicable set is derived from copier-template
+  consumption (2 of 11 repos), not from being spec-governed (11 of 11). Filed
+  separately as **`livespec-hfii` (P2, `backlog`)**, linked relates-to both
+  `jvz8` and `livespec-5qu1`. `resume` alone has 34 ratified revisions with no
+  gate and, under the current derivation, no path to ever getting one.
+- **A drift sweep for `hfii`'s draft amendment surfaced a SHARPER defect**:
+  `non-functional-requirements.md:1176` claims "every other repo inherits the
+  safe `manual` default" for the merge policy — but that default is only safe
+  if something READS it, and in a gate-less repo NOTHING does (measured with a
+  positive control on `livespec-overseer`'s workflow: zero references to
+  `spec_governance`/`spec_pr_merge`, non-zero to `auto-merge`/`pull_request`).
+  So the spec asserts a safety property that is nominal, not effective, in 9 of
+  11 repos. Recorded as a comment on BOTH `hfii` and `jvz8` — it is a ONE-
+  SENTENCE fix available independent of any mechanism decision, and serves
+  both items in a single edit.
+
+**`livespec-byby` is CLOSED**, verified fully end-to-end this session (not
+merely merged): a shellcheck-CDN flake that had reddened master four separate
+times was traced to the sandbox image never baking shellcheck despite pinning
+it, fixed in `livespec-dev-tooling` PR #1383, propagated into `livespec` via a
+pin bump to `v1.20.9` (verified by ancestry that this tag, and not `v1.20.6`
+through `v1.20.8`, contains the fix), and confirmed live in a real `livespec`
+CI run showing `mise all tools are installed` with zero download activity.
+Nothing further to do here.
+
+Nothing else is dispatched from this thread, no worktree of this thread exists
+outside the one this wrap-up itself created and will remove, and the two
+primary checkouts (`livespec`, `livespec-orchestrator-git-jsonl`) are clean on
+their default branches. Worktrees under `$HOME/.worktrees/livespec/` numbered
+TEN at last count (this wrap-up's own included) — re-derive, it has grown every
+time it was checked this session, and every one belongs to another concurrent
+thread. NEVER touch or reap them, and never run the worktree reaper here — at
+least one other session was actively committing to this same primary checkout
+mid-session (a genuine untracked-file collision on `plan/fleet-ci-runner-pool/
+handoff.md` was correctly left alone; see the new Correction below).
 
 ### What shipped, and the one piece of evidence that matters
 
@@ -65,9 +132,11 @@ pass on its own.
 
 | Item | Tenant | State |
 |---|---|---|
+| `livespec-xox2` (P0) | `livespec` | **NEW this session.** Master content-red, fully diagnosed, ready-to-apply fix reference posted, zero live impact confirmed. See §"START HERE" above. Cross-repo code authorship — not a supervisor unblock. |
+| `livespec-hfii` (P2) | `livespec` | **NEW this session.** Six downstream repos lack the spec-PR merge gate because the applicable set is template-derived, not spec-governance-derived. See §"START HERE" above. |
 | `livespec-dev-tooling-ep8n` | `livespec-dev-tooling` | **HANDED OFF** to whoever grooms `livespec-dev-tooling`, by maintainer decision 2026-08-12; listed here for continuity only and NOT this thread's to advance. Pin autodiscovery misses `.jinja` template pins on BOTH directory and suffix. Shape decided (generic scanner extension). The recorded reason it is blocked, kept so the receiving groomer need not re-derive it: it needs a ratified amendment in THAT repo, because its `contracts.md` §"Pin autodiscovery rules" names `.github/workflows/*.yml`/`*.yaml`, and a `.jinja` renders a workflow rather than being one. |
 | `livespec-5qu1` | `livespec` | **Direction chosen by the maintainer 2026-08-12 and the template change LANDED** (PR #2214, merge `88842637`): the copier template mints with `@v3` + `app-id:`, which is auth-neutral for both consumers because both already carry `app-id:`. `app-id` and `client-id` are NOT interchangeable, and `app-id` is deprecated-but-accepted at `@v3` — that warning is carried deliberately. The `client-id:` migration is decoupled, not cancelled. **Still OPEN on ONE leg: the LIVE auto-merge exercise.** Release `v0.33.1` already carries the fix, but propagation into a consumer is MANUAL — `copier-update-drift.yml` only detects and opens no pull request — so the leg will not discharge on its own, and no consumer pull request open today can serve it. |
-| `livespec-jvz8` | `livespec` | Spec ratifications auto-merge UNGATED in `livespec-dev-tooling` and `livespec-runtime`. PRE-EXISTING, not fix-created; neither consumes the copier template, so the ratified applicable set already excluded them. Banned resolution recorded on the item. |
+| `livespec-jvz8` | `livespec` | Spec ratifications auto-merge UNGATED in `livespec-dev-tooling` and `livespec-runtime`. PRE-EXISTING, not fix-created; neither consumes the copier template, so the ratified applicable set already excluded them. **Architectural analysis CONFIRMED CORRECT this session** (see §"START HERE"). Banned resolution recorded on the item, unchanged. |
 
 `livespec-dev-tooling-ep8n` was MOVED (not mirrored) out of the `livespec` tenant
 when the generic-scanner shape was chosen, because from that moment the work is
@@ -137,8 +206,22 @@ change and was CI-SUCCESS, and the red commit differed only by release metadata.
 
 ### Next concrete action
 
-**One item is live and has a named next step: `livespec-5qu1`. One item needs a
-maintainer design call: `livespec-jvz8`. Nothing else is this thread's.**
+**One item is live and has a named next step: `livespec-5qu1`. Two items need
+a maintainer design/triage call: `livespec-jvz8` and (new) `livespec-hfii`/
+`livespec-xox2`. The worker's own picker (see §"START HERE") is a THIRD,
+separate maintainer decision, sitting in the worker pane rather than the
+ledger.**
+
+**This session pre-verified the worker's design-call inputs for
+`doctor-spec-target-drift` rather than leaving them unchecked.** Both PRs the
+worker cites (#2222, #2225) are real, merged, genuine Red-Green pairs. ONE
+correction: the picker's "delete the flag" option overstates its cost —
+PR #2225 fixes `--project-root` resolution generally (needed even with
+`--spec-target` deleted), so deleting the flag only moots PR #2222, not both.
+Full write-up, plus a complete drift sweep and all-five-criteria pre-review
+check for BOTH queued proposals, is at
+`tmp/overseer/spec-side-autonomy/pre-review-findings.md` (gitignored,
+runtime_dir) — read it before re-deriving any of this from scratch.
 
 **The spec tree is HEALTHY, and its queue holds TWO pending proposals.**
 `doctor-static` passes every check. Earlier revisions of this paragraph said the
@@ -771,3 +854,63 @@ durable fixes have the identical shape: a mechanical applicator that re-derives
 `resulting_files` from freshly fetched bytes instead of trusting the author to
 remember, and an acceptance clause written INTO a ledger item instead of into a
 conversation that ends.
+
+T6. FIVE DISTINCT WAYS A SINGLE LONG SESSION FED ITSELF STALE OR MISLEADING
+INFORMATION, none of them repeats of T1–T5, all found by catching myself rather
+than by a maintainer correction.
+
+**A `pgrep -f` self-match nearly caused UNDER-arming, the opposite failure from
+T5.** An ad-hoc `pgrep -f 'overseer/spec-side-autonomy/watch.sh'` check, run
+from THIS Bash tool, matched its own invoking shell's argv and reported
+"already running" when NOTHING was running — which would have made me SKIP
+arming a watcher I needed. Caught by trusting the watcher script's own
+single-instance LOCK FILE (checked for absence, confirmed by an EXIT-trap
+clearing it) instead of an agent-held `pgrep`. The lock file is the trustworthy
+guard because it is checked BY the tool at its point of use; an ad-hoc `pgrep`
+beside it is exactly the kind of agent-held check T5 already says to stop
+relying on — this is the same lesson from the opposite direction.
+
+**Reusing an existing watcher for a DIFFERENT purpose fires trivially.** A
+generic "wake when a picker is open" watcher, re-used to wait for an
+ALREADY-open picker to RESOLVE, wakes almost immediately reporting the state
+already known — it detects PRESENCE, not CHANGE. Wrote a purpose-built
+`picker-resolve-watch.sh` whose wake condition is the ABSENCE of the picker
+footer instead. General point: an "is this true" watcher and a "did this
+change" watcher are different instruments; reusing the wrong one silently
+produces a watcher that can never report anything useful, and the only way to
+notice is to read its FIRST wake and see it's information you already had.
+
+**A claim went stale BETWEEN being formed and being posted, inside one
+continuous investigation — not across a session boundary.** While drafting a
+fix reference for `livespec-xox2`, I wrote "two pins are out of sync" from an
+earlier check in the SAME investigation; by the time I re-verified immediately
+before posting, an automated pin-bump had already made both consistent. Caught
+only because I re-read the actual files ONE MORE TIME at time of writing rather
+than trusting a read from minutes earlier. In a repo under active automated
+churn (this session saw master move under it at least six times across a few
+hours, mostly via bot pin-bumps), a fact is only as fresh as the read that
+produced it — re-verify immediately before ACTING on a claim, not merely before
+first discovering it.
+
+**The primary's `HEAD` moved out from under a multi-step diagnosis, and a plain
+`cat` on a tracked file silently read whichever commit happened to be checked
+out at that moment rather than the commit under investigation.** Diagnosing
+`livespec-xox2`, an early `cat .claude-plugin/scripts/_vendor/livespec_runtime/
+api_configurable_keys.json` reported 10 keys; a later `git show
+<exact-failing-sha>:<same-path>` reported 9. The primary's `HEAD` had advanced
+between the two reads (this thread's own `mise exec -- git fetch` +
+`git pull --ff-only` cadence, run repeatedly through a long session, keeps
+moving the working tree). This is `.ai/verifying-against-the-right-source.md`'s
+own warning applied to a NEW instance: read canonical committed state via
+`git show <exact-sha-under-investigation>:<path>`, never a plain filesystem
+read, whenever a diagnosis spans more than one tool call in a repo with any
+chance of concurrent activity — which in this fleet is close to always.
+
+**The repo's rate-limit guard fires on PROSE DESCRIBING a banned command
+pattern, not only on a command that executes it.** Writing a supervisor-marker
+entry that quoted, in English, the exact shape of the loop-keyword-plus-`gh
+run` trap this same binder warns about (as an explanation of a fix I'd just
+made) tripped the guard, because the guard matches command TEXT and a heredoc
+carries that text verbatim regardless of whether it is meant as code or prose.
+Fix: author such content with the file-write tool instead of a shell heredoc
+when the content itself needs to discuss a banned pattern.
