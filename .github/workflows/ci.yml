@@ -441,16 +441,48 @@ jobs:
       # Self-hosted lane only: the self-hosted runner reuses a persistent
       # `_work/<repo>/<repo>` checkout across jobs, unlike the hosted lane's
       # always-fresh clone. On that reused tree, actions/checkout's fetch for
-      # a PR merge ref (`+<merge-sha>:refs/remotes/pull/N/merge`) does not
-      # also re-establish `refs/remotes/origin/*`, even with `fetch-depth: 0`
-      # above — leaving `origin/master` unresolvable and failing
-      # check-red-green-replay's `origin/master..HEAD` range enumeration
-      # (`range base origin/master is not resolvable`). Hosted's fresh clone
-      # never hits this path, so this is a no-op there. Explicit fetch of the
-      # exact ref the check needs, not a change to what the check verifies.
-      - name: Ensure origin/master is fetched (self-hosted reused _work dir)
+      # a PR merge ref is a SHALLOW `--depth=1` fetch of ONLY that one commit
+      # (`+<merge-sha>:refs/remotes/pull/N/merge`), despite `fetch-depth: 0`
+      # above requesting full history. This has TWO distinct symptoms, both
+      # observed live:
+      #
+      # 1. `refs/remotes/origin/*` is never (re-)established, leaving
+      #    `origin/master` unresolvable and failing check-red-green-replay's
+      #    `origin/master..HEAD` range enumeration (`range base origin/master
+      #    is not resolvable`).
+      # 2. On a `pull_request` event, HEAD is a GitHub-synthesized MERGE
+      #    commit with two parents (current master, and the PR branch tip).
+      #    The shallow fetch brings the merge commit's OWN object (parent
+      #    SHAs included in its header), but never fetches the PR branch
+      #    tip's own commit object. With one parent locally absent, git
+      #    cannot walk that side of the graph — so `git rev-list --no-merges
+      #    origin/master..HEAD` (which red_green_replay.py uses) treats the
+      #    merge commit as if it were NOT a merge and lists it in the range,
+      #    misreporting a "commits touching product impl .py without a valid
+      #    TDD trailer shape" violation for a commit that introduced no such
+      #    diff at all — reproduced locally: `git cat-file -p <merge-sha>`
+      #    shows two parents in the header, but `git cat-file -t
+      #    <pr-branch-tip-sha>` fails ("could not get object info") until the
+      #    repo is unshallowed.
+      #
+      # `git fetch --unshallow` fixes BOTH: it fetches full history for the
+      # remote's configured refspec (which resolves `origin/master`) AND
+      # brings in every object the shallow boundary elided (which resolves
+      # the merge commit's absent parent). The explicit `origin master` fetch
+      # is kept as a belt-and-suspenders fallback in case a differently
+      # configured checkout's default refspec ever doesn't cover master.
+      # `--unshallow` errors on an already-complete repository, so it is
+      # guarded by `--is-shallow-repository`. Hosted's fresh, always-shallow
+      # -free clone never hits either symptom, so this step is a cheap no-op
+      # there (the guard short-circuits, and the explicit fetch is idempotent
+      # on an already-current `origin/master`).
+      - name: Ensure full history is available (self-hosted reused _work dir)
         if: env.LIVESPEC_CI_LANE == 'local'
-        run: git fetch origin master:refs/remotes/origin/master
+        run: |
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --unshallow origin
+          fi
+          git fetch origin master:refs/remotes/origin/master
 
       # The cross-repo wiring-completeness invariant (run inside
       # check-doctor-static) walks every registered sibling repo and
