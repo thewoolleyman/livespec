@@ -490,107 +490,160 @@ echo "WAKE: PR watcher ceiling reached — still OPEN, RE-ARM NOW"
 
 ## Resume state — POINTERS ONLY, re-measure every one
 
-Written at session wrap 2026-08-12T09:2xZ. These are pointers to things that
+Written at session wrap 2026-08-13T03:0xZ. These are pointers to things that
 existed then, NOT status. Re-measure each with the commands above before acting.
 The supervisor marker the cold-open block reads carries the detail this section
 deliberately does not duplicate.
 
-**NOTHING IS IN FLIGHT ON A SANDBOX OR A SUB-AGENT.** Every background task this
-seat started was stopped at wrap. Two tracks are parked at clean points and one
-maintainer-authorized investigation is open.
+**NOTHING IS IN FLIGHT ON A SANDBOX OR A SUB-AGENT.** Every background task,
+monitor, review sub-agent and dispatch chain this seat started was stopped at
+wrap, and the one abandoned container it owned was stopped explicitly.
 
 ### THE IMMEDIATE NEXT ACTION
 
-Hand `overseer-pfpfty.10` to the worker. It is FILED and READY and has never been
-briefed — it is the round-5 amendment clearing three round-4 review blockers, and
-its notes carry the required fix for each. It is HOST-ONLY in practice: the
-authoritative 565-line verdict is tracked at
-`plan/planning-lane-redesign/research/review-pfpfty-proposal-round4.md` in
-repository `livespec`, but the item's own working context exceeds the factory's
-unattended-turn size band. Brief the worker; do not dispatch it.
+Re-dispatch `overseer-pfpfty.4` in repository `livespec-overseer`. It is the
+last implementation slice of that epic and it is `pending-approval`,
+dependency-clear, and reset clean (no surviving remote branch).
+
+Resolve the orchestrator plugin root by matching `projectPath`, never by picking
+the newest-looking cache directory:
+
+```sh
+B=$(python3 - <<'PY'
+import json
+d = json.load(open("/home/ubuntu/.claude/plugins/installed_plugins.json"))
+key = "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro"
+hit = [e for e in d["plugins"][key] if e.get("projectPath") == "/data/projects/livespec-overseer"]
+print(hit[0]["installPath"] if hit else "")
+PY
+)
+[ -n "$B" ] || { echo "HALT: no install record for that projectPath — run 'just ensure-plugins' inside /data/projects/livespec-overseer first"; exit 1; }
+/usr/local/bin/with-livespec-env.sh -- python3 "$B/scripts/bin/drive.py" \
+  --repo /data/projects/livespec-overseer --action impl:overseer-pfpfty.4 --json
+```
+
+That re-resolution is correction T12: the install record is PER-projectPath, a
+release cut stales it, and the stale absolute path is exactly what a handoff
+would otherwise freeze in. Note the value under that key is a LIST — 14 records
+at wrap, one per governed project, carrying DIFFERENT `installPath` versions — so
+taking `[0]` or the newest directory hands you another repo's build. Filter on
+`projectPath`. This snippet was executed before being written down; an earlier
+draft that indexed the key as a dict raised `AttributeError` and resolved to an
+empty string, which the `[ -n "$B" ]` guard exists to catch.
+
+Run `just ensure-plugins` inside the target repo BEFORE dispatching — pre-empting
+the currency gate costs seconds and removes a whole failure mode.
+
+**The dispatcher REFUSES pre-launch on a red master.** Check
+`gh run list --workflow CI --branch master --status completed --limit 1` first —
+and note `--status completed`, because a queued run answers no health question.
+
+**IT FAILED ONCE ALREADY, on infrastructure, not content.** Fabro run
+`01KZWA3RN5PT5V78CWGRWBEX7A`: the Implement stage died TWICE with `ACP turn
+failed: ACP protocol error`, beside the run's own note that ACP stages receive
+workflow env at process launch and `[github_token_refresh_limited]`. It then hit
+an interactive `Needs human: [R]etry / [I]mplement / [A]bandon` prompt that got
+no answer. It published NOTHING — `git ls-remote` showed no branch, with a
+positive control confirming 15 heads exist — which is why resetting it was safe
+where resetting `.9` would have been destructive (correction T17).
+
+**If a second sandbox attempt fails the same way, do NOT send a third.** `.4` is
+the largest slice in the cut: sixteen files across two byte-identical trees plus
+Red-Green-Replay. Route it to a host worker with real context, or take the
+maintainer's decision. That choice was surfaced to them and not answered before
+wrap.
 
 ### The overseer track — `overseer-pfpfty` in repository `livespec-overseer`
 
-`.1`, `.6`, `.8` CLOSED. `.2` (ratification, human valve) is `blocked` and now
-depends on `.1 .6 .8 .9 .10`. `.9` is `pending-approval`; `.10` is `open`; `.7`
-is `backlog` and correctly gated on `.2`; `.3/.4/.5` are `pending-approval`
-behind `.2`.
+**RATIFIED. `SPECIFICATION/history/v012` is on master** (PR #863, merge
+`ae4ec75037`), and `overseer-pfpfty.2`, the human valve, is CLOSED. **Nine of
+eleven children are closed.** Only `.4` (above) and `.5` remain; `.5` is the
+residual rename sweep and is gated on `{.3,.4}`, so `.4` releases it.
 
-**THE REVIEW HAS RUN THREE ROUNDS AND IS CONVERGING, NOT THRASHING.** Round 1
-returned 6 blockers (Opus), round 2 returned 4 (Opus), round 4 returned 3
-(Fable 5, the model `AGENTS.md` requires). Every round's new findings sat in the
-PREVIOUS round's fix text, and each round re-derived the earlier clearances as
-holding. All three verdicts are TRACKED on `livespec` master under
-`plan/planning-lane-redesign/research/review-pfpfty-proposal-round{1,2,4}.md` —
-they are no longer gitignored and cannot be lost to a scratch sweep.
+**THE ATTESTATION IS GENUINE AND VERIFIED ON MASTER**, which is the thing this
+plan spent five review rounds protecting: `separate_reviewer: True`,
+`reviewer_model: fable`, `verdict: NO BLOCKERS`, `reviewed_at`
+`2026-08-12T23:43:00Z` versus `revised_at` `2026-08-13T00:39:03Z` — a **56m 03s**
+gap, against the same-second pair that exposed the minted attestation in
+correction T1. The per-round history lives in the revision's Rationale because no
+blanket value is honest: rounds 1 and 2 Opus 5 under maintainer-authorized
+one-off deviations, round 4 and round 5 plus its delta by Fable 5. This repo
+configures NO `ratification_reviewer_model`, so the CLI would have accepted
+`opus` just as readily — nothing mechanical protected that field.
 
-**A round-5 review is owed once `.10` lands, and the reviewer question recurs.**
-The worker cannot review an amendment it authored. The maintainer's Opus
-authorizations were each scoped to ONE round; round 4 returned to Fable
-deliberately. Ask again rather than assuming.
+**FIVE ROUNDS, CONVERGING: 6 blockers, then 4, then 3, then 1, then NONE.** All
+five verdicts are TRACKED on `livespec` master under
+`plan/planning-lane-redesign/research/review-pfpfty-proposal-round{1,2,4,5}.md`
+plus `-round5-delta.md`. Round 5's single blocker — an orphaned "the one bounded
+existence probe stated above" referent that would have ratified a
+self-contradictory spec — was missed by all four prior rounds and found ONLY by
+simulating the applied result.
 
-**THE ATTESTATION RULE, and it is the one a CLI cannot catch:** the ratification
-record names the model PER ROUND — rounds 1 and 2 Opus 5, round 4 Fable 5. NO
-blanket value is honest for this history. Round 4's blocker 3 exists because the
-proposal's own "MUST read `reviewer_model: opus`, never `fable`" EXPIRED the
-moment a Fable round was commissioned, and followed literally would now mandate a
-false attestation about the very review the accept gates on.
+### `.4` and `.7` EDIT THE SAME FILES AND THE LEDGER DOES NOT KNOW
 
-### The orchestrator track — `bd-ib-mrqoy2` in repository `livespec-orchestrator-beads-fabro`
+`.7` (merged, PR #865, merge `c21baf04db`) touched `_supervisor_prompts.py` and
+`_supervisor_restart.py` in BOTH trees. `.4`'s description names those same two
+modules. **There is no dependency edge between them.** They never overlapped only
+because `.4`'s dispatch failed before `.7` was sent. `.7` merging discharges it —
+`.4` will now branch from a base containing those edits — but if `.4` is ever
+re-cut into parallel pieces, `comm -12` the file sets first (correction T10).
 
-Seven of eight children CLOSED. Only `.6` remains, and it is HALF DONE: its
-DOC-ONLY prose half MERGED as PR #1363, merge `3cd4dde2`. The item is `ready`.
+### The orchestrator track — `bd-ib-mrqoy2` — is DONE
 
-**The deferred `.py` half is SIX lines, not the two an earlier note of mine
-said** — `_needs_attention_handoffs.py:39`, `test_needs_attention.py:256`, and
-`commands/plan.py:1,38,68,78`, the last including a SECOND shipped operator
-string. Re-enumerate again rather than trusting that list either; the item's own
-description says to.
+**All eight children closed; the epic is CLOSED as a PARTIAL.** Its final clause
+("zero live retired-vocabulary occurrences outside frozen trees") is NOT met:
+eleven remain, all in that repo's own `plan/<topic>/` working documents, none in
+shipped Python or `SPECIFICATION/`. Transferred to `bd-ib-il6n` (P3) with all
+eleven classified into three classes needing DIFFERENT handling — one stale
+GENERATED binder, four VERBATIM QUOTATIONS of historical records whose rewriting
+would falsify them, five ordinary sweepable lines. The epic's closing clause was
+simply broader than any slice's scope: a grooming gap, not an execution gap.
 
-**It is blocked by `check-master-ci-green` whenever that repo's master CI is
-red**, because the gate sits in the COMMIT path — see correction T14 for the
-scope clause that made the doc-only half landable anyway. Do not weaken, lever,
-or exempt that gate.
+### `livespec-zsn2xh` — 7 of 8, and `.5` now has the gate it always needed
 
-### `livespec-ck8c` — nine occurrences, and the diagnosis moved
+`.5` is `pending-approval`. Closing `bd-ib-mrqoy2` left it with NO remaining
+non-local gate, and in this tenant `auto_approve_ready` is true — so a dispatcher
+pass could have run it. **That would have been destructive:** `.5` DELETES
+`plan/<topic>/handoff.md` and `supervisor-handoff.md`, and the `livespec-overseer`
+respawn/injection template still points at `handoff.md` until `.4` lands. A
+second typed `non_local_depends_on` entry on `overseer-pfpfty` was added and
+verified. **Do not remove it to parallelize.**
 
-The maintainer authorized fixing the CI dependency-install step. **Confirm the
-hypothesis before spending that fix.** Occurrence nine was
-`tls: failed to verify certificate: x509: certificate is not valid for any
-names, but wanted to match api.github.com`, from the auto-merge automation — a
-certificate valid for NO name, beside git-side failures reporting
-`CAfile: none CRLfile: none`. Both are consistent with TLS INTERCEPTION on the
-runner network, which neither a wheel cache nor a retry policy would fix. The
-container-cache finding recorded on the item explains the pythonhosted TIMEOUT
-cluster and the frequency; it does not explain the certificate class. Full
-evidence, both symptom tallies, and the reframing are on the item.
+Note also that `overseer-pfpfty.9`'s new `_registry_epic.py` READS
+`plan/<topic>/handoff.md` as its anchor source and FAILS SOFT to `None`. Whoever
+executes `.5` must re-point that reader first, or assignment-time epic population
+breaks SILENTLY rather than loudly.
 
-### Ledger corrections this seat made and verified — do not re-litigate
+### `livespec-dev-tooling-jaut4y` — 1 of 3
 
-Round 4 falsified two claims this seat wrote when the `.9` split was authorized:
-that population happens "at the moment a track is discovered/assigned" (discovery
-is the DAEMON's act, which the proposal expressly bars from the anchor), and that
-it "contradicts no clause of the CURRENT spec" (the live persisted-facts
-ONLY-enumeration excludes a populated epic id — proven by the proposal's own
-EDIT 4 adding it). BOTH ARE CORRECTED in `.9`'s description and `.2`'s comment.
-The `.9`-first ORDER still stands; only the argument was wrong. The sharpened
-consequence: the accept must follow `.9` IMMEDIATELY or land with it, because a
-doctor pass in the gap would legitimately flag the populated epic.
+`.1` merged (PR #1372) and is closed; the `.ai/supervisor-protocol.md`
+`## Corrections` block was verified byte-identical across it. `.2` and `.3` are
+`backlog`, zero deps, no cross-repo gates — genuinely available work. `.3`
+renames the canonical check modules, which must originate in
+`livespec-dev-tooling` because consumers cannot rename fan-out-stamped slugs.
+
+### Owed cleanup this seat did not finish
+
+- **PR #2243 in repository `livespec`** (preserving the round-5 delta verdict) was
+  OPEN with auto-merge armed and a re-run queued. Its worktree
+  `~/.worktrees/livespec/preserve-round5-delta` and branch `preserve-round5-delta`
+  are still present — remove them once it merges.
+- A fabro container `fabro-run-01KZW7EEWN8138TDAES849KZ3W` is running and is NOT
+  attributable to this session (checked against every dispatch log). Left alone.
 
 ### Environment notes
 
-- `/data/projects/livespec-overseer` is ~28 commits behind and CANNOT be
-  refreshed: `.livespec.jsonc` and two `plan/*/handoff.md` files are other live
-  sessions' uncommitted work. Do NOT force it — that would discard two handoffs.
-  Branch worktrees from `origin/master` directly; this blocks nothing.
-- `overseer-pfpfty.9` and `.7` were filed via `bd create`, which defaults to
-  `open` and normalizes to `backlog` — outside the ready queue. `.9` was set to
-  `pending-approval` to match its siblings. Check filed status before assuming an
-  item is runnable.
-- Other lanes land in `livespec-overseer` and
-  `livespec-orchestrator-beads-fabro` continuously. Master moved under this
-  plan's work repeatedly, once invalidating four line-number citations in the
-  proposal. Re-pin and re-derive.
+- **The `livespec-ck8c` network fault is the dominant operational fact.** It hit
+  FIVE repositories tonight, always at `mise trust + install` fetching shellcheck
+  from GitHub releases, with `connection closed before message completed`. It
+  reddens master on nearly EVERY merge, and a red master blocks the next dispatch
+  pre-launch — so the loop is merge → red → blocked → re-run → dispatch. Budget
+  several re-run rounds; it clears a few jobs at a time.
+- `/data/projects/livespec-overseer` was dirty and 55 behind at cold open and was
+  cleaned by another session mid-run. Re-measure rather than assuming either state.
+- The worker session ended this seat at ~28% context. It has done excellent work
+  and has caught two of this seat's own errors; consider whether it needs a
+  `/clear` before a large slice.
 
 ## Corrections
 
@@ -925,3 +978,129 @@ have vanished, and **what is now adjacent that was never adjacent before.** Only
 simulating the applied result answers the third. Any round that reports clean
 without simulating has not checked the class that produced most of this
 proposal's findings.
+
+
+T19. I OVERRULED A CORRECT REVIEWER FINDING WITH A CLASSIFIER POINTED AT THE
+WRONG OBJECT, AND THE THING IT GUARDED WAS ALREADY IN A SANDBOX. The round-5
+reviewer flagged stale "discovery/assignment pass" wording in
+`overseer-pfpfty.9`'s acceptance criteria. I checked the TOP-LEVEL
+`acceptance_criteria` key (absent, `None`) and the `notes` field (where that text
+genuinely IS a correction narrative quoting the old wording), and from those two
+readings concluded the schema had no such field anywhere. I told the reviewer so.
+It accepted my correction and filed it as a lesson within two minutes.
+
+I WAS WRONG. The field exists at `metadata.acceptance_criteria`, one level down,
+and its value was live criterion prose: "...has a non-null `epic` in its
+mapping-store row after a discovery/assignment pass...". That is correction T2's
+shape — a checkable criterion contradicting a description that expressly bars the
+daemon from the anchor — and T2 records that an agent given such a pair satisfies
+the CHECKABLE one. `.9` was building in a sandbox at that moment.
+
+THE REPAIR HAD ITS OWN TRAP: `bd update <id> --acceptance "<text>"` printed
+`✓ Updated issue` and changed NOTHING; it does not write the nested field. Only
+`--metadata @file.json` with the full dict did, preserving the sibling `rank` key.
+I caught it solely by re-reading the value. **Never accept a ledger write's
+success line as evidence the field changed.**
+
+TWO THINGS. "Classify by position, not by substring" is right and is WORTHLESS if
+you classify the wrong object — prove the reader reaches the region you mean
+before trusting what it says about that region (protocol C5, applied to a ledger
+record rather than a pane). And an incorrect correction from the seat with
+authority propagates faster than the error it purports to fix: I had to retract it
+explicitly, because the reviewer had already adopted it.
+
+T20. A PROSE ORDERING CONSTRAINT IS NOT A GATE, AND CLOSING A BLOCKER SILENTLY
+RELEASED ONE. `livespec-zsn2xh.5` recorded exactly ONE cross-repo dependency, on
+`bd-ib-mrqoy2`. When I closed that epic, `.5` was left with no remaining non-local
+gate — and this tenant sets `auto_approve_ready: true`, so the next dispatcher
+pass could have taken it.
+
+`.5` DELETES `plan/<topic>/handoff.md` and `supervisor-handoff.md`, while the
+`livespec-overseer` respawn/injection template still points at `handoff.md`. The
+design record had always said `.5` is ORDERED BEHIND `overseer-pfpfty` — but that
+ordering lived ONLY in this binder's prose. Nothing mechanical remembered it, so
+the moment its one recorded blocker closed, the constraint evaporated.
+
+Fixed by adding a second typed `non_local_depends_on` entry on `overseer-pfpfty`,
+verified by re-reading. **Every "X is ordered behind Y" sentence in a plan
+document should be checked against the ledger**, because prose does not gate.
+And `dependency_count: 0` proves nothing for a cross-repo item — those edges ride
+in metadata, so beads reports 0 for them, which is precisely the reading that made
+this item look ready.
+
+T21. I WROTE AN INSTRUCTION THAT WOULD HAVE MADE A GATE VACUOUS, AND THE WORKER
+REFUSED IT. `overseer-pfpfty.3`'s description said to "regenerate the
+cached-prose-* test fixtures", and I copied that into the brief. Those two files
+are FROZEN vendored copies of past RELEASED prose generations, content-addressed
+in their own filenames and md5-pinned in a `_GENERATIONS` table against release
+versions and commit SHAs. The test module says outright: "A pin belongs on a
+FROZEN artifact; the working tree is not one."
+
+Regenerating them would have falsified what those releases shipped AND made the
+stale-cache test compare the new prose against itself — a check that can no longer
+fail. It also contradicted the brief's OWN constraint that historical fixtures stay
+byte-untouched. The description asked for two incompatible things; the worker
+halted and surfaced it instead of satisfying the checkable one.
+
+WHAT HAPPENED INSTEAD IS THE SUBTLE PART, and it is not the deviation it
+resembles: a THIRD fixture was added, `cached-prose-e793c257.md`, which is the
+PRE-change prose frozen at the moment the slice rewrote it. It is required because
+`exemplar-supervisor-handoff.md` pins that exact md5 and a provenance test
+resolves the pin against a real frozen artifact. So the new fixture PRESERVES a
+discriminating check, which is the exact opposite of what regenerating the old two
+would have done. "Leave the frozen records alone" and "freeze the outgoing
+generation" are different acts, and only one of them was in my instruction.
+
+T22. THE NETWORK FAULT IS AN OPERATIONAL LOOP, NOT A NUISANCE, AND THE RUN-LEVEL
+VERDICT LIES ABOUT IT. `livespec-ck8c` hit FIVE repositories in one session, always
+at the `mise trust + install` step fetching shellcheck from GitHub RELEASES with
+`connection closed before message completed` — a fifth endpoint kind, and the first
+UPSTREAM of any Python dependency step, so the dependency-install fix that was
+authorized would not have prevented a single one of them.
+
+THE LOOP: every merge triggers a master run, the run flakes, master goes red, and
+the dispatcher then REFUSES the next dispatch pre-launch. Landing work is what
+breaks the ability to land the next work. It cost several cycles here.
+
+THREE MEASUREMENT RULES, each paid for. Read PER-JOB states, never the run
+conclusion — a run conclusion reflects its WORST attempt, and it read `failure` on
+two repos while nine of ten jobs had gone green. Budget MORE THAN ONE re-run: it
+clears a few jobs per round (10 → 2 → 1). And `gh run rerun --failed` prints
+NOTHING on success, so its exit status is not evidence the re-run happened —
+check the run status.
+
+THE DIAGNOSTIC THAT WORKS: N unrelated checks failing at once is a network fault
+until proven otherwise, because a real defect cannot reach ten unrelated checks
+simultaneously. But confirm it by READING A LOG, every time. `check-heading-coverage`
+failing on a spec change, and `check-handoff-dispatch-routing` failing on a
+ratification that retires handoff authorship, both look exactly like genuine
+content defects. Neither had executed.
+
+T23. TWO SLICES EDITED THE SAME FILES WITH NO EDGE BETWEEN THEM, AND ONLY AN
+UNRELATED FAILURE KEPT ME FROM REPEATING T10. `overseer-pfpfty.7` touched
+`_supervisor_prompts.py` and `_supervisor_restart.py` in BOTH trees; `.4`'s
+description names those same two modules. Neither depends on the other, so the
+ledger regards them as parallel-safe. It is wrong, and a groom that layers by
+LOGICAL dependency will keep producing this: same-file coupling is invisible to a
+dependency graph built from "what must happen first".
+
+They never overlapped only because `.4`'s dispatch died on an ACP protocol error
+before `.7` was sent. Had it succeeded I would have reproduced correction T10
+verbatim — having written the warning about it into a ledger comment an hour
+earlier. A rule you can recite and still walk into is a rule you are not
+mechanically applying: `comm -12` the two file sets, every time two go out
+together.
+
+T24. THE SAME `failed` VERDICT MEANT OPPOSITE THINGS TWICE IN ONE HOUR, AND ONLY
+THE FORGE DISTINGUISHED THEM. `overseer-pfpfty.9`, `.7` and `.4` all reported
+`status=failed`. `.9` and `.7` had PUBLISHED complete work with PR heads EQUAL to
+their remote branch tips, blocked only by the network fault — resetting either
+would have invited a second sandbox onto an existing branch, the non-fast-forward
+death of correction T11. `.4` published NOTHING, confirmed by `git ls-remote` with
+a positive control showing 15 heads exist — so reset-and-redispatch was correct
+there, and only there.
+
+That is three instances of T11 and two of T17 inside one session. The test remains
+"did anything reach the forge", never "did the dispatcher say failed" — and the
+dispatcher's own `pr_number` field is the cheapest first discriminator: null means
+look for a branch, non-null means read the PR before touching the item.
