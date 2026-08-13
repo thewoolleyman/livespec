@@ -63,6 +63,23 @@ name: CI
 env:
   UV_HTTP_RETRIES: "5"
   MISE_HTTP_RETRIES: "5"
+  # uv's own concurrent-downloads default is 50 in-flight fetches PER `uv
+  # sync` invocation (docs.astral.sh/uv/reference/settings/#concurrent-downloads).
+  # The self-hosted pool runs up to 50 job slots concurrently on ONE host,
+  # so a cold-cache moment (fresh slots, or a lockfile bump) can open up to
+  # 50 x 50 = 2500 simultaneous connections to files.pythonhosted.org from a
+  # single shared uplink -- the plausible cause of the "operation timed
+  # out" PyPI fetch failures observed live-firing gating CI on the pool
+  # (plan/fleet-ci-runner-pool/handoff.md, Issue A), which persisted even
+  # with UV_HTTP_RETRIES already raised. Capping per-job concurrency on the
+  # self-hosted lane trades a little per-job fetch latency for bounding the
+  # HOST-WIDE aggregate connection count; the hosted lane's fully-isolated,
+  # independent-network-path runners never see this contention, so it stays
+  # at uv's own default there. UV_HTTP_TIMEOUT is bumped alongside it on the
+  # self-hosted lane, since a still-congested transfer is more likely to
+  # need longer than the 30s default even at reduced concurrency.
+  UV_CONCURRENT_DOWNLOADS: ${{ contains(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]', 'ubuntu') && '50' || '4' }}
+  UV_HTTP_TIMEOUT: ${{ contains(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]', 'ubuntu') && '30' || '60' }}
   # The plugin-currency staleness gate's severity lever (design D2,
   # plan/fleet-plugin-currency/research/design.md): the _bootstrap.py gate
   # warns on an UNDETERMINABLE currency locally, but CI fails hard on it —
