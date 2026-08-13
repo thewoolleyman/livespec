@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.33.5](https://github.com/thewoolleyman/livespec/compare/v0.33.4...v0.33.5) (2026-08-13)
+
+
+### Bug Fixes
+
+* **ci:** cap uv concurrent downloads on the self-hosted lane ([bc97fb9](https://github.com/thewoolleyman/livespec/commit/bc97fb919ff5601447e36e27c5471619e92b26ae))
+* **ci:** explicitly fetch origin/master on the self-hosted metadata lane ([e9769f8](https://github.com/thewoolleyman/livespec/commit/e9769f8e53a2c5b26bbb910066bfc41477eb47b7))
+* **ci:** unshallow the self-hosted metadata lane, not just origin/master ([b5a28f2](https://github.com/thewoolleyman/livespec/commit/b5a28f206f3c6953a314e9655741c1694c1bc119))
+
 ## [0.33.4](https://github.com/thewoolleyman/livespec/compare/v0.33.3...v0.33.4) (2026-08-13)
 
 
