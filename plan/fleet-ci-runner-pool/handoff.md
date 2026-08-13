@@ -221,10 +221,9 @@ The section below records how a three-layer container blocker was found and
 fixed. It is retained because the debugging method (bisect by environment, read
 the FIRST failure not the loudest) generalizes, and because the eliminated/not-
 eliminated distinctions cost real time to establish. **The blocker itself is
-closed** — `livespec-dev-tooling` PR #1376 (merged) and #1378 (open, auto-merge
-armed, already deployed to the host) fix all three layers, and a real
-containerized job passed every step on the pool
-(`poweredge-container-proof-2` run 31666955395, slot 9).
+closed** — `livespec-dev-tooling` PR #1376 (MERGED) and #1378 (MERGED, deployed
+to the host) fix all three layers, and a real containerized job passed every
+step on the pool (`poweredge-container-proof-2` run 31666955395, slot 9).
 
 All three steps below are DONE — kept as a record of what "done" required, since
 the same shape (fix on master, deploy to host, prove with a real job) applies to
@@ -234,13 +233,13 @@ every future dockershim change:
    deployed via `scp` + `install -m 0755` directly (re-provisioning would have
    worked too, but the box was mid-diagnosis and a targeted copy proved each
    fix immediately without a full re-provision cycle).
-2. ~~Set `CI_RUNNER_LABELS`...~~ Done for `livespec` — see "`livespec` is live"
-   above.
-3. ~~Confirm green, then prove the hosted fallback...~~ Confirmed for the
-   throwaway proof workflow AND for a real gating PR; hosted-fallback proof
-   (unset the variable, confirm hosted capacity picks the job back up) is
-   NOT yet done for `livespec` — do this before or alongside the fleet-wide
-   rollout above, since it is cheap and closes a real gap.
+2. ~~Set `CI_RUNNER_LABELS`...~~ Done for `livespec` (repeatedly, and reverted
+   again pending Issues A/B) — see "`livespec`'s pool DOES schedule and run
+   real gating work" above.
+3. ~~Confirm green, then prove the hosted fallback...~~ DONE, repeatedly —
+   confirmed for the throwaway proof workflow AND for a real gating PR
+   (three separate self-hosted runs, each followed by a revert-to-hosted that
+   picked the job back up cleanly). See "remaining sequence" 0b.
 
 **Do NOT leave `CI_RUNNER_LABELS` pointed at the pool if a job fails** — jobs do
 not fail on a missing runner, they QUEUE, and every merge then waits on a check
@@ -347,13 +346,19 @@ form, and `DOCKER_HOST`.
 | #2243 | `livespec` | round-5 delta verdict | **MERGED** |
 | #2241 | `livespec` | plan: `cwoolley` + tailnet diagnosis | **MERGED** |
 | #2249 | `livespec` | dependency-fetch retries + hosted uv cache | **MERGED** |
-| #2246 | `livespec` | **this handoff** | open, auto-merge armed |
+| #2246 | `livespec` | round-2 handoff (anchor-declared fix) | **MERGED** |
+| #2252 | `livespec` | **this handoff** (fleet-wide rollout + Issue A/B correction) | open, auto-merge armed — VERIFY it merged; if still open at pickup, the primary checkout's copy of THIS file (already synced to match) is the authority, not #2252's diff |
 | #1374 | `livespec-dev-tooling` | six ci-runner fixes | **MERGED** |
-| #1376 | `livespec-dev-tooling` | **the container-blocker fix** + recovered `9ee31dc` | **MERGED** |
+| #1376 | `livespec-dev-tooling` | scrubbed-environment fix + recovered `9ee31dc` | **MERGED** |
+| #1378 | `livespec-dev-tooling` | bind-source creation + netns-teardown tolerance + HOME-passthrough regression fix | **MERGED, deployed to host** |
+| #1383 | `livespec-dev-tooling` | bake `shellcheck` + retry every image-build fetch | open, auto-merge armed |
+| #1384 | `livespec-dev-tooling` | `MISE_HTTP_RETRIES` fan-out, repo 1 of 8 | **MERGED** |
 | #23 | `tailscale-admin` | tags + grant | **MERGED, applied** |
+| #24 | `tailscale-admin` | assert member→ci-runner SSH reachability (tests-only) | **MERGED** |
 
-Every one of the round-2 PRs was red on the shellcheck flake (trap 2), NOT on
-content; re-running each on hosted capacity cleared them.
+Every one of the round-2 `livespec` PRs (#2241/#2243/#2244/#2245/#2249) was red
+on the shellcheck flake (trap 2), NOT on content; re-running each on hosted
+capacity cleared them.
 
 `livespec-dev-tooling` PR #1376 also recovered commit `9ee31dc`, which had been
 pushed to `fix-linger-race` EIGHT MINUTES AFTER PR #1374 merged and so never
@@ -516,16 +521,30 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
 - `poweredge-container-proof-2` — the throwaway branch/workflow used to prove
   the container-blocker fixes — is STILL PRESENT (`.github/workflows/
   poweredge-container-proof.yml` on branch `poweredge-container-proof-2`).
-  Delete both once `livespec-dev-tooling` PR #1378 is confirmed merged AND the
-  hosted-fallback proof (remaining sequence 0b) is done — it may still be
-  useful for one more regression check before then.
-- Worktrees created this session, not yet cleaned up: `fleet-wide-ci-runner-
-  rollout`, `poweredge-container-proof-2` (livespec); `fix-dockershim-scrubbed-
-  env`, `fix-dockershim-bind-source-dirs`, `bake-shellcheck-and-close-lockstep-
-  gap` (dev-tooling). Also still present from the prior round: `spec-revise-
-  v203`, `plan-supervisor-and-cache`, `plan-ssh-account-cwoolley`, `spec-
-  selfhosted-pool` (livespec), `fix-linger-race` (dev-tooling, ALREADY MERGED —
-  see trap-adjacent note above about confirming a branch's tip is actually on
-  master before reaping it).
+  BOTH conditions for deleting it are now satisfied (#1378 merged, hosted
+  fallback proven) — it was kept ONE more session in case Issues A/B needed a
+  clean, non-gating repro surface. Safe to delete now unless still using it for
+  that.
+- Worktrees created this session, not yet cleaned up (all under
+  `$HOME/.worktrees/<repo>/<branch>`):
+  - `livespec`: `fleet-wide-ci-runner-rollout` (PR #2252, open),
+    `poweredge-container-proof-2` (throwaway, see note above).
+  - `livespec-dev-tooling`: `fix-dockershim-scrubbed-env` (superseded by
+    `fix-dockershim-bind-source-dirs`, MERGED as #1378 — this earlier one can
+    be reaped freely, it was never the merged tip),
+    `fix-dockershim-bind-source-dirs` (PR #1378, MERGED),
+    `bake-shellcheck-and-close-lockstep-gap` (PR #1383, open),
+    `add-mise-http-retries` (PR #1384, MERGED).
+  - Also still present from the PRIOR round, untouched this session:
+    `spec-revise-v203`, `plan-supervisor-and-cache`, `plan-ssh-account-
+    cwoolley`, `spec-selfhosted-pool` (livespec), `fix-linger-race`
+    (dev-tooling, ALREADY MERGED — see trap-adjacent note above about
+    confirming a branch's tip is actually on master before reaping it).
+  - `tailscale-admin`: no worktree left — that repo's branches were created,
+    committed, and cleaned up directly on the primary checkout's branch
+    (no worktree isolation used there); confirm `git -C
+    /data/projects/tailscale-admin status` is clean on `master` if picking
+    this repo back up.
+
   Reap once each branch's PR is confirmed merged — `just reap-stale-worktrees
   <repo> --dry-run` FIRST; the bare form reaps without confirmation.
