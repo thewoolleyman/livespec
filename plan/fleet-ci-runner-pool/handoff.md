@@ -1,15 +1,20 @@
 # Handoff — fleet-ci-runner-pool
 
 **Ledger anchor:** `livespec-s43svm` (plan anchor, `thewoolleyman/livespec`).
-Rewritten 2026-08-13 across five rounds in one continuous session: the
-supervisor going live, the container blocker being root-caused, Issues A and
-B being fixed (surfacing Issue C), and — this round — Issue C and a fourth
-issue (a shallow-fetch merge-commit bug found validating Issue C) ALSO being
-fixed and validated, at which point `CI_RUNNER_LABELS` was kept on
-self-hosted PERMANENTLY for `livespec`. This round also fanned
-`MISE_HTTP_RETRIES` out fleet-wide, installed host observability, filed the
-remaining scope as ledger children, and hit a real external blocker (GitHub
-App installation) on the fleet-wide rollout.
+Rewritten 2026-08-13, round 6, in the same continuous session as rounds 1-5.
+Round 6 (this round), driven by the maintainer's explicit direction, did FOUR
+things: (1) installed the missing GitHub App coverage for the 8th fleet repo
+via the maintainer's own logged-in browser session, (2) chose and executed a
+"full CI-matrix width per repo" slot-allocation strategy (correcting an
+earlier wrong mental model about slots needing a shared/summed cap), (3)
+found and fixed THREE more real infrastructure bugs live (a per-repo
+shallow-fetch bug propagated to 5 more repos, a kernel keyring quota
+ceiling, and a raised dockershim retry bound), and (4) completed the
+fleet-wide rollout for 5 of the 6 remaining self-hosted-eligible repos,
+proven with real green master-push CI on every one. One repo
+(`livespec-console-beads-fabro`) has labels set and slots provisioned but is
+blocked from a live proof by an unrelated, pre-existing gate failure on its
+own master.
 
 > **Why this file exists.** The `plan` operation's prose says it never authors
 > `handoff.md` and that handoffs are ledger comments. That still governs the
@@ -23,813 +28,503 @@ App installation) on the fleet-wide rollout.
 
 ## Read first
 
-1. `plan/fleet-ci-runner-pool/research/design.md` — pool model, label scheme,
-   supervisor, cache tiers, sequencing, homelab handoff.
-2. `SPECIFICATION/non-functional-requirements.md` §"Self-hosted CI runner host
-   requirements" — **v203**, including the three clauses this work added.
-3. `~/workspace/homelab/tmp/fleet-ci-runner-pool-handoff.md` — the homelab
-   handoff. **Not committed to any repo** (maintainer-owned `tmp/`). It predates
-   the supervisor going live and is now substantially stale — trust this file
-   and the ledger over it.
+1. This file, start to finish — it supersedes the round-5 handoff entirely.
+2. `plan/fleet-ci-runner-pool/research/design.md` — pool model, label scheme,
+   supervisor, cache tiers, sequencing, homelab handoff (still accurate;
+   round 6 did not touch cache tiers).
+3. `SPECIFICATION/non-functional-requirements.md` §"Self-hosted CI runner host
+   requirements" (v203).
 4. `.ai/ci-gate-discipline.md` — binds anything touching a merge-blocking gate.
-5. Ledger children `livespec-s43svm.1` (fleet-wide rollout, blocked), `.2`
-   (cache tier 1 relocation), `.3` (local Actions cache), `.4` (Nix store) —
-   the durable record of everything this round scoped but did not finish.
+5. Ledger children `livespec-s43svm.1` (fleet-wide rollout — now MOSTLY DONE,
+   see below), `.2` (cache tier 1 relocation, untouched), `.3` (local Actions
+   cache, untouched), `.4` (Nix store, untouched).
 
 ---
 
 ## State in one sentence
 
-**`livespec` is PERMANENTLY on self-hosted CI routing
-(`CI_RUNNER_LABELS = ["self-hosted","local-ci","poweredge"]`) — a real,
-deliberate, standing decision, not a validation-window flip.** All four
-issues found across rounds 3–5 (Issue A: PyPI timeouts under concurrent `uv
-sync`; Issue B: `origin/master` unresolvable; a shallow-fetch merge-commit
-bug found validating Issue C; Issue C: a podman container-state race) are
-FIXED, MERGED, and VALIDATED — the strongest evidence being FOUR consecutive
-100%-green master-push CI runs on self-hosted after the last fix landed,
-including two full 75-job matrices with zero failures. **The plan's core goal
-for `livespec` itself is DONE.**
+**6 of the 9 livespec fleet repos are now on PERMANENT self-hosted CI
+routing, each proven green on a real self-hosted master-push run**:
+`livespec` (50 slots), `livespec-driver-codex` (67), `livespec-driver-claude`
+(66), `livespec-orchestrator-git-jsonl` (66), `livespec-overseer` (65),
+`livespec-runtime` (64). A 7th (`livespec-console-beads-fabro`, 16 slots) has
+`CI_RUNNER_LABELS` set and its slots provisioned but has NOT been proven live
+— an unrelated pre-existing `check-fork-drift` gate failure on its own
+current master blocks any push there right now (see "console-beads-fabro
+blocker" below). The remaining 2 (`livespec-orchestrator-beads-fabro`,
+`dolt-server`) are DELIBERATELY, PERMANENTLY excluded from self-hosted
+routing by their own repos' documented policies — not gaps, not TODOs.
 
-**What is NOT done, and why:**
-- The other 8 livespec fleet repos still have zero self-hosted capacity.
-  Rolling them out is BLOCKED on a real external dependency (GitHub App
-  installation — see "Named next action"), not on anything this session
-  could have finished. Filed as ledger child `livespec-s43svm.1`.
-- The three cache tiers (per `research/design.md`) are researched but
-  deliberately DEFERRED — tier 1 (warm overlay) touches security-adjacent
-  hook code on the now-production pool; tiers 2 and 3 (local Actions cache,
-  Nix store) are entirely new services needing real architectural decisions,
-  not mechanical fixes. Filed as ledger children `.2`, `.3`, `.4`.
-- `MISE_HTTP_RETRIES` fan-out and host observability ARE done
-  fleet-wide/host-wide this round (see below) — these do NOT block
-  `livespec`'s own self-hosted status, which stands on its own regardless of
-  what happens with the other 8 repos or the cache tiers.
-
----
-
-## Named next action
-
-**Install the `thewoolleyman-ci-runners` GitHub App on the 8 other livespec
-fleet repos — a MAINTAINER action, not something this session or any future
-agent session can do.** Confirmed directly: the CI automation's GitHub token
-returns 403/401 on both `user/installations` and `app/installations` — it has
-no App-management scope at all, and GitHub App installation-to-repo grants
-require the App owner's own web UI or a JWT-authenticated request neither
-this session nor a future one is positioned to make autonomously. This is the
-ONE step gating the fleet-wide rollout — ledger child `livespec-s43svm.1`
-carries the full design (per-repo CI-matrix sizes measured from real CI runs,
-the now-available per-repo slot allocation mechanism, and the exact per-repo
-steps once the App is installed). Once installed, driving the rest of the
-rollout (slots, `CI_RUNNER_LABELS`, verification, proof) is ordinary agent
-work — only the App-installation step itself needs the maintainer.
-
-If the maintainer is unavailable, the next-most-valuable self-directed work
-is ledger child `livespec-s43svm.2` (relocate the warm-cache tier onto the
-dedicated `/var/cache/ci-runner` volume) — see "Cache tiers" below for why it
-was deferred and what it needs.
+**What changed this round vs the round-5 handoff's understanding:**
+- The round-5 handoff's claim that GitHub App installation blocked "7 of 8"
+  repos was WRONG in degree (though right in kind) — 7 of those 8 already had
+  the App installed; only `livespec-overseer` genuinely needed it. Fixed by
+  the maintainer directly via their own browser session (see below).
+- The round-5 handoff's rollout table listed `livespec-orchestrator-beads-fabro`
+  (96-job matrix) as a rollout candidate. It is NOT — its own `ci.yml`
+  documents a deliberate two-trust-tier security boundary against
+  self-hosted routing, discovered live this round. This drops the eligible
+  fleet-wide rollout scope from "8 repos" to "7."
+- The round-5 handoff's Issue-C shallow-fetch fix (`livespec` PR #2261) was
+  assumed fleet-portable. It is NOT automatically fleet-wide — it lives in
+  ONE repo's `ci.yml`, and every other repo needed the exact same fix ported
+  into ITS OWN `ci.yml` individually. Done this round for 5 repos (see
+  below); confirmed NOT needed for a 6th (`console-beads-fabro`, which has no
+  `fetch-depth: 0` checkouts and no `check-red-green-replay` job at all).
+- A THIRD real infrastructure ceiling was found and fixed this round: the
+  Linux kernel's per-UID keyring quota (`kernel.keys.maxkeys`), a fleet-wide
+  (not per-repo) ceiling because every self-hosted container across every
+  repo runs under the single shared `ci-runner` account.
 
 ---
 
-## Issues A, B, the shallow-fetch bug, and Issue C — ALL RESOLVED
+## GitHub App installation — RESOLVED
 
-### Issue A — PyPI download timeouts under concurrent cold `uv sync` — FIXED
+Confirmed directly via `https://github.com/settings/installations/146033367`
+(the `thewoolleyman-ci-runners` App): 7 of the 8 non-`dolt-server` fleet repos
+ALREADY had the App installed (`livespec`, `livespec-orchestrator-git-jsonl`,
+`livespec-dev-tooling`, `livespec-runtime`, `livespec-orchestrator-beads-fabro`,
+`livespec-driver-claude`, `livespec-console-beads-fabro`, `livespec-driver-codex`
+— 8 entries, one of which, `livespec-orchestrator-beads-fabro`, turned out to
+be excluded from routing anyway for the unrelated security reason below). Only
+`livespec-overseer` was genuinely missing App coverage. The maintainer added
+it themselves via their own logged-in Chrome session (browser automation
+driven from a scratch worktree, per the `primary_checkout_playwright_guard.py`
+requirement that Playwright work happen outside the governed primary
+checkout). Confirmed via GitHub's own "Okay, thewoolleyman-ci-runners was
+updated" toast and the installation's repository list.
 
-**Root cause:** uv's own `concurrent-downloads` setting defaults to **50**
-in-flight fetches PER `uv sync` invocation
-(docs.astral.sh/uv/reference/settings/#concurrent-downloads). With up to 50
-self-hosted job slots each cold-syncing at once, that is up to 50 × 50 = 2500
-simultaneous connections to `files.pythonhosted.org` from ONE host's shared
-uplink.
-
-**Fix:** `livespec` PR #2258 caps `UV_CONCURRENT_DOWNLOADS` to `4` and raises
-`UV_HTTP_TIMEOUT` to `60` (from uv's default 30s), scoped to the self-hosted
-(`local`) lane only via the `vars.CI_RUNNER_LABELS`-derived ternary pattern
-already used for `LIVESPEC_CI_LANE` in `.github/workflows/ci.yml`. The hosted
-lane keeps uv's own defaults.
-
-**Validation:** zero PyPI-timeout recurrences across every self-hosted run
-since (well over 400 jobs across rounds 4–5, including four consecutive
-100%-green master-push runs).
-
-**Merged:** `livespec` PR #2258 → `bc97fb9` on master.
-
-### Issue B — `origin/master` unresolvable on a reused self-hosted `_work` dir — FIXED
-
-**Fix:** `livespec` PR #2255 added an explicit
-`git fetch origin master:refs/remotes/origin/master` step in
-`.github/workflows/ci.yml`'s `check-metadata` job, scoped to
-`env.LIVESPEC_CI_LANE == 'local'`. The hosted lane's fresh clone already has
-`origin/master` via `fetch-depth: 0`, so the step no-ops there.
-
-**Merged:** `livespec` PR #2255 → `e9769f8e` on master. Superseded/extended
-by the shallow-fetch fix below, which subsumes this fetch into a fuller
-`--unshallow`.
-
-### Shallow-fetch merge-commit bug — found validating Issue C, FIXED
-
-**Discovered** live-firing self-hosted CI for a genuinely open PR (not a
-post-merge master push) while validating Issue C: `check-red-green-replay`
-failed with a "commits touching product impl `.py` without a valid TDD
-trailer shape" violation naming the PR's own GitHub-synthesized MERGE COMMIT
-as the offender — for a PR whose diff was provably markdown-only.
-
-**Root-caused precisely, not guessed at.** `actions/checkout`'s self-hosted
-fetch for a `pull_request` event is a SHALLOW `--depth=1` fetch of ONLY the
-synthetic merge commit. That commit's header correctly lists both parents
-(current master, and the PR branch tip — confirmed via `git cat-file -p`),
-but the shallow fetch never brings in the PR branch tip's own commit OBJECT
-(confirmed via `git cat-file -t <tip-sha>` failing with "could not get object
-info" until the repo is unshallowed). With one parent locally unreachable,
-`git rev-list --no-merges origin/master..HEAD` — what
-`red_green_replay.py` actually runs — cannot walk that side of the graph and
-misreports the merge commit itself as a plain, non-merge, "violating" commit.
-Reproduced and the fix verified LOCALLY against the real PR's real merge
-commit before ever touching CI, via a scratch shallow clone constructed with
-the exact same fetch invocation `actions/checkout` uses.
-
-**Fix:** `livespec` PR #2261 replaces the narrower Issue B fetch with
-`git fetch --unshallow origin` (guarded by
-`git rev-parse --is-shallow-repository`, since `--unshallow` errors on an
-already-complete repo), which resolves BOTH `origin/master`'s prior
-unresolvability AND this merge-commit-parent gap in one step — confirmed
-locally that `--unshallow` alone (via the remote's default
-`+refs/heads/*:refs/remotes/origin/*` refspec) also re-establishes
-`origin/master`, though the explicit `origin master` fetch is kept as a
-belt-and-suspenders fallback in case a differently configured checkout's
-default refspec ever doesn't cover it.
-
-**Validation:** the exact PR that surfaced the bug re-ran clean (74/75
-success, 1 skip) once this fix landed, with `check-red-green-replay`
-explicitly passing.
-
-**Merged:** `livespec` PR #2261 → part of the round-5 self-hosted chain (see
-"Continuous self-hosted validation" below for the exact commit sequence).
-
-### Issue C — podman container-state race on `exec` — FIXED
-
-**Discovered** in the FIRST self-hosted master-push run after Issues A and B
-landed (commit `bc97fb9`, 71 jobs): 2 jobs (`check-match-keyword-only`,
-`check-no-fmt-directives`) failed with the IDENTICAL signature, on different
-containers/slots:
-```
-Error: syncing container <id> state to update exec session <id>: unmarshalling
-container state JSON: readObjectStart: expect { or n, but found  , error
-found in #0 byte of ...||..., bigger context ...||...
-##[error]Error: The process '/usr/local/lib/ci-runner/dockershim/docker'
-failed with exit code 255
-```
-
-**Root-caused to a genuine, currently-UNFIXED upstream podman bug**, not
-guessed at — traced via podman's own GitHub source (`podman-container-tools/
-podman`, an org rename of `containers/podman`; still resolves via the API).
-`libpod/sqlite_state.go`'s `SQLiteState.UpdateContainer` does:
-```go
-var rawJSON string
-if err := row.Scan(&rawJSON); err != nil {
-    if errors.Is(err, sql.ErrNoRows) {
-        ctr.valid = false
-        return fmt.Errorf("no container with ID %s found in database: %w", ...)
-    }
-}
-newState := new(ContainerState)
-if err := json.Unmarshal([]byte(rawJSON), newState); err != nil {
-    return fmt.Errorf("unmarshalling container %s state JSON: %w", ...)
-}
-```
-When `row.Scan` fails with anything OTHER than `sql.ErrNoRows` (plausibly
-SQLite lock contention from up to 50 concurrent podman CLI processes sharing
-one rootless engine's database — podman's own `_busy_timeout=100000` (100s)
-was added in 2023 specifically for "database is locked" under concurrent
-`podman exec`, confirmed via that fix's own commit message and issue), the
-code does NOT return — it falls through with `rawJSON` still empty, and
-`json.Unmarshal` on an empty string produces exactly the observed error.
-Confirmed still present in podman's `main` branch as of 2026-08-13 — an
-unfixed upstream bug, not something this fix's own scope can patch at the
-source.
-
-**Fix:** `livespec-dev-tooling` PR #1386 adds a bounded retry (up to 3
-attempts) in the dockershim, scoped to `docker exec` calls whose stderr
-matches BOTH lines of the exact error signature — any other failure forwards
-on its first attempt with the real exit status, exactly as before.
-Deliberately did NOT add a lock: the shim's own header explicitly documents
-`exec` as UNLOCKED BY DESIGN (the highest-volume, most latency-sensitive
-operation the shim handles — locking it would serialize the pool's whole
-point), and the corrupting read/write happen entirely inside podman's own
-SQLite layer, a resource this shim's flock has no visibility into regardless.
-
-**Validated:** shellcheck clean; four local scenario tests against a fake
-`docker` binary (fails once then succeeds, exhausts all 3 retries on a
-persistent failure without masking the real exit code, a genuinely different
-error forwards immediately with no retry, and the clean-success path); one
-real single-job containerized run via the throwaway `poweredge-container-
-proof` workflow; then real concurrency via the master-push and PR runs in
-"Continuous self-hosted validation" below.
-
-**Merged:** `livespec-dev-tooling` PR #1386.
-
-### Trap: `auto-enable-merge.yml` fires BEFORE you can hold a PR for self-hosted-only testing
-
-This repo's `.github/workflows/auto-enable-merge.yml` auto-enables
-`gh pr merge --auto --rebase` on ANY PR authored by the allowlisted human
-identity, the moment it opens (watches `opened`/`synchronize`/etc). A PR
-opened while `CI_RUNNER_LABELS` is STILL hosted (e.g. for a hosted sanity
-pass before self-hosted validation) auto-merges as soon as hosted CI goes
-green — regardless of intent to flip the label and validate self-hosted
-first. Multiple PRs this session auto-merged this way before deliberate
-self-hosted validation could be arranged. **To hold a PR open for deliberate
-self-hosted-only testing, apply the `do-not-merge` label at creation time**
-(`gh pr create --label do-not-merge`) — the auto-merge workflow explicitly
-skips labelled PRs, and the label is removable (`gh pr edit --remove-label
-do-not-merge`) once validation completes, after which `gh pr merge --auto
---rebase` picks it up normally.
-
-### Trap: the GitHub Actions jobs API can appear stalled for minutes while the host is genuinely, actively processing
-
-Repeated `gh api .../jobs` polls during rounds 4–5 sometimes showed the EXACT
-SAME completed/in_progress/queued counts across 3–5 consecutive checks,
-which looked like a stuck pool. Direct host inspection
-(`sudo -u ci-runner podman ps -a`, checking container ages) showed containers
-churning normally the whole time. The job-status reporting can lag real
-execution by minutes under this host's current load, especially with ~50
-concurrent slots and multiple simultaneous runs. **Verify a suspected stall
-against the host's own container state (`podman ps -a`, `uptime`, worker
-process counts) before concluding the pool is stuck.**
+**This means the automation PAT's own 403/401 on `user/installations` and
+`app/installations` (still true, re-confirmed this round) was NEVER a
+reliable signal for "is the App installed on repo X" — it only reflects that
+the PAT itself lacks App-management scope, which is a permanent, expected
+property of that token, not a per-repo installation gap.** Future rounds:
+verify actual App coverage via the web UI or a JWT-authenticated call, never
+via the automation PAT's installations endpoints.
 
 ---
 
-## Continuous self-hosted validation — the evidence for "permanent"
+## `livespec-orchestrator-beads-fabro` is PERMANENTLY excluded from self-hosted routing
 
-After every fix above landed, self-hosted routing was exercised
-CONTINUOUSLY — not one deliberate proof run, but every ordinary master push
-and PR that happened to fire during the rest of the session, with zero
-reverts:
+Discovered live while surveying job structures for the width test (NOT a gap
+anyone should try to close). Its `.github/workflows/ci.yml` carries an
+explicit, deliberate comment block:
 
-1. Master-push `bc97fb9` (Issue A's merge, 71 jobs, self-hosted) — 69/71
-   success, 2 failures on Issue C (this run is WHAT discovered Issue C).
-2. Master-push `357bbee6` (an unrelated dependency-bump merge, 73 jobs,
-   self-hosted) — **75/75 success.** First 100%-green full-matrix
-   self-hosted run this plan ever produced.
-3. A real open PR's self-hosted run (validating the Issue C fix) — failed
-   `check-red-green-replay` with the shallow-fetch merge-commit bug (THIS is
-   what discovered that bug — a `pull_request`-event code path round 4's
-   validation, which only ever exercised post-merge master pushes, had never
-   exercised).
-4. The SAME PR, re-run after the shallow-fetch fix landed — **74/75 success,
-   1 skip (`export-telemetry`, expected for a PR event), 0 failures.**
-   `check-red-green-replay` explicitly passed.
-5. Master-push `b5a28f2` (the PR from run 4's merge, 75 jobs, self-hosted) —
-   **75/75 success.**
-6. THREE further ordinary master pushes since (dependency-bump merges,
-   `MISE_HTTP_RETRIES` fan-out side effects) — all self-hosted, all green,
-   confirmed via `gh api .../runs?branch=master&event=push`.
+> "RUNNER ROUTING — deliberately PLAIN `runs-on: ubuntu-latest` everywhere.
+> Do NOT 'restore uniformity' by introducing the flippable
+> `runs-on: fromJSON(vars.CI_RUNNER_LABELS...)` form... This repo hosts the
+> fleet's PRIVILEGED on-demand gate-runner lane... Adding a contained
+> `local-ci` lane here is a two-trust-tier security decision the maintainer
+> owns, and it is deliberately NOT being made."
 
-`CI_RUNNER_LABELS` was never reverted after fix 4 landed. This is the basis
-for "permanent," not a single clean run — the pool has now carried real
-gating-equivalent traffic across both trigger shapes (`push` and
-`pull_request`) cleanly, repeatedly, without intervention.
+Treat this exactly like `dolt-server`'s `check-no-workflow-edits` policy: a
+documented, standing boundary, not a TODO. Its 96-job matrix is the largest
+in the fleet and will NEVER be part of this pool unless the maintainer
+explicitly revisits that security decision.
 
 ---
 
-## Fleet-wide rollout — the design is ready, execution is blocked
+## Slot-allocation strategy — corrected mental model, then decided
 
-Full detail lives in ledger child `livespec-s43svm.1`; summarized here for
-anyone reading this file without the ledger open.
+**The wrong model (mine, corrected mid-round by the maintainer's question):**
+early in this round I proposed shrinking `livespec` from its proven 50 slots
+down to ~7 so that a SUM across all repos stayed near 50, reasoning that the
+"~50-concurrent-container ceiling" was a shared budget. The maintainer asked
+directly: "why does it have to be per-repo, why can't it be total runners in
+the pool... doesn't supervisor support that?"
 
-### Why this was never a flag flip
+**The correction:** reading `ci-runner-supervisor.sh` directly settled it —
+each "slot" is a permanently-repo-bound background loop
+(`for repo_spec in $REPOS; do ... for slot in $(seq 1 "$repo_slots"); do
+( while :; do run_one "$repo" "$slot" || sleep 10; done ) & ...`). Slots are
+NEVER shared across repos — an idle slot in repo A's allocation was never
+available to repo B anyway, so there is no pool to divide. The only real
+constraint is peak concurrent CONTAINERS for any ONE repo's own burst,
+because that's what stresses the shared rootless podman engine (the Issue-C
+SQLite race).
 
-`ci-runner-supervisor.sh --repos "<space-separated owner/repo ...>" --slots
-N` — `--slots` used to be a single value applied identically to every repo in
-`--repos`, which would have meant every additional repo either matched
-`livespec`'s 50 slots (150+ instance dirs on a 72-thread host for 3 repos —
-well past the host's demonstrated ceiling) or all repos got the same flat
-low number regardless of their own CI matrix width.
+**The decision (the maintainer's, after that correction and a follow-up
+explanation of the podman race's actual exposure — see below): give every
+repo its own FULL measured CI-matrix width, no shared cap.** Accepted
+trade-off: this pushes peak concurrent containers for wider repos above the
+~50 previously proven safe (up to 67 this round), which is new territory for
+the still-not-upstream-fixed podman SQLite race. Mitigated by raising the
+dockershim's bounded retry from 3 to 10 attempts (see below).
 
-**This round's fix:** `livespec-dev-tooling` PR #1389 extends `--repos`
-entries to accept an optional `:N` suffix (e.g. `"owner/repo-a:9
-owner/repo-b:6 owner/repo-c"`), so one supervisor instance can proportion
-slots to each repo's own matrix width. Fully backward compatible (a
-no-colon `--repos` value dispatches exactly as before — verified with a
-standalone local logic test). **Not yet deployed to the live host** — no
-reason to deploy it until there are actually multiple repos to route.
-
-### Real per-repo CI matrix sizes, measured (not estimated)
-
-Job counts from each repo's own most recent master-push CI run, via the
-GitHub Actions API:
-
-| Repo | Jobs |
-|---|---|
-| `livespec-orchestrator-beads-fabro` | 96 (largest) |
-| `livespec` | 75 |
-| `livespec-driver-codex` | 67 |
-| `livespec-driver-claude` | 66 |
-| `livespec-orchestrator-git-jsonl` | 66 |
-| `livespec-overseer` | 65 |
-| `livespec-runtime` | 64 |
-| `livespec-dev-tooling` | 63 |
-| `dolt-server` | 2 (much smaller matrix — different shape entirely) |
-
-A proportional allocation (e.g. scaling to keep the SUM near the host's
-demonstrated ~50-concurrent-container ceiling) is the natural next step once
-slots-per-repo is actually decided — ledger child `.1` has the full
-reasoning; this table is the input, not a finished decision.
-
-### What blocks execution
-
-**Confirmed directly, not assumed:** `gh api user/installations` returns 403
-("You must authenticate with an access token authorized to a GitHub App"),
-and `gh api app/installations` returns 401 ("A JSON web token could not be
-decoded"). The automation's PAT has NO App-management capability at all.
-Installing the `thewoolleyman-ci-runners` App onto each additional repo is a
-GitHub-App-owner action (web UI, or a JWT-authenticated request) that only
-the maintainer can perform. This blocks 7 of the 8 repos — see "Named next
-action" above. `dolt-server` has a SECOND, independent blocker — see below.
-
-### `dolt-server` is a special case: workflow edits are an attended maintainer boundary there, by design
-
-Discovered attempting the `MISE_HTTP_RETRIES` fan-out (below): `dolt-server`'s
-own `justfile` (`check-no-workflow-edits`, wired into `check-pre-push` before
-`just check`) HARD-REFUSES any push whose diff touches `.github/workflows/`
-at all — `"ERROR: factory branches must not modify .github/workflows/
-files"`. This is deliberate, documented policy
-(`plan/governed-repo-bootstrap/handoff.md` §"Safety envelope" in that repo,
-per the justfile's own comment): "Workflow edits are an attended maintainer
-boundary in this plan... That differs from the fleet repos this recipe is
-modelled on, where the App's push token is contents-only and GitHub itself is
-the backstop. Here there is no backstop behind this gate." Unlike the other 8
-fleet repos, `dolt-server`'s CI shape is owned by a separate, still-open
-work-item (`dolt-server-3jhclo`) in ITS OWN plan, not something an
-autonomous agent should push regardless of intent.
-
-**Practical consequence for THIS plan:** `dolt-server` needs its OWN
-CI-workflow edit (adding the `runs-on: fromJSON(vars.CI_RUNNER_LABELS...)`
-pattern — confirmed absent; its workflow hardcodes `runs-on: ubuntu-latest`
-in both jobs) before self-hosted routing is even possible there, and THAT
-edit hits the exact same attended-maintainer wall as `MISE_HTTP_RETRIES`
-did. Treat `dolt-server` as needing a maintainer-driven workflow change
-FIRST, separate from (and before) anything about the GitHub App or
-`CI_RUNNER_LABELS` — it cannot be routed the same way as the other 7 repos
-regardless of App-installation status. (A `MISE_HTTP_RETRIES` fix was
-drafted, correctly, by a dispatched agent — but never pushed, once this
-policy was found; the commit was abandoned rather than forced through.)
-
-### What else the rollout needs, per additional repo (once the App is installed — the 7 non-`dolt-server` repos)
-
-1. `CI_RUNNER_LABELS` set on that repo to `["self-hosted","local-ci"]` (plus
-   `poweredge` if per-host targeting is wanted).
-2. Verify that repo's CI workflow uses the
-   `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}`
-   pattern — `check-self-hosted-routing` (already fleet-wide in
-   `livespec-dev-tooling`) is the mechanical check; run it per repo, don't
-   assume. (`dolt-server` fails this check today — see above.)
-3. The dockershim + bind-source + netns + Issue-C-retry fixes are ALREADY on
-   the host build — shared across every repo the supervisor serves, no
-   per-repo work needed there.
-4. Proof: fire one real PR's gating CI after flipping the label, confirm
-   jobs actually dispatch (not stuck `queued`), and prove the hosted
-   fallback still works by unsetting the variable — the SAME discipline
-   applied to `livespec` this round, now with a concrete recipe (see
-   "Continuous self-hosted validation" above) rather than starting from
-   scratch.
+**One clarifying exchange worth preserving:** the maintainer asked "it's only
+one hit per job, right?" — i.e. is the podman-race exposure one attempt per
+CI job. NO — verified directly against `livespec`'s own `check-metadata`
+job: each individual job runs ~11 steps, and per the dockershim's own
+comment "`exec` is the highest-volume, most latency-sensitive operation in
+the whole shim (every job step runs one)" — so exposure is roughly
+STEPS-PER-JOB × JOB-COUNT, not job-count alone. A 67-job matrix is closer to
+~700+ independent exec calls per run, not 67.
 
 ---
 
-## `MISE_HTTP_RETRIES` fan-out — DONE fleet-wide
+## Dockershim exec retry raised 3 → 10
 
-Every one of the 8 remaining fleet repos got `MISE_HTTP_RETRIES: "5"` added
-alongside its existing `UV_HTTP_RETRIES: "5"` this round, via 7 parallel
-dispatched agents (`livespec-dev-tooling` was already done in round 3, PR
-#1384):
+`livespec-dev-tooling` PR #1392 (MERGED). Given the exposure math above,
+raised the Issue-C bounded-retry cap in `ci-runner/dockershim/docker` from 3
+attempts to 10, scoped to the exact same error signature as before (never
+masks a genuinely different failure). Deployed to
+`/usr/local/lib/ci-runner/dockershim/docker` on `poweredge-xubuntu` via
+`scp` + `install -m 0755` (checksums verified to match the source file
+exactly). Validated: shellcheck clean, `dockershim-exit-tests.sh` 25/25
+passing unchanged, and implicitly proven by the width tests below (zero
+retry-signature hits across the whole round, including a ~394-slot mass
+supervisor restart and multiple full-width master-push runs).
 
-| Repo | PR | State |
+---
+
+## The shallow-fetch bug is PER-REPO, not fixed fleet-wide by one PR — discovered and fixed live
+
+**Discovery:** firing the FIRST real self-hosted `pull_request`-event proof
+on `livespec-driver-codex` (PR #437, testing its 67-slot width) reproduced
+the EXACT round-4/5 "Issue C shallow-fetch merge-commit bug" signature —
+`check-red-green-replay` failed with `range base origin/master is not
+resolvable`. This was surprising because that bug was supposedly already
+fixed (`livespec` PR #2261). Root cause: PR #2261 only ever edited
+`livespec`'s OWN `.github/workflows/ci.yml`. Every other repo has its own
+separate `ci.yml` with its own `actions/checkout` step, so the fix never
+propagated.
+
+**Fix, ported verbatim (the same `git fetch --unshallow origin` pattern,
+guarded by `--is-shallow-repository`) into 5 repos' `ci.yml` files, each as
+its own PR, each MERGED:**
+
+| Repo | PR | Where inserted |
 |---|---|---|
-| `livespec-overseer` | #876 | **MERGED** |
-| `livespec-orchestrator-beads-fabro` | #1372 | **MERGED** |
-| `livespec-orchestrator-git-jsonl` | #603 | **MERGED** |
-| `livespec-runtime` | #513 | **MERGED** |
-| `livespec-driver-claude` | #466 | **MERGED or auto-merge armed** — VERIFY |
-| `livespec-driver-codex` | #435 | **MERGED or auto-merge armed** — VERIFY |
-| `dolt-server` | none — **INTENTIONALLY NOT FILED** | see below |
+| `livespec-driver-codex` | #437 | `check`, `check-doctor-static`, `check-red-green-replay` (3 separate jobs) |
+| `livespec-driver-claude` | #470 | same 3-job structure as driver-codex |
+| `livespec-orchestrator-git-jsonl` | #608 | single `check-metadata` matrix job (same structure as `livespec` itself) |
+| `livespec-overseer` | #880 | single `check-metadata` matrix job |
+| `livespec-runtime` | #518 | single `check-metadata` matrix job |
 
-`dolt-server` is EXCLUDED from this fan-out, deliberately, not by oversight.
-Its dispatched agent drafted the correct fix, but this repo's `justfile`
-(`check-no-workflow-edits`, wired into `check-pre-push`) hard-refuses ANY
-push touching `.github/workflows/` — a documented attended-maintainer
-boundary (`plan/governed-repo-bootstrap/handoff.md` §"Safety envelope" in
-that repo), not a bug to route around. The commit was abandoned rather than
-pushed. See "`dolt-server` is a special case" under "Fleet-wide rollout"
-above — the same policy also blocks `dolt-server` from ever getting the
-`runs-on: fromJSON(vars.CI_RUNNER_LABELS...)` pattern without a maintainer
-doing it directly.
+`livespec-console-beads-fabro` was checked and confirmed to NOT need this
+fix — zero `fetch-depth: 0` checkouts anywhere in its `ci.yml`, no
+`check-red-green-replay` job at all, so the bug's preconditions don't exist
+there.
 
-**Trap for future fan-outs across this fleet:** `github_rate_limit_guard.py`
-denies any Bash command containing BOTH a `gh pr`/`gh run` invocation AND a
-bare standalone word `for`/`while`/`until`/`select`/`sleep` ANYWHERE in the
-command string — including inside PR body prose passed inline (e.g. "the
-same class of problem **for** uv's PyPI fetches" trips it). Every dispatched
-agent hit this independently. Use `gh pr create --body-file <path>` instead
-of an inline `--body`/heredoc, which keeps the flagged prose out of the
-scanned command text.
+**Execution note — a dispatched agent CAN get stuck committed-but-unpushed
+without reporting it (matches an existing traps-list entry, reconfirmed
+twice this round):** both the `livespec-driver-claude` shallow-fetch-fix
+agent and, later, the `livespec-driver-claude` self-hosted-proof agent got
+stuck exactly at the same point — commit present, `git push` never
+completed, agent reporting idle/available in a loop with no useful content.
+Both times: verified the commit was correct directly (`git show --stat`,
+`grep`, YAML validation), stopped the stuck agent
+(`TaskStop`), and pushed + opened the PR manually. Don't trust an idle
+notification as "done" — check the actual worktree state.
 
----
-
-## Observability — installed, one prerequisite still missing
-
-Ran `ci-runner/observability/install-observability.sh` (the only sanctioned
-way) on `poweredge-xubuntu`. Both timers installed and enabled:
-
-- **`ci-runner-cache-prune.timer`** — daily rootless-podman storage hygiene
-  (removes wedged containers >5 days old, dangling images, unused tagged
-  images >14 days old). Triggered once manually to confirm: ran clean,
-  "storage before"/"storage after" logged, `Deactivated successfully`.
-  Fully working, no dependencies.
-- **`ci-runner-heartbeat.timer`** — every 5 minutes, emits an OTLP gauge
-  (`livespec.ci_runners.active`) to a LOCAL otel-collector expected at
-  `127.0.0.1:4319`. **That collector does NOT exist on this host** — confirmed
-  via `ss -tlnp`, `systemctl list-units`, and `which otelcol` all coming back
-  empty. The service fails LOUDLY and diagnosably every 5 minutes
-  (`curl: (7) Failed to connect to 127.0.0.1 port 4319`, `systemctl status`
-  shows `Active: failed`) — this is the script's own designed fail-closed
-  behavior (see its header comment: "emit nothing... rather than reporting a
-  false zero"), not a bug introduced by installing it. Provisioning an
-  otel-collector on this host is a separate prerequisite, outside this
-  plan's file set (no reference to otel-collector setup exists anywhere in
-  `livespec-dev-tooling`) — needs either a fleet-wide host-observability
-  bootstrap script found elsewhere, or a fresh scoping pass. Until then, a
-  `systemctl status ci-runner-heartbeat.service` showing `failed` on this
-  host is EXPECTED, not a regression to chase.
+**Validation:** `livespec-driver-codex` PR #437 re-ran clean after the fix —
+`check-red-green-replay` passed. (One OTHER job then failed on a completely
+unrelated new issue — the keyring quota, see next section — and PR #437 is
+now fully green, 67/67, after both fixes landed.)
 
 ---
 
-## Cache tiers — researched, deferred (ledger children `.2`, `.3`, `.4`)
+## A THIRD infrastructure ceiling found live: the kernel keyring quota
 
-Per `research/design.md` §"Cache tiers", three tiers, only the first exists
-at all:
+**Discovery:** in the SAME `livespec-driver-codex` PR #437 width proof
+(after the shallow-fetch fix), one job (`check-keyword-only-args`) failed
+with:
+```
+crun: create keyring "...": Disk quota exceeded
+```
+The message is misleading — NOT disk space. `crun` allocates a Linux kernel
+session keyring per container start, and the kernel enforces a per-UID quota
+(`/proc/sys/kernel/keys/maxkeys`, default **200**). EVERY self-hosted
+container across EVERY repo on this host runs under the single shared
+`ci-runner` account, so this is a FLEET-WIDE ceiling, not per-repo — the
+first time this ever surfaced was the first time TWO repos' slots were
+concurrently active (`livespec`'s 50 + `livespec-driver-codex`'s 67).
+Confirmed directly: `sudo -u ci-runner cat /proc/keys | wc -l` read 178/200
+in use at the time of the failure.
 
-1. **Warm overlay lowers** (uv, cargo/target) — shipped, but rooted at
-   `/home/ci-runner/cache` (17GB live data, confirmed via `sudo du -sh`) on
-   the OS disk, NOT the dedicated 658GB `/var/cache/ci-runner` volume
-   (confirmed empty — 2.1MB, just `lost+found`) the maintainer created
-   specifically for this. Relocating touches FOUR files, one of which
-   (`sanitize-hook.js`) is the actual security-relevant runtime hook that
-   mounts the cache into containers — already supports a
-   `LIVESPEC_HOOK_CACHE_ROOT` env override, the lowest-risk relocation path —
-   plus `isolation-exit-tests.sh`, whose hardcoded fixture paths assert
-   mount-escape protection and would need updating and re-running (currently
-   "14 pass, 0 fail, 3 skip") to confirm nothing regressed. Deliberately
-   deferred this round: relocating security-adjacent hook logic on the
-   now-permanently-self-hosted PRODUCTION pool needs that re-validation
-   cycle, which is more time than this round allocated to a performance
-   optimization rather than a reliability fix. Ledger child `livespec-s43svm.2`.
-2. **A local GitHub Actions cache service** — NOT built at all. Removes
-   GitHub's unraisable 10GB-per-repo cap (confirmed applying to self-hosted
-   runners too, per `thewoolleyman/homelab`'s own records) and the network
-   round-trip. Genuinely new infrastructure: needs a concrete cache-server
-   implementation choice, `ACTIONS_CACHE_URL`/`ACTIONS_RESULTS_URL` plumbing
-   per job, and a decision on network exposure. Not attempted blind — this
-   is a real architectural decision. Ledger child `livespec-s43svm.3`.
-3. **A Nix store and binary cache** — NOT built, forward-looking, intended to
-   serve `thewoolleyman/homelab`'s NixOS builds (poweredge-xubuntu itself
-   runs no NixOS and is not in the homelab fleet). Dominates the volume's
-   658GB sizing (non-Nix tiers estimate to only ~225GB). One known structural
-   constraint: `/nix/store` paths are baked into build outputs, so what
-   relocates cleanly is a served closure directory, not a live store —
-   whether to share `/nix` itself is homelab's question, not this plan's.
-   Lowest priority of the three; genuinely cross-repo scoped. Ledger child
-   `livespec-s43svm.4`.
+**Fix:** `/etc/sysctl.d/60-ci-runner-keyring.conf` on `poweredge-xubuntu`:
+```
+kernel.keys.maxkeys = 2000
+kernel.keys.maxbytes = 200000
+```
+Applied live (`sysctl -p`) and persisted (survives reboot). Sized ~4-5×
+above the fleet's current full-width total (~394 slots as of this round;
+`livespec-orchestrator-beads-fabro` never counts toward this since it's
+permanently excluded) for headroom.
+
+**Validation:** re-ran the failed job on PR #437 — passed. PR #437 then went
+fully green (67/67). No keyring-quota failures observed across the rest of
+the round, including the ~394-slot mass supervisor restart described below.
 
 ---
 
-## Container blocker — RESOLVED, kept for reference
+## Fleet-wide rollout execution — provisioning, supervisor config, and proof
 
-The section below records how a three-layer container blocker was found and
-fixed. It is retained because the debugging method (bisect by environment, read
-the FIRST failure not the loudest) generalizes, and because the eliminated/not-
-eliminated distinctions cost real time to establish. **The blocker itself is
-closed** — `livespec-dev-tooling` PR #1376 (MERGED) and #1378 (MERGED, deployed
-to the host) fix all three layers, and a real containerized job passed every
-step on the pool (`poweredge-container-proof-2` run 31666955395, slot 9).
+### Instance-directory provisioning
 
-All three steps below are DONE — kept as a record of what "done" required, since
-the same shape (fix on master, deploy to host, prove with a real job) applies to
-every future dockershim change:
+Each repo needs its own set of `/home/ci-runner/runners/<reposlug>-<N>/`
+instance directories (hard-linked copies of the shared Actions-runner
+install) BEFORE the supervisor can start any slot for it — this was
+discovered live (the very first attempt to add `livespec-driver-codex` to
+the supervisor's `--repos` produced instant `ExecStartPre=+/usr/bin/rm -rf
+.../runners/%i/_work (code=exited, status=200/CHDIR)` failures for every
+slot, because the directories simply didn't exist).
 
-1. ~~Re-provision or hand-copy `ci-runner/dockershim/docker`...~~ Done —
-   deployed via `scp` + `install -m 0755` directly (re-provisioning would have
-   worked too, but the box was mid-diagnosis and a targeted copy proved each
-   fix immediately without a full re-provision cycle).
-2. ~~Set `CI_RUNNER_LABELS`...~~ Done for `livespec`, and now PERMANENT (see
-   "State in one sentence" above).
-3. ~~Confirm green, then prove the hosted fallback...~~ DONE, repeatedly —
-   confirmed for the throwaway proof workflow AND for real gating CI, multiple
-   times across rounds 3–5.
+Provisioned via `livespec-dev-tooling/ci-runner/provision-ci-runner.sh`
+(idempotent, safe to re-run, scoped by `CI_RUNNER_SLOTS` +
+`CI_RUNNER_REPOSLUGS` env vars — re-running it for a NEW repo/slot-count is
+a no-op for every already-provisioned repo, confirmed live: `0 upgraded, 0
+newly installed` on every re-run's package-install step). Ran once per repo,
+each with its own measured slot count:
 
-**Do NOT leave `CI_RUNNER_LABELS` pointed at the pool if a job fails** — jobs do
-not fail on a missing runner, they QUEUE, and every merge then waits on a check
-that never arrives. This applies to every repo added in the rollout above, not
-just `livespec`.
+```
+CI_RUNNER_SLOTS=67 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-driver-codex
+CI_RUNNER_SLOTS=66 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-driver-claude
+CI_RUNNER_SLOTS=66 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-orchestrator-git-jsonl
+CI_RUNNER_SLOTS=65 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-overseer
+CI_RUNNER_SLOTS=64 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-runtime
+CI_RUNNER_SLOTS=16 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-console-beads-fabro
+```
 
-### What the blocker actually was
+### Measured matrix widths (from each repo's own real CI run, via the GitHub API — NOT estimated)
 
-The container hooks invoke the docker CLI with a SCRUBBED environment: the
-runner's hook layer passes the JOB CONTAINER's env rather than the runner
-account's. Dumping `env` from the shim on a live `start` call showed it receives
-only `HOME` and `DOCKER_HOST`, with `HOME` pointing INSIDE the container.
-Rootless podman derives real host paths from three variables and dies without
-them:
-
-| Missing / wrong | Symptom |
-|---|---|
-| `HOME=/github/home` | `cannot resolve /github/home: lstat /github: no such file or directory` |
-| `PATH` absent | `setting up Pasta: could not find pasta … not found in $PATH` |
-| `XDG_RUNTIME_DIR` absent | falls off the per-user runtime dir holding the rootless socket |
-
-The fix restores all three in the dockershim from the invoking account.
-
-### Corrections to earlier rounds — READ BEFORE RE-INVESTIGATING container issues
-
-An early round named the wrong layer, and its eliminated-hypotheses list was
-partly wrong. Both cost real time and are corrected here so the errors are not
-repeated:
-
-- **The `TypeError: Cannot read properties of null (reading 'container')` is NOT
-  the bug.** It is downstream noise. The FIRST failure is `PrepareJob`, whose
-  real error is that the dockershim exited 1; the next step then reads a null
-  container and throws. `CleanupJob` succeeds throughout, which is exactly why
-  the hook layer looked healthy. Read `_diag/Worker_*.log` top-down and trust the
-  FIRST failure, not the loudest one.
-- **The runner/hooks version mismatch is real but irrelevant.** The runner did
-  self-update 2.335.1 → 2.336.0 against hooks pinned at 0.8.1. That is not the
-  cause, and chasing it first was a dead end.
-- **`cannot resolve /github/home` was recorded as eliminated ("came from
-  hand-launched runners; does not appear through the real supervisor"). That is
-  WRONG** — it is the exact live error, on slot 33, in the real
-  `poweredge-container-proof` job (run 31658073499). The earlier round reached
-  the opposite conclusion because replaying the failing `docker create` BY HAND
-  always succeeded — a hand shell simply has a real environment. **Bisect by
-  environment, not by argv.**
-
-These remain correctly eliminated, each re-confirmed by single-variable test:
-the T10 dependency cache (its kill switch reproduces the failure identically
-with the cache disabled), missing bind-source directories, the `-v=` equals
-form, and `DOCKER_HOST`.
-
----
-
-## DONE and verified — including everything previously "blocked on maintainer"
-
-- **The real supervisor is LIVE.** `ci-runner-supervisor.service` is `active`
-  and `enabled`. Its own startup line reads
-  `repos=[thewoolleyman/livespec] slots=50 labels=self-hosted,local-ci,poweredge`
-  — verify config from THAT line, never the unit file (see traps). NOTE: once
-  `livespec-dev-tooling` PR #1389 (per-repo slots) is deployed to the host,
-  this log line's FORMAT changes to show resolved `repo:slots` pairs instead
-  of a single global `slots=` value — re-read this line fresh rather than
-  pattern-matching the old format if the deploy has happened.
-- **50 runners registered and online**, each carrying `self-hosted`, `local-ci`,
-  `poweredge`. The pool auto-replenishes, so exhaustion is no longer a risk.
-- **The credential chain is provisioned on the box, autonomously.** This was
-  previously recorded as maintainer-only; it was not. What was done:
-  - Copied the version-matched static `op` binary (2.35.0-beta.01) from the
-    factory host.
-  - Created the `github-ci-runners` group and the `ci-sup` system identity,
-    mirroring the factory host (the installer deliberately refuses to create
-    the group).
-  - Ran `create-1password-env-wrapper.sh` non-interactively (all inputs are env
-    vars: `IDENTIFIER`, `ONEPASSWORD_ENVIRONMENT_ID`,
-    `OP_SERVICE_ACCOUNT_TOKEN`), with the token decrypted on the factory host
-    and **piped** so it never appeared in a command line or log.
-  - Installed `/usr/local/bin/with-github-ci-runners-env.sh`
-    (`root:github-ci-runners`, 0750) + sudoers fragment + sealed credential.
-  - Verified by length only: App ID 8, installation ID 10, private key 1680.
-- **NO new GitHub App, App key, or client is or was needed for `livespec`.**
-  The existing `thewoolleyman-ci-runners` App (ID `4278168`) and its existing
-  key serve any number of hosts. The only host-bound secret is the
-  **1Password service-account token**, sealed by `systemd-creds`. Extending
-  the App to ADDITIONAL REPOS is the one remaining maintainer-gated step —
-  see "Named next action."
-- Host: 72 threads, 188 GB RAM, Ubuntu 26.04, x86_64, systemd 259, cgroups v2.
-- **Containment: 14 pass, 0 fail, 3 skip.**
-- A direct (non-container) job ran green under contained uid `ci-runner`.
-- Cache volume `/dev/sda5`, 718 GB ext4, mounted `/var/cache/ci-runner` by UUID
-  with `noatime`, 658 GB usable, in fstab — still empty (2.1MB) as of round 5;
-  see "Cache tiers" above.
-- **Spec ratified as v203.**
-- **Six provisioning defects fixed at source** — merged,
-  `livespec-dev-tooling` PR #1374.
-- **Host observability installed** — `ci-runner-heartbeat.timer` +
-  `ci-runner-cache-prune.timer`, this round. See "Observability" above.
-- Access: `cwoolley@poweredge-xubuntu`, passwordless sudo, `~/.ssh/config`
-  stanza on the factory host. Tailnet grant `tag:vps → tag:ci-runner` `tcp:22`
-  applied; tags `tag:ci-runner` + `tag:manual-install` created
-  (`tailscale-admin` PR #23, merged).
-
----
-
-## In flight at wrap — CHECK THESE FIRST
-
-Every PR opened THIS round (round 5) is listed below with its state as of
-writing. **VERIFY each before trusting it** — several were still finishing
-their hosted/self-hosted CI runs at write time.
-
-| PR | Repo | What | State |
+| Repo | Jobs | Slots provisioned | Slots configured in supervisor |
 |---|---|---|---|
-| #2255 | `livespec` | Issue B fix (self-hosted `origin/master` fetch) | **MERGED** (round 4) |
-| #2258 | `livespec` | Issue A fix (uv concurrent-downloads cap) | **MERGED** (round 4) |
-| #2259 | `livespec` | round-4 handoff (Issue C discovery) | **MERGED** |
-| #1386 | `livespec-dev-tooling` | Issue C fix (dockershim exec retry) | **MERGED** |
-| #2261 | `livespec` | shallow-fetch merge-commit fix | **MERGED** |
-| #1389 | `livespec-dev-tooling` | supervisor per-repo slots | **MERGED** |
-| #876 | `livespec-overseer` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #1372 | `livespec-orchestrator-beads-fabro` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #603 | `livespec-orchestrator-git-jsonl` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #513 | `livespec-runtime` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #466 | `livespec-driver-claude` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #435 | `livespec-driver-codex` | `MISE_HTTP_RETRIES` fan-out | **MERGED** |
-| #2263 | `livespec` | round-5 handoff | **MERGED** |
-| (n/a) | `dolt-server` | `MISE_HTTP_RETRIES` fan-out | **INTENTIONALLY NOT FILED** — see "MISE_HTTP_RETRIES fan-out" above |
-| (this file) | `livespec` | round-5 correction (this `dolt-server` finding) | open at write time — VERIFY merged |
+| `livespec` | 75 | (already had 50 pre-round-6) | 50 — UNCHANGED this round, deliberately (see "Open decision" below) |
+| `livespec-driver-codex` | 67 | 67 | 67 |
+| `livespec-driver-claude` | 66 | 66 | 66 |
+| `livespec-orchestrator-git-jsonl` | 66 | 66 | 66 |
+| `livespec-overseer` | 65 | 65 | 65 |
+| `livespec-runtime` | 64 | 64 | 64 |
+| `livespec-console-beads-fabro` | 16 | 16 | 16 |
+| `livespec-orchestrator-beads-fabro` | 96 | N/A | N/A — PERMANENTLY EXCLUDED |
+| `dolt-server` | 2 | N/A | N/A — PERMANENTLY EXCLUDED |
 
-Earlier-round PRs (#2244, #2245, #2243, #2241, #2249, #2246, #2252, #2254,
-#1374, #1376, #1378, #1383, #1384, `tailscale-admin` #23/#24) are ALL
-confirmed MERGED as of round 4 and are omitted here for length — see git
-history / the round-4 PR if that detail is needed.
+### Supervisor config
 
----
+Single systemd drop-in
+(`/etc/systemd/system/ci-runner-supervisor.service.d/poweredge.conf`,
+previous version backed up alongside it as `poweredge.conf.bak-round6`)
+serving all 7 self-hosted-eligible repos via one `--repos` argument using
+the PR #1389 `owner/repo:N` per-repo-slot suffix:
 
-## Traps that cost real time (cumulative across all rounds)
+```
+--repos "thewoolleyman/livespec:50 thewoolleyman/livespec-driver-codex:67 thewoolleyman/livespec-driver-claude:66 thewoolleyman/livespec-orchestrator-git-jsonl:66 thewoolleyman/livespec-overseer:65 thewoolleyman/livespec-runtime:64 thewoolleyman/livespec-console-beads-fabro:16" --labels self-hosted,local-ci,poweredge
+```
 
-1. **The isolation suite reports FALSE containment breaches from an unreadable
-   cwd.** Drops privileges to `ci-runner`; a maintainer home is 0750, so podman
-   dies before the container starts and probes capture empty output. **Same
-   host, same commit: 5 fail from a home dir, 0 fail from `/tmp`.** Fixed at
-   source; run older copies from `/tmp`.
-2. **`shellcheck` download from the GitHub releases CDN failed
-   intermittently** — FIXED AT SOURCE (round 3), three ways: baked into the CI
-   image with a lockstep gate deriving its obligation from `.mise.toml`'s
-   `[tools]` table; every image-build fetch retries; `MISE_HTTP_RETRIES=5` set
-   in CI (mise's own default is `http_retries = 0`). Now fanned to ALL 9 fleet
-   repos as of round 5 (see "`MISE_HTTP_RETRIES` fan-out" above) — nothing
-   still owed here.
-3. **`github_rate_limit_guard` denies looped or `--cache`-less GitHub reads**,
-   AND denies any command combining a `gh pr`/`gh run` invocation with a bare
-   standalone `for`/`while`/`until`/`select`/`sleep` word ANYWHERE in the
-   command string — including inside PR body prose. Prefer reading evidence
-   off the box over the API where possible; use `gh pr create --body-file`
-   instead of inline `--body`/heredoc to keep flagged prose out of the scanned
-   command.
-4. **The ratification digest binds the review to exact bytes** — proposal AND
-   resulting-file. Amending after a Fable review invalidates it; re-review.
-   `reviewer_identity` must EQUAL `reviewer_model` (both `fable`), and
-   `reviewed_at` must be strictly in the past.
-5. **Supervisor config must be read from its own startup log line**, not the
-   unit file — the script's CLI defaults silently beat `Environment=`. The unit
-   already passes flags; the per-host label is added by
-   `/etc/systemd/system/ci-runner-supervisor.service.d/poweredge.conf`. The
-   log line's FORMAT changes once PR #1389 (per-repo slots) is deployed — see
-   "DONE and verified" above.
-6. **Never leave `CI_RUNNER_LABELS` pointed at a pool that cannot pass jobs.**
-   Jobs do not fail — they queue, and every merge waits on a check that never
-   arrives. (This no longer applies to `livespec` itself, which is now
-   PERMANENTLY self-hosted and proven stable — it still applies to every
-   repo added in the fleet-wide rollout.)
-7. **A throwaway proof workflow does NOT exercise every step a real gating
-   workflow does — verify against real gating CI before declaring a fix
-   proven.** Cost real time twice: once for the container blocker (a
-   bare-`-e HOME` regression the proof workflow never exercised — root cause:
-   `docker create`'s real argv carries a BARE `-e HOME`, and a HOME-repair fix
-   for podman's OWN process leaked through that same flag into the container,
-   corrupting what every later `exec` on it saw as its home; fixed in
-   `livespec-dev-tooling` PR #1378 by rewriting the bare flag back to an
-   explicit value, scoped to `create` alone), and again for Issue C validation
-   (round 4's clean self-hosted runs were ALL post-merge master pushes, which
-   never exercise the `pull_request` synthetic-merge-ref code path — the
-   shallow-fetch merge-commit bug was invisible until a genuinely open PR was
-   tested). **The general lesson both times: know exactly which code path
-   your proof exercises, and don't generalize past it.**
-8. **`auto-enable-merge.yml` merges your OWN PRs the moment hosted CI goes
-   green — before you can flip `CI_RUNNER_LABELS` and validate self-hosted.**
-   Apply the `do-not-merge` label at PR creation time when the PR MUST stay
-   open for deliberate self-hosted-only testing; remove it once validation
-   completes to let normal auto-merge proceed.
-9. **The GitHub Actions REST jobs API can appear stalled for minutes while the
-   host is genuinely, actively processing.** Verify a suspected stall against
-   the host's own container state (`podman ps -a`, `uptime`) before concluding
-   the pool is stuck.
-10. **A dispatched background agent can get stuck reporting "still waiting"
-    in a loop without actually finishing its task.** The `dolt-server`
-    `MISE_HTTP_RETRIES` fan-out agent did exactly this — its commit was
-    correct, but it never finished pushing, instead repeatedly reporting it
-    was "waiting for a monitor" across several completion notifications.
-    Check the actual worktree state directly (`git log`, `git status`,
-    `ls-remote`) rather than trusting a stuck agent's self-report.
-11. **`git push` on `dolt-server` hung SILENTLY (zero output, not even the
-    lefthook banner's normal follow-on) for 20+ minutes, twice, from
-    completely separate process trees.** `ps aux` showed the pre-push
-    `lefthook run` process itself alive but producing nothing, alongside a
-    live `git-remote-https` subprocess — consistent with a genuine hang
-    inside the hook or the transport, not a slow-but-working check (compare
-    to `livespec-driver-codex`'s pre-push, which ran a full `just check` and
-    took ~200s but STREAMED output the whole time). Root cause NOT
-    established — killing both stuck process trees (`kill -9` the
-    `lefthook run` and `git-remote-https` PIDs) and retrying is what
-    unstuck it enough to investigate further, at which point the SEPARATE,
-    independent `check-no-workflow-edits` policy (item above) was found by
-    reading the repo's `justfile` directly rather than from the hook's own
-    error output, since every attempt hung before producing any. **Before
-    fanning any change out to a repo not yet touched this session, skim
-    its `justfile`/`lefthook.yml` for repo-specific gates — a fan-out that
-    is safe and mechanical in 8 repos was a hard policy violation in the
-    9th, and nothing about the task description would have predicted
-    which.**
+Confirmed via the supervisor's OWN startup log line (never the unit file,
+per this plan's standing trap 5):
+```
+ci-runner-supervisor: repos=[thewoolleyman/livespec:50 thewoolleyman/livespec-driver-codex:67 thewoolleyman/livespec-driver-claude:66 thewoolleyman/livespec-orchestrator-git-jsonl:66 thewoolleyman/livespec-overseer:65 thewoolleyman/livespec-runtime:64 thewoolleyman/livespec-console-beads-fabro:16] labels=self-hosted,local-ci,poweredge
+```
+
+### Proof — real green master-push CI on every configured repo
+
+For each of the 5 newly-added-and-proven repos (`driver-claude`,
+`git-jsonl`, `overseer`, `runtime`; `driver-codex` was proven earlier in the
+round via the width test itself), the same discipline as `livespec`'s
+original rollout: `CI_RUNNER_LABELS` flipped, then a real docs-only PR
+(`do-not-merge` label held until confirmed green, then merged normally —
+`livespec-driver-claude` and `livespec-orchestrator-git-jsonl` and
+`livespec-overseer` didn't have a pre-existing `do-not-merge` label; created
+it live via `gh label create`). Every PR went fully green on self-hosted,
+then merged. Every subsequent MASTER-PUSH run (triggered by the merge
+itself) ALSO went green on self-hosted:
+
+| Repo | Proof PR | Master-push run after merge |
+|---|---|---|
+| `livespec-driver-codex` | #437 — 67/67 green | (not separately re-checked; PR itself IS the proof) |
+| `livespec-driver-claude` | #472 — 65/65 pass + 2 skip | run 31700687807 — `completed success`, 62/62 non-skipped jobs succeeded |
+| `livespec-orchestrator-git-jsonl` | #611 — MERGED clean | run 31700035855 — `completed success` |
+| `livespec-overseer` | #883 — MERGED clean | run 31700091295 — `completed success` |
+| `livespec-runtime` | #520 — MERGED clean | run 31700383099 — `completed success` |
 
 ---
 
-## Open decisions (not blockers)
+## `console-beads-fabro` blocker — unrelated, pre-existing, NOT this plan's to fix
 
-- **arm64 macOS runners.** The maintainer tagged Macs intending them to run CI,
-  but v203's Platform clause requires x86_64 Linux. Either publish arm64 images
-  and amend, or scope them to the non-gating auxiliary lane the spec already
-  carves out.
-- **One-word spec nit**, raised non-blocking by the ratification reviewer and
-  accepted as-is: v203 says *"no coordination between hosts is required, and
-  none MUST be introduced"*, which parses ambiguously. `and coordination MUST
-  NOT be introduced` fixes it; needs a fresh propose-change.
-- **Install the App on `thewoolleyman/homelab`** if homelab joins the pool.
-  Currently installed on `livespec` only. Maintainer action (App settings) —
-  same blocker class as the fleet-wide rollout's App-installation step.
+`CI_RUNNER_LABELS` is set (`["self-hosted","local-ci","poweredge"]`) and 16
+slots are provisioned and running (`sudo -u ci-runner podman`/`systemctl
+list-units` confirmed clean), but no proof PR was successfully pushed. The
+attempt failed `check-pre-push`'s `check-fork-drift` recipe — this repo
+tracks upstream `Fabro` orchestrator pin drift via a fixture that requires
+active, judgment-heavy disposition (a long `REVIEWED YYYY-MM-DD` history in
+the fixture's own comments shows this happens routinely and is resolved by
+`just refresh-fork-upstream-pins`, which requires reading and deciding on
+the actual upstream diff — not a mechanical fix). **Confirmed this is NOT a
+staleness artifact of the worktree** — the worktree branched from the exact
+tip of `origin/master` at push time, so the drift check is genuinely red on
+this repo's current master, for reasons entirely unrelated to self-hosted CI
+routing.
+
+**Left as-is, deliberately:**
+- A worktree with the ready, valid, harmless docs-only proof commit is
+  PRESERVED (not discarded) at
+  `~/.worktrees/livespec-console-beads-fabro/poweredge-selfhosted-proof`
+  (commit `6c9a374`), so the proof push is a one-command retry
+  (`mise exec -- git push -u origin poweredge-selfhosted-proof`) once
+  someone resolves the fork-drift fixture.
+- `CI_RUNNER_LABELS` was NOT reverted — the standing "never leave
+  `CI_RUNNER_LABELS` pointed at a pool that cannot pass jobs" trap does not
+  apply here, because the block is a LOCAL PRE-PUSH gate, not a live CI
+  failure; no PR exists, so no merge is waiting on a check that will never
+  arrive.
+
+**Next action for this repo specifically:** resolve `check-fork-drift`
+first (a maintainer or a dedicated agent with real context on the Fabro
+upstream fork's pin-tracking policy — NOT something to force through blind),
+then push the preserved worktree's proof commit, open the PR, confirm
+green, merge. This is entirely independent of the fleet-CI-runner-pool plan
+itself.
+
+---
+
+## Mass-restart I/O contention — a real, benign, characterized host behavior
+
+Restarting the supervisor with ~394 total slots (adding 5 repos' worth of
+slots to the already-running 2) produced two distinct, transient spikes,
+BOTH confirmed benign (zero job failures, zero errors, self-resolving within
+minutes):
+
+1. **Provisioning-time**: the FIRST mass restart (going from 2 repos/117
+   slots to 7 repos/394 slots at once) spiked load average to 243 (vs 72
+   threads) — confirmed via `top`/`iostat` to be I/O WAIT (D-state
+   processes: hundreds of simultaneous `ExecStartPre=+/usr/bin/rm -rf
+   .../_work` calls across newly-provisioned instance directories
+   contending for the same disk), NOT CPU contention (CPU stayed ~55-80%
+   idle throughout). Fully converged (`394 running`, 0 failed units) within
+   ~2 minutes.
+2. **Post-merge burst**: merging 4 proof PRs back-to-back triggered 4
+   simultaneous full-width master-push CI runs, spiking `iowait` to 82.7%
+   briefly. Zero job failures; all 4 runs completed successfully within a
+   few minutes, one visibly slower (`driver-claude`, sharing the burst)
+   than the other 3.
+
+**A GitHub secondary rate limit was also hit once** during the first mass
+restart (`mint: no installation token: You have exceeded a secondary rate
+limit`) — self-healed via the supervisor's own per-slot retry loop
+(`|| sleep 10`) within ~2 minutes, zero recurrence since.
+
+**Practical takeaway for future rounds:** a supervisor restart that adds
+many new slots at once will show a scary-looking load spike (100s, well
+above thread count) that is NOT a sign of trouble — check `iostat`/`top`
+`%wa` and D-state process count to distinguish real CPU exhaustion from
+I/O-wait-inflated load average before concluding anything is actually
+broken. This host's storage (a single `sda` device) is the bottleneck under
+mass-simultaneous filesystem churn, not CPU or memory (never got close to
+either ceiling — peak observed ~59GB/188GB RAM, CPU never pinned).
+
+---
+
+## Open decision: should `livespec` itself move from 50 to its own full 75-job width?
+
+NOT done this round, deliberately — left at its already-proven 50 to keep
+that one variable constant while validating the OTHER repos' behavior at
+full width. Now that 5 more repos are proven at full width with zero
+regressions, bumping `livespec` to 75 is the natural next mechanical step
+(no new risk category — just matching what's already proven pattern
+elsewhere). Not done only because this round's actual asks (App install,
+width test, fix-and-propagate) are complete and this is a new, separate,
+lower-urgency increment.
+
+---
+
+## Cache tiers, `dolt-server`, and everything else from `research/design.md`
+
+**UNCHANGED from the round-5 handoff** — not touched this round. See
+`research/design.md` §"Cache tiers" and the round-5 handoff's own
+now-superseded copy (in git history) for full detail:
+1. Warm-overlay cache tier — still rooted at `/home/ci-runner/cache` (OS
+   disk), not yet relocated to the dedicated `/var/cache/ci-runner` volume
+   (658GB, still empty). Ledger child `livespec-s43svm.2`.
+2. Local GitHub Actions cache service — not built. Ledger child `.3`.
+3. Nix store / binary cache — not built. Ledger child `.4`.
+4. `dolt-server` — still excluded from ALL of this (self-hosted routing,
+   `MISE_HTTP_RETRIES`, any workflow edit) by its own
+   `check-no-workflow-edits` attended-maintainer policy. Untouched this
+   round; needs a maintainer-driven workflow change before any of it is
+   possible.
+
+---
+
+## Traps and corrections carried forward (still binding; NOT repeated in full — see git history for the full round-1–5 text)
+
+All round-1–5 traps (isolation-suite cwd readability, shellcheck CDN
+retries, `github_rate_limit_guard`'s loop/sleep+`gh pr`/`gh run` denial
+including a `for`/`while`/etc. bare word ANYWHERE in the command string —
+even inside a Python list-comprehension's ` for ` keyword, confirmed hit
+this round — the ratification digest, supervisor config via startup log
+only, never leave `CI_RUNNER_LABELS` pointed at a dead pool, throwaway proof
+workflows not exercising every real code path, `auto-enable-merge.yml`
+racing a deliberate self-hosted-only hold, the Actions API lagging real host
+state) all still apply and were all reconfirmed live at least once this
+round. Two NEW ones from this round:
+
+11. **A freshly-created git worktree does NOT inherit the primary
+    checkout's materialized `worktree-pack` — `just bootstrap` must be
+    re-run INSIDE the worktree itself, not just the primary.** Hit on
+    `livespec-driver-codex`'s width-proof worktree: `just bootstrap` in the
+    primary reported `worktree-pack: row already satisfied`, yet the SAME
+    check run from the worktree failed with `worktree_pack_absent` — because
+    the pack is a LOCAL, gitignored materialization
+    (`dev-tooling/worktree-lib.sh` etc.), not something git worktrees share.
+    Fix: run `just bootstrap` a SECOND time, from inside the worktree.
+12. **`gh api --cache <duration>` does not bypass `github_rate_limit_guard`
+    on its own** — the guard's denial is keyed off command-string patterns
+    (a `for`/`while`/`until`/`select`/`sleep` bare word anywhere, INCLUDING
+    inside an inline Python `for` list-comprehension, not just shell loop
+    keywords), not off cache presence. Passing `--cache` is necessary but
+    the command must ALSO avoid those bare words entirely — write results to
+    a file and `jq`/`grep` them in a SEPARATE call rather than piping
+    through inline Python with a `for` clause.
 
 ---
 
 ## Remaining sequence
 
-0. ~~Deploy the merged shim fix and prove one containerized job~~ **DONE.**
-0b. ~~Prove the hosted fallback for `livespec`~~ **DONE.**
-1. ~~Resolve Issues A, B, the shallow-fetch bug, and Issue C~~ **DONE** — all
-   four fixed, merged, and validated; `CI_RUNNER_LABELS` is now PERMANENTLY
-   self-hosted for `livespec`.
-2. ~~Fan `MISE_HTTP_RETRIES=5` out to the remaining fleet repos~~ **DONE**
-   (this round) for 7 of 8 — `dolt-server` deliberately excluded, its own
-   `check-no-workflow-edits` policy forbids agent-driven workflow edits
-   entirely (see "Fleet-wide rollout" above).
-3. ~~Install observability~~ **DONE** (this round) — heartbeat needs a
-   separate otel-collector prerequisite this plan does not own; cache-prune
-   is fully working.
-4. ~~File the remaining scope as ledger children~~ **DONE** (this round) —
-   `livespec-s43svm.1` through `.4`.
-5. **Decide slots-per-repo, then roll self-hosted CI out to the other eight
-   livespec fleet repos** — BLOCKED on maintainer GitHub App installation.
-   See "Named next action" and ledger child `.1`.
-6. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
-   child `.2`. Next-most-valuable self-directed work if step 5 stays blocked.
-7. **Build the local Actions cache service and the Nix store/binary cache**
+0-4. (Everything through round 5's numbered items) **DONE.**
+5. ~~Decide slots-per-repo, then roll self-hosted CI out to the other eight
+   livespec fleet repos~~ **DONE for 6 of 7 eligible repos** (all but
+   `console-beads-fabro`, blocked on its own unrelated gate — see above).
+   `livespec-orchestrator-beads-fabro` and `dolt-server` are PERMANENTLY
+   excluded, not pending.
+6. **Push `console-beads-fabro`'s preserved proof commit once
+   `check-fork-drift` is resolved there** (someone else's call, not this
+   plan's) — the worktree is ready and waiting.
+7. **Open decision: bump `livespec` from 50 to its own full 75-job width**,
+   now that 5 other repos are proven at full width with zero regressions.
+8. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
+   child `.2`. Still the next-most-valuable infra work after 6-7.
+9. **Build the local Actions cache service and the Nix store/binary cache**
    — ledger children `.3` and `.4`. Genuinely new infrastructure; needs a
    design pass, not blind implementation.
 
 ---
 
-## Housekeeping at wrap
+## Housekeeping at wrap (round 6)
 
-- `CI_RUNNER_LABELS` on `livespec` reads `["self-hosted","local-ci","poweredge"]`
-  — PERMANENTLY, as of round 5. This is NOT the "reverted pending investigation"
-  state prior rounds described — VERIFY against the live variable regardless,
-  since state drift is exactly what a stale handoff misreports, but the
-  EXPECTED value has changed from `["ubuntu-latest"]` to self-hosted. If it
-  reads `["ubuntu-latest"]` when picked up and no one is actively
-  mid-investigating a NEW regression, that itself is a signal something
-  reverted it unexpectedly — investigate why before re-flipping blind.
-- **The supervisor is RUNNING and enabled**, serving `thewoolleyman/livespec`
-  only — `repos=[thewoolleyman/livespec] slots=50`. Confirm from the startup
-  log line (trap 5), never the unit file. The per-repo-slots capability (PR
-  #1389) is merged but NOT yet deployed to the host — deploying it is part of
-  the fleet-wide rollout, not something to do before repos actually need it.
-- `poweredge-container-proof-2` — the throwaway branch/workflow used to prove
-  the container-blocker fixes — is STILL PRESENT. Both conditions for
-  deleting it have long been satisfied; it has now also served as a safe
-  Issue-C single-job proof surface this round. Safe to delete whenever
-  someone wants the cleanup — not urgent.
-- Worktrees created this round, reaped after merge (none left over from this
-  round's own work): `wrapup-fleet-ci-runner-pool-round4`,
-  `fix-selfhosted-shallow-merge-ref`, `validate-issue-c-fix`,
-  `fix-dockershim-exec-sqlite-race`, `add-per-repo-slots`,
-  `wrapup-fleet-ci-runner-pool-round5`,
-  `correct-dolt-server-workflow-governance`. Worktrees created by 6 of the 7
-  parallel `MISE_HTTP_RETRIES` fan-out agents (one per repo, branch
-  `add-mise-http-retries` in each) were NOT reaped by this session — they
-  belong to repos this session's worktree bookkeeping doesn't track the same
-  way; reap them individually once each repo's PR is confirmed merged
-  (`just reap-stale-worktrees <repo> --dry-run` first). `dolt-server`'s
-  `add-mise-http-retries` worktree WAS already removed and its branch deleted
-  this round, since its change was abandoned (see "MISE_HTTP_RETRIES
-  fan-out" above) rather than merged.
-- Worktrees still present from EARLIER rounds, untouched this round: `livespec`:
-  `spec-revise-v203`, `plan-supervisor-and-cache`, `plan-ssh-account-cwoolley`,
-  `spec-selfhosted-pool`. `tailscale-admin`: no worktree (branches created,
-  committed, and cleaned up directly on the primary checkout).
-- On a REBASE-MERGING repo (both `livespec` and `livespec-dev-tooling` are),
-  `git merge-base --is-ancestor <local-branch-sha> origin/master` is NOT a
-  reliable merged check — rebase-merge creates NEW commit objects on master
-  with different SHAs even for identical content, so a genuinely-merged
-  branch's original tip SHA still returns NO. Use `gh pr list --head <branch>
-  --state all` (one call per branch, not looped — see trap 3) instead.
+- `CI_RUNNER_LABELS` reads self-hosted (`["self-hosted","local-ci","poweredge"]`)
+  on ALL of: `livespec`, `livespec-driver-codex`, `livespec-driver-claude`,
+  `livespec-orchestrator-git-jsonl`, `livespec-overseer`, `livespec-runtime`,
+  `livespec-console-beads-fabro` — verified live via `gh api
+  repos/.../actions/variables/CI_RUNNER_LABELS` for all 7, this round.
+- Supervisor is RUNNING, serving exactly these 7 repos at the slot counts in
+  the table above (confirmed via its startup log line, not the unit file).
+  Host load settled to ~19 (baseline) after all bursts this round.
+- All worktrees this round were reaped after merge EXCEPT
+  `~/.worktrees/livespec-console-beads-fabro/poweredge-selfhosted-proof`
+  (deliberately preserved, see above) and the pre-existing large set of
+  OTHER sessions' worktrees under `livespec-dev-tooling` (untouched, not
+  this round's concern — `just reap-stale-worktrees livespec-dev-tooling
+  --dry-run` first if anyone wants to clean those).
+- `poweredge.conf.bak-round6` is a backup of the pre-round-6 systemd
+  drop-in, left in place on the host at
+  `/etc/systemd/system/ci-runner-supervisor.service.d/` for rollback
+  reference; safe to delete once this round's config is trusted.
+- PRs opened/merged this round (all confirmed MERGED at write time):
+  `livespec-dev-tooling` #1392 (retry raise); `livespec-driver-codex` #437
+  (width proof + both fixes); `livespec-driver-claude` #470 (shallow-fetch
+  fix), #472 (self-hosted proof); `livespec-orchestrator-git-jsonl` #608
+  (shallow-fetch fix), #611 (self-hosted proof); `livespec-overseer` #880
+  (shallow-fetch fix), #883 (self-hosted proof); `livespec-runtime` #518
+  (shallow-fetch fix), #520 (self-hosted proof).
