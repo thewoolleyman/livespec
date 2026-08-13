@@ -1,7 +1,8 @@
 # Handoff — fleet-ci-runner-pool
 
-**Ledger epic:** `livespec-s43svm` (plan anchor, `thewoolleyman/livespec`).
-Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live.
+**Ledger anchor:** `livespec-s43svm` (plan anchor, `thewoolleyman/livespec`).
+Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live, and
+amended the same day once the container blocker was root-caused.
 
 > **Why this file exists.** The `plan` operation's prose says it never authors
 > `handoff.md` and that handoffs are ledger comments. That still governs the
@@ -28,67 +29,78 @@ Rewritten 2026-08-13 at session wrap, AFTER the supervisor went live.
 
 ## State in one sentence
 
-**The full self-hosted lane now exists and is running — real supervisor, 50
-auto-replenishing runners, correct labels — but CONTAINERIZED jobs still fail,
-and since every fleet CI matrix job is containerized, `CI_RUNNER_LABELS` is back
-at `["ubuntu-latest"]` and the host is NOT carrying gating CI.**
+**The full self-hosted lane exists and is running — real supervisor, 50
+auto-replenishing runners, correct labels — and the container blocker is now
+ROOT-CAUSED AND FIXED on master (`livespec-dev-tooling` PR #1376); what remains
+is deploying that fix to the host and proving one real containerized job, after
+which `CI_RUNNER_LABELS` can move off `["ubuntu-latest"]`.**
 
 ---
 
 ## Named next action
 
-**Root-cause this, from the container-hooks JS layer:**
+**Deploy the merged dockershim fix to the host, then prove ONE real
+containerized job green on the pool.**
 
-```
-TypeError: Cannot read properties of null (reading 'container')
-Executing the custom container implementation failed.
-```
+The container blocker is root-caused and fixed on master
+(`livespec-dev-tooling` PR #1376, merged 2026-08-13). What is NOT yet done is
+the live exercise, which is what "done" requires here:
 
-Fails in ~1 second, on 50 of 50 jobs. This is a **new and much narrower error
-than earlier in the session** — earlier failures were podman-level; this one is
-thrown inside the Node container-hooks layer, which is a far more tractable
-surface.
+1. Re-provision or hand-copy `ci-runner/dockershim/docker` from
+   `livespec-dev-tooling` master to `/usr/local/lib/ci-runner/dockershim/docker`
+   on `poweredge-xubuntu` (`root:root`, 0755).
+2. Set `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]` on ONE repo and push a
+   throwaway branch carrying a containerized job.
+3. Confirm green, then prove the hosted fallback by unsetting the variable.
 
-**The strongest untested hypothesis: a runner/hooks version mismatch.** The
-runner agent **auto-updated 2.335.1 → 2.336.0** mid-session (visible as
-`SelfUpdate-*.log.succeed` in a slot's `_diag/`), while
-`provision-ci-runner.sh` pins `HOOKS_VERSION=0.8.1`. A payload-shape change
-between those two would produce exactly this TypeError. **Check the hooks
-release matching runner 2.336.0 before anything else.**
+**Do NOT leave `CI_RUNNER_LABELS` pointed at the pool if that job fails** — jobs
+do not fail on a missing runner, they QUEUE, and every merge then waits on a
+check that never arrives.
 
-Where to look:
-- `ci-runner/sanitize-hook.js` guards `args.container` correctly
-  (`if (args.container && typeof args.container === 'object')`), so the throw is
-  most likely in the REAL hook it delegates to,
-  `/home/ci-runner/actions-runner/container-hooks/index.js`.
-- The failing payload had `"hasPreStep": false, "hasPostStep": false`, which
-  suggests a `cleanup_job` rather than `prepare_job` command.
-- Reproduce by reading a fresh `_diag/Worker_*.log` under
-  `/home/ci-runner/runners/thewoolleyman-livespec-*/`.
+### What the blocker actually was
 
-**Hypotheses already tested and ELIMINATED — do not repeat:**
+The container hooks invoke the docker CLI with a SCRUBBED environment: the
+runner's hook layer passes the JOB CONTAINER's env rather than the runner
+account's. Dumping `env` from the shim on a live `start` call showed it receives
+only `HOME` and `DOCKER_HOST`, with `HOME` pointing INSIDE the container.
+Rootless podman derives real host paths from three variables and dies without
+them:
 
-- Replaying the hook's `docker create` **by hand SUCCEEDS**. The command is not
-  the problem.
-- Pre-creating bind sources (`_github_home`, `_github_workflow`, `_actions`,
-  `_tool`) does not fix it.
-- `DOCKER_HOST` being set is not the cause.
-- The `-v=` equals form is not the cause.
-- The podman-docker banner does **not** corrupt stdout — it goes to **stderr**
-  (`/usr/bin/docker` is a four-line script; read it).
-  `/etc/containers/nodocker` is log hygiene only. An earlier commit claimed
-  otherwise; that was wrong and is corrected on master.
-- A **dead fuse-overlayfs** warm-cache mount gives a *different* error at the
-  same step — `statfs .../uv/merged: transport endpoint is not connected`.
-  Clear stale overlays under `~ci-runner/cache/.overlay/` before diagnosing
-  (`fusermount3 -u` then `umount -l`; `rm -rf` will not remove a dir holding a
-  broken mount).
-- The earlier `cannot resolve /github/home: lstat /github` error came from
-  hand-launched runners; it does **not** appear through the real supervisor.
+| Missing / wrong | Symptom |
+|---|---|
+| `HOME=/github/home` | `cannot resolve /github/home: lstat /github: no such file or directory` |
+| `PATH` absent | `setting up Pasta: could not find pasta … not found in $PATH` |
+| `XDG_RUNTIME_DIR` absent | falls off the per-user runtime dir holding the rootless socket |
 
-**Kill switch worth trying:** removing the cache root makes the T10 hook a
-byte-for-byte no-op of the uncached behavior. If containers pass without it, the
-cache injection is implicated.
+The fix restores all three in the dockershim from the invoking account.
+
+### Corrections to this handoff's earlier round — READ BEFORE RE-INVESTIGATING
+
+The previous round named the wrong layer, and its eliminated-hypotheses list was
+partly wrong. Both cost real time and are corrected here so the errors are not
+repeated:
+
+- **The `TypeError: Cannot read properties of null (reading 'container')` is NOT
+  the bug.** It is downstream noise. The FIRST failure is `PrepareJob`, whose
+  real error is that the dockershim exited 1; the next step then reads a null
+  container and throws. `CleanupJob` succeeds throughout, which is exactly why
+  the hook layer looked healthy. Read `_diag/Worker_*.log` top-down and trust the
+  FIRST failure, not the loudest one.
+- **The runner/hooks version mismatch is real but irrelevant.** The runner did
+  self-update 2.335.1 → 2.336.0 against hooks pinned at 0.8.1. That is not the
+  cause, and chasing it first was a dead end.
+- **`cannot resolve /github/home` was recorded as eliminated ("came from
+  hand-launched runners; does not appear through the real supervisor"). That is
+  WRONG** — it is the exact live error, on slot 33, in the real
+  `poweredge-container-proof` job (run 31658073499). The earlier round reached
+  the opposite conclusion because replaying the failing `docker create` BY HAND
+  always succeeded — a hand shell simply has a real environment. **Bisect by
+  environment, not by argv.**
+
+These remain correctly eliminated, each re-confirmed by single-variable test:
+the T10 dependency cache (its kill switch reproduces the failure identically
+with the cache disabled), missing bind-source directories, the `-v=` equals
+form, and `DOCKER_HOST`.
 
 ---
 
@@ -140,16 +152,25 @@ cache injection is implicated.
 
 | PR | Repo | What | State |
 |---|---|---|---|
-| #2244 | `livespec` | v203 ratification | open, auto-merge armed |
-| #2245 | `livespec` | plan: supervisor + cache tiers | open, auto-merge armed |
-| #2241 | `livespec` | plan: `cwoolley` + tailnet diagnosis | open, auto-merge armed |
+| #2244 | `livespec` | v203 ratification | **MERGED** |
+| #2245 | `livespec` | plan: supervisor + cache tiers | **MERGED** |
+| #2243 | `livespec` | round-5 delta verdict | **MERGED** |
+| #2241 | `livespec` | plan: `cwoolley` + tailnet diagnosis | **MERGED** |
+| #2249 | `livespec` | dependency-fetch retries + hosted uv cache | **MERGED** |
 | #2246 | `livespec` | **this handoff** | open, auto-merge armed |
 | #1374 | `livespec-dev-tooling` | six ci-runner fixes | **MERGED** |
+| #1376 | `livespec-dev-tooling` | **the container-blocker fix** + recovered `9ee31dc` | **MERGED** |
 | #23 | `tailscale-admin` | tags + grant | **MERGED, applied** |
 
-Some of these were pushed while routing pointed at the self-hosted pool, so
-their CI may show container-related failures that are **not** content failures.
-Re-run them on hosted capacity; routing is already reverted.
+Every one of the round-2 PRs was red on the shellcheck flake (trap 2), NOT on
+content; re-running each on hosted capacity cleared them.
+
+`livespec-dev-tooling` PR #1376 also recovered commit `9ee31dc`, which had been
+pushed to `fix-linger-race` EIGHT MINUTES AFTER PR #1374 merged and so never
+reached master, although it WAS hand-deployed to the live host. This handoff's
+own "reap `fix-linger-race`" instruction would have discarded it. **Before
+reaping any branch this plan touched, confirm master actually contains its
+tip** — `git merge-base --is-ancestor <sha> origin/master`.
 
 ---
 
@@ -160,11 +181,30 @@ Re-run them on hosted capacity; routing is already reverted.
    dies before the container starts and probes capture empty output. **Same
    host, same commit: 5 fail from a home dir, 0 fail from `/tmp`.** Fixed at
    source; run older copies from `/tmp`.
-2. **`shellcheck` download from the GitHub releases CDN fails intermittently**
-   during `mise install`, killing an unrelated check before it runs. **Seen
-   TWICE this session** on different PRs — a recurring flake. Per `AGENTS.md` it
-   must be fixed at source (retry/cache, or bake it into the CI image), not
-   re-run. **Owed work; not yet filed as a work-item.**
+2. ~~**`shellcheck` download from the GitHub releases CDN fails
+   intermittently**~~ — **FIXED AT SOURCE 2026-08-13**, three ways. The cause
+   was that `.mise.toml` declares four tools and the CI image baked three:
+   `shellcheck` had no baked ARG, so `mise install` re-fetched it from the
+   releases CDN on EVERY containerized job in EVERY fleet repo. It reddened
+   master in both `livespec` and `livespec-dev-tooling`, and — because
+   `check-master-ci-green` blocks commits behind a red master — a red master
+   then blocks the commit that would fix it. Watch for that deadlock shape.
+   - `livespec-dev-tooling`: bakes `shellcheck`, and the lockstep gate now
+     DERIVES its obligation from the `[tools]` table (every declared tool must be
+     both ARG-pinned and `mise use -g`-installed), so a newly declared tool can
+     never again become a silent per-job network fetch.
+   - `livespec-dev-tooling`: every image-build fetch retries — `curl --retry 5
+     --retry-all-errors` (its backoff is already exponential; `--retry-delay`
+     would REPLACE that with a fixed sleep, so do not add it), `apt -o
+     Acquire::Retries=5`, `ENV MISE_HTTP_RETRIES`/`UV_HTTP_RETRIES`, npm
+     `--fetch-retries`.
+   - `livespec` PR #2249: `MISE_HTTP_RETRIES=5` in CI (mise's own default is
+     `http_retries = 0` — one attempt), plus the uv cache restored for the
+     HOSTED lane, which had been dropped on reasoning that only holds for the
+     self-hosted lane.
+
+   **Still owed:** `MISE_HTTP_RETRIES` is set in `livespec` only; the other
+   eight fleet repos still carry `UV_HTTP_RETRIES` with no mise equivalent.
 3. **`github_rate_limit_guard` denies looped or `--cache`-less GitHub reads**,
    and more aggressively while a Monitor polls GitHub. Prefer reading evidence
    off the box (`/tmp/*.log`, `_diag/`) over the API.
@@ -197,8 +237,11 @@ Re-run them on hosted capacity; routing is already reverted.
 
 ---
 
-## Remaining sequence, after the container blocker
+## Remaining sequence
 
+0. **Deploy the merged shim fix and prove one containerized job** — the Named
+   next action above. Everything below stays blocked until a real job on the
+   pool goes green, because until then the lane cannot carry gating CI.
 1. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
    cache** (removes GitHub's unraisable 10 GB cap) and a Nix store/binary cache.
 2. Install observability
@@ -207,7 +250,8 @@ Re-run them on hosted capacity; routing is already reverted.
    that stopped taking jobs.
 3. **Then** flip `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]`, one repo
    first, and prove the hosted fallback by unsetting it.
-4. File the supervisor/cache work as ledger children of `livespec-s43svm` after
+4. Fan `MISE_HTTP_RETRIES=5` out to the remaining eight fleet repos (see trap 2).
+5. File the supervisor/cache work as ledger children of `livespec-s43svm` after
    a scoping event. **Not done** — no scoping event exists, no children filed.
 
 ---
