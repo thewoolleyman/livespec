@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.6](https://github.com/thewoolleyman/livespec/compare/v0.33.5...v0.33.6) (2026-08-13)
+
+
+### Bug Fixes
+
+* **ci:** validate dependency and vendor changes ([7a4ecd4](https://github.com/thewoolleyman/livespec/commit/7a4ecd47fe8559097c6637b3e44c8987149654f9))
+
 ## [0.33.5](https://github.com/thewoolleyman/livespec/compare/v0.33.4...v0.33.5) (2026-08-13)
 
 
