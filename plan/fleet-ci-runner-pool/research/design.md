@@ -446,11 +446,97 @@ does not touch and must not duplicate — the GMKtec thread's handoff states
 plainly that no competing plan may be created from outside and that its host
 must not be contacted from another thread.
 
+## The supervisor is REQUIRED, and the token stopgap is not it
+
+Maintainer-directed 2026-08-13: this plan must deliver a real supervisor, not
+the registration-token workaround used to prove the host.
+
+**What was used to prove the host, and why it is not enough.** The first jobs
+were run by minting a short-lived registration token, configuring N ephemeral
+runners by hand, and launching `run.sh` for each. That was deliberate — it put
+no persistent credential on a box that had none — and it proved execution. It is
+not a lane. Its defects are structural, and each was observed:
+
+- **It does not replenish.** Each ephemeral runner takes one job and exits, so a
+  pool of N serves exactly N jobs and then the label resolves to nothing. Jobs
+  after that do not fail; they QUEUE, which under §"Availability MUST NOT become
+  a merge dependency" is the stall the fail-closed default exists to prevent.
+  Fifty runners were consumed by a single CI run.
+- **It leaves stale state.** A slot whose runner exited without taking a job
+  keeps its `.runner` and `.credentials`, and the next hand-registration refuses
+  with "Cannot configure the runner because it is already configured". The
+  supervisor does not have this problem: each cycle mints a fresh just-in-time
+  config into a clean instance.
+- **It does not set the runner's PATH.** `runner@.service` puts the docker
+  serialization shim first on the agent's PATH; a hand-launched `run.sh` does
+  not, so the container hooks resolve the wrong `docker` or none at all.
+- **Its token expires in an hour**, so it cannot survive unattended operation at
+  all.
+
+**What the real supervisor requires.** The kit already ships it — systemd units,
+a narrow polkit bridge, the mint and launch scripts, at
+`thewoolleyman/livespec-dev-tooling` `ci-runner/supervisor/`. The single missing
+input is the credential: the `thewoolleyman-ci-runners` GitHub App private key,
+reachable only by the `ci-sup` supervising identity, injected by a
+`with-github-ci-runners-env.sh` wrapper. That wrapper resolves its token through
+1Password with `systemd-creds`, and `systemd-creds` encrypts against the HOST
+key — so the factory host's encrypted blob cannot be copied to another host. The
+wrapper installer must be run on `poweredge-xubuntu` with the service-account
+token, which is a maintainer act.
+
+Until that lands, the host has proven capability but has no durable lane, and
+routing MUST stay on hosted capacity.
+
+## Cache tiers, and the volume that holds them
+
+Maintainer-directed 2026-08-13: local caching of the runner cache is in scope,
+sized for NixOS builds.
+
+**The storage.** `poweredge-xubuntu` carries a 1919 GB disk. The maintainer
+created `/dev/sda5` (718 GB, ext4, partlabel `/var/cache/ci-runner`) from the
+free tail; it is mounted at `/var/cache/ci-runner` by UUID in `/etc/fstab` with
+`noatime`, owned by `ci-runner`, and reports 658 GB usable. A separate volume
+rather than growing `/` is deliberate: the space is intended to outlive and be
+shared beyond the current OS install, and a filesystem of its own is what makes
+that possible. Note for anyone reading the partition table: `sda2` and `sda3`
+are labelled `old-gitlab-k8s` and `new-gitlab-k8s`. **There is no NixOS on this
+machine and it is not in the homelab fleet** — maintainer-stated 2026-08-13, and
+worth recording because the partition layout invites the opposite guess.
+
+**Three tiers, and only the first exists today.**
+
+1. **Warm overlay lowers** — per-repository `uv`, and `cargo` plus `target` for
+   Rust repositories. Shipped and provisioned. A job mounts them as the LOWER
+   layer of an overlay whose upper is per-job and discarded, so a job can read
+   the warm cache but never mutate it. That trust-tiering is structural rather
+   than a forgeable signal, and the isolation suite asserts it. Currently rooted
+   under the runner's home; moving the root onto the cache volume is work this
+   plan owns.
+2. **A local Actions cache** — NOT built. `actions/cache` today resolves to
+   GitHub's service, which caps a repository at ten gigabytes; `thewoolleyman/homelab`
+   records that cap as applying to self-hosted runners too, so it cannot be
+   raised. A local cache service on this host removes both the cap and the
+   round-trip. This is the tier the maintainer's instruction most directly names.
+3. **A Nix store and binary cache** — NOT built, and forward-looking. Intended to
+   serve homelab's NixOS builds. One honest constraint: the Nix store lives at
+   `/nix/store` and its paths are baked into build outputs, so it cannot simply
+   be relocated onto this volume without a bind-mount. What relocates cleanly is
+   a SERVED closure directory rather than a live store. Whether to share `/nix`
+   itself is homelab's question, not this plan's.
+
+**Sizing.** Non-Nix tiers estimate to roughly 225 GB in total — about 30 GB of
+`uv` caches across the fleet's repositories, 25 GB of Rust registry and target,
+20 GB of container image store, 50 GB of runner work directories, and 100 GB of
+Actions cache with history. The Nix tier dominates and is the reason for the
+volume's size. 658 GB carries all three with headroom.
+
 ## Scope boundary for this plan
 
 **In scope:** the pool contract, `poweredge-xubuntu` provisioned and proven as
-its first member, fleet repositories routed to it, observability installed, and
-the join procedure handed to `thewoolleyman/homelab`.
+its first member, **the real supervisor standing up as the durable lane**, **the
+three cache tiers rooted on the dedicated volume**, fleet repositories routed to
+it, observability installed, and the join procedure handed to
+`thewoolleyman/homelab`.
 
 **Out of scope, deliberately:** the privileged gate lane; building or contacting
 `hetzner-prod` or `gmktec`; any change to the specification, which already
