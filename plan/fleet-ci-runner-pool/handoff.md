@@ -45,7 +45,7 @@ own master.
 
 **6 of the 9 livespec fleet repos are now on PERMANENT self-hosted CI
 routing, each proven green on a real self-hosted master-push run**:
-`livespec` (50 slots), `livespec-driver-codex` (67), `livespec-driver-claude`
+`livespec` (75 slots), `livespec-driver-codex` (67), `livespec-driver-claude`
 (66), `livespec-orchestrator-git-jsonl` (66), `livespec-overseer` (65),
 `livespec-runtime` (64). A 7th (`livespec-console-beads-fabro`, 16 slots) has
 `CI_RUNNER_LABELS` set and its slots provisioned but has NOT been proven live
@@ -290,7 +290,7 @@ CI_RUNNER_SLOTS=16 CI_RUNNER_REPOSLUGS=thewoolleyman-livespec-console-beads-fabr
 
 | Repo | Jobs | Slots provisioned | Slots configured in supervisor |
 |---|---|---|---|
-| `livespec` | 75 | (already had 50 pre-round-6) | 50 — UNCHANGED this round, deliberately (see "Open decision" below) |
+| `livespec` | 75 | 75 | 75 — expanded after round-6 proof |
 | `livespec-driver-codex` | 67 | 67 | 67 |
 | `livespec-driver-claude` | 66 | 66 | 66 |
 | `livespec-orchestrator-git-jsonl` | 66 | 66 | 66 |
@@ -416,16 +416,15 @@ either ceiling — peak observed ~59GB/188GB RAM, CPU never pinned).
 
 ---
 
-## Open decision: should `livespec` itself move from 50 to its own full 75-job width?
+## `livespec` moved to its own full 75-job width
 
-NOT done this round, deliberately — left at its already-proven 50 to keep
-that one variable constant while validating the OTHER repos' behavior at
-full width. Now that 5 more repos are proven at full width with zero
-regressions, bumping `livespec` to 75 is the natural next mechanical step
-(no new risk category — just matching what's already proven pattern
-elsewhere). Not done only because this round's actual asks (App install,
-width test, fix-and-propagate) are complete and this is a new, separate,
-lower-urgency increment.
+Executed as the next mechanical step after the round-6 rollout proved five
+other repos at full width. The host was provisioned idempotently for 75
+`livespec` instance directories, the supervisor drop-in was changed from
+`thewoolleyman/livespec:50` to `thewoolleyman/livespec:75`, and the service was
+restarted. The supervisor's own startup log reports the new allocation; the
+service is active with no failed runner units. GitHub shows all 75 new
+registrations, with status updates settling asynchronously after restart.
 
 ---
 
@@ -491,11 +490,9 @@ round. Two NEW ones from this round:
 6. **Push `console-beads-fabro`'s preserved proof commit once
    `check-fork-drift` is resolved there** (someone else's call, not this
    plan's) — the worktree is ready and waiting.
-7. **Open decision: bump `livespec` from 50 to its own full 75-job width**,
-   now that 5 other repos are proven at full width with zero regressions.
-8. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
+7. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
    child `.2`. Still the next-most-valuable infra work after 6-7.
-9. **Build the local Actions cache service and the Nix store/binary cache**
+8. **Build the local Actions cache service and the Nix store/binary cache**
    — ledger children `.3` and `.4`. Genuinely new infrastructure; needs a
    design pass, not blind implementation.
 
@@ -509,7 +506,8 @@ round. Two NEW ones from this round:
   `livespec-console-beads-fabro` — verified live via `gh api
   repos/.../actions/variables/CI_RUNNER_LABELS` for all 7, this round.
 - Supervisor is RUNNING, serving exactly these 7 repos at the slot counts in
-  the table above (confirmed via its startup log line, not the unit file).
+  the table above (confirmed via its startup log line, not the unit file),
+  including `livespec:75` after the follow-up expansion.
   Host load settled to ~19 (baseline) after all bursts this round.
 - All worktrees this round were reaped after merge EXCEPT
   `~/.worktrees/livespec-console-beads-fabro/poweredge-selfhosted-proof`
