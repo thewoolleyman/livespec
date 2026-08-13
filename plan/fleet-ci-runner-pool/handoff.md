@@ -29,33 +29,135 @@ amended the same day once the container blocker was root-caused.
 
 ## State in one sentence
 
-**The full self-hosted lane exists and is running — real supervisor, 50
-auto-replenishing runners, correct labels — and the container blocker is now
-ROOT-CAUSED AND FIXED on master (`livespec-dev-tooling` PR #1376); what remains
-is deploying that fix to the host and proving one real containerized job, after
-which `CI_RUNNER_LABELS` can move off `["ubuntu-latest"]`.**
+**`livespec` gating CI is LIVE on the self-hosted pool — `CI_RUNNER_LABELS`
+flipped to `["self-hosted","local-ci"]` 2026-08-13, real matrix jobs from a real
+open PR observed running on it, all three container-blocker layers fixed — and
+the plan now explicitly extends to every OTHER livespec fleet repo, which today
+has ZERO self-hosted capacity: the supervisor serves `repos=[thewoolleyman/livespec]`
+only, and `--slots` is PER REPO, not a shared pool total, so adding repos is a
+real capacity decision, not a flag flip.**
 
 ---
 
 ## Named next action
 
-**Deploy the merged dockershim fix to the host, then prove ONE real
-containerized job green on the pool.**
+**Roll self-hosted CI out to the other livespec fleet repos.** `livespec` is
+proven live (see "`livespec` is live" below); every OTHER fleet repo still runs
+on paid GitHub-hosted capacity, and the supervisor design means that is a real
+scoping decision, not a one-line change.
 
-The container blocker is root-caused and fixed on master
-(`livespec-dev-tooling` PR #1376, merged 2026-08-13). What is NOT yet done is
-the live exercise, which is what "done" requires here:
+### Why this is not a flag flip
 
-1. Re-provision or hand-copy `ci-runner/dockershim/docker` from
-   `livespec-dev-tooling` master to `/usr/local/lib/ci-runner/dockershim/docker`
-   on `poweredge-xubuntu` (`root:root`, 0755).
-2. Set `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]` on ONE repo and push a
-   throwaway branch carrying a containerized job.
-3. Confirm green, then prove the hosted fallback by unsetting the variable.
+`ci-runner-supervisor.sh --repos "<space-separated owner/repo ...>" --slots N`
+— `REPOS` accepts multiple repos natively (confirmed by reading the script:
+`for repo in $REPOS; do for slot in $(seq 1 "$SLOTS_PER_REPO"); do ...`), but
+**`--slots` is PER REPO, not a shared pool total.** The live unit is
+`--repos thewoolleyman/livespec --slots 50` — 50 runner instance dirs. Naively
+adding repos at the same slot count (`--repos "repo-a repo-b repo-c" --slots
+50`) would create 150 instance dirs on a 72-thread host that the current
+comment in `poweredge.conf` already says is sized so 50 "leaves headroom for
+the OS and the rootless container engine" — i.e. 50 is close to this host's
+ceiling for ONE repo, not a per-repo default that scales.
 
-**Do NOT leave `CI_RUNNER_LABELS` pointed at the pool if that job fails** — jobs
-do not fail on a missing runner, they QUEUE, and every merge then waits on a
-check that never arrives.
+So the rollout needs an explicit **slots-per-repo** decision before touching
+the unit, not just a longer `--repos` list. Candidates, not yet decided:
+
+- Uneven allocation by repo size/CI-matrix width (e.g. `livespec` and
+  `livespec-dev-tooling` — the two largest matrices — get more slots than a
+  small binding repo like `livespec-driver-claude`).
+- A flat low number per repo (e.g. 5–10) across all nine, sized to this host's
+  thread count divided by repo count, with headroom preserved.
+- A SEPARATE supervisor unit / systemd `runner@.service` instantiation per
+  repo, so each repo's slot count can be tuned independently rather than one
+  shared `SLOTS_PER_REPO` value across a single `--repos` invocation — check
+  whether the script supports per-repo slot counts before assuming a single
+  flat value is the only shape; if not, that is new work, not configuration.
+
+### What else the rollout needs, per additional repo
+
+1. **The GitHub App installed on that repo.** Per "Open decisions" below, the
+   `thewoolleyman-ci-runners` App is installed on `livespec` only today. No new
+   App or key — the existing App just needs installing on each additional repo
+   (maintainer action, App settings), exactly as already noted for `homelab`.
+2. **`CI_RUNNER_LABELS` set on that repo** to `["self-hosted","local-ci"]` (plus
+   any per-host label the routing needs), the same variable flipped for
+   `livespec`.
+3. **Its CI workflow already using the `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS
+   || '["ubuntu-latest"]') }}` pattern.** `livespec`'s `ci.yml` does; VERIFY each
+   other repo's workflow follows the same convention before assuming the
+   variable alone routes it — `check-self-hosted-routing` (already fleet-wide in
+   `livespec-dev-tooling`) is the mechanical check for this, run it per repo
+   rather than assuming.
+4. **The dockershim + bind-source + netns fixes on that host build.** They live
+   in `livespec-dev-tooling/ci-runner/`, shared across every repo the same
+   supervisor serves — ONE fix, ONE host, every repo it serves benefits. No
+   per-repo dockershim work.
+5. **Proof**, the same way `livespec` was proven here: re-run one real (not
+   throwaway) PR's gating CI after flipping the label, confirm matrix jobs
+   actually schedule on the pool (`in_progress` jobs on the run, not stuck
+   `queued`), and prove the hosted fallback still works by unsetting the
+   variable.
+
+### Candidate repo list (from `.livespec-fleet-manifest.jsonc` / this repo's
+`AGENTS.md` "Standing environment facts")
+
+`livespec-dev-tooling`, `livespec-overseer`, `livespec-orchestrator-beads-fabro`,
+`livespec-driver-claude`, `livespec-driver-codex`,
+`livespec-orchestrator-git-jsonl`, `livespec-runtime`, `dolt-server` — the same
+eight repos already tracked for the `MISE_HTTP_RETRIES` fan-out (trap 2), which
+is worth doing IN THE SAME PASS as adding each repo to `--repos`, since both are
+one-line-per-repo CI changes to the same set of repos.
+
+**Do this AFTER deciding slots-per-repo, not before** — registering runners
+against a repo whose slot allocation is undecided means re-registering them
+(deleting and re-minting every JIT config) once the real number is chosen.
+
+---
+
+## `livespec` is live — how it was proven
+
+`CI_RUNNER_LABELS` was flipped to `["self-hosted","local-ci"]` on `livespec`
+2026-08-13, and PR #2248's real gating `CI` workflow was re-run under that
+routing (not the throwaway `poweredge-container-proof` workflow used to prove
+the container fixes) — matrix jobs (`check-lint`, `check-file-lloc`,
+`check-check-mutation`, etc.) were observed `in_progress`, not stuck `queued`,
+proving the pool schedules real gating work. **Verify the run's final
+conclusion before treating this as fully closed** — `in_progress` at write time
+is evidence the pool works, not yet evidence the whole matrix passed.
+
+---
+
+## Container blocker — RESOLVED, kept for reference
+
+The section below records how a three-layer container blocker was found and
+fixed. It is retained because the debugging method (bisect by environment, read
+the FIRST failure not the loudest) generalizes, and because the eliminated/not-
+eliminated distinctions cost real time to establish. **The blocker itself is
+closed** — `livespec-dev-tooling` PR #1376 (merged) and #1378 (open, auto-merge
+armed, already deployed to the host) fix all three layers, and a real
+containerized job passed every step on the pool
+(`poweredge-container-proof-2` run 31666955395, slot 9).
+
+All three steps below are DONE — kept as a record of what "done" required, since
+the same shape (fix on master, deploy to host, prove with a real job) applies to
+every future dockershim change:
+
+1. ~~Re-provision or hand-copy `ci-runner/dockershim/docker`...~~ Done —
+   deployed via `scp` + `install -m 0755` directly (re-provisioning would have
+   worked too, but the box was mid-diagnosis and a targeted copy proved each
+   fix immediately without a full re-provision cycle).
+2. ~~Set `CI_RUNNER_LABELS`...~~ Done for `livespec` — see "`livespec` is live"
+   above.
+3. ~~Confirm green, then prove the hosted fallback...~~ Confirmed for the
+   throwaway proof workflow AND for a real gating PR; hosted-fallback proof
+   (unset the variable, confirm hosted capacity picks the job back up) is
+   NOT yet done for `livespec` — do this before or alongside the fleet-wide
+   rollout above, since it is cheap and closes a real gap.
+
+**Do NOT leave `CI_RUNNER_LABELS` pointed at the pool if a job fails** — jobs do
+not fail on a missing runner, they QUEUE, and every merge then waits on a check
+that never arrives. This applies to every repo added in the rollout above, not
+just `livespec`.
 
 ### What the blocker actually was
 
@@ -219,6 +321,36 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
 6. **Never leave `CI_RUNNER_LABELS` pointed at a pool that cannot pass jobs.**
    Jobs do not fail — they queue, and every merge waits on a check that never
    arrives.
+7. **A throwaway proof workflow does NOT exercise every step a real gating
+   workflow does — verify against real gating CI before declaring a fix
+   proven.** `poweredge-container-proof` proved `prepare_job`/`cleanup_job`
+   green and looked conclusive. Flipping `CI_RUNNER_LABELS` and re-running a
+   REAL PR's `CI` workflow immediately surfaced a regression the proof workflow
+   never exercised: a `docker exec ... git config --global` step (the "Trust
+   workspace for git" step every real matrix job runs, that the throwaway
+   workflow never included) failed with
+   `could not lock config file /home/ci-runner/.gitconfig: No such file or
+   directory`.
+
+   Root cause: `docker create`'s real argv carries a BARE `-e HOME` (no
+   `=value`) — docker's "pass through MY OWN HOME into the container"
+   convention — and that gets BAKED into the container's persistent env at
+   create time, becoming the default HOME for every LATER `exec` that doesn't
+   specify its own. The scrubbed-environment fix (trap-adjacent, this same
+   session) exports a REPAIRED host HOME before `create` runs so PODMAN's OWN
+   process can resolve its storage — and that repaired value leaked through the
+   SAME bare `-e HOME` flag into the container, corrupting what every later
+   `exec` on that container saw as its home.
+
+   Fixed by preserving the ORIGINAL (pre-repair) HOME and rewriting a bare
+   `-e HOME` at `create` specifically back to an explicit `-e HOME=<original>`
+   — scoped to `create` alone, since that is the only subcommand whose real
+   argv carries this bare passthrough (`livespec-dev-tooling` PR #1378, second
+   commit). **The general lesson: when a fix touches an env var that gets
+   bare-passed into a container at create time, check whether the SAME var
+   later governs anything read from INSIDE an already-running container — a
+   fix for the client side can silently corrupt the container side through
+   that one shared flag.**
 
 ---
 
@@ -239,34 +371,64 @@ tip** — `git merge-base --is-ancestor <sha> origin/master`.
 
 ## Remaining sequence
 
-0. **Deploy the merged shim fix and prove one containerized job** — the Named
-   next action above. Everything below stays blocked until a real job on the
-   pool goes green, because until then the lane cannot carry gating CI.
-1. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
+0. ~~Deploy the merged shim fix and prove one containerized job~~ **DONE** —
+   `livespec` proved on both the throwaway workflow and real gating CI.
+0b. **Prove the hosted fallback for `livespec`** — unset `CI_RUNNER_LABELS` (or
+   set it back to `["ubuntu-latest"]`) and confirm a job routes to hosted
+   capacity again. Cheap, not yet done, do it before declaring `livespec` fully
+   closed.
+1. **Decide slots-per-repo, then roll self-hosted CI out to the other eight
+   livespec fleet repos** — the Named next action above. This is now the
+   critical-path item; everything numbered below was written when the plan's
+   scope was `livespec`-only and is now correctly understood as "polish that
+   applies fleet-wide once step 1 lands the other repos," not as blocking it.
+2. Move cache tiers onto `/var/cache/ci-runner`; build the **local Actions
    cache** (removes GitHub's unraisable 10 GB cap) and a Nix store/binary cache.
-2. Install observability
+   Do this AFTER the fleet-wide rollout, not before — a shared cache root that
+   only one repo has ever populated is a smaller win than one every repo's jobs
+   warm.
+3. Install observability
    (`ci-runner/observability/install-observability.sh` — the only sanctioned
    way). This discharges v203's requirement that the fleet can observe a host
-   that stopped taking jobs.
-3. **Then** flip `CI_RUNNER_LABELS` to `["self-hosted","local-ci"]`, one repo
-   first, and prove the hosted fallback by unsetting it.
-4. Fan `MISE_HTTP_RETRIES=5` out to the remaining eight fleet repos (see trap 2).
-5. File the supervisor/cache work as ledger children of `livespec-s43svm` after
-   a scoping event. **Not done** — no scoping event exists, no children filed.
+   that stopped taking jobs, and matters MORE once nine repos depend on the
+   host than when one did.
+4. Fan `MISE_HTTP_RETRIES=5` out to the remaining eight fleet repos (see trap
+   2) — **do this in the SAME PASS as step 1**, since both are one-line CI
+   changes to the same set of repos and reopening each repo's workflow twice is
+   wasted motion.
+5. File the supervisor/cache work, AND the fleet-wide rollout itself, as ledger
+   children of `livespec-s43svm` after a scoping event. **Not done** — no
+   scoping event exists, no children filed. The rollout is real enough scope
+   now (nine repos, a slots-per-repo decision, a possible supervisor-script
+   change) that it may warrant becoming its own scoped epic under this plan's
+   anchor rather than staying an unscoped line item.
 
 ---
 
 ## Housekeeping at wrap
 
-- Primary checkout clean on `master`; `CI_RUNNER_LABELS` = `["ubuntu-latest"]`
-  (verified).
-- **The supervisor is left RUNNING and enabled** — it will keep ~50 runners
-  registered and idle. They cost nothing while no job targets `local-ci`. Stop
-  with `sudo systemctl disable --now ci-runner-supervisor.service` if you want
-  them gone.
-- Throwaway proof branches deleted; their worktrees removed.
-- Worktrees still present: `spec-revise-v203`, `plan-supervisor-and-cache`,
-  `plan-ssh-account-cwoolley`, `spec-selfhosted-pool`,
-  `wrapup-fleet-ci-runner-pool` (livespec), `fix-linger-race` (dev-tooling).
-  Reap once merged — `just reap-stale-worktrees <repo> --dry-run` FIRST; the
-  bare form reaps without confirmation.
+- `CI_RUNNER_LABELS` on `livespec` currently reads
+  `["self-hosted","local-ci"]` — VERIFY this against the live variable before
+  trusting this line; it has been flipped four times in this session alone
+  (proof → revert-on-regression → re-flip-after-fix) and is exactly the kind of
+  state a stale handoff misreports. If real gating CI is not passing when you
+  read this, revert it immediately (trap 6) before doing anything else.
+- **The supervisor is RUNNING and enabled**, serving `thewoolleyman/livespec`
+  only — `repos=[thewoolleyman/livespec] slots=50`. Confirm from the startup
+  log line (trap 5), never the unit file.
+- `poweredge-container-proof-2` — the throwaway branch/workflow used to prove
+  the container-blocker fixes — is STILL PRESENT (`.github/workflows/
+  poweredge-container-proof.yml` on branch `poweredge-container-proof-2`).
+  Delete both once `livespec-dev-tooling` PR #1378 is confirmed merged AND the
+  hosted-fallback proof (remaining sequence 0b) is done — it may still be
+  useful for one more regression check before then.
+- Worktrees created this session, not yet cleaned up: `fleet-wide-ci-runner-
+  rollout`, `poweredge-container-proof-2` (livespec); `fix-dockershim-scrubbed-
+  env`, `fix-dockershim-bind-source-dirs`, `bake-shellcheck-and-close-lockstep-
+  gap` (dev-tooling). Also still present from the prior round: `spec-revise-
+  v203`, `plan-supervisor-and-cache`, `plan-ssh-account-cwoolley`, `spec-
+  selfhosted-pool` (livespec), `fix-linger-race` (dev-tooling, ALREADY MERGED —
+  see trap-adjacent note above about confirming a branch's tip is actually on
+  master before reaping it).
+  Reap once each branch's PR is confirmed merged — `just reap-stale-worktrees
+  <repo> --dry-run` FIRST; the bare form reaps without confirmation.
