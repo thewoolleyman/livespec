@@ -239,6 +239,13 @@ Repeat these in every instruction sent to the worker:
 - Verify against the forge after a fetch, never a possibly stale working tree.
 - Every tracked change follows this repository's worktree, reviewed PR,
   rebase-merge, primary-refresh, and cleanup path.
+- The only direct primary-checkout write exception is the gitignored
+  `<repo-primary>/tmp/overseer/<topic>/` runtime subtree. `<topic>` is one
+  non-empty path component; the target must resolve beneath that topic
+  directory and remain ignored. This covers supervisor runtime state such as
+  `.supervisor-state`, wait channels, watcher logs, and PID files only. It does
+  not permit writes to `tmp/overseer/` itself, other `tmp/` paths, tracked
+  files, or any other primary-checkout path.
 - Use `mise exec -- git` for git writes so the repository hooks run.
 - Product Python changes follow the repository's Red-Green-Replay protocol;
   non-product documentation-only changes are exempt.
