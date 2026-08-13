@@ -1,0 +1,49 @@
+# THROWAWAY proof workflow — delete this file and its branch once it has run.
+#
+# Proves the self-hosted pool can run a CONTAINERIZED job end to end, after the
+# dockershim environment fix (livespec-dev-tooling PR #1376). It pins runs-on
+# DIRECTLY rather than reading CI_RUNNER_LABELS, so it exercises the pool
+# WITHOUT changing routing for any gating job: nothing merge-blocking depends on
+# this workflow, and a failure here queues nothing and blocks nothing.
+#
+# What it proves is specifically the part that was broken — PrepareJob, i.e. the
+# runner's "Initialize containers" step, which is what dies before any step of
+# the job body runs. Reaching the first `run:` step at all is the pass condition;
+# the assertions after it are a bonus.
+name: poweredge-container-proof
+
+# `push` to this one branch ONLY. No workflow_dispatch: check-self-hosted-routing
+# forbids a manually-triggerable job from routing to gating self-hosted labels,
+# which is the right rule — re-push to re-run.
+on:
+  push:
+    branches:
+      - poweredge-container-proof-2
+
+permissions:
+  contents: read
+
+jobs:
+  container-proof:
+    runs-on: [self-hosted, local-ci]
+    container:
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.20.5
+    steps:
+      - name: Prove the container started and the job body runs
+        run: |
+          echo "PrepareJob succeeded — this step runs INSIDE the container."
+          echo "whoami: $(whoami)"
+          echo "HOME=$HOME"
+          echo "container id: $(cat /etc/hostname)"
+
+      - name: Prove the runner's bind mounts resolved
+        run: |
+          test -d /__w || { echo "MISSING /__w"; exit 1; }
+          test -d /github/home || { echo "MISSING /github/home"; exit 1; }
+          echo "bind mounts present: /__w and /github/home"
+
+      - name: Prove the baked toolchain is present without a network fetch
+        run: |
+          command -v just
+          command -v uv
+          command -v shellcheck || echo "shellcheck NOT baked (expected until the image is rebuilt)"
