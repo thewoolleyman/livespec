@@ -67,5 +67,12 @@
     "safe_default": 1,
     "per_proposal_override": null,
     "allowed_values": []
+  },
+  {
+    "key": "spec_pr_merge",
+    "value_type": "enum",
+    "safe_default": "manual",
+    "per_proposal_override": "spec_pr_merge_policy",
+    "allowed_values": ["manual", "auto-on-green"]
   }
 ]
