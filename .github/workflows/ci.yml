@@ -421,6 +421,20 @@ jobs:
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
         run: git config --global --add safe.directory '*'
 
+      # Self-hosted lane only: the self-hosted runner reuses a persistent
+      # `_work/<repo>/<repo>` checkout across jobs, unlike the hosted lane's
+      # always-fresh clone. On that reused tree, actions/checkout's fetch for
+      # a PR merge ref (`+<merge-sha>:refs/remotes/pull/N/merge`) does not
+      # also re-establish `refs/remotes/origin/*`, even with `fetch-depth: 0`
+      # above — leaving `origin/master` unresolvable and failing
+      # check-red-green-replay's `origin/master..HEAD` range enumeration
+      # (`range base origin/master is not resolvable`). Hosted's fresh clone
+      # never hits this path, so this is a no-op there. Explicit fetch of the
+      # exact ref the check needs, not a change to what the check verifies.
+      - name: Ensure origin/master is fetched (self-hosted reused _work dir)
+        if: env.LIVESPEC_CI_LANE == 'local'
+        run: git fetch origin master:refs/remotes/origin/master
+
       # The cross-repo wiring-completeness invariant (run inside
       # check-doctor-static) walks every registered sibling repo and
       # reads its `justfile` via `git show HEAD:justfile`. In CI the
