@@ -44,7 +44,9 @@ own master.
 ## State in one sentence
 
 **6 of the 9 livespec fleet repos are now on PERMANENT self-hosted CI
-routing, each proven green on a real self-hosted master-push run**:
+routing; five remain proven green on a real self-hosted master-push run, and
+`livespec` has now been expanded to its full measured width but its post-merge
+proof is blocked by a pre-existing master gate failure**:
 `livespec` (75 slots), `livespec-driver-codex` (67), `livespec-driver-claude`
 (66), `livespec-orchestrator-git-jsonl` (66), `livespec-overseer` (65),
 `livespec-runtime` (64). A 7th (`livespec-console-beads-fabro`, 16 slots) has
@@ -426,6 +428,18 @@ restarted. The supervisor's own startup log reports the new allocation; the
 service is active with no failed runner units. GitHub shows all 75 new
 registrations, with status updates settling asynchronously after restart.
 
+## Post-expansion master proof
+
+The merge-triggered `livespec` master-push run `31733144049` completed with
+three failures after the failed jobs were rerun. The two substantive failures
+(`check-coverage` and `check-per-file-coverage`) are pre-existing
+`spec_pr_merge` governance/template drift: tests report `KeyError:
+'spec_pr_merge'`, and the committed orchestrator template reports the same key
+as an extra manifest entry. The other 70+ jobs passed. This is not caused by
+the runner-allocation or handoff documentation change; resolve that unrelated
+master gate before treating the 75-slot `livespec` expansion as fully
+master-push-proven.
+
 ---
 
 ## Cache tiers, `dolt-server`, and everything else from `research/design.md`
@@ -490,9 +504,11 @@ round. Two NEW ones from this round:
 6. **Push `console-beads-fabro`'s preserved proof commit once
    `check-fork-drift` is resolved there** (someone else's call, not this
    plan's) — the worktree is ready and waiting.
-7. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
+7. **Resolve the pre-existing `spec_pr_merge` master gate failure**, then
+   rerun the full-width `livespec` master-push proof.
+8. **Relocate the warm-cache tier onto `/var/cache/ci-runner`** — ledger
    child `.2`. Still the next-most-valuable infra work after 6-7.
-8. **Build the local Actions cache service and the Nix store/binary cache**
+9. **Build the local Actions cache service and the Nix store/binary cache**
    — ledger children `.3` and `.4`. Genuinely new infrastructure; needs a
    design pass, not blind implementation.
 
