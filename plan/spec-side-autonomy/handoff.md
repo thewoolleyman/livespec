@@ -300,11 +300,21 @@ the fuller record.
 - **A probe is not a fixture; the SHAPE is what matters.** The line is
   **merge-base existence**, which makes a rename classification genuine.
   `livespec-jvdvx4.6`'s first leg proved nothing because it hand-ADDED a file.
-- **A red CI job is not a failed check.** Seen AGAIN on 2026-08-14: eleven jobs
-  red on a doc-only commit, every one failing at `mise trust + install` with an
-  HTTP **503** fetching `shellcheck-v0.11.0` from GitHub's release CDN, each
-  leaving its own `just check-*` step SKIPPED. Read the step list, not the job
-  colour; re-run before diagnosing. The re-run passed all eleven.
+- **A red CI job is not a failed check.** Seen TWICE on 2026-08-14, with two
+  DIFFERENT root causes and the same shape — an infrastructure step fails and
+  the job's own `just check-*` step is left SKIPPED, so the job reads red having
+  never run the thing it is named for. Read the step list, not the job colour;
+  re-run before diagnosing.
+  - **HOSTED lane:** eleven jobs red on a doc-only commit, every one failing at
+    `mise trust + install` with an HTTP **503** fetching
+    `shellcheck-v0.11.0` from GitHub's release CDN. The re-run passed all eleven.
+  - **SELF-HOSTED lane** (`LIVESPEC_CI_LANE: local`): `check-shell-quality` red
+    on the v205 ratification merge, failing at "Ensure full history is available
+    (self-hosted reused `_work` dir)" with
+    `Error: beginning database validation transaction: database is locked` and
+    dockershim exit **125**. Runner-host contention, not a repository fault.
+  Threads `phase0-selfhosted-shadow-lane` and `livespec-ci-on-hetzner` own that
+  surface; report, do not file into their lanes.
 - **Order a pin against the artifact, not the calendar.** Test tag containment
   with a control that DISCRIMINATES (ABSENT at `v0.31.0`, PRESENT at
   `v0.32.0`), never a bare presence check.
@@ -331,16 +341,24 @@ the fuller record.
   not exist in this repo.** `pretooluse_background_guard` DENIES bare
   backgrounding of `just check*`, `git commit`, `git push` and `gh pr …`, and
   its hint tells you to use `just gate-start` / `just gate-wait`. **This repo's
-  justfile has no such recipes** — confirmed by `just --list`. So the working
-  pattern is a FOREGROUND call with a generous explicit timeout
-  (`gh pr checks <n> --watch --interval 30`; a full `just check` took ~4 min and
-  a push ~25s). Do not go hunting for the recipe.
-- **CI egress/install flakes are frequent.** Signature: a dependency- or
-  network-touching step fails (checkout TLS, `uv` fetching the
-  `livespec-runtime` git dependency, `mise` installing shellcheck) and the check
-  that NAMES the job is left `skipped`, so the job reads red having never run
-  its own command. Threads `phase0-selfhosted-shadow-lane` and
-  `livespec-ci-on-hetzner` own that surface; report, do not file into their lanes.
+  justfile has no such recipes** — confirmed by `just --list`. So the pattern
+  is a FOREGROUND call with a generous explicit timeout. A full `just check`
+  took ~4 min and a push ~25s.
+- **`gh pr checks --watch` is NOT safe when the runner queue is congested — it
+  will exhaust the GitHub rate limit.** This was previously recorded here as
+  the plain "working pattern", which holds only when CI is fast. On 2026-08-14
+  the queue was backed up (runs taking 20–36 min); a `--watch --interval 30`
+  left running against it drove `core.remaining` to **0/5000**, after which
+  EVERY `gh` call failed HTTP 403 for the rest of the hour-long window, and the
+  only remedy was to wait for the reset. Check the queue first
+  (`gh run list --workflow CI --limit 3` — look at elapsed times, not just
+  status). If runs are slow, do NOT watch: poll with single calls minutes
+  apart, or arm a monitor whose interval is 120s or more and which EXITS on the
+  terminal state. `gh api rate_limit` does not itself consume budget, so it is
+  always safe to check where you stand.
+- **CI infrastructure flakes are frequent, on BOTH lanes.** See the
+  "A red CI job is not a failed check" entry above for the two measured
+  signatures and their owning threads.
 
 ## Standing constraints
 
