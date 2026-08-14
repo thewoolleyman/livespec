@@ -26,7 +26,7 @@ existing file):
 
 - **`.ai/agent-disciplines.md`** — read when ending a session or applying a
   cross-cutting discipline (TDD red-green-replay, the worktree → PR flow,
-  no-local-memory), and for the session-end standing-handoff print rule.
+  no-local-memory), and for the session-end plan resume rule.
 
 ## Repository mutation protocol
 

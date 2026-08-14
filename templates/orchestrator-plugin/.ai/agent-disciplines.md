@@ -4,14 +4,14 @@ Progressively-disclosed detail for `AGENTS.md` §"Agent-instruction `.ai/`
 convention". Read this when **ending a session** or before applying a
 **cross-cutting discipline**. Each discipline's AUTHORITATIVE detail lives in the
 named `AGENTS.md` section; this file is the at-a-glance index plus the one rule
-that has no other home — the session-end standing-handoff print rule.
+that has no other home — the session-end plan resume rule.
 
-## Session-end standing-handoff print rule
+## Session-end plan resume rule
 
-When a session advanced a **standing-handoff track** — a refresh-each-session
-handoff, i.e. a plan's `plan/<topic>/handoff.md` — the session's closing
-recap MUST end by printing the exact resume command **verbatim, as the LAST
-line of the recap** (nothing after it):
+When a session advanced a **plan** — a Planning Lane record whose
+`plan/<slug>/epic.md` is the write-once anchor for ledger epic identity — the
+session's closing recap MUST end by printing the exact resume command
+**verbatim, as the LAST line of the recap** (nothing after it):
 
 ```
 /livespec-orchestrator-beads-fabro:plan <topic>
@@ -20,11 +20,12 @@ line of the recap** (nothing after it):
 Print it **verbatim and last, every time** — never paraphrased, never buried
 mid-summary, never omitted, and never with trailing prose after it. Never leave
 the next session to rediscover its entry point. This operationalizes
-`SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance" → "No
-shadow ledger" ("a session's closing summary names the exact command that
-launches the next session") at the agent-instruction layer. If the session
-advanced the track materially, also refresh the handoff file itself (and the
-ledger state it points at) before printing the resume command.
+`SPECIFICATION/non-functional-requirements.md` §"Planning Lane guidance" at the
+agent-instruction layer: mutable supervisor state and handoff entries are
+append-only, attributed ledger entries, while research evidence in git is
+preserved as write-once plan material. If the session advanced the plan
+materially, append the needed ledger entry before printing the resume command;
+do not create or refresh a live `plan/<slug>/handoff.md`.
 
 ## Cross-cutting disciplines index
 
