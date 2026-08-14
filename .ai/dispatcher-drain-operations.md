@@ -153,6 +153,37 @@ trust the dispatcher's own summary alone. And filter every journal read on the `
 field against an explicit cutoff: the file is re-opened and rewritten, so a
 follow-by-name tail replays its entire history as if live.
 
+## Launch the dispatch from a shell that outlives the agent turn
+
+A `nohup ... &` launched from WITHIN an agent's own tool-call shell is not
+durable. `nohup` only shields the child from `SIGHUP`; it does nothing about
+the sandboxed harness reaping the whole process GROUP when that tool call's
+turn ends. A backgrounded child spawned that way can be silently killed the
+moment the launching turn finishes, before it writes anything — including the
+credential-wrapper re-invoke line that is normally the first thing in the log.
+
+Observed live 2026-08-14 (planning-lane-redesign): a Codex worker launched
+`drive --action impl:bd-ib-qrq6qk` via `nohup ... & disown` and reported a
+PID and log path as its milestone. Two minutes later: the PID was gone
+(`kill -0` failed), the log was a 0-byte file, and the ledger item was still
+`ready`/unclaimed — the launch never actually took, despite a clean-looking
+milestone claiming success. `disown` did not help; the worker's own note was
+that the non-interactive shell never retained a job-table entry to disown in
+the first place.
+
+**Launch dispatches from a shell that is guaranteed to outlive the launching
+turn**, not a worker-issued background job. A supervising Claude Code session
+has one for free — the harness's own background-task primitive (`Bash` with
+`run_in_background: true`) is tracked outside the turn boundary and persists
+until the process actually exits, with a completion notification on exit. Re-
+launching the same command that way, from the supervisor rather than the
+worker, succeeded immediately (ledger flipped to `active` within 15 seconds).
+
+**Verify the launch took, don't trust the spawn.** Within ~1–2 minutes of any
+launch, re-read the ledger item: `active`/`assignee: fabro` is the confirming
+signal, not the exit code of the launching command and not a milestone claim
+alone. If it is still `ready`/unclaimed, read the log — do not retry blind.
+
 ## A doubled-curly-brace expression in the DESCRIPTION or NOTES kills the dispatch before any sandbox starts
 
 Fabro expands the workflow's `goal` attribute as a TEMPLATE, and that goal embeds
