@@ -675,6 +675,69 @@ restart pointer, not a source of live ledger state.
   fresh Dispatcher readiness measurement confirms its two typed sibling
   dependencies resolve terminally.
 
+## Restart addendum — 2026-08-14: fleet migration filing is FIRST
+
+Start this supervisor from the livespec checkout with the adoption name below:
+
+```sh
+cd /data/projects/livespec
+claude --dangerously-skip-permissions -n planning-lane-redesign-supervisor
+```
+
+Before remeasuring or driving any existing implementation item, file the
+fleet-wide migration records requested by the maintainer. This is an explicit
+ledger operation, not a research note and not a filesystem checklist. Read the
+current `.livespec-fleet-manifest.jsonc` first; it is the authority for the
+target set. Its current set contains these 13 governed repositories:
+
+```text
+livespec
+livespec-dev-tooling
+livespec-driver-claude
+livespec-driver-codex
+livespec-orchestrator-beads-fabro
+livespec-orchestrator-git-jsonl
+livespec-runtime
+livespec-console-beads-fabro
+livespec-overseer
+openbrain
+dolt-server
+resume
+homelab
+```
+
+`livespec-zsn2xh.5` is already the dedicated migration item for `livespec`.
+Re-read it and do not create a duplicate. File one new migration item in each
+of the other 12 repositories' own ledger tenants through
+`livespec-orchestrator-beads-fabro:capture-work-item`, with explicit
+factory-dispatchable autonomy and one coherent acceptance criterion:
+
+1. Enumerate active `plan/` directories only; `plan/archive/` remains frozen.
+2. For every `handoff.md` or `*-handoff.md` found there, preserve the
+   non-derivable handoff content as individually attributable, append-only
+   entries on that plan's ledger epic, and ensure its write-once epic anchor
+   exists.
+3. Land the migration through the target repository's worktree → PR → merge
+   discipline.
+4. After merge, remeasure the target's default branch and prove a zero-result
+   scan for those handoff filenames under active `plan/` paths.
+
+After the 12 peer IDs are recorded, file one final `livespec` task under
+`livespec-zsn2xh` as the epic-level migration gate. Its acceptance criterion is
+mechanical and fleet-wide: re-read the manifest, scan every listed repository's
+default branch, and pass only when no active `plan/` directory contains
+`handoff.md` or `*-handoff.md`; it must name the 13 migration record IDs
+(including `livespec-zsn2xh.5`) and refuse epic closure while any is open or its
+zero-result evidence is absent. Link all representable dependencies and record
+cross-tenant references explicitly where the tenant's dependency surface cannot
+encode them.
+
+The maintainer has already confirmed filing all 13 new records: the 12 peer
+migration tasks plus this one final gate. Do not ask again. Re-read each filed
+record and its Definition-of-Ready verdict before reporting it. Only after this
+filing sequence is complete may the supervisor return to the separately tracked
+`livespec-zjrtgg` verification and `bd-ib-qrq6qk` recovery work.
+
 ## Corrections
 
 Thread-specific corrections belong here. Regeneration must preserve this
