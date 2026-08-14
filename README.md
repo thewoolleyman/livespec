@@ -163,7 +163,7 @@ tracker.
 
 | Lane | The field | livespec |
 |---|---|---|
-| **Reason / plan** | spec-kit `plan.md`, Kiro `design.md`, Cline `activeContext.md` + `progress.md` | the **Planning Lane** — durable `plan/<topic>/` reasoning plus a ledger-anchored, resumable handoff, under the **no-shadow-ledger** rule |
+| **Reason / plan** | spec-kit `plan.md`, Kiro `design.md`, Cline `activeContext.md` + `progress.md` | the **Planning Lane** — a write-once `plan/<topic>/epic.md` anchor, preserved research under `plan/<topic>/research/`, and attributed ledger entries on the plan epic, under the **no-shadow-ledger** rule |
 | **Specify** | spec-kit `spec.md`, Kiro `requirements.md` | the governed `/livespec:*` natural-language spec lifecycle (`seed`, `propose-change`, `critique`, `revise`, `doctor`, versioned history) |
 | **Produce** | beads ledger, ad-hoc agent loops | an **orchestrator-agnostic** producer (reference: Beads/Dolt + Fabro) consuming the spec through three CLIs, with a Gap/Drift feedback spine |
 
