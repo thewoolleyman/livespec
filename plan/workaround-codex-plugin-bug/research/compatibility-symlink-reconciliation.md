@@ -13,9 +13,10 @@ version names to the current complete Driver payload after each update.
 
 1. Add a Driver-owned reconciliation entry point that runs on the normal
    Codex plugin currency path immediately after marketplace upgrade/install.
-2. Discover the installed Driver's current version and exact `installedPath`
-   from `codex plugin list --json`, rather than assuming a cache layout or
-   trusting only the enabled flag.
+2. Discover the current Driver version and the actual hook execution root from
+   Codex's current JSON schema and a captured hook command. The reconciler
+   must not assume an `installedPath` field or a cache layout: the current CLI
+   can report a marketplace source path instead of a versioned cache copy.
 3. Validate the current payload before creating links: manifest, `hooks.json`,
    and every hook named by the Stop/PreToolUse declarations must exist and be
    callable by the bare Python invocation used by Codex.
@@ -51,6 +52,57 @@ available CLI permits and should prefer atomic link creation (`ln`/equivalent
 with no follow) plus post-write verification. The alias topology must remain
 one hop (`old-version -> latest -> current-version`), not a chain of old
 version links, so each update changes only `latest` plus newly missing aliases.
+
+## Delivery plan
+
+The work lands in `livespec-driver-codex`; the core repo holds this plan and
+the cross-repository ledger anchor only.
+
+1. Establish the real Codex artifact lifecycle on a disposable, release-tracking
+   marketplace install. Record the JSON fields returned by `codex plugin list`,
+   the exact expanded Stop-hook commands in a session that predates an update,
+   and what `codex plugin marketplace upgrade` / `codex plugin add` creates,
+   replaces, or deletes. This evidence decides whether the compatibility root
+   is a versioned cache, a marketplace checkout, or another Codex-managed
+   location. It is a hard precondition: no implementation may manufacture
+   aliases against a guessed path.
+2. Govern the resulting Driver-owned host-cache behavior in the Driver's
+   specification by a propose-change → revise cycle. The contract must state
+   the validated-payload gate, one-hop alias topology, preservation of real
+   version directories, the bounded release-history retention window,
+   idempotence, failure reporting, and the supported platform behavior.
+3. Implement the reconciler and invoke it only after the ordinary Codex
+   marketplace currency/install sequence succeeds. It must use the evidence
+   from step 1 to locate the payload, validate every declared Stop and
+   PreToolUse hook under bare `python3`, atomically retarget `latest`, then
+   backfill only bounded, known release names. It may never modify a complete
+   real directory, follow an unsafe existing link, or change marketplace refs
+   or hook configuration.
+4. Prove the transition in a deterministic mock-cache integration test and a
+   real host transition. The latter starts a session on an older released
+   Driver, upgrades the marketplace/installation, and verifies that both
+   retained Stop-hook command paths resolve through one hop to the current,
+   validated payload. Release, install, and repeat the probe after the next
+   upgrade.
+
+## Scope and deferrals
+
+The immediate objective is long-running-session hook continuity for the Codex
+Driver while tracking the normal `release` ref. It deliberately does not pin a
+marketplace, disable hooks, or require an alternate Codex launch command.
+
+- Windows junction implementation is deferred until the macOS/Linux lifecycle
+  has been measured and the implementation contract is ratified. The first
+  delivery must document the platform result explicitly rather than pretending
+  that POSIX symlink behavior is portable.
+- Compatibility names are restricted to versions obtained from the Driver's
+  release history within the defined retention window. Arbitrary user-supplied
+  directory names and indefinite alias retention are deferred because they
+  would turn a hook-recovery mechanism into an unsafe cache mutator.
+- A general repair for all Codex plugins is out of scope. This plan owns only
+  the `livespec-driver-codex` payload and its declared hooks; a reusable Codex
+  platform fix can be proposed separately once the observed lifecycle is
+  established.
 
 ## Verification and rollout
 
