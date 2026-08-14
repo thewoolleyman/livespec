@@ -9,6 +9,7 @@ created_at: 2026-08-12T12:30:59Z
 ### Target specification files
 
 - SPECIFICATION/contracts.md
+- .claude-plugin/prose/doctor.md (co-edit; see Edit 3)
 
 ### Summary
 
@@ -20,7 +21,7 @@ Found by exercising the shipped CLI rather than reading it. Running `doctor_stat
 
 ### Proposed Changes
 
-TWO EDITS TO `SPECIFICATION/contracts.md`, both replacing text that exists verbatim in the live file today.
+THREE EDITS: two to `SPECIFICATION/contracts.md` and one co-edit to `.claude-plugin/prose/doctor.md`, each replacing text that exists verbatim in the live files today.
 
 **Edit 1 — the Wrapper CLI surface table row.** Replace this line exactly:
 
@@ -44,6 +45,44 @@ with:
 
 ```
 The `doctor` sub-command ALSO accepts `--spec-target <path>`, which selects the tree doctor treats as the MAIN spec root; its sub-spec enumeration remains internal, walking `<spec-target>/templates/<name>/` from whichever root is selected (see §"Per-sub-spec doctor parameterization"). A relative `--spec-target` or `--project-root` is anchored to the working directory, matching `revise` and `propose-change`; both resolve to absolute paths so that per-tree containment computations are well defined.
+```
+
+**Edit 3 — the operation prose (co-edit).** `.claude-plugin/prose/doctor.md` is the harness-neutral artifact BOTH Drivers read to drive the operation, and it enumerates doctor's accepted flags exhaustively without `--spec-target`. Left unamended, ratifying this proposal would leave core's own prose contradicting its own contract — and the prose, not the contract, is what an agent consults at invocation time. This co-edit was added in response to the independent adversarial review, which raised the contradiction as a ratification blocker.
+
+(a) Under `## Inputs`, replace:
+
+```
+The doctor CLI accepts:
+
+- `--project-root <path>` (optional; defaults to cwd).
+```
+
+with:
+
+```
+The doctor CLI accepts:
+
+- `--spec-target <path>` (optional; selects the tree doctor
+  treats as the main spec root; defaults to
+  `<project-root>/SPECIFICATION/`).
+- `--project-root <path>` (optional; defaults to cwd).
+
+Both are anchored to the working directory when relative and
+resolve to absolute paths.
+```
+
+(b) In the static-phase invocation step, replace:
+
+```
+   config with `[--project-root <path>]`. Capture stdout (the
+   findings JSON) and the exit code.
+```
+
+with:
+
+```
+   config with `[--spec-target <path>] [--project-root <path>]`.
+   Capture stdout (the findings JSON) and the exit code.
 ```
 
 **Why this direction rather than the other.** The drift can be closed either by documenting the flag or by deleting it from the implementation. Documenting is recommended, for three reasons:

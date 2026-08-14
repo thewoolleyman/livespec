@@ -56,7 +56,13 @@ follows this prose end-to-end.
 
 The doctor CLI accepts:
 
+- `--spec-target <path>` (optional; selects the tree doctor
+  treats as the main spec root; defaults to
+  `<project-root>/SPECIFICATION/`).
 - `--project-root <path>` (optional; defaults to cwd).
+
+Both are anchored to the working directory when relative and
+resolve to absolute paths.
 
 The CLI has no JSON input; it reads `.livespec.jsonc` from
 disk via the upward walk and discovers sub-spec trees by
@@ -100,8 +106,8 @@ try a different disposition.
 ### Static phase
 
 1. **Invoke the doctor CLI.** Run the doctor CLI named in
-   config with `[--project-root <path>]`. Capture stdout (the
-   findings JSON) and the exit code.
+   config with `[--spec-target <path>] [--project-root <path>]`.
+   Capture stdout (the findings JSON) and the exit code.
 
 2. **Parse findings.** Inspect the stdout JSON: a
    `{"findings": [...]}` object where each
