@@ -307,6 +307,33 @@ invocation — run CONCURRENT invocations, up to the cap, for parallel drains.
 > recording two idle containers as "saturated capacity" once came within a step
 > of idling a dispatchable item behind a cap that does not exist.
 
+**The ledger `wip_cap` governs LEDGER concurrency only — it says nothing about
+shared self-hosted Docker runner capacity underneath it.** Several concurrent
+dispatches, all legitimately within the cap, can still saturate the shared
+Docker daemon's own container operations and surface as `Error: ... database
+is locked` during a runner's container start/cleanup step (exit code 125,
+"Executing the custom container implementation failed"). The affected check's
+own logic often never runs at all — the container failed to start or stop,
+not the check. Observed 2026-08-14: three occurrences across two repos in one
+session, two of them under four concurrent dispatches against one repo's
+runner pool, one with no comparable concurrent load — so it is not purely a
+dispatch-burst artifact, but concurrent dispatch bursts do appear to make it
+more frequent. `gh run rerun --failed` resolved all three; the underlying PR
+content was fine each time. This is a runner-fleet capacity concern, not a
+ledger-concurrency or code-quality one — see the `fleet-ci-runner-pool` plan
+for ownership.
+
+**A dispatcher `failed: PR did not reach MERGED within the poll budget`
+verdict is not terminal truth.** The poll budget is a fixed number of
+attempts; it can expire before a genuinely-fine PR actually merges,
+especially under the runner contention above. Observed 2026-08-14: a
+dispatch reported "failed" this way while its PR had, in fact, already
+merged — the ledger item was left stuck `active` with no close. Re-read the
+PR directly (`gh pr view <n> --json state,mergeCommit`) before treating a
+poll-budget "failed" as real; if it is genuinely merged, use the
+`reconcile-merged` valve to close the ledger item — never a raw status
+mutation.
+
 ## Never hand-edit a beads `admission:*` label — use the valve
 
 An item whose effective admission policy is `manual` is held at the gate and
