@@ -164,6 +164,16 @@ the holder with its own armed `wake_mechanism`. A `wake_mechanism` of
 `NONE ARMED` is allowed only with an explicit timeout and a
 timeout-and-escalate posture.
 
+## Supervisor scratch discipline
+
+Only JSON may live directly under `<repo-primary>/tmp/overseer/<topic>/`; the
+only place prose may live is `<repo-primary>/tmp/overseer/<topic>/briefs/`,
+which holds ONLY briefs written for the supervised session to read. A brief may
+CITE but never CONTAIN: anything load-bearing must land first as a ledger item,
+research note, or charter Corrections entry, and the brief then points at it. A
+changeset is never an artifact — a staged set of file changes with diffs and
+intent held for review is a branch and a PR, never a hand-rolled directory.
+
 ## Never end a turn without an armed re-entry
 
 Any open obligation triggers this rule, whoever holds it. The worker is an
