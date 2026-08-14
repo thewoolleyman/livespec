@@ -1,11 +1,19 @@
 # spec-side-autonomy — handoff
 
-Updated 2026-08-14. **Epic `livespec-jvdvx4` is FULLY CLOSED, and the
-`proposed_changes/` queue is now EMPTY.** Both drifts this thread filed on
-2026-08-12 were ratified on 2026-08-14 as **v204** and **v205**, in
+Updated 2026-08-15. **Epic `livespec-jvdvx4` is FULLY CLOSED.** THREE drifts
+have now ratified — **v204** and **v205** on 2026-08-14 in
 `thewoolleyman/livespec` PR
 [#2290](https://github.com/thewoolleyman/livespec/pull/2290) (merge
-`d95e699b`).
+`d95e699b`), and **v206** on 2026-08-15 in PR
+[#2314](https://github.com/thewoolleyman/livespec/pull/2314) (merge
+`a11585a3`).
+
+**The queue is NOT empty.** One proposal, `vendored-set-enumeration-drift`, was
+filed 2026-08-15 (PR
+[#2316](https://github.com/thewoolleyman/livespec/pull/2316)) and is awaiting
+its independent adversarial review. It is the debt v206's archived record names
+as owed. **Re-measure the queue rather than trusting this paragraph** — an
+earlier revision of this same head said "EMPTY" and was overtaken within hours.
 
 ## START HERE — nothing is in flight, and NOTHING here is autonomously actionable
 
@@ -15,12 +23,15 @@ merged. Every worktree under `$HOME/.worktrees/livespec/` is FOREIGN —
 **enumerate rather than trusting this sentence**, it drifts. Never run the
 reaper in this repo.
 
-Measured 2026-08-14 after the merge:
+Measured 2026-08-15 after the v206 merge — **re-run all three rather than
+citing them; every line here has been overtaken at least once**:
 
-- `proposed_changes/` holds only `README.md`. Nothing pending.
-- `doctor-static` is fully clean: 20 pass, 1 skipped, ZERO warnings.
-- `next` ranks exactly ONE candidate: `prune-history` at **LOW**. That is
-  not a mandate; 205 unpruned versions is unremarkable.
+- `proposed_changes/` holds `README.md` plus `vendored-set-enumeration-drift.md`.
+- `doctor-static` was fully clean at the v206 merge (20 pass, 1 skipped, zero
+  warnings).
+- `next` will rank a `revise` for the pending proposal. Do NOT act on that
+  ranking: the proposal has NOT passed its independent review, and `next` scores
+  queue state, not readiness.
 
 The thread owns two remaining things, and **both are gated on a human**:
 
@@ -92,6 +103,65 @@ comparison against itself and core never reads INTO a consumer
 yourself citing the `just check` version, you are reading a pre-ratification
 draft.
 
+## v206 — six review rounds, ten blockers, none waived. Read this before filing.
+
+v206 corrected `contracts.md`'s spec-governance manifest path AND the claim that
+a registry and that manifest are co-authoritative, plus three more stale clauses
+across two spec files. It took SIX rounds of independent adversarial review to
+become safe. The mechanics are recorded below under §"Ratification mechanics";
+what follows is the part that generalises.
+
+**The originating error was a wrong INSTRUMENT, not a wrong answer.** The first
+draft filed a path swap alone, asserting the `ConfigKey` registry "has NOT
+moved". It checked that `registry.py` still EXISTS at the cited path. It does.
+But the file had stopped being an AUTHORITY while staying exactly where it was —
+its body is now `CONFIG_KEYS = tuple(manifest_rows())`, derived from the manifest
+at import. **Existence is not authority. Presence is not the same as role.** When
+checking whether something "moved", check what it DOES, not where it is.
+
+**That mischaracterisation propagated.** This handoff's own note called it a
+"path drift". Supervisor guidance, reasoning from that note, concluded it was "a
+plain factual correction, no architecture call involved" and directed it be
+filed. The proposal was filed on that basis. Only the independent review broke
+the chain. **A finding's own description can carry an error that then travels
+through every downstream artifact that trusts it** — including guidance written
+by someone with more authority than the note's author.
+
+**Every widening opened surface the previous sweep had cleared.** Path →
+authority → terminology → a renamed term recurring two lines away → a shortened
+phrase colliding with a different artifact. Each sweep was correct for the claim
+it checked. The structural cause: **every fix introduces vocabulary whose own
+recurrences nobody then sweeps for.** It terminated only when a fix reused a term
+already established in the same paragraph rather than introducing a new one — a
+reviewer named that as the reason the sequence could stop, and that reasoning is
+the stopping rule, not "no findings this round".
+
+**TWO reviewers, not one, is what made it safe.** They found DISJOINT blocker
+sets repeatedly and graded the same finding differently THREE times. Each time
+the stricter grade was right to act on. The sharpest: one graded "the declarative
+manifest" tolerable term overloading; the other filed it a blocker because that
+phrase already names the FLEET manifest twice in
+`non-functional-requirements.md`. Shipping it would have created
+one-name-two-artifacts ambiguity inside the very changeset that existed to remove
+its mirror image. **The fleet rule mandates ONE reviewer; one would have passed a
+proposal that still contradicted itself.** For a proposal touching text that other
+statements quote or echo, spawn two.
+
+**The proposal committed the offence it was written to fix.** Its out-of-scope
+section claimed the companion drift was "filed separately". No such filing
+existed. The body would have archived, permanently, a claim a future reader could
+not resolve — a document asserting something untrue and reading as reviewed
+because everything around it was. Both reviewers caught it independently. It now
+reads "owed, not done", DATED rather than pegged to ratification, because a claim
+about the ratification moment is one the author cannot know when writing it.
+
+**Bind evidence to bytes, not to intent.** The ratification `content_digest`
+covers proposal bytes PLUS every resulting file. A verdict earned on an earlier
+draft does not cover a later one, however small the delta — twice in this
+sequence the thing hiding in a "small delta" was the defect. Re-request the
+verdict against the exact tip you will ratify, and re-verify the source blobs
+have not moved. `origin/master` advanced roughly a dozen times during this work.
+
 ## The review gate earned its keep — read this before the next ratification
 
 Both proposals were reviewed by separately-spawned, read-only Fable reviewers,
@@ -157,23 +227,22 @@ Three transferable lessons:
   inherits the safe `manual` default. A proposal-FILING PR auto-merges while
   review is still running.
 
-## Open findings not yet filed
+## Open findings
 
-Both surfaced during the 2026-08-14 review and are deliberately NOT folded into
-v204/v205 — each deserves its own proposal rather than inflating a ratification.
-
-- **`api_configurable_keys.json` path drift.** `contracts.md`'s
-  §"Spec-governance control wrapper" paragraph names a committed manifest at
-  `.claude-plugin/scripts/livespec/spec_governance/api_configurable_keys.json`,
-  which does NOT exist on master — it was relocated to
-  `.claude-plugin/scripts/_vendor/livespec_runtime/api_configurable_keys.json`
-  in `d2ab3cbf`. Same defect class as the two just ratified. **Verify it is
-  still true before filing** — this is exactly the kind of fact that expires.
-- **`reviewer_identity` is redundant with `reviewer_model`.** The validator
-  requires them equal, so the schema carries two required fields that can only
-  ever hold one value. Either the identity field should record the actual
+- **`reviewer_identity` is redundant with `reviewer_model` — DO NOT FILE.** The
+  validator (`_reviewer_error` in
+  `.claude-plugin/scripts/livespec/commands/_revise_ratification_errors.py`)
+  requires them string-equal, so the schema carries two required fields that can
+  only ever hold one value. Either the identity field should record the actual
   reviewer (agent name / session) and be validated differently, or it should be
-  dropped. This is a design question, not a typo — it needs a maintainer call.
+  dropped. **This is an OPEN DESIGN QUESTION FOR THE MAINTAINER, not a drift to
+  file** — supervisor-directed 2026-08-14. Record it, leave it, do not turn it
+  into a proposed change.
+- **`vendored-set-enumeration-drift` — FILED 2026-08-15, awaiting review.** Not
+  a finding any more; it is in the queue. See §"What ratified" below.
+
+The `api_configurable_keys.json` path drift that stood here is RESOLVED: it was
+filed, widened twice under review, and ratified as **v206**.
 
 One §"Wrapper CLI surface" row was deliberately NOT filed and still is not.
 `revise` carries three flags absent from the whole spec tree —
