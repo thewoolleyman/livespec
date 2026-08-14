@@ -12,6 +12,7 @@
   "template": "livespec",
   "spec_root": "SPECIFICATION",
   "spec_governance": {
+    "propose_change_mode": "batch",
     "ratification_reviewer_model": "fable"
   },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
