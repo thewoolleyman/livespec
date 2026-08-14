@@ -353,9 +353,10 @@ write still uses the worktree → PR → merge → cleanup path below.
 
 Do not leave orphaned worktrees. If a session must stop before cleanup,
 record the active worktree path, branch, PR, validation state, and next
-action in the relevant handoff document. For stale cleanup outside the
-current branch's own worktree, use the repo's reaper entry point rather
-than hand-deleting unfamiliar state:
+action in the plan epic's attributed ledger entries, with any supporting
+research preserved under the plan's `research/` directory. For stale
+cleanup outside the current branch's own worktree, use the repo's reaper
+entry point rather than hand-deleting unfamiliar state:
 
 ```bash
 just reap-stale-worktrees <repo> --dry-run   # INSPECT — reports, changes nothing
@@ -595,7 +596,7 @@ existing file):
 - **`.ai/agent-disciplines.md`** — read when ending a session or applying a
   cross-cutting discipline (TDD red-green-replay, the worktree → PR flow, the
   1Password secret-wrapper, no-local-memory), and for the session-end
-  standing-handoff print rule.
+  plan-anchor print rule.
 - **`.ai/adding-an-adopter.md`** — read BEFORE touching
   `.livespec-fleet-manifest.jsonc` to register a new adopter repo, and before
   planning or driving any adopter's onboarding (registration is
@@ -1081,7 +1082,8 @@ contract diagram) and their rationale live in
   (scaffolding, authoring many files, cross-repo work), delegate the heavy
   lifting to scoped sub-agents (or a parallel workflow) with self-contained
   briefs and keep the main session for plan/dispatch/synthesis. Watch your
-  context budget and write a concrete handoff before quality degrades.
+  context budget and write a concrete hand-forward ledger entry before quality
+  degrades.
 - **Fan out pre-authorized work.** Dispatch all genuinely pre-authorized,
   independent, non-conflicting work-items in parallel; sequence only items that
   conflict on overlapping files. A "pause" means "start a new session," not
@@ -1111,7 +1113,8 @@ contract diagram) and their rationale live in
 - **Relocate, never drop, valuable work.** When useful work (doctor checks,
   hooks, disciplines, prose) leaves a repo, relocate it to where it now belongs
   and file a work-item there citing the pre-deletion commit SHA; self-resolve
-  "keep/relocate/drop" as "relocate," and carry this into every handoff.
+  "keep/relocate/drop" as "relocate," and carry this into every hand-forward
+  ledger entry.
 
 ## Plugin and skill authoring
 

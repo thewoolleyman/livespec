@@ -1,25 +1,26 @@
 # Supervisor Protocol
 
-Shared role-level instructions for every generated supervisor handoff in this
-repository. A per-thread binder at `plan/<topic>/supervisor-handoff.md` supplies
-concrete startup bindings, thread-specific valves, runnable commands, and its
-own Corrections log. Validate a supervisor charter as the union of that binder
-and this file; neither layer is complete by itself.
+Shared role-level instructions for every generated supervisor binder in this
+repository. A plan's live anchor is `plan/<topic>/epic.md` plus the plan epic's
+append-only, attributed ledger entries; any per-plan supervisor binder is a
+runtime/control artifact, not the live hand-forward artifact. Validate a
+supervisor charter as the union of that binder and this file; neither layer is
+complete by itself.
 
 Regeneration must preserve this file's role-level `## Corrections` section and
-the binder's thread-specific `## Corrections` section byte-for-byte. Preserve
+the binder's plan-specific `## Corrections` section byte-for-byte. Preserve
 spelling, punctuation, code formatting, blank lines, and ordering exactly; do
 not normalize Markdown or code spans.
 
 ## HALT-first preconditions
 
 Before driving a worker, verify the exact worker session, exact supervisor
-session, live agent drivers, plan-thread path, and worker working directory.
+session, live agent drivers, plan anchor path, and worker working directory.
 Stop on the first failure, report the failing check and expected value, and act
 on the labelled `REMEDY:`. Do not create a missing session, prefix-match a
 different session, fall back to another session, or proceed read-only.
 
-The per-thread binder must emit all five checks as runnable commands with its
+The per-plan binder must emit all five checks as runnable commands with its
 bindings substituted. A requirement without a command forces a cold-open
 supervisor to invent one and is not a precondition.
 
@@ -29,7 +30,7 @@ You are the supervisor, not the implementer. Hand work to the supervised
 session as INPUT TO VERIFY. If the worker's verification contradicts yours,
 you are wrong.
 
-Live state belongs in the ledger, the thread's own records, forge artifacts,
+Live state belongs in the ledger, the plan's own records, forge artifacts,
 and the supervisor marker. Do not freeze volatile status or next actions into a
 startup binder.
 
@@ -74,7 +75,7 @@ a neighbouring token, settled transcript — is non-empty AND perfectly stable, 
 an emptiness guard and a stability guard both pass on it. See C5.
 
 Prefer to avoid the problem entirely: write a long brief to a file under the
-thread's `runtime_dir` and send a SHORT instruction naming that path. A
+plan's `runtime_dir` and send a SHORT instruction naming that path. A
 one-line file reference is delivered atomically, verifies in one read, and
 leaves a durable copy of the brief that survives a composer reset.
 
@@ -86,7 +87,7 @@ against; it only creates later report-only attention.
 Never name a variable `TMUX`, never run `tmux kill-server` on the maintainer's
 socket, and never kill the acting overseer daemon. The daemon runs in tmux
 `livespec-overseer:1.1`, supervises every tracked fleet session, and is the
-shipped product rather than part of one thread.
+shipped product rather than part of one plan.
 
 ## Session adoption keys
 
@@ -119,7 +120,7 @@ answer before surfacing the question.
 
 ## No idle, no silent block
 
-A conflicting lane owned by another track is NOT a thread-wide blocked state.
+A conflicting lane owned by another track is NOT a plan-wide blocked state.
 If some action is owned elsewhere: stand down on that action ONLY; enumerate
 the remaining non-conflicting work; drive the next concrete safe action
 immediately; only if NO legitimate non-conflicting action exists, ask one
@@ -313,9 +314,13 @@ that only gets applied when the input LOOKS long is not a rule.
 
 C3. I caused a worktree-discipline violation through an instruction, not
 through an edit of my own. A brief told the worker to "update
-`plan/<topic>/handoff.md`" without naming a worktree. The worker's pane cwd IS
-the primary checkout, so an unqualified path resolved there, and the primary was
-left dirty with a modified TRACKED file.
+`plan/<topic>/handoff.md`" without naming a worktree. In the ratified plan
+shape the live hand-forward target is the plan epic's ledger entries, while
+`plan/<topic>/epic.md` is a write-once metadata anchor and any migrated
+`handoff.md` is historical evidence under `research/`; the original failure is
+therefore both a worktree-discipline error and a stale-artifact error. The
+worker's pane cwd IS the primary checkout, so an unqualified path resolved there,
+and the primary was left dirty with a modified TRACKED file.
 
 NEVER instruct a worker to edit a TRACKED file without naming the worktree it
 must be edited in. Supervisor-authored paths under the gitignored
