@@ -1,5 +1,7 @@
 # Codex hook-cache workaround handoff
 
+**Ledger anchor:** epic `livespec-ipfg65` (`thewoolleyman/livespec` tenant).
+
 ## Immediate live-state first check
 
 The active Codex session captured Stop-hook paths under:
