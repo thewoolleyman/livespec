@@ -645,6 +645,36 @@ renames the canonical check modules, which must originate in
   and has caught two of this seat's own errors; consider whether it needs a
   `/clear` before a large slice.
 
+## 2026-08-14 restart addendum — pointers only, re-measure before acting
+
+The maintainer directed the supervising worker to resolve a newly observed
+runtime guard regression before resuming the core migration. This addendum is a
+restart pointer, not a source of live ledger state.
+
+- Re-measure `livespec-zjrtgg` in the `livespec` tenant. It was filed to allow
+  only gitignored `tmp/overseer/<topic>/` runtime state in a primary checkout;
+  the live Codex guard nevertheless refused watcher setup restricted to
+  `tmp/overseer/planning-lane-redesign/`. The worker was given the durable
+  brief at `tmp/overseer/planning-lane-redesign/brief-reopen-zjrtgg.md` to
+  reopen the item through `bd reopen`, prove the exact failure, land the
+  narrow hook correction through the owning repositories' normal worktree and
+  PR paths, verify allowed and refused controls, and close only with forge and
+  CI evidence.
+- The worker is `planning-lane-redesign`; its milestone channel is
+  `tmp/overseer/planning-lane-redesign/worker-status.log`. The supervisor
+  marker is `tmp/overseer/planning-lane-redesign/.supervisor-state`. Re-read
+  both before taking over; their timestamps and the ledger outrank this
+  addendum.
+- After the side quest, re-measure `bd-ib-qrq6qk` in repository
+  `livespec-orchestrator-beads-fabro`. A prior attempted dispatch failed before
+  a Fabro run after a credential HTTP 429, and the bounded credential probe
+  later returned HTTP 200. Apply only an exposed, documented stranded-claim
+  recovery route after proving no forge artifact exists with a positive
+  control; then re-read its record before a sanctioned factory dispatch.
+- Leave `livespec-zsn2xh.5` untouched until the remediation has merged and a
+  fresh Dispatcher readiness measurement confirms its two typed sibling
+  dependencies resolve terminally.
+
 ## Corrections
 
 Thread-specific corrections belong here. Regeneration must preserve this
