@@ -41,7 +41,7 @@ Outside frozen `history/`, the stale path occurs exactly once in the spec tree (
 
 ### Proposed Changes
 
-FOUR EDITS: three to `SPECIFICATION/contracts.md` and one to `SPECIFICATION/spec.md`, each replacing text that exists verbatim and exactly once in the live files today.
+FIVE EDITS: three to `SPECIFICATION/contracts.md` and two to `SPECIFICATION/spec.md`, each replacing text that exists verbatim and exactly once in the live files today.
 
 **Edit 1 — the closing sentence of the control-wrapper paragraph.** Replace this sentence exactly:
 
@@ -93,14 +93,28 @@ One declarative manifest row per key MUST drive parsing, type-strict coercion, a
 
 The single-sourcing requirement the sentence exists to impose is preserved exactly; only the artifact it names as the source changes, and the manifest stops being listed as something the source drives.
 
+**Edit 5 — the policy-key table intro, two lines below Edit 4.** Edit 4 renames the row term, and this line names the SAME row set by the term Edit 4 retires. Left unamended, the ratified section would carry "manifest row" and "registry rows" in consecutive sentences of the very passage this proposal exists to make consistent. Replace exactly:
+
+```
+The registry rows are:
+```
+
+with:
+
+```
+The manifest rows are:
+```
+
+Graded honestly, because grades in this series are recorded: this is a terminology residual, not a falsehood — the rows remain reachable through `registry.py`'s `CONFIG_KEYS`, so "registry rows" retains an anchor. It is corrected anyway for the same reason Edit 2 was: a freshly-ratified sentence directly above an un-renamed intro reads as reviewed-and-endorsed.
+
 **Why this direction.** The Edit 1 wording was chosen by the maintainer on 2026-08-14 from two candidates. The alternative — stating only that the manifest is the single declarative source and saying nothing about `registry.py` — is also accurate and shorter, and was declined because the compatibility import path is real, still works, and is load-bearing for anyone reading livespec's own code; a contract that omits it sends a reader to an import the contract never mentions.
 
 A third option, ratifying the path swap alone and filing the authority wording separately, was put to the maintainer and DECLINED. It buys minimal separable dispositions at the cost of knowingly ratifying a false clause, with the corrected path making the whole sentence read as freshly reviewed.
 
 **What is preserved deliberately.** The five fields a row carries are unchanged, and the word "committed" is retained: vendored files are tracked in this repository, so the manifest is a committed artifact rather than a fetched or generated one. The `ConfigKey` name is retained because it remains the live exported symbol.
 
-**Deliberately out of scope, and filed separately.** The second review surfaced a collision between Edit 1's `livespec_runtime` ownership clause and three live statements about vendoring: `spec.md`'s enumeration of vendored runtime dependencies omits `livespec_runtime` although `.vendor.jsonc` carries it; `constraints.md` §"Locked vendored libs" likewise omits it; and `constraints.md` records that physical removal of that vendored tree and its `.vendor.jsonc` entry is Phase-2 implementation work — so the spec schedules removal of the tree Edit 1 names as the manifest's home.
+**Deliberately out of scope, to be filed as its own proposal.** The second review surfaced a collision between Edit 1's `livespec_runtime` ownership clause and three live statements about vendoring: `spec.md`'s enumeration of vendored runtime dependencies omits `livespec_runtime` although `.vendor.jsonc` carries it; `constraints.md` §"Locked vendored libs" likewise omits it; and `constraints.md` records that physical removal of that vendored tree and its `.vendor.jsonc` entry is Phase-2 implementation work — so the spec schedules removal of the tree Edit 1 names as the manifest's home.
 
-That drift is PRE-EXISTING — this proposal surfaces it rather than creating it — and it turns on a question this proposal has no business settling: whether `livespec_runtime`'s vendored tree is permanent or still slated for removal. That is an architecture call. The maintainer directed on 2026-08-14 that it be filed as its own proposal rather than folded in here, precisely so a terminology correction does not silently decide a packaging question.
+That drift is PRE-EXISTING — this proposal surfaces it rather than creating it — and it turns on a question this proposal has no business settling: whether `livespec_runtime`'s vendored tree is permanent or still slated for removal. That is an architecture call. The maintainer directed on 2026-08-14 that it be filed as its own proposal rather than folded in here, precisely so a terminology correction does not silently decide a packaging question. That filing has NOT happened yet as of this proposal's ratification — it is owed, not done, and this sentence deliberately does not cite an identifier a future reader would be unable to resolve.
 
 **Scope note.** This proposal does NOT re-open where the manifest should live, whether the compatibility shim should eventually be retired, or whether core should depend on `livespec_runtime` for policy defaults. It records the architecture as it IS on master.
