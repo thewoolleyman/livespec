@@ -101,6 +101,11 @@
       "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
       "default_branch": "master"
     },
+    "livespec-orchestrator-beads-fabro": {
+      "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro",
+      "local_clone": "/data/projects/livespec-orchestrator-beads-fabro",
+      "default_branch": "master"
+    },
     "livespec-dev-tooling": {
       "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
       "local_clone": "/data/projects/livespec-dev-tooling",
@@ -109,6 +114,11 @@
     "livespec-console-beads-fabro": {
       "github_url": "https://github.com/thewoolleyman/livespec-console-beads-fabro",
       "local_clone": "/data/projects/livespec-console-beads-fabro",
+      "default_branch": "master"
+    },
+    "livespec-overseer": {
+      "github_url": "https://github.com/thewoolleyman/livespec-overseer",
+      "local_clone": "/data/projects/livespec-overseer",
       "default_branch": "master"
     }
   },
