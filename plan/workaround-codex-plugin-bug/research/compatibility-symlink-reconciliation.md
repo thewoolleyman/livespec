@@ -11,8 +11,11 @@ version names to the current complete Driver payload after each update.
 
 ## Proposed implementation
 
-1. Add a Driver-owned reconciliation entry point that runs on the normal
+1. Add a Driver-owned reconciliation entry point that runs on every supported
    Codex plugin currency path immediately after marketplace upgrade/install.
+   The entry point must be reachable from the Driver's ordinary provisioning
+   path and from any native Codex update path that can replace an installed
+   payload without running that provisioner.
 2. Discover the current Driver version and the actual hook execution root from
    Codex's current JSON schema and a captured hook command. The reconciler
    must not assume an `installedPath` field or a cache layout: the current CLI
@@ -61,19 +64,21 @@ the cross-repository ledger anchor only.
 1. Establish the real Codex artifact lifecycle on a disposable, release-tracking
    marketplace install. Record the JSON fields returned by `codex plugin list`,
    the exact expanded Stop-hook commands in a session that predates an update,
-   and what `codex plugin marketplace upgrade` / `codex plugin add` creates,
-   replaces, or deletes. This evidence decides whether the compatibility root
-   is a versioned cache, a marketplace checkout, or another Codex-managed
-   location. It is a hard precondition: no implementation may manufacture
-   aliases against a guessed path.
+   and what both startup auto-upgrade and explicit `codex plugin marketplace
+   upgrade` / `codex plugin add` create, replace, or delete. This evidence
+   decides whether the compatibility root is a versioned cache, a marketplace
+   checkout, or another Codex-managed location. It is a hard precondition: no
+   implementation may manufacture aliases against a guessed path.
 2. Govern the resulting Driver-owned host-cache behavior in the Driver's
    specification by a propose-change → revise cycle. The contract must state
    the validated-payload gate, one-hop alias topology, preservation of real
    version directories, the bounded release-history retention window,
    idempotence, failure reporting, and the supported platform behavior.
-3. Implement the reconciler and invoke it only after the ordinary Codex
-   marketplace currency/install sequence succeeds. It must use the evidence
-   from step 1 to locate the payload, validate every declared Stop and
+3. Implement the reconciler and invoke it after each ordinary Codex
+   marketplace currency/install sequence succeeds. If Codex can update a
+   plugin outside that sequence, implement or document an equally reliable
+   post-update trigger before claiming the fix covers native updates. It must
+   use the evidence from step 1 to locate the payload, validate every declared Stop and
    PreToolUse hook under bare `python3`, atomically retarget `latest`, then
    backfill only bounded, known release names. It may never modify a complete
    real directory, follow an unsafe existing link, or change marketplace refs
@@ -103,6 +108,73 @@ marketplace, disable hooks, or require an alternate Codex launch command.
   the `livespec-driver-codex` payload and its declared hooks; a reusable Codex
   platform fix can be proposed separately once the observed lifecycle is
   established.
+
+## Live incident evidence — 2026-08-14
+
+An active Codex session retained these expanded Stop-hook commands after its
+Driver cache had advanced:
+
+```text
+/usr/bin/python3 /home/ubuntu/.codex/plugins/cache/livespec-driver-codex/livespec/0.6.0/hooks/no_shadow_ledger.py
+/usr/bin/python3 /home/ubuntu/.codex/plugins/cache/livespec-driver-codex/livespec/0.6.0/hooks/codex_background_memory_audit.py
+```
+
+At diagnosis, the old `0.6.0` cache directory and any `latest` alias were
+absent. The current release cache was the complete real directory `0.6.1`.
+`codex plugin list --json -m livespec-driver-codex` reported version `0.6.1`
+but named the marketplace checkout
+`~/.codex/.tmp/marketplaces/livespec-driver-codex/livespec` as its `source.path`;
+that JSON field is therefore not the retained hook execution root. The
+marketplace checkout was at release commit `2911d81` (`v0.6.1`), while the
+removed cache name corresponded to `v0.6.0` (`2533d7d`).
+
+The current Driver declares four Python hooks in `hooks/hooks.json`: one
+`livespec_footgun_guard.py` PreToolUse hook, three `block_auto_memory.py`
+PreToolUse matchers, and the two Stop hooks above. Its current
+`dev-tooling/ensure-codex-plugins.sh` performs marketplace `add`, marketplace
+`upgrade`, and plugin `add` commands only; it contains no reconciliation or
+compatibility-alias step. Codex's local CLI help likewise describes
+`marketplace upgrade` only as refreshing configured Git marketplace snapshots
+and `plugin add` only as installing from a snapshot, with no post-update hook
+or retention option. The official OpenAI documentation search did not expose
+an authoritative cache-retention or lifecycle contract for this feature.
+
+Upstream Codex issue [#31383](https://github.com/openai/codex/issues/31383),
+open as of this incident, reports the same order of events: Codex loads
+versioned hook commands, starts a background marketplace auto-upgrade at
+session startup, and reinstalls the cache by deleting the old version or
+replacing the cache entry. It also reports that a fresh session works because
+it loads the newly materialized cache. This confirms that the durable trigger
+cannot be limited to the Driver's explicit provisioner: startup auto-upgrade
+is a normal update route and must either run reconciliation before retained
+hook paths can execute or be covered by a cache layout that survives it.
+The implementation must still retain a measured, version-pinned integration
+probe rather than assume undocumented behavior beyond this reported lifecycle.
+
+The then-current Codex source at CLI `0.147.0` corroborated the report:
+[`manager.rs`](https://github.com/openai/codex/blob/main/codex-rs/core-plugins/src/manager.rs)
+spawns `plugins-marketplace-auto-upgrade` and force-reinstalls refreshed
+non-curated plugin caches, while
+[`store.rs`](https://github.com/openai/codex/blob/main/codex-rs/core-plugins/src/store.rs)
+removes superseded semver directories or swaps the whole cache root on a
+reinstall. Therefore an alias located inside that Codex-managed cache cannot
+be the reconciliation trigger or durable state: the updater may remove it
+with the old cache entry. A Driver-side observer has to live outside the
+cache, and only an upstream Codex change can eliminate the race between hook
+path capture and that background replacement.
+
+The emergency repair established and verified this topology:
+
+```text
+0.6.0 -> latest -> 0.6.1/
+```
+
+Both retained Stop-hook paths resolved through that one hop to the `0.6.1`
+payload and passed `python3 -m py_compile`. The repair also verified every
+current hook script before retargeting `latest`. This proves the immediate
+alias mechanism, but not its trigger: a durable implementation must prove
+that every normal update route invokes the reconciliation after Codex has
+materialized the new cache and before a retained hook path is needed.
 
 ## Verification and rollout
 
