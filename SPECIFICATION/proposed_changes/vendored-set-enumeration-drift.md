@@ -96,7 +96,7 @@ git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y
 with:
 
 ```
-git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`. `livespec` core additionally VENDORS the package under `_vendor/` per `constraints.md` §"Locked vendored libs", so core carries both surfaces; the pyproject surface remains the one a consumer adds.
+git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`. `livespec` core additionally VENDORS the package under `_vendor/` per `constraints.md` §"Locked vendored libs" — an instance of the source-copied shape §"Shared content provenance" describes — so core carries both surfaces.
 ```
 
 **Why this direction.** §"Locked vendored libs" states that each lib is "pinned to an exact upstream ref recorded in `<repo-root>/.vendor.jsonc`". `livespec_runtime` is pinned there, so its absence makes the enumeration contradict its own membership rule. And the removal clause cannot be executed as written: deleting the package would remove the manifest v206 ratified as authoritative.
