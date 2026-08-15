@@ -117,17 +117,20 @@ by pi as a resource-less git package. Decide at proposal time; the
 no-new-artifact reading keeps the single cross-runtime artifact rule
 (nothing duplicated) trivially satisfied.
 
-**Release-channel seam:** Claude/Codex marketplaces track the `release`
-BRANCH (`ref: release`), giving free currency on each release. pi git
-refs are pinned tags/commits and `pi update` never advances them —
-UNVERIFIED whether a branch name is even accepted as a ref. If pinned
-tags are required, keeping governed projects current means the fleet's
-existing pin-bump machinery (or the session-currency hook analogue)
-must rewrite the `.pi/settings.json` ref on each release — the same
-shape as `compat.pinned` bumps, one more file for `bump-pin` to know.
-This is the largest genuinely-new design question for the spec
-proposal; test branch-ref behavior empirically before writing the
-contract.
+**Release-channel seam — RESOLVED (see closed open item 2 below):**
+Claude/Codex marketplaces track the `release` BRANCH (`ref: release`),
+giving free currency on each release. pi's docs describe git refs as
+pinned tags/commits that updates never advance, but the SHIPPED
+behavior (verified two independent ways on pi v0.84.1 — live scratch
+observation and package-manager source read; details in closed open
+item 2) is that a branch name is a valid ref and `pi update
+--extensions` moves the clone to the fetched branch tip via a hard
+reset. So the pi channel maps directly onto the fleet's
+release-branch model: install `@release`, refresh with `pi update
+--extensions`; no pin-bump machinery change is needed. The
+docs-vs-behavior contradiction is the reason the spec contract
+anchors the observed version and requires re-verification on a pi
+major bump.
 
 ## Answer 5 — Driver repo shape (livespec-driver-pi)
 
@@ -160,9 +163,32 @@ drives.
 
 1. Verify `/skill:<name>` expansion in `-p` print mode empirically
    (rpc-mode expansion is documented; print-mode is assumed).
-2. Test whether a git ref may be a branch name (`@release`) and what
-   `pi update --extensions` does with it; this decides the
-   release-channel design in the spec proposal.
+   PARTIALLY CLOSED 2026-08-15 by source read (independent adversarial
+   reviewer): `dist/modes/print-mode.js` calls `session.prompt()`,
+   which runs `_expandSkillCommand` since `expandPromptTemplates`
+   defaults to true — print mode expands skill commands. The live
+   `pi -p` drive in the end-to-end leg remains the closing evidence.
+2. ~~Test whether a git ref may be a branch name (`@release`)~~
+   CLOSED 2026-08-15, by two independent derivations that agree:
+   (a) live scratch-project observation — `pi install
+   git:github.com/thewoolleyman/livespec-driver-claude@release -l
+   --approve` in a throwaway directory checked out a `release` branch
+   tracking `origin/release`; after `git reset --hard HEAD~2` in the
+   clone, `pi update --extensions --approve` fetched and moved it back
+   to the branch tip (clone status `## release...origin/release`);
+   the scratch project was deleted afterwards, so no residue remains
+   under `~/.pi/agent/` or the scratch path. (b) source read of the
+   shipped package manager (`dist/core/package-manager.js`, pi
+   v0.84.1): `updateConfiguredSources` always includes git candidates,
+   and `updateGit` runs `git fetch origin <ref>` then
+   `git reset --hard FETCH_HEAD^{commit}` — so ANY ref, branch
+   included, is moved to the fetched tip (a hard reset, not a
+   fast-forward/merge). NOTE the docs contradiction: docs/packages.md
+   says "Refs are pinned tags or commits" and that updates "do not
+   move them to newer refs" — the shipped behavior for a branch ref
+   is the opposite, which is why this record carries the source
+   derivation and why the spec contract anchors the observed version
+   (re-verify on a pi major bump).
 3. Decide core's explicitness: resource-less-package-by-convention vs
    an explicit empty `pi` manifest.
 4. Confirm the Codex-precedent spec sections to mirror
