@@ -51,7 +51,6 @@
     { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
     { "repo": "livespec-driver-claude", "class": "driver-plugin" },
     { "repo": "livespec-driver-codex", "class": "driver-plugin" },
-    { "repo": "livespec-driver-pi", "class": "driver-plugin" },
     { "repo": "livespec-orchestrator-beads-fabro", "class": "impl-plugin" },
     { "repo": "livespec-orchestrator-git-jsonl", "class": "impl-plugin" },
     { "repo": "livespec-runtime", "class": "library" },
