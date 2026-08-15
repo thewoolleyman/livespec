@@ -16,7 +16,7 @@ created_at: 2026-08-15T06:00:00Z
 
 At **v104** (`a0601e6d`, 2026-06-10) this specification RATIFIED removing `livespec_runtime` from core's vendored set: that one accepted change deleted its `### Locked vendored libs` entry, pruned it from the re-vendoring enumeration, and added the clause scheduling "physical removal of the still-present vendored tree and its `.vendor.jsonc` entry". That plan was coherent when made, because the v104-era vendored package was substantially the `cross_repo` machinery core was shedding.
 
-**The premise died.** Re-vendorings through `v0.19.0` (2026-08-13) grew the package well beyond `cross_repo`, and **v206** (2026-08-14) ratified `_vendor/livespec_runtime/api_configurable_keys.json` as the single declarative source of spec-governance policy keys. Core now cannot read its own policy config without the tree v104 scheduled for deletion.
+**The premise died.** Re-vendorings through `v0.20.0` (2026-08-15) grew the package well beyond `cross_repo`, and **v206** (2026-08-14) ratified `_vendor/livespec_runtime/api_configurable_keys.json` as the single declarative source of spec-governance policy keys. Core now cannot read its own policy config without the tree v104 scheduled for deletion.
 
 This proposal therefore SUPERSEDES v104's removal plan on changed facts. It is not a wording repair, and a ratifier should read it as a reversal of a ratified decision, made deliberately and with the superseded record cited.
 
@@ -30,7 +30,7 @@ Surfaced by the independent adversarial review of the `spec-governance-manifest-
 
 Measured state, re-derived rather than inherited:
 
-- `.vendor.jsonc` carries SIX entries; `livespec_runtime` is among them, pinned `v0.19.0`, vendored 2026-08-13.
+- `.vendor.jsonc` carries SIX entries; `livespec_runtime` is among them, pinned `v0.20.0` (vendored 2026-08-15, as of `e25174b1`).
 - `spec.md`'s enumeration names FOUR items; §"Locked vendored libs" carries FIVE bullets. `livespec_runtime` is absent from both.
 - The vendored tree ships `api_configurable_keys.json`, `spec_governance.py`, `cross_repo/`, `hygiene_scan*`, `credentials.py`, `github_auth/`, `attention_item.py` and more.
 
@@ -105,4 +105,4 @@ Consumers consume `livespec-runtime` via the Python package surface added to `py
 
 **Deliberately out of scope.** Three live statements describe `_vendor/**` as third-party code — `constraints.md` §"Constraint scope" and its §intro, and `non-functional-requirements.md`'s exemption clause — while `livespec_runtime` is the fleet's own library. Whether the style and coverage exemption covers a first-party vendored package is a PRE-EXISTING question this proposal neither creates nor settles; the entry added by Edit 3 deliberately avoids introducing a "first-party" classification token so as not to widen into it. That question is owed, and no filing for it existed as of this proposal's last revision (2026-08-15).
 
-**Also observed, not addressed here:** `.vendor.jsonc`'s own header comment states a vendored-entry count that no longer matches the file (a non-spec artifact, so outside a spec proposal's reach); `NOTICES.md` line 20's six-entry count is itself correct, but its line 8 still says "4 upstream-sourced libs" — a stale sub-count now that `livespec_runtime` is the fifth (also a non-spec artifact, outside this proposal's reach); and `_vendor/livespec_runtime/LICENSE` names tag `v0.3.0` while the pin is `v0.19.0`.
+**Also observed, not addressed here:** `.vendor.jsonc`'s own header comment states a vendored-entry count that no longer matches the file (a non-spec artifact, so outside a spec proposal's reach); `NOTICES.md` line 20's six-entry count is itself correct, but its line 8 still says "4 upstream-sourced libs" — a stale sub-count now that `livespec_runtime` is the fifth (also a non-spec artifact, outside this proposal's reach); and `_vendor/livespec_runtime/LICENSE` names tag `v0.3.0`, far behind the current pin.
