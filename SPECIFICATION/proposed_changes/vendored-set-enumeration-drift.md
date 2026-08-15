@@ -87,16 +87,16 @@ with:
 **Re-vendoring** of upstream-sourced libs (`returns`, `fastjsonschema`, `structlog`, `typing_extensions`, `livespec_runtime`) MUST go through `just vendor-update <lib>`
 ```
 
-**Edit 5 — `non-functional-requirements.md`, the consumption-surface sentence.** Under v104's plan the vendored copy was temporary, so "one surface" was the end-state. Superseding that makes core permanently carry two. Replace exactly:
+**Edit 5 — `non-functional-requirements.md`, the consumption-surface sentence.** Under v104's plan the vendored copy was temporary, so "one surface" was the end-state. Superseding that makes core permanently carry two, so the count itself — not just its tail — must change: leaving "one surface" standing two sentences before "both surfaces" would be a fresh contradiction in the same paragraph. Replace exactly:
 
 ```
-git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`.
+Consumers consume `livespec-runtime` via one surface: the Python package added to `pyproject.toml` either as a runtime dependency under `[project].dependencies` or as a dev dependency under `[dependency-groups].dev`, with `[tool.uv.sources]` declaring `git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`.
 ```
 
 with:
 
 ```
-git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`. `livespec` core additionally VENDORS the package under `_vendor/` per `constraints.md` §"Locked vendored libs" — an instance of the source-copied shape §"Shared content provenance" describes — so core carries both surfaces.
+Consumers consume `livespec-runtime` via the Python package surface added to `pyproject.toml` either as a runtime dependency under `[project].dependencies` or as a dev dependency under `[dependency-groups].dev`, with `[tool.uv.sources]` declaring `git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y.Z"`. `livespec` core additionally VENDORS the package under `_vendor/` per `constraints.md` §"Locked vendored libs" — an instance of the source-copied shape §"Shared content provenance" describes — so core carries both surfaces.
 ```
 
 **Why this direction.** §"Locked vendored libs" states that each lib is "pinned to an exact upstream ref recorded in `<repo-root>/.vendor.jsonc`". `livespec_runtime` is pinned there, so its absence makes the enumeration contradict its own membership rule. And the removal clause cannot be executed as written: deleting the package would remove the manifest v206 ratified as authoritative.
