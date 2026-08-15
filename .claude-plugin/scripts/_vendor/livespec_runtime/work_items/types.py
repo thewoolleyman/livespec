@@ -9,8 +9,8 @@ Python-level realization.
 
 This is the SHARED lift of the model both `livespec-impl-git-jsonl`
 and `livespec-impl-beads` re-implemented identically. The unified
-shape is a 24-field record: 15 required fields (including the `rank`
-ordering key) followed by 9 optional-on-read fields. `rank` is the
+shape is a 25-field record: 15 required fields (including the `rank`
+ordering key) followed by 10 optional-on-read fields. `rank` is the
 sole ordering authority — the prior `priority: int` is REMOVED (two
 order sources are two conflicting truths). The `spec_commitment_hint`
 / `acceptance_criteria` / `notes` / `supersedes` pointers and the
@@ -18,7 +18,10 @@ order sources are two conflicting truths). The `spec_commitment_hint`
 / `blocked_reason` / `factory_safety` / `review_requirement` policy
 fields all follow the blessed `… | None` optional-on-read pattern:
 legacy records lacking them read back as `None`, with no in-place
-migration.
+migration. `awaits_scope_override: bool = False` is the tenth
+optional-on-read field, a materialized current-state signal backed
+by the `awaits-scope-override` beads label; legacy records lacking it
+read back as `False`.
 
 Transitive type closure: the only non-primitive type reachable from
 `WorkItem` is `AuditRecord` (via the `audit` field). `AuditRecord`'s
@@ -165,6 +168,10 @@ class WorkItem:
     `None` means no item-level human review requirement; legacy records
     lacking the field read back as `None` with no in-place migration.
     `human-before-merge` requires human review before merge.
+
+    `awaits_scope_override` is a materialized current-state signal,
+    backed by the `awaits-scope-override` beads label in the beads
+    substrate. `False` is the legacy/default value.
     """
 
     id: str
@@ -191,3 +198,4 @@ class WorkItem:
     blocked_reason: StoredBlockedReason | None = None
     factory_safety: FactorySafety | None = None
     review_requirement: ReviewRequirement | None = None
+    awaits_scope_override: bool = False
