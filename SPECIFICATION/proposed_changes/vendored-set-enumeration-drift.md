@@ -72,7 +72,7 @@ with:
 
 ```
 The verbatim PSF-2.0 `LICENSE` is shipped at `_vendor/typing_extensions/LICENSE`.
-- **`livespec_runtime`** (thewoolleyman/livespec-runtime, MIT) — the fleet's own shared-runtime library, vendored so core resolves it without a package install. Supplies `spec_governance` (the manifest resource and its loader), the `cross_repo/` subtree, `hygiene_scan`, `credentials`, `github_auth`, and `attention_item`. Core imports `spec_governance` on every spec-governance config read and `cross_repo` from `livespec/parse/`.
+- **`livespec_runtime`** (thewoolleyman/livespec-runtime, MIT) — the fleet's own shared-runtime library, vendored so core resolves it without a package install; the vendored tree carries additional subpackages beyond what core imports. Core imports `spec_governance` (the manifest resource and its loader) on every spec-governance config read, and `cross_repo` from `livespec/parse/`.
 ```
 
 **Edit 4 — `constraints.md`, the re-vendoring enumeration.** v104 pruned `livespec_runtime` from this list in the same change that deleted the entry. Restoring the entry without restoring this leaves a locked lib with no blessed mutation path, and the direct-edit prohibition keys to this enumeration. Replace exactly:
@@ -105,4 +105,4 @@ git = "https://github.com/thewoolleyman/livespec-runtime.git"` plus `tag = "vX.Y
 
 **Deliberately out of scope.** Three live statements describe `_vendor/**` as third-party code — `constraints.md` §"Constraint scope" and its §intro, and `non-functional-requirements.md`'s exemption clause — while `livespec_runtime` is the fleet's own library. Whether the style and coverage exemption covers a first-party vendored package is a PRE-EXISTING question this proposal neither creates nor settles; the entry added by Edit 3 deliberately avoids introducing a "first-party" classification token so as not to widen into it. That question is owed, and no filing for it existed as of this proposal's last revision (2026-08-15).
 
-**Also observed, not addressed here:** `.vendor.jsonc`'s own header comment states a vendored-entry count that no longer matches the file (a non-spec artifact, so outside a spec proposal's reach; `NOTICES.md` line 20 already states the correct six-entry count and needs no fix); and `_vendor/livespec_runtime/LICENSE` names tag `v0.3.0` while the pin is `v0.19.0`.
+**Also observed, not addressed here:** `.vendor.jsonc`'s own header comment states a vendored-entry count that no longer matches the file (a non-spec artifact, so outside a spec proposal's reach); `NOTICES.md` line 20's six-entry count is itself correct, but its line 8 still says "4 upstream-sourced libs" — a stale sub-count now that `livespec_runtime` is the fifth (also a non-spec artifact, outside this proposal's reach); and `_vendor/livespec_runtime/LICENSE` names tag `v0.3.0` while the pin is `v0.19.0`.
