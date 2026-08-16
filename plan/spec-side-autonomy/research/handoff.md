@@ -8,12 +8,13 @@ have now ratified — **v204** and **v205** on 2026-08-14 in
 [#2314](https://github.com/thewoolleyman/livespec/pull/2314) (merge
 `a11585a3`).
 
-**The queue is NOT empty.** One proposal, `vendored-set-enumeration-drift`, was
-filed 2026-08-15 (PR
-[#2316](https://github.com/thewoolleyman/livespec/pull/2316)) and is awaiting
-its independent adversarial review. It is the debt v206's archived record names
-as owed. **Re-measure the queue rather than trusting this paragraph** — an
-earlier revision of this same head said "EMPTY" and was overtaken within hours.
+**The queue is NOT empty, and the pending proposal is MID-REVIEW — see
+§"The pending vendoring proposal" before touching it.** One proposal,
+`vendored-set-enumeration-drift`, is on master (filed via PR
+[#2316](https://github.com/thewoolleyman/livespec/pull/2316), merge
+`dbc9c4d7`). It is the debt v206's archived record names as owed. **Re-measure
+the queue rather than trusting this paragraph** — an earlier revision of this
+same head said "EMPTY" and was overtaken within hours.
 
 ## START HERE — nothing is in flight, and NOTHING here is autonomously actionable
 
@@ -102,6 +103,52 @@ comparison against itself and core never reads INTO a consumer
 (No-Circular-Dependency). Same conclusion, different reason. If you find
 yourself citing the `just check` version, you are reading a pre-ratification
 draft.
+
+## The pending vendoring proposal — DO NOT ratify without reading this
+
+`vendored-set-enumeration-drift` is on master and NOT ratified. It has been
+through TWO review rounds and SEVEN blockers. Three things a successor must not
+re-derive or re-litigate:
+
+**1. It SUPERSEDES a ratified decision, deliberately, by maintainer direction.**
+At v104 (`a0601e6d`, 2026-06-10) the spec RATIFIED removing `livespec_runtime`
+from core's vendored set — one accepted change deleted the locked-lib entry,
+pruned the re-vendoring enumeration, and added the removal clause, under the
+heading `drop-core-vendoring-mandate-for-livespec-runtime-cross-repo`. Its
+premise, stated in its own Motivation, was that v103 had left the library
+"without a core consumer". **That premise died**: later re-vendorings grew the
+package past `cross_repo`, and v206 put the spec-governance manifest inside the
+tree, so core's config read now depends on it. The maintainer was told this on
+2026-08-15 and chose supersession over the alternative (treat v104 as binding
+and unwind core's dependence, which would reverse v206 and rebuild the
+spec-governance boot path). **Do not re-open that choice.**
+
+**2. An earlier draft carried TWO false claims. Both are retracted IN the
+proposal body — do not "restore" them.** It claimed the removal clause's wording
+had "generalised beyond its intent" (false: whole-package removal was the
+ratified plan), and that core imports the `credentials` and `github_auth`
+subpackages (false: core imports NEITHER — its importers are `cross_repo` via
+`livespec/parse/`, `spec_governance` via the registry, default-block and two
+dev-tooling checks, and `hygiene_scan` via the reaper). The second error came
+from an import grep that counted the vendored package's OWN internal imports as
+core consumption. If you re-run that check, exclude `_vendor/`.
+
+**3. What remains before it can ratify.** A NO-BLOCKERS verdict bound to the
+proposal bytes AND to three resulting files — `spec.md` (Edit 1),
+`constraints.md` (Edits 2–4), `non-functional-requirements.md` (Edit 5). At
+wind-down the outstanding pieces were PR
+[#2323](https://github.com/thewoolleyman/livespec/pull/2323) (a one-clause fix
+dropping an exclusivity claim Edit 2 itself contradicted) and a verdict pending
+on branch tip `9d8e9ce7`. **Rebuild the resulting files rather than reusing any
+found in scratch** — master moved twice during one review round and v207 touched
+two of the three target files; the built copies were valid only by luck.
+
+One recorded finding that STRENGTHENS the proposal and should be cited if it is
+re-argued: `non-functional-requirements.md` §"Shared content provenance" already
+defines the source-copied shape — a package both distributed for install and
+copied into other governed repos' `_vendor/` trees — and names `livespec-runtime`
+as the reference instance. The spec already blesses the practice v104 scheduled
+away.
 
 ## v206 — six review rounds, ten blockers, none waived. Read this before filing.
 
@@ -238,8 +285,8 @@ Three transferable lessons:
   dropped. **This is an OPEN DESIGN QUESTION FOR THE MAINTAINER, not a drift to
   file** — supervisor-directed 2026-08-14. Record it, leave it, do not turn it
   into a proposed change.
-- **`vendored-set-enumeration-drift` — FILED 2026-08-15, awaiting review.** Not
-  a finding any more; it is in the queue. See §"What ratified" below.
+- **`vendored-set-enumeration-drift` — ON MASTER, MID-REVIEW.** Not a finding
+  any more. See §"The pending vendoring proposal".
 
 The `api_configurable_keys.json` path drift that stood here is RESOLVED: it was
 filed, widened twice under review, and ratified as **v206**.
