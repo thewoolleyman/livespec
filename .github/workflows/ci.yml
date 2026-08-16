@@ -353,8 +353,6 @@ jobs:
           - check-hook-trees-not-io-exempt
           - check-local-memory-drift-audit
           - check-no-shadow-ledger-body-typechecks
-          - check-plan-thread-anchor-declared
-          - check-plan-thread-no-tombstone
           - check-plan-anchor-declared
           - check-plan-no-tombstone
           - check-required-role-keys-declared
