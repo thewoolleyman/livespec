@@ -298,6 +298,70 @@ registration creates an installed `livespec` plugin entry in
 operation through it; a temporary local Codex marketplace registration
 used for testing MUST be removed afterward unless you ask to keep it.
 
+## pi dogfooding (pi coding agent)
+
+Core is ALSO pi-installable, so the same eight `/livespec:*` spec-side
+operations can be dogfooded from the pi coding agent. The model mirrors
+the Claude path — core is the artifact carrier (prose + wrappers, no
+skills of its own) and a per-runtime Driver supplies the command surface
+— including the SAME asymmetry axis as Claude: pi plugin enablement is
+**PROJECT-SCOPED** (a committed `.pi/settings.json`), unlike Codex's
+host-wide `~/.codex/config.toml`. pi carries one further asymmetry of its
+own: a **project-trust gate** — a non-interactive pi invocation (`-p`,
+`--mode json`, `--mode rpc`) silently ignores project-local settings and
+packages unless a trust decision is established (`~/.pi/agent/trust.json`,
+a global `defaultProjectTrust: always`, or a per-run `--approve`/`-a`).
+
+Install the core plugin and the `livespec-driver-pi` Driver, project-scoped,
+into the governed project:
+
+```bash
+pi install git:github.com/thewoolleyman/livespec@release -l --approve          # core, artifact carrier
+pi install git:github.com/thewoolleyman/livespec-driver-pi@release -l --approve # the Driver's eight skills
+```
+
+Either command writes into the project's committed `.pi/settings.json` and
+clones the package under `.pi/git/github.com/thewoolleyman/<repo>/`
+(project scope) — this repo commits that file the same way the Claude
+path commits `.claude/settings.json`. The `--approve` flag (or an
+equivalent pre-seeded trust decision) is REQUIRED for any unattended pi
+drive; without it the operation resolves nothing rather than failing
+loudly. `pi update --extensions` is the currency-refresh verb for the
+`@release` channel — verified to move a branch-ref clone to the fetched
+branch tip on pi v0.84.1, a behavior pi's own documentation does not
+promise for git refs generally (it describes them as pinned tags or
+commits), so this MUST be re-verified against pi's package manager on any
+pi major-version bump.
+
+Once installed and trusted, the eight spec-side operations are exposed as
+pi skills named `livespec-<operation>` (pi skill names admit no
+colon-namespacing) and driven — interactively or via `pi -p` /
+`--mode rpc` — as `/skill:livespec-<operation>` (e.g.
+`/skill:livespec-next`), never as a bare `/livespec:*` slash command or a
+codex-style name-selected form. Each binding resolves core's plugin root
+(env override → governed-project checkout → project-scope `.pi/git/`
+clone → user-scope clone) and reads CORE's harness-neutral prose exactly
+like the Claude and Codex Drivers; no `AGENTS.md` skill→prose mapping is
+needed. See `SPECIFICATION/contracts.md` §"Plugin distribution" and
+`SPECIFICATION/non-functional-requirements.md` §"pi dogfooding
+contracts"/§"pi dogfooding constraints" for the authoritative install and
+acceptance contract.
+
+Daily-dogfooding note: core intentionally ships NO pi packaging artifact —
+no `pi` manifest key, no conventional resource directories (`extensions/`,
+`skills/`, `prompts/`, `themes/` at the repo root) — so a pi-installed core
+package loads ZERO resources, exactly the artifact-carrier role core plays
+on the Claude and Codex paths, stated by contract so it is a commitment
+rather than an accident of layout. Per `non-functional-requirements.md`
+§"pi dogfooding constraints", pi-native plugin support may be claimed only
+once package registration creates the committed `.pi/settings.json`
+entries AND a separate non-interactive `pi -p` invocation drives a
+`/livespec:*` operation through the registered packages, with the
+`/skill:livespec-<operation>` expansion verified in that non-interactive
+path itself — not assumed from documented interactive behavior. A
+temporary pi package registration used for testing MUST be removed
+afterward unless you ask to keep it.
+
 ## Repository mutation protocol
 
 Every repo change uses a worktree → PR → merge → cleanup path. Treat
