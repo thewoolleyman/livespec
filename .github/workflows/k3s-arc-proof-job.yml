@@ -1,0 +1,33 @@
+# k3s-arc-proof-job.yml — livespec-s43svm.16's second (gating-repo)
+# proof leg. Manual dispatch only (workflow_dispatch, no push/
+# pull_request trigger) is the non-gating guarantee: this can never
+# become a required status check because nothing routes a PR event to
+# it. Pattern copied from livespec-dev-tooling
+# ci-runner/k3s/test-job/proof-job.yml (livespec-s43svm.14's phase-1
+# proof) and the livespec-console-beads-fabro non-gating lane proof
+# (PR #647), adapted to THIS repo's own ARC scale set
+# (livespec-local-ci-k3s, installed 2026-08-16 from the phase-2
+# values-livespec.yaml design already landed).
+#
+# livespec is a GATING repo (every sibling repo pins to its releases),
+# so this workflow deliberately proves the scale set can execute a
+# real job WITHOUT touching livespec's own ci.yml or routing any real
+# production traffic — matching this epic's established discipline of
+# proving each new lane before cutting real traffic over to it.
+name: k3s-arc-proof-job (livespec-s43svm.16, non-gating)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  proof:
+    runs-on: livespec-local-ci-k3s
+    steps:
+      - name: prove the path end-to-end
+        run: |
+          echo "k3s + ARC + Kueue livespec-s43svm.16 gating-repo lane proof"
+          echo "host: $(hostname)"
+          echo "kernel: $(uname -r)"
+          id
+          echo "this job proves the new path can execute a real job for"
+          echo "livespec; it does not yet route any gating CI traffic."
