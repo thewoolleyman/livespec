@@ -176,3 +176,30 @@ reviewer the wrong counter-move:
 A reviewer who checks only the five `AGENTS.md` criteria will pass every class
 here. A reviewer who checks classes 1-3 with a single shared instrument can
 still pass class 4 — twice, and call it agreement.
+
+## Spawning the reviewer: pin the model, then verify the identity
+
+The review this file describes is required to run on a **Fable-model** agent
+(the `AGENTS.md` bullet: "a separately-spawned Fable-model agent"). Two
+operational facts, both learned from reviews that shipped wrong-model evidence
+(2026-08-16 — the v062 pi-skill-surface rounds in
+`livespec-orchestrator-beads-fabro`, and the first
+repo-birth-procedure-reconciliation rounds in this repo, all silently ran on
+Opus):
+
+- **An agent spawned WITHOUT an explicit model pin does not inherit the
+  parent session's model.** On this host an unpinned subagent runs Opus even
+  when the spawning session runs Fable. Always pass the explicit Fable model
+  selection when spawning a ratification reviewer or a byte-attestation agent.
+- **Pinning is necessary, not sufficient — make the agent state its identity.**
+  Every reviewer/attestor brief must instruct the agent to report the model it
+  is actually running as (its per-agent environment block, "You are powered by
+  the model named ...", is the authoritative statement, and agents report it
+  honestly when asked), and that stated identity is recorded in the evidence.
+  A verdict whose reviewer identity was never verified is not evidence the
+  model clause was met.
+
+When an unpinned agent has already produced findings, treat them as
+re-derivable claims a Fable reviewer can verify quickly — never as the policy
+evidence itself. The wrong-model verdict is not self-waived and not discarded;
+it routes to the maintainer only when re-running under Fable is impossible.
