@@ -15,9 +15,13 @@ Adding an adopter is TWO jobs in two different places:
    `baseline` plus any additive layers (`fleet-infra`,
    `orchestrator-plugin`, `app`); posture is `released` / `pinned` /
    `none`. Precedents: `openbrain` (brownfield), `resume`
-   (greenfield). Register-first is deliberate: a declared-but-unwired
-   adopter should surface as a conformance finding, not stay
-   invisible.
+   (greenfield). Registering the entry before the adopter is WIRED is
+   deliberate — a declared-but-unwired adopter should surface as a
+   conformance finding, not stay invisible — but the repository itself
+   MUST already exist and be clonable when the entry lands: a manifest
+   entry naming a nonexistent repo breaks every manifest consumer that
+   clones the fleet (per non-functional-requirements.md §"Fleet
+   membership contract" → "Repo birth procedure").
 
 2. **Adopter-side onboarding** (happens IN THE ADOPTER REPO, never
    here): everything else — plugin enablement, `/livespec:seed`,

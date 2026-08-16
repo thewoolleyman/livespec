@@ -18,11 +18,14 @@
 //     net (a repo matching `livespec-*` naming or carrying the topic
 //     but absent here is a conformance finding).
 //
-// Repo birth procedure (per the same spec section): scaffold (via the
-// copier template where the class has one) → register HERE first →
-// run `wire-fleet-member` → fleet conformance green. Register-first
-// makes a half-wired new repo red fleet CI rather than an invisible
-// straggler.
+// Repo birth procedure (per the same spec section): create the GitHub
+// repository → scaffold (via the copier template where the class has
+// one) → reach membership-independent readiness → register HERE LAST →
+// immediately run `wire-fleet-member` → fleet conformance green. An
+// entry MUST NOT land before the repo it names exists and is clonable
+// (a premature entry breaks every manifest consumer that clones the
+// fleet); the invisible-straggler concern is carried by the discovery
+// safety net above.
 //
 // `fleet` entries are { repo, class } where `class` is one of:
 // core / enforcement-suite / impl-plugin / driver-plugin / library / console /
@@ -66,9 +69,10 @@
     // resume: greenfield dogfooding app (registered 2026-07-04) — the
     // maintainer's resume, built livespec-first from an empty repo (contrast:
     // openbrain adopted the workflow as an existing brownfield app). Declares
-    // the full target profile up front per the register-first birth procedure;
-    // all wiring (GitHub repo, .livespec.jsonc, credential_wrapper, spec seed,
-    // beads tenant) is DEFERRED to the onboarding pass.
+    // the full target profile up front; all wiring (.livespec.jsonc,
+    // credential_wrapper, spec seed, beads tenant) is DEFERRED to the
+    // onboarding pass. Per the registration-last birth rule, the GitHub repo
+    // itself must exist before the entry lands — it is not deferrable wiring.
     { "repo": "resume", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "pinned" },
     // homelab: greenfield Git-governed control plane for an AI-driven NixOS
     // homelab (registered 2026-07-18) — built livespec-first from a seed repo,
@@ -78,9 +82,10 @@
     // hook, so the fleet-conformance currency sweep holds it current (bound
     // only for `released` adopters, per non-functional-requirements.md §"Fleet
     // membership contract" → "Adopters"). Declares the full target profile up
-    // front per the register-first birth procedure; all wiring (.livespec.jsonc
-    // via seed, credential_wrapper, GitHub App, beads tenant, per-tenant Fabro
-    // server) is DEFERRED to the post-seed onboarding pass.
+    // front; all wiring (.livespec.jsonc via seed, credential_wrapper, GitHub
+    // App, beads tenant, per-tenant Fabro server) is DEFERRED to the post-seed
+    // onboarding pass (the repo itself existed first, per the
+    // registration-last birth rule).
     { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" }
   ]
 }
