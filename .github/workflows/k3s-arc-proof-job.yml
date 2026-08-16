@@ -1,0 +1,49 @@
+# k3s-arc-proof-job.yml — livespec-s43svm.16's second (gating-repo)
+# proof leg, attempt 2.
+#
+# Attempt 1 used workflow_dispatch (the pattern that worked for the
+# non-gating lane, livespec-console-beads-fabro PR #647) and was
+# correctly rejected by this repo's own check-self-hosted-routing
+# security guard: workflow_dispatch is a FORBIDDEN trigger when
+# runs-on references a gating self-hosted label, and
+# "livespec-local-ci-k3s" matches the "local-ci" gating substring.
+# See livespec-s43svm.16 for the full disposition of the closed PR
+# (https://github.com/thewoolleyman/livespec/pull/2352).
+#
+# This attempt uses `pull_request` instead — the check's own docstring
+# states pull_request is ALLOWED, since same-repo fork safety is
+# handled at runtime by the repo's approval gate, not statically. To
+# avoid this becoming a PERMANENT new traffic tap on every future PR
+# (which would be real, if modest, production traffic — outside this
+# epic's deliberate "not yet, deserves its own observation window"
+# scoping), the trigger is deliberately narrowed with a `paths:`
+# filter to fire ONLY when this workflow file itself changes. That
+# makes it a self-contained, repeatable, low-footprint proof: it fires
+# once when this PR opens (proving the path end-to-end), and stays
+# silent on every other PR unless someone deliberately edits this file
+# again.
+#
+# The job name is NOT "ci-green" and this workflow is not `needs:`'d
+# by anything in ci.yml, so it is NOT a required status check
+# (confirmed: livespec's branch protection required_status_checks
+# contexts = ["ci-green"] only) — it can never block a merge.
+name: k3s-arc-proof-job (livespec-s43svm.16, gating-repo leg, non-required)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/k3s-arc-proof-job.yml'
+
+jobs:
+  proof:
+    runs-on: livespec-local-ci-k3s
+    steps:
+      - name: prove the path end-to-end
+        run: |
+          echo "k3s + ARC + Kueue livespec-s43svm.16 gating-repo lane proof"
+          echo "host: $(hostname)"
+          echo "kernel: $(uname -r)"
+          id
+          echo "this job proves the new path can execute a real job for"
+          echo "livespec; it is NOT a required status check and does not"
+          echo "yet route any gating CI traffic."
