@@ -15,7 +15,7 @@
 # integer ids (deterministic, unique, valid hex).
 #
 # Required environment:
-#   REPO    - owner/name (e.g. thewoolleyman/livespec)
+#   REPO    - owner/name (e.g. thewoolleyman/<repo>)
 #   RUN_ID  - this workflow run's id (github.run_id)
 #   GH_TOKEN - gh auth token with actions:read (the workflow's GITHUB_TOKEN)
 #   HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC - write-only Honeycomb ingest key
@@ -26,7 +26,6 @@ set -euo pipefail
 KEY="${HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC:?HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC required}"
 
 DATASET="github-ci"            # OTLP service.name -> Honeycomb dataset
-# Kept deliberately for telemetry continuity; see livespec-wnkl72.
 NAMESPACE="livespec-family"
 ENDPOINT="https://api.honeycomb.io/v1/traces"
 SCOPE_NAME="livespec.github-ci-export"
@@ -46,23 +45,34 @@ run_end="$(iso_to_nanos "$(jq -r '.updatedAt' <<<"$run_json")")"
 run_concl="$(jq -r '.conclusion // ""' <<<"$run_json")"
 run_code=2; [ "$run_concl" = "success" ] && run_code=1
 
-run_span="$(jq -nc \
+# `$run_json` carries the whole `jobs` array and MUST reach jq on stdin, never
+# as a `--argjson` value. Passing it on argv died with "jq: Argument list too
+# long" (E2BIG, exit 126) on runs 30052264761 and 30052356388, reddening master
+# and with it every dark-factory dispatch gated on `check-master-ci-green`.
+#
+# The exact runner-side threshold was NOT reproducible off-runner: the failing
+# payload is ~84 KB (63 jobs) against a ~83 KB green run (62 jobs), both far
+# under MAX_ARG_STRLEN, and the same call succeeds locally on the exact failing
+# payload — so step env size or a runner-image change is likely also in play.
+# What is certain is that this value grows without bound as the job count grows
+# and it is the only such argv entry here. stdin has no argv limit, so routing
+# it there removes the whole class rather than moving the threshold.
+run_span="$(jq -c \
   --arg trace "$trace_id" --arg span "$run_span_id" \
   --arg start "$run_start" --arg end "$run_end" \
-  --arg repo "$REPO" --argjson run_id "$RUN_ID" --argjson code "$run_code" \
-  --argjson run "$run_json" '
+  --arg repo "$REPO" --argjson run_id "$RUN_ID" --argjson code "$run_code" '
   {traceId:$trace, spanId:$span, name:"ci.run", kind:1,
    startTimeUnixNano:$start, endTimeUnixNano:$end,
    attributes:[
      {key:"repo",value:{stringValue:$repo}},
      {key:"ci.run_id",value:{intValue:($run_id|tostring)}},
-     {key:"ci.conclusion",value:{stringValue:($run.conclusion // "")}},
-     {key:"ci.title",value:{stringValue:($run.displayTitle // "")}},
-     {key:"git.commit.sha",value:{stringValue:($run.headSha // "")}},
-     {key:"git.branch",value:{stringValue:($run.headBranch // "")}},
-     {key:"ci.event",value:{stringValue:($run.event // "")}}
+     {key:"ci.conclusion",value:{stringValue:(.conclusion // "")}},
+     {key:"ci.title",value:{stringValue:(.displayTitle // "")}},
+     {key:"git.commit.sha",value:{stringValue:(.headSha // "")}},
+     {key:"git.branch",value:{stringValue:(.headBranch // "")}},
+     {key:"ci.event",value:{stringValue:(.event // "")}}
    ],
-   status:{code:$code}}')"
+   status:{code:$code}}' <<<"$run_json")"
 
 job_spans="[]"
 while IFS=$'\t' read -r jid jname jconcl jstart_iso jend_iso; do
@@ -89,9 +99,12 @@ while IFS=$'\t' read -r jid jname jconcl jstart_iso jend_iso; do
   job_spans="$(jq -c ". + [$span]" <<<"$job_spans")"
 done < <(jq -r '.jobs[] | [.databaseId, .name, (.conclusion // ""), (.startedAt // ""), (.completedAt // "")] | @tsv' <<<"$run_json")
 
+# Same argv-limit class as the run span above: `$job_spans` grows with the job
+# count, so it goes on stdin. `$run_span` stays a `--argjson` value because it
+# is a single fixed-shape span (seven attributes) and cannot grow with the run.
 payload_file="$(mktemp)"
-jq -nc \
-  --argjson run "$run_span" --argjson jobs "$job_spans" \
+jq -c \
+  --argjson run "$run_span" \
   --arg svc "$DATASET" --arg ns "$NAMESPACE" \
   --arg scope "$SCOPE_NAME" --arg ver "$SCOPE_VERSION" '
   {resourceSpans:[{
@@ -101,9 +114,9 @@ jq -nc \
      ]},
      scopeSpans:[{
        scope:{name:$scope, version:$ver},
-       spans:([$run] + $jobs)
+       spans:([$run] + .)
      }]
-   }]}' > "$payload_file"
+   }]}' <<<"$job_spans" > "$payload_file"
 
 span_count="$(jq '.resourceSpans[0].scopeSpans[0].spans | length' "$payload_file")"
 resp_file="$(mktemp)"
