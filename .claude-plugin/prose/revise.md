@@ -88,6 +88,15 @@ The revise CLI accepts the following flags in v1:
   validation fails, exits 3 with `PreconditionError`
   naming the target path and the missing structural
   requirement.
+- `--only-topic <topic>` (optional). Single-proposal
+  selection guard. When the user asks to revise one
+  specific named proposal rather than every pending
+  proposal in the active spec tree, this prose narrows
+  enumeration to that proposal's file and forwards
+  `--only-topic <topic>` to the CLI. The guard requires
+  the assembled payload to contain exactly one
+  `decisions[]` entry whose `proposal_topic` equals
+  `<topic>`.
 - `--project-root <path>` (optional; defaults to
   `Path.cwd()`). Anchors `<spec-root>/` resolution and the
   upward walk for `.livespec.jsonc`. Uniform across every
@@ -159,6 +168,14 @@ abort the affected post-step phase. See the doctor prose
 `HelpRequested` supervisor path; help text goes to stdout
 and exit code is `0` (NOT an error).
 
+Payload-shape note: `_validate_proposal_topics_exist`
+validates each `decisions[]` entry against an existing
+pending proposal topic; it does NOT require `decisions[]`
+to cover every pending proposal in the active spec tree.
+Full-tree revise passes produce one decision per processed
+file by prose convention, while single-proposal selection
+intentionally produces a one-entry payload.
+
 ## Steps
 
 1. **Resolve the active template.** Run the template-resolution
@@ -193,6 +210,20 @@ and exit code is `0` (NOT an error).
    v011 K9 empty-proposed-changes precondition; surface
    that finding to the user and direct them to run
    the propose-change operation first.
+
+   **Optional single-proposal selection.** If the user asks
+   to revise one specific named proposal instead of
+   processing every pending file, resolve that name against
+   the pending proposals' YAML front-matter `topic` values
+   in the active `<spec-target>/`. Narrow the Step 3
+   enumeration to that one matching file and remember the
+   canonical topic as `<only-topic>` for payload assembly
+   and CLI invocation. If no pending proposal has that
+   topic, STOP and surface the missing-topic precondition to
+   the user. Do not suppress the stale-pending-proposal
+   narration below; it still surfaces other pending work in
+   the active tree and every other tree so narrowing one pass
+   does not silently hide remaining proposals.
 
    **Narrate stale-pending-proposal count + oldest
    (per spec tree).** Before the per-proposal
@@ -468,6 +499,8 @@ and exit code is `0` (NOT an error).
      `{path, content}` pairs (for `accept` / `modify`).
    The steering intent from step 4 is consumed by the
    prompt but never serialized into the payload.
+   In single-proposal mode, `decisions[]` has exactly one
+   entry for `<only-topic>`.
    The CLI consumes the shared decision-input predicate; it
    does not independently re-derive whether the human handoff
    is live. Before any automated delegated mutation it appends
@@ -493,7 +526,8 @@ and exit code is `0` (NOT an error).
    config with `--revise-json <tempfile>
    --post-step-doctor [other flags]` and explicit argv
    (forwarding `--author`, `--spec-target`,
-   `--project-root`, `--skip-pre-check`
+   `--project-root`, `--only-topic <topic>`,
+   `--skip-pre-check`
    / `--run-pre-check` as applicable). The
    `--post-step-doctor` flag MUST be passed on every
    production invocation per
