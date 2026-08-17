@@ -333,6 +333,142 @@ def test_revise_main_returns_usage_exit_code_on_empty_decisions(
     assert exit_code == 2
 
 
+def test_revise_parser_documents_only_topic_and_partial_decision_payloads() -> None:
+    """Parser help documents the single-topic guard and partial payload shape.
+
+    `--only-topic <topic>` is a guard over the LLM-authored
+    `decisions[]` payload, not a shortcut for constructing that
+    payload. The help must also document the pre-existing fact
+    that `decisions[]` may intentionally cover only a subset of
+    pending proposals.
+    """
+    parser = revise.build_parser()
+    parsed = parser.parse_args(["--revise-json", "revise.json", "--only-topic", "demo"])
+    help_text = parser.format_help()
+    assert parsed.only_topic == "demo"
+    assert "--only-topic" in help_text
+    assert "exactly one" in help_text
+    assert "need not cover every pending proposal" in help_text
+
+
+def test_revise_main_allows_matching_only_topic_guard(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`--only-topic` passes when the payload has exactly that one topic."""
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    _ = (proposed_changes / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    exit_code = revise.main(
+        argv=[
+            "--revise-json",
+            str(revise_path),
+            "--only-topic",
+            "demo",
+            "--spec-target",
+            str(spec_target),
+        ],
+    )
+    assert exit_code == 0
+
+
+def test_revise_main_rejects_wrong_only_topic_guard_before_file_shaping(
+    *,
+    tmp_path: Path,
+) -> None:
+    """Wrong `--only-topic` exits 2 and leaves proposal files in place."""
+    import structlog
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    demo_proposal = proposed_changes / "demo.md"
+    _ = demo_proposal.write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    with structlog.testing.capture_logs() as captured:
+        exit_code = revise.main(
+            argv=[
+                "--revise-json",
+                str(revise_path),
+                "--only-topic",
+                "other",
+                "--spec-target",
+                str(spec_target),
+            ],
+        )
+    assert exit_code == 2
+    assert demo_proposal.exists(), "only-topic guard must fire before proposed-change moves"
+    serialized = " ".join(str(entry) for entry in captured)
+    assert "--only-topic other" in serialized
+    assert "proposal_topic 'demo'" in serialized
+
+
+def test_revise_main_rejects_multiple_decisions_with_only_topic_guard(
+    *,
+    tmp_path: Path,
+) -> None:
+    """`--only-topic` requires exactly one decision, even when topics exist."""
+    import structlog
+
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    proposed_changes = spec_target / "proposed_changes"
+    proposed_changes.mkdir()
+    for topic in ("demo", "other"):
+        _ = (proposed_changes / f"{topic}.md").write_text(
+            f"## Proposal: {topic}\nContent.\n",
+            encoding="utf-8",
+        )
+    payload = tmp_path / "multi-topic.json"
+    _ = payload.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "proposal_topic": "demo",
+                        "decision": "reject",
+                        "rationale": "Demo rejection rationale.",
+                        "revise_decision_context": {"human_decision_confirmed": True},
+                    },
+                    {
+                        "proposal_topic": "other",
+                        "decision": "reject",
+                        "rationale": "Other rejection rationale.",
+                        "revise_decision_context": {"human_decision_confirmed": True},
+                    },
+                ],
+            },
+        ),
+        encoding="utf-8",
+    )
+    with structlog.testing.capture_logs() as captured:
+        exit_code = revise.main(
+            argv=[
+                "--revise-json",
+                str(payload),
+                "--only-topic",
+                "demo",
+                "--spec-target",
+                str(spec_target),
+            ],
+        )
+    assert exit_code == 2
+    assert all((proposed_changes / f"{topic}.md").exists() for topic in ("demo", "other"))
+    serialized = " ".join(str(entry) for entry in captured)
+    assert "--only-topic demo" in serialized
+    assert "exactly one decisions[] entry" in serialized
+
+
 def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     *,
     tmp_path: Path,
