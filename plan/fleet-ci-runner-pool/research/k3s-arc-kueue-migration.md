@@ -297,13 +297,28 @@ cross-repo index.
   ordered per-repo cutover sequence — the fleet's enforcement-suite pin,
   the highest-blast-radius repo, since every other fleet repo re-pins to
   its releases. Stood up ARC scale set `livespec-dev-tooling-k3s` on
-  poweredge-xubuntu, zero traffic first (helm release, chart 0.14.2,
+  poweredge-xubuntu, zero traffic (helm release, chart 0.14.2,
   ClusterQueue/LocalQueue `livespec-dev-tooling-cq`/`-lq` in the
   `fleet-ci-runner-pool` cohort, `maxRunners`/`nominalQuota` 63 — this
   repo's own live-measured slot count, confirmed via `systemctl cat
   ci-runner-supervisor`; name is 24 chars, well under the <=30-char budget,
-  no truncation needed). Real production traffic then cut via
-  `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the note lives
-  in this repo's own `AGENTS.md` ("CI runner routing") instead. With this
-  entry, all eight fleet repos named in .16's ordered cutover sequence are
-  proven at real production-traffic scale on the k3s/ARC path.
+  no truncation needed). **NOT proven at real production-traffic
+  scale — corrected same day.** This repo's `ci.yml` does not consume
+  `vars.CI_RUNNER_LABELS`; every gating job routes through a
+  `select-ci-runner` job calling `reusable-ci-runner-router.yml` with a
+  HARDCODED `local-runner-labels: '["self-hosted","local-ci"]'` input (the
+  old podman-pool labels). That workflow health-probes for an online
+  matching runner; since the podman-pool supervisor has been stopped since
+  2026-08-13, the probe always fails and the router automatically fails
+  over to `ubuntu-latest` regardless of `CI_RUNNER_LABELS` — confirmed
+  directly from a merged run's job data (every router-routed job carried
+  `labels: ["ubuntu-latest"]`; the router's own first-probe step reported
+  `automatic-failover-*`). `CI_RUNNER_LABELS` was reverted to
+  `["ubuntu-latest"]` (it was already a no-op) to avoid implying an effect
+  it doesn't have. The k3s scale set stays stood up, zero traffic, pending
+  a router fix; that fix needs a `.github/workflows/` edit
+  (`local-runner-labels` or the router itself), which this repo's own
+  `check-no-workflow-edits` forbids on any branch — an open design
+  question, not a trivial follow-up. **Status: 7 of 8 fleet repos proven
+  at real production-traffic scale on the k3s/ARC path; livespec-dev-tooling
+  remains blocked on this router gap.**
