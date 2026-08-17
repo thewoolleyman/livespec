@@ -293,3 +293,17 @@ cross-repo index.
   66 — this repo's own live-measured slot count). Real production traffic
   then cut via `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the
   note lives in this repo's own `AGENTS.md` ("CI runner routing") instead.
+- **livespec-dev-tooling**, 2026-08-17: the LAST repo in this epic's
+  ordered per-repo cutover sequence — the fleet's enforcement-suite pin,
+  the highest-blast-radius repo, since every other fleet repo re-pins to
+  its releases. Stood up ARC scale set `livespec-dev-tooling-k3s` on
+  poweredge-xubuntu, zero traffic first (helm release, chart 0.14.2,
+  ClusterQueue/LocalQueue `livespec-dev-tooling-cq`/`-lq` in the
+  `fleet-ci-runner-pool` cohort, `maxRunners`/`nominalQuota` 63 — this
+  repo's own live-measured slot count, confirmed via `systemctl cat
+  ci-runner-supervisor`; name is 24 chars, well under the <=30-char budget,
+  no truncation needed). Real production traffic then cut via
+  `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the note lives
+  in this repo's own `AGENTS.md` ("CI runner routing") instead. With this
+  entry, all eight fleet repos named in .16's ordered cutover sequence are
+  proven at real production-traffic scale on the k3s/ARC path.
