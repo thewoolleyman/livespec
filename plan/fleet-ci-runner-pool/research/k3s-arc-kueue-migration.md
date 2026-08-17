@@ -210,3 +210,34 @@ carried forward as an acceptance criterion on the new work, not
 dropped). Each closed-as-superseded child gets an explicit disposition
 comment naming what carries forward vs. what is dropped and why, per
 this operation's archive-gate discipline.
+
+## Real-traffic cutover log (livespec-s43svm.16)
+
+Per-repo real-production-traffic cutovers (phase 3 above), each driven purely
+through the repo variable `CI_RUNNER_LABELS` — never a workflow-file edit, since
+`livespec` itself structurally forbids `.github/workflows/` changes on any
+branch via `check-no-workflow-edits` (unlike sibling repos, which record the
+cutover as an in-file comment note). Full evidence for each entry lives on the
+livespec-s43svm.16 / .22 ledger comments; this section is the durable
+cross-repo index.
+
+- **livespec-console-beads-fabro** (non-gating lane), 2026-08-17: real
+  production traffic cut to ARC scale set `livespec-console-beads-k3s`.
+  First attempt (`livespec-console-beads-fabro-local-ci-k3s`, 41 chars)
+  surfaced livespec-s43svm.22 — an ARC workflow-pod naming collision under
+  real concurrency (runner-container-hooks truncates the per-job pod name at
+  a hard 63-char limit). Fixed by renaming to the 26-char form
+  (livespec-dev-tooling PR #1479); the concurrency proof — 14 gating jobs
+  dispatched simultaneously by
+  https://github.com/thewoolleyman/livespec-console-beads-fabro/pull/663,
+  zero collisions — closed .22.
+- **livespec** (gating-repo leg), 2026-08-17: real production traffic cut to
+  ARC scale set `livespec-local-ci-k3s` (already live since the phase-2
+  stand-up, proven at proof-of-life scale by PR #2355). This is the REQUIRED
+  `pull_request`/`push` matrix, not a `workflow_dispatch` proof — the fleet's
+  `check-self-hosted-routing` guard explicitly allows `pull_request` against a
+  gating self-hosted label and forbids only `workflow_dispatch` and five other
+  fork-reachable/privileged triggers; an earlier attempt to prove this scale
+  set via a `workflow_dispatch`-only smoke workflow was correctly BLOCKED by
+  that guard and abandoned without weakening it (PR #2352, closed unmerged).
+  This entry's own PR is that real-traffic proof.
