@@ -1,0 +1,7 @@
+{
+  "packages": [
+    "git:github.com/thewoolleyman/livespec@release",
+    "git:github.com/thewoolleyman/livespec-driver-pi@release",
+    "git:github.com/thewoolleyman/livespec-orchestrator-beads-fabro@release"
+  ]
+}

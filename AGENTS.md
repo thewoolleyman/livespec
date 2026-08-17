@@ -312,15 +312,17 @@ own: a **project-trust gate** — a non-interactive pi invocation (`-p`,
 packages unless a trust decision is established (`~/.pi/agent/trust.json`,
 a global `defaultProjectTrust: always`, or a per-run `--approve`/`-a`).
 
-Install the core plugin and the `livespec-driver-pi` Driver, project-scoped,
-into the governed project:
+Install the core plugin, the `livespec-driver-pi` Driver, and the
+governed project's orchestrator plugin, project-scoped, into the
+governed project:
 
 ```bash
-pi install git:github.com/thewoolleyman/livespec@release -l --approve          # core, artifact carrier
-pi install git:github.com/thewoolleyman/livespec-driver-pi@release -l --approve # the Driver's eight skills
+pi install git:github.com/thewoolleyman/livespec@release -l --approve                            # core, artifact carrier
+pi install git:github.com/thewoolleyman/livespec-driver-pi@release -l --approve                  # the Driver's eight skills
+pi install git:github.com/thewoolleyman/livespec-orchestrator-beads-fabro@release -l --approve   # the orchestrator plugin's skills
 ```
 
-Either command writes into the project's committed `.pi/settings.json` and
+Each command writes into the project's committed `.pi/settings.json` and
 clones the package under `.pi/git/github.com/thewoolleyman/<repo>/`
 (project scope) — this repo commits that file the same way the Claude
 path commits `.claude/settings.json`. The `--approve` flag (or an
