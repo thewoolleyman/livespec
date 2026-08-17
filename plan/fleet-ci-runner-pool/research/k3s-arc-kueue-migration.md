@@ -259,3 +259,12 @@ cross-repo index.
   ci-runner-supervisor`). Real production traffic then cut via
   `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the note lives in
   this repo's own `AGENTS.md` ("CI runner routing") instead.
+- **livespec-driver-claude**, 2026-08-17: stood up ARC scale set
+  `livespec-driver-claude-k3s` on poweredge-xubuntu, zero traffic (helm
+  release, chart 0.14.2, ClusterQueue/LocalQueue
+  `livespec-driver-claude-cq`/`-lq` in the `fleet-ci-runner-pool` cohort,
+  `maxRunners`/`nominalQuota` 66 — this repo's own live-measured slot count,
+  confirmed via `systemctl cat ci-runner-supervisor`). Real production
+  traffic then cut via `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`,
+  so the note lives in this repo's own `AGENTS.md` ("CI runner routing")
+  instead.
