@@ -81,7 +81,8 @@
       "auto_approve_ready": true,
       "acceptance_mode": "ai-only",
       "factories": {
-        "hp": { "server": "https://hp-xubuntu.perch-rudd.ts.net:32276" }
+        "hp": { "server": "https://hp-xubuntu.perch-rudd.ts.net:32276" },
+        "vps": { "server": "https://vps.perch-rudd.ts.net:32276" }
       },
       "default_factory": "hp"
     }
