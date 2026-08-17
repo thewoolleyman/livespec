@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.2](https://github.com/thewoolleyman/livespec/compare/v0.34.1...v0.34.2) (2026-08-17)
+
+
+### Bug Fixes
+
+* **docs:** correct the false livespec-dev-tooling k3s cutover claim ([a197e1c](https://github.com/thewoolleyman/livespec/commit/a197e1c5a79086674a5600ac2d90455a7ae71cf8))
+
 ## [0.34.1](https://github.com/thewoolleyman/livespec/compare/v0.34.0...v0.34.1) (2026-08-17)
 
 
