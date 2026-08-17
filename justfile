@@ -236,9 +236,9 @@ check:
         check-partition-completeness
         check-pbt-coverage-pure-modules
         check-per-file-coverage
-        check-plan-thread-anchor-declared
-        check-plan-thread-epic-parity
-        check-plan-thread-no-tombstone
+        check-plan-anchor-declared
+        check-plan-epic-parity
+        check-plan-no-tombstone
         check-plugin-resolution
         check-primary-checkout-commit-refuse-hook-installed
         check-private-calls
@@ -486,7 +486,7 @@ check-coverage:
     # pytest-cov auto-runs `coverage combine` at session-end.
     if [[ -f .coverage ]]; then
         echo ":: check-coverage: reading existing .coverage (produced by check-per-file-coverage); no duplicate suite run"
-        uv run coverage report --fail-under=100 || exit $?
+        env -u COVERAGE_FILE uv run coverage report --fail-under=100 || { rm -f .coverage; exit 2; }
     else
         echo ":: check-coverage: no .coverage data file (CI standalone job); running the suite"
         test_nprocs="${LIVESPEC_TEST_PARALLELISM:-}"
@@ -498,7 +498,7 @@ check-coverage:
         if [[ "${LIVESPEC_CI_LANE:-local}" == "hosted" ]]; then
             test_nprocs="auto"
         fi
-        uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
+        env -u COVERAGE_FILE uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
     fi
     # Per-file 100% line+branch gate. In `just check` this reads the
     # `.coverage` that check-per-file-coverage already wrote (cheap, no
@@ -508,7 +508,12 @@ check-coverage:
     # above. Retaining this step preserves livespec's pre-bump CI
     # per-file enforcement, which the previous single-step check-coverage
     # provided.
-    uv run python -m livespec_dev_tooling.checks.per_file_coverage || exit $?
+    # Consume-once (yilyxr.8): every read above is done; deleting the
+    # data file means no later standalone invocation can ever report
+    # from stale coverage. The next aggregate regenerates it via the
+    # clean-env producer in check-per-file-coverage.
+    env -u COVERAGE_FILE uv run python -m livespec_dev_tooling.checks.per_file_coverage || { rm -f .coverage; exit 2; }
+    rm -f .coverage
 
 # Red-mode-aware pre-commit aggregate. Classifies the staged tree
 # shape via `git diff --cached --name-only --diff-filter=AM`. Red
@@ -931,8 +936,15 @@ check-per-file-coverage:
     if [[ "${LIVESPEC_CI_LANE:-local}" == "hosted" ]]; then
         test_nprocs="auto"
     fi
-    uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
-    uv run python -m livespec_dev_tooling.checks.per_file_coverage || exit $?
+    # Clean-env producer (livespec-dev-tooling-yilyxr.8, porting the
+    # dev-tooling PR #1462 design): COVERAGE_FILE is UNSET for both the
+    # suite run and the per-file read, so the data measures identically
+    # to a clean CI job by construction — the env-leniency class that
+    # reverted dev-tooling's first reuse optimization. Defensive today
+    # (this repo's serial aggregate exports no namespace); load-bearing
+    # the day it adopts the parallel check dispatcher.
+    env -u COVERAGE_FILE uv run pytest -n "$test_nprocs" --cov --cov-branch --cov-config=pyproject.toml --cov-report=term-missing || exit $?
+    env -u COVERAGE_FILE uv run python -m livespec_dev_tooling.checks.per_file_coverage || exit $?
 
 # ---------------------------------------------------------------
 # Alternate-cadence target (NOT in `just check`).
@@ -1176,12 +1188,6 @@ check-self-hosted-routing:
 check-source-trees-scoped-to-consumer:
     uv run python -m livespec_dev_tooling.checks.source_trees_scoped_to_consumer
 
-check-plan-thread-anchor-declared:
-    uv run python -m livespec_dev_tooling.checks.plan_thread_anchor_declared
-
-check-plan-thread-epic-parity:
-    uv run python -m livespec_dev_tooling.checks.plan_thread_epic_parity
-
 check-shell-quality:
     uv run python -m livespec_dev_tooling.checks.shell_quality
 
@@ -1194,5 +1200,11 @@ check-required-role-keys-declared:
 check-hook-trees-not-io-exempt:
     uv run python -m livespec_dev_tooling.checks.hook_trees_not_io_exempt
 
-check-plan-thread-no-tombstone:
-    uv run python -m livespec_dev_tooling.checks.plan_thread_no_tombstone
+check-plan-anchor-declared:
+    uv run python -m livespec_dev_tooling.checks.plan_anchor_declared
+
+check-plan-epic-parity:
+    uv run python -m livespec_dev_tooling.checks.plan_epic_parity
+
+check-plan-no-tombstone:
+    uv run python -m livespec_dev_tooling.checks.plan_no_tombstone

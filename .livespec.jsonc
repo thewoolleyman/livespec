@@ -11,9 +11,21 @@
   "worktree_discipline": { "pack": "required" },
   "template": "livespec",
   "spec_root": "SPECIFICATION",
+  // ACTIVE spec_governance overrides (maintainer-directed fleet-wide autonomy
+  // lever rollout, epic livespec-jvdvx4): propose_change_mode and
+  // ratification_reviewer_model were already armed; critique_mode,
+  // in_flight_alignment, revise_decision_mode, ratification_review, and
+  // spec_pr_merge are armed here. doctor_dispositions and
+  // dispatcher.merge_on_review_cap are deliberately left at their safe
+  // defaults (out of scope for this pass; see livespec-jvdvx4.15).
   "spec_governance": {
     "propose_change_mode": "batch",
-    "ratification_reviewer_model": "fable"
+    "critique_mode": "batch",
+    "in_flight_alignment": "default-align",
+    "revise_decision_mode": "delegated",
+    "ratification_review": "auto-spawn",
+    "ratification_reviewer_model": "fable",
+    "spec_pr_merge": "auto-on-green"
   },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
   // plugin-resolution concern (concern #2), read by livespec-dev-tooling's

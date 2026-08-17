@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.34.0](https://github.com/thewoolleyman/livespec/compare/v0.33.7...v0.34.0) (2026-08-17)
+
+
+### Features
+
+* **ci:** batch the cheap checks — 72 matrix jobs become 8 gating jobs ([c4f5bf5](https://github.com/thewoolleyman/livespec/commit/c4f5bf5372d687ed98419a795d6ff7cb421b7596))
+
+## [0.33.7](https://github.com/thewoolleyman/livespec/compare/v0.33.6...v0.33.7) (2026-08-17)
+
+
+### Bug Fixes
+
+* **check:** harden the coverage dedup — clean-env producer + consume-once consumer ([9d0f25f](https://github.com/thewoolleyman/livespec/commit/9d0f25f7c7ce23da633fd411692ddfe6850eb341))
+
 ## [0.33.6](https://github.com/thewoolleyman/livespec/compare/v0.33.5...v0.33.6) (2026-08-13)
 
 
