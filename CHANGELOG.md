@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.1](https://github.com/thewoolleyman/livespec/compare/v0.34.0...v0.34.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* **tests:** satisfy revise decision-ownership floor in stale test fixtures ([2fc9ecf](https://github.com/thewoolleyman/livespec/commit/2fc9ecff0f6887bbc271954fda2fc0d48c7c108a))
+
 ## [0.34.0](https://github.com/thewoolleyman/livespec/compare/v0.33.7...v0.34.0) (2026-08-17)
 
 
