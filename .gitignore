@@ -20,6 +20,8 @@ tmp/
 .codex
 .idea/
 .playwright-mcp/
+.pi/git/
+.pi/npm/
 
 ### Python toolchain artifacts (per Phase 1 sub-step 12)
 # Note: .mypy_cache/ is intentionally NOT listed. Mypy
