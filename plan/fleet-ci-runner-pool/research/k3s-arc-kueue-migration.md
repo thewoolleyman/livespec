@@ -279,3 +279,17 @@ cross-repo index.
   instead. Ran `just install-worktree-pack` proactively in the fresh
   worktree before the first push, per the gotcha found on the
   `livespec-driver-claude` leg.
+- **livespec-orchestrator-git-jsonl**, 2026-08-17: the fleet's worst-case
+  name length. The naive `livespec-orchestrator-git-jsonl-k3s` is 35
+  characters — right at the hard 63-char-pod-name boundary
+  (livespec-s43svm.22) and over the fleet's <=30-char scale-set-name
+  budget. Truncated mechanically at the last hyphen boundary that fits, per
+  the fleet-wide convention (drop the trailing segment, never invent an
+  abbreviation): scale set `livespec-orchestrator-git-k3s` (29 chars,
+  dropping `-jsonl`; the ClusterQueue/LocalQueue keep the FULL repo name,
+  `livespec-orchestrator-git-jsonl-cq`/`-lq`, since only the scale-set name
+  is pod-name-length-constrained). Stood up on poweredge-xubuntu, zero
+  traffic first (helm release, chart 0.14.2, `maxRunners`/`nominalQuota`
+  66 — this repo's own live-measured slot count). Real production traffic
+  then cut via `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the
+  note lives in this repo's own `AGENTS.md` ("CI runner routing") instead.
