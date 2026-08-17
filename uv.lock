@@ -493,7 +493,7 @@ dev = [
     { name = "hypothesis", specifier = "==6.122.3" },
     { name = "hypothesis-jsonschema", specifier = "==0.23.1" },
     { name = "import-linter", specifier = "==2.1" },
-    { name = "livespec-dev-tooling", git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.28.3" },
+    { name = "livespec-dev-tooling", git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.28.4" },
     { name = "livespec-runtime", git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.21.1" },
     { name = "mutmut", specifier = "==3.2.3" },
     { name = "pyright", specifier = "==1.1.391" },
@@ -506,8 +506,8 @@ dev = [
 
 [[package]]
 name = "livespec-dev-tooling"
-version = "1.28.3"
-source = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.28.3#f279a0da67c0ecdc5e4e8cb224741f10b3f57467" }
+version = "1.28.4"
+source = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.28.4#43c48c8938d8e0a0ef2ec4513957308a05cba284" }
 
 [[package]]
 name = "livespec-runtime"
