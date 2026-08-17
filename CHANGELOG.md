@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.7](https://github.com/thewoolleyman/livespec/compare/v0.33.6...v0.33.7) (2026-08-17)
+
+
+### Bug Fixes
+
+* **check:** harden the coverage dedup — clean-env producer + consume-once consumer ([9d0f25f](https://github.com/thewoolleyman/livespec/commit/9d0f25f7c7ce23da633fd411692ddfe6850eb341))
+
 ## [0.33.6](https://github.com/thewoolleyman/livespec/compare/v0.33.5...v0.33.6) (2026-08-13)
 
 
