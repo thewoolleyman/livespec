@@ -241,3 +241,13 @@ cross-repo index.
   set via a `workflow_dispatch`-only smoke workflow was correctly BLOCKED by
   that guard and abandoned without weakening it (PR #2352, closed unmerged).
   This entry's own PR is that real-traffic proof.
+- **livespec-runtime**, 2026-08-17: stood up ARC scale set
+  `livespec-runtime-k3s` on poweredge-xubuntu, zero traffic (helm release,
+  chart 0.14.2, ClusterQueue/LocalQueue `livespec-runtime-cq`/`-lq` in the
+  `fleet-ci-runner-pool` cohort, `maxRunners`/`nominalQuota` 64 — this repo's
+  own live-measured slot count, confirmed via `systemctl cat
+  ci-runner-supervisor`). Real production traffic then cut via
+  `CI_RUNNER_LABELS`. Like `livespec`, this repo's own
+  `check-no-workflow-edits` forbids an in-file cutover note, so the note lives
+  in this repo's own `AGENTS.md` ("CI runner routing") instead, pointing back
+  here as the canonical cross-repo record.
