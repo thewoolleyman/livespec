@@ -110,3 +110,65 @@ exit 99
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
     assert module.main() == 0
+
+
+def test_help_probes_use_isolated_gh_config(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ambient gh auth config must not affect local help-surface probes."""
+    module = _load_module()
+    bin_dir = _write_fake_gh(
+        tmp_path=tmp_path,
+        body="""#!/usr/bin/env bash
+set -euo pipefail
+if [[ -z "${GH_CONFIG_DIR:-}" ]]; then
+  printf 'ambient gh config was not isolated\n' >&2
+  exit 2
+fi
+if [[ "$*" == "pr checks --json name --help" ]]; then
+  exit 0
+fi
+if [[ "$*" == "pr update-branch --help" ]]; then
+  exit 0
+fi
+printf 'unexpected gh argv: %s\n' "$*" >&2
+exit 99
+""",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    assert module.main() == 0
+
+
+def test_help_probes_bypass_livespec_gh_token_wrapper(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A token-minting gh wrapper must not block unauthenticated help probes."""
+    module = _load_module()
+    bin_dir = _write_fake_gh(
+        tmp_path=tmp_path,
+        body="""#!/usr/bin/env bash
+set -euo pipefail
+printf 'wrapper should not run for help probes\n' >&2
+exit 42
+""",
+    )
+    real_gh = bin_dir / "gh.livespec-real"
+    real_gh.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == "pr checks --json name --help" ]]; then
+  exit 0
+fi
+if [[ "$*" == "pr update-branch --help" ]]; then
+  exit 0
+fi
+printf 'unexpected gh argv: %s\n' "$*" >&2
+exit 99
+""",
+        encoding="utf-8",
+    )
+    real_gh.chmod(real_gh.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    assert module.main() == 0

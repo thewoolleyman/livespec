@@ -15,9 +15,11 @@ import time.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 _VENDOR_DIR = Path(__file__).resolve().parent.parent / ".claude-plugin" / "scripts" / "_vendor"
@@ -29,13 +31,27 @@ import structlog  # noqa: E402  — vendor-path-aware import after sys.path inse
 __all__: list[str] = ["main"]
 
 
+def _gh_help_path(*, gh_path: str) -> str:
+    path = Path(gh_path)
+    wrapper_delegate = path.with_name("gh.livespec-real")
+    if path.name == "gh" and wrapper_delegate.is_file() and os.access(wrapper_delegate, os.X_OK):
+        return str(wrapper_delegate)
+    return gh_path
+
+
 def _run_gh_help(*, gh_path: str, args: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [gh_path, *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="livespec-gh-config-") as gh_config_dir:
+        env = os.environ.copy()
+        env["GH_CONFIG_DIR"] = gh_config_dir
+        _ = env.pop("GH_TOKEN", None)
+        _ = env.pop("GITHUB_TOKEN", None)
+        return subprocess.run(
+            [_gh_help_path(gh_path=gh_path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
 
 
 def _checks_json_problem(*, gh_path: str) -> str | None:
