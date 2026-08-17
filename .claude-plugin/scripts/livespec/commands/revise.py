@@ -56,6 +56,9 @@ from livespec.commands._revise_helpers import (
     _now_utc_iso8601,
     _resolve_author,
 )
+from livespec.commands._revise_only_topic import (
+    _check_only_topic_matches as _check_only_topic_matches,
+)
 from livespec.commands._revise_railway_emits import (
     _bind_resulting_files as _bind_resulting_files,
 )
@@ -108,8 +111,9 @@ def build_parser() -> argparse.ArgumentParser:
      Per the style doc CLI argument parsing seam:
      `exit_on_error=False` lets argparse signal errors via
      `argparse.ArgumentError` rather than `SystemExit`. The
-     parser exposes `--revise-json <path>` (required), and the
-     optional `--author`, `--spec-target`, `--project-root` flags
+     parser exposes `--revise-json <path>` (required), the
+     optional `--author`, `--spec-target`, `--project-root` flags,
+     and the optional `--only-topic <topic>` single-decision guard
     .
 
     The Step 3.5 stale-branch precondition (per PC
@@ -134,8 +138,30 @@ def build_parser() -> argparse.ArgumentParser:
     verify resolution. SKILL.md prose passes the flag on every
     production invocation; file-shaping unit tests omit it.
     """
-    parser = argparse.ArgumentParser(prog="revise", exit_on_error=False)
-    _ = parser.add_argument("--revise-json", required=True)
+    parser = argparse.ArgumentParser(
+        prog="revise",
+        exit_on_error=False,
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, width=100),
+    )
+    _ = parser.add_argument(
+        "--revise-json",
+        required=True,
+        help=(
+            "Path to the LLM-authored revise payload. Its decisions[] array "
+            "may cover one or more pending proposals and need not cover every "
+            "pending proposal."
+        ),
+    )
+    _ = parser.add_argument(
+        "--only-topic",
+        default=None,
+        metavar="TOPIC",
+        help=(
+            "Guard assertion: --revise-json must contain exactly one decisions[] "
+            "entry whose proposal_topic equals TOPIC; decision content still "
+            "comes from the payload."
+        ),
+    )
     _ = parser.add_argument("--author", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
@@ -196,6 +222,14 @@ def main(*, argv: list[str] | None = None) -> int:
             )
             .bind(lambda payload: IOResult.from_result(_check_decisions_nonempty(payload=payload)))
             .bind(lambda payload: _validate_payload(payload=payload))
+            .bind(
+                lambda revise_input: IOResult.from_result(
+                    _check_only_topic_matches(
+                        payload=revise_input,
+                        only_topic=namespace.only_topic,
+                    ),
+                ),
+            )
             .bind(
                 lambda revise_input: _validate_resulting_files(
                     revise_input=revise_input,
