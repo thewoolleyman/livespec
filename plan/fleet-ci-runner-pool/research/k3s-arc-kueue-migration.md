@@ -322,3 +322,31 @@ cross-repo index.
   question, not a trivial follow-up. **Status: 7 of 8 fleet repos proven
   at real production-traffic scale on the k3s/ARC path; livespec-dev-tooling
   remains blocked on this router gap.**
+- **livespec-dev-tooling**, 2026-08-18 (router gap CLOSED, cutover
+  re-attempted): the `livespec-s43svm.23` router gap above is fixed.
+  Sequence: (1) spec ratified — `SPECIFICATION/constraints.md` §"CI matrix
+  shape" self-hosted routing posture via `CI_RUNNER_LABELS` with inline
+  hosted default and MANUAL revert (livespec-dev-tooling PR #1497, v048,
+  independent Fable review NO-BLOCKERS); (2) workflow redesigned —
+  livespec-dev-tooling PR #1514 deletes the `select-ci-runner` job, retires
+  `reusable-ci-runner-router.yml` + `.github/actions/ci-runner-health`
+  (architecturally incompatible with ARC: scale-set runners register with
+  EMPTY label arrays and scale from zero, so a label-subset pre-flight
+  probe can never match), and routes every gating job via
+  `runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}`,
+  the same pattern as the other 7 repos. Along the way PR #1506 (the first
+  attempt) exposed a silent GitHub failure mode: two coverage-dedup jobs
+  merged to master mid-flight still carried `needs: select-ci-runner`, and
+  GitHub rejects unknown-job `needs:` as a zero-jobs "invalid workflow
+  file" sentinel with NO visible CI failure — the run appears never to
+  trigger. actionlint does not catch cross-job `needs:` validity; the
+  specific error text is only visible in the Actions tab UI. (3) Kueue
+  admission fixed fleet-wide first (`livespec-s43svm.24`): all 8
+  ClusterQueues resized from podman-era counts (sum 443) to nominalQuota 1
+  each (sum 8 = real `ci-runner.io/churn-slot` capacity), verified live at
+  14-second first-job-start with burst-to-8 cohort borrowing. Real
+  production traffic then cut via `CI_RUNNER_LABELS =
+  ["livespec-dev-tooling-k3s"]`, verified by actual job labels on a watched
+  run (see `.23`'s closing ledger comment for run ids). **Status: 8 of 8
+  fleet repos proven at real production-traffic scale on the k3s/ARC
+  path — this epic's ordered per-repo cutover sequence is COMPLETE.**
