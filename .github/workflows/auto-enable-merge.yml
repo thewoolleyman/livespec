@@ -28,7 +28,7 @@
 #         acting via the user's PAT (Claude Code, etc., where the PR
 #         author == the PAT owner).
 #   - The fleet's OWN release-please App (author login
-#     `livespec-pr-bot[bot]`) on a head branch whose name starts with
+#     `thewoolleyman-factory-bot[bot]`) on a head branch whose name starts with
 #     `release-please--`. The branch-shape guard scopes the App path to
 #     release PRs, so the App cannot auto-enable-merge any other PR it
 #     might author.
@@ -118,7 +118,7 @@ jobs:
       && !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
       && (
       contains(fromJSON('["thewoolleyman"]'), github.event.pull_request.user.login)
-      || (github.event.pull_request.user.login == 'livespec-pr-bot[bot]'
+      || (github.event.pull_request.user.login == 'thewoolleyman-factory-bot[bot]'
       && startsWith(github.event.pull_request.head.ref, 'release-please--'))
       )
     steps:
