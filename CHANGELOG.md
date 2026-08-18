@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/thewoolleyman/livespec/compare/v0.35.0...v0.35.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **docs:** record the livespec-overseer k3s rollback in the cutover log ([9850da1](https://github.com/thewoolleyman/livespec/commit/9850da1226d4bc7f9bd7c8cc141485f016a4b3b4))
+
 ## [0.35.0](https://github.com/thewoolleyman/livespec/compare/v0.34.2...v0.35.0) (2026-08-18)
 
 
