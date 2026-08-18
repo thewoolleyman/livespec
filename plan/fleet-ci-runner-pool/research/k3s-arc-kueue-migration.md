@@ -259,6 +259,18 @@ cross-repo index.
   ci-runner-supervisor`). Real production traffic then cut via
   `CI_RUNNER_LABELS`. Shares `check-no-workflow-edits`, so the note lives in
   this repo's own `AGENTS.md` ("CI runner routing") instead.
+  **ROLLED BACK ~2026-08-17T13:05Z** (recorded on `livespec-s43svm.16`'s
+  13:13 ledger comment; surfaced by the independent `.16` closure review
+  2026-08-18 after a later completion claim missed it): four
+  environment-sensitive tests fail deterministically in the ARC pod (tmux
+  pane-cwd reads; `os.killpg` under the pod's pid namespace), so
+  `CI_RUNNER_LABELS` went back to `["ubuntu-latest"]` roughly 3 hours after
+  this leg's matrix ran green on k3s. The proven-at-real-traffic claim
+  stands for that green matrix (PR #1059); CURRENT routing is hosted. Named
+  re-cut condition, carried by `.17`/`.18`: those four tests pass in-pod
+  first, then re-flip and re-verify actual job labels. Live fleet routing
+  as of this amendment: **7 of 8 repos on k3s; livespec-overseer on
+  hosted.**
 - **livespec-driver-claude**, 2026-08-17: stood up ARC scale set
   `livespec-driver-claude-k3s` on poweredge-xubuntu, zero traffic (helm
   release, chart 0.14.2, ClusterQueue/LocalQueue
