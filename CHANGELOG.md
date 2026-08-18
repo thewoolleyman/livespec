@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.35.0](https://github.com/thewoolleyman/livespec/compare/v0.34.2...v0.35.0) (2026-08-18)
+
+
+### Features
+
+* guard revise single topic selection ([ccce486](https://github.com/thewoolleyman/livespec/commit/ccce486fdae8bcee441982dd00b44295a26ca403))
+
+
+### Bug Fixes
+
+* **ci:** propagate the ARG_MAX-safe export-ci-telemetry.sh into the orchestrator-plugin template ([9b73867](https://github.com/thewoolleyman/livespec/commit/9b73867068348801a746ad1c7dd77bfdee6da9ca))
+* isolate gh help surface probes ([f180b5b](https://github.com/thewoolleyman/livespec/commit/f180b5b47779d21db8556cfafa81ee9992536731))
+
 ## [0.34.2](https://github.com/thewoolleyman/livespec/compare/v0.34.1...v0.34.2) (2026-08-17)
 
 
