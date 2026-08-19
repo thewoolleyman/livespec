@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/thewoolleyman/livespec/compare/v0.35.1...v0.36.0) (2026-08-19)
+
+
+### Features
+
+* **template:** document the external_references allowlist in the scaffolded config ([7627fff](https://github.com/thewoolleyman/livespec/commit/7627fff06a4f9e5dee3d2ca0776343d7c3e52dd5))
+
 ## [0.35.1](https://github.com/thewoolleyman/livespec/compare/v0.35.0...v0.35.1) (2026-08-18)
 
 
