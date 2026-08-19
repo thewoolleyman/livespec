@@ -25,7 +25,7 @@ If the answer is no, the signal is not evidence, however green it looks.
 
 ## Recorded instances, by observation date — 1-8 on 2026-07-20, 9-12 on
 ## 2026-07-21, 13 on 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23
-## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32 on 2026-08-19;
+## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32-33 on 2026-08-19;
 ## instances 1-16 span
 ## five repos and four independent operators
 
@@ -1147,6 +1147,69 @@ The habit this protects is the one instance 23 names — a query returning the
 answer you expected is the least likely to be audited. Prolonged silence from a
 watcher IS the expected answer while you are waiting, and it earns a direct check
 for exactly that reason.
+
+### 33. A well-formed filter over the WRONG STATE-SPACE, where success is what makes the event invisible
+
+Instance 32 is a filter that could never match because it was malformed. This is
+its harder sibling: a filter that is perfectly well-formed, matches exactly what
+it was written to match, and still cannot observe the thing you care about —
+because it asks about the wrong state.
+
+Watching a cross-repo pin fan-out, the watcher polled every 120 seconds:
+
+```sh
+gh pr list -R "thewoolleyman/$repo" --state open --limit 10 --json number,title
+```
+
+The question it was built to answer was **"did a bump happen?"** The question it
+actually asked was **"is a bump pull request open right now?"** Those coincide
+only for a pull request that lingers.
+
+Five bump PRs opened and merged in one window. Their lifetimes were 62 seconds,
+2m22s, 3m26s, and 6m47s, against a 120-second poll. A merged pull request is
+invisible to `--state open` permanently, and a short-lived one can open and
+merge entirely between two polls. The watcher reported nothing, and its silence
+was indistinguishable from "the fan-out has not started" — which is what got
+written into a session summary as fact.
+
+Measured over the identical window:
+
+| query | rows |
+|---|---|
+| org-wide search, all states | 5 (all 5 merged) |
+| per-repo `--state open` | 0 |
+
+**The property that makes this class nasty: success is what hides the event.** A
+bump that lands cleanly spends almost no time in the polled state. A bump that
+stalls — blocked, conflicted, waiting on review — sits in `open` for hours and is
+seen immediately. So the watcher reliably reports the failures and reliably
+misses the successes, which is precisely inverted from what a health check
+should do. Speed and health made the system less observable, not more.
+
+**The counter-move is not a better filter.** It is to stop watching the event:
+
+```sh
+# Not: "is there an open PR?" — a transient a poll interval can straddle.
+# Instead: "what does master actually say?" — a durable end state.
+git -C "$repo" fetch origin master --quiet
+git -C "$repo" show origin/master:pyproject.toml | grep 'livespec-dev-tooling = {'
+```
+
+**When you can watch the durable consequence instead of the transient event that
+produces it, watch the consequence.** A pull request is a transient; a pin on
+`master` is a fact that stays true and cannot be missed by arriving late. The
+end-state form also needs no API call, so it carries no rate-limit budget and no
+state-visibility semantics to get wrong.
+
+Both watcher failures recorded on 2026-08-19 — this one and instance 32 — came
+from monitoring events. Neither would have been possible watching state.
+
+The generalisation reaches past watchers. Any check that samples a system
+periodically is really asking "was the system in state X at the moment I
+looked?", and that is only a proxy for "did X happen" when X is durable. Before
+trusting a periodic check, ask **how long the thing being detected remains
+detectable** — and if that interval can be shorter than the sampling period,
+the check cannot answer the question no matter how correct its filter is.
 
 ## Why this file exists in livespec CORE
 
