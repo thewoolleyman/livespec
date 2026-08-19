@@ -465,3 +465,32 @@ def test_expected_files_includes_ai_agent_disciplines() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert ".ai/agent-disciplines.md" in module._EXPECTED_FILES  # noqa: SLF001
+
+
+def test_template_config_documents_the_external_references_allowlist() -> None:
+    """The scaffolded `.livespec.jsonc` documents `external_references`.
+
+    Regression guard. `external_references` is mandated by
+    `SPECIFICATION/constraints.md` ("Allowlist mechanism") and enforced
+    only by doctor-static's `no-cross-spec-reference` check — no
+    `livespec_dev_tooling` module mentions it. Until this landed, the
+    template did not mention it either, so a generated repo could learn
+    the key ONLY by reading constraints.md end to end or by copying a
+    sibling's config. A repo that never learns it either cannot cite
+    upstream sections at all, or meets the requirement as a confusing
+    "is not allowlisted" failure that reads like a missing declaration.
+
+    The key stays COMMENTED in the scaffold — a fresh repo cites nothing
+    yet, and an empty real key would be a claim about no citations — so
+    this asserts the DOCUMENTATION is present, which is the thing that
+    was missing. Discovered auditing livespec-driver-pi against its
+    siblings (plan `bootstrap-pi-driver-wrapup`); that repo got the key
+    right by luck of its seed pass, not by any mechanism.
+    """
+    config_template = (_TEMPLATE_ROOT / ".livespec.jsonc.jinja").read_text(encoding="utf-8")
+
+    assert "external_references" in config_template
+    # The entry ASSERTS the upstream heading exists rather than merely
+    # permitting the citation — the property that makes a renamed upstream
+    # section fail loudly instead of rotting.
+    assert "ASSERTS THAT THE UPSTREAM HEADING EXISTS" in config_template

@@ -65,6 +65,31 @@
   //     "spec_pr_merge": "manual"
   //   }
   //
+  // Optional — external_references: the cross-repo citation allowlist. Any
+  // `§"<heading>"` citation this repo's SPECIFICATION/ tree makes to a SIBLING
+  // repo's spec MUST appear here, keyed by that sibling's short name, with the
+  // value an array of `<file> §"<heading>"` strings. Doctor-static's
+  // `no-cross-spec-reference` check resolves each citation same-tree first,
+  // then against this allowlist; an undeclared one FAILS, naming the entry it
+  // wants.
+  //
+  // An entry ASSERTS THAT THE UPSTREAM HEADING EXISTS — it is not a bare
+  // permission slip. When the cited repo's clone is resolvable, doctor-static
+  // re-reads the real upstream file and DROPS any entry whose heading is
+  // missing there, so a renamed upstream section fails here instead of rotting
+  // silently. That also means a stale entry reports as "is not allowlisted",
+  // which reads as a missing declaration rather than the upstream rename it
+  // actually is — worth knowing before debugging one.
+  //
+  // Left commented because a fresh scaffold cites nothing yet. Add it as a real
+  // key above (a comma after the `harnesses` block) in the SAME change that
+  // introduces the first cross-repo citation:
+  //   "external_references": {
+  //     "<sibling-repo-short-name>": [
+  //       "SPECIFICATION/contracts.md §\"<Exact Upstream Heading>\""
+  //     ]
+  //   }
+  //
   // Optional — credential_wrapper: the credential-injection wrapper for this
   // repo's secret-backed tooling (the beads tenant password, API tokens). A
   // JSON array of literal argv tokens naming a conforming wrapper CLI plus its
