@@ -674,9 +674,13 @@ engine. Dispatching an adopter's work-item through a server that holds a
 DIFFERENT App (for example the fleet's shared server) fails at
 sandbox-creation time with *"the GitHub App is not installed for the
 `<org>` organization"* — that server's App has no installation on the
-adopter's target org/repo. An adopter therefore brings its OWN GitHub
-App, its OWN dispatch credential set, and its OWN per-tenant Fabro
-server holding that App. livespec is adopter-agnostic: the fleet is
+adopter's target org/repo. An adopter whose repositories live outside
+the App owner's account therefore brings its OWN GitHub App, its OWN
+dispatch credential set, and its OWN per-tenant Fabro server holding
+that App; an adopter whose repositories the owner's account owns MAY
+instead reuse the owner's App per the Step 2 shortcut below, in which
+case the owner's shared Fabro server (whose vault holds that App) can
+already serve its dispatches. livespec is adopter-agnostic: the fleet is
 "adopter #0" with no privileged path, so every adopter — the fleet
 included — walks exactly these steps.
 
@@ -717,9 +721,16 @@ included — walks exactly these steps.
    read, echo, or commit any value — presence is probed by byte count
    only (`printenv NAME | wc -c`).
 
-2. **Create and install the adopter's own GitHub App** (guided — YOU
+2. **Create and install the adopter's own GitHub App — or reuse the owner's** (guided — YOU
    walk the human through the GitHub UI actions you cannot perform, and
-   wire what is wireable). Idempotency probe FIRST: if Step 7's preflight
+   wire what is wireable). Same-account shortcut FIRST: when the
+   adopter's repositories are owned by the same account as an existing
+   conforming automation App (e.g. the fleet owner's own App), the
+   adopter MAY reuse that App — point the adopter's
+   OWN credential wrapper (Step 3) at the SAME canonical secret item the
+   owner's wrapper reads (never a copied PEM) and skip creation entirely, per
+   SPECIFICATION/non-functional-requirements.md's "GitHub automation
+   credential" block. Otherwise, idempotency probe FIRST: if Step 7's preflight
    already mints a token and the App is installed on the target org/repo,
    this App is set up — record "already present" and skip creation.
    Otherwise:
@@ -800,17 +811,21 @@ included — walks exactly these steps.
    Idempotency probe: `bd list` (under the credential wrapper) returns
    the ledger without a "no beads database found" error.
 
-5. **Stand up the adopter's per-tenant Fabro server holding its OWN App
+5. **Stand up the Fabro server that holds the adopter's serving App
    identity.** *(beads-fabro ONLY — a git-jsonl adopter has no Fabro
    server and skips this entire step; see the scope note above.)* This is
    the ROOT of the "App is not installed for the `<org>` organization"
    dispatch failure. A Fabro server holds exactly
    ONE App integration, so an adopter's dispatch MUST run against a
-   server instance that holds the ADOPTER's App — a dedicated
-   `FABRO_HOME` carrying the adopter's `app_id`, its PEM in the server
-   process environment, and its own listen port and authentication —
-   NEVER the fleet's shared server (whose App is not installed for the
-   adopter's target). A dispatch preflight SHOULD verify the serving App
+   server instance whose App has an installation covering the adopter's
+   target. For an adopter that brought its OWN App (the outside-account
+   path), that means a dedicated `FABRO_HOME` carrying the adopter's
+   `app_id`, its PEM in the server process environment, and its own
+   listen port and authentication — never a server whose App has no
+   installation on the adopter's target. For a same-account adopter that
+   reused the owner's App per the Step 2 shortcut, the owner's shared
+   server already holds that App and can serve its dispatches directly —
+   no per-tenant server is required. A dispatch preflight SHOULD verify the serving App
    can reach the target repo before launching, refusing with an
    actionable diagnostic rather than failing inside the engine run. The
    requirement, its shape, and the root cause are authoritative; the
@@ -822,7 +837,15 @@ included — walks exactly these steps.
    strategy = "app"` + the App id, the PEM in the server process env, and
    a chosen listen port) and re-mints installation tokens on demand.
 
-   **Executable standup (adopter-generalized from that reference).**
+   **Same-account terminal statement.** An adopter that reused the
+   owner's App per the Step 2 shortcut is DONE with this step: the
+   default `~/.fabro` server already holds the serving App, there is
+   nothing to stand up or target, and the idempotency report's
+   per-tenant-Fabro-server row reads "n/a (same-account, owner's shared
+   server)". Everything below in this step is the OUTSIDE-ACCOUNT branch
+   only.
+
+   **Executable standup (adopter-generalized from that reference; outside-account branch).**
    HAND-provision the server — do NOT run `fabro install`: its GitHub step
    validates a *static* gh token and REJECTS App installation tokens
    (`ghs_*`), whereas fabro natively supports App auth via
@@ -922,13 +945,15 @@ included — walks exactly these steps.
      LLM secret is ever written to `settings.toml`.
 
    **Point the dispatch AT this server — the targeting that fixes the
-   `"App is not installed"` failure.** Standing the server up is NOT
-   enough: the dispatch's `fabro` CLI must be told to USE it, or it
-   defaults to `~/.fabro` — the fleet's shared server, whose App is not
-   installed for the adopter — and fails at sandbox-creation with the "App
-   is not installed for the `<org>` organization" error. Targeting is by
-   `FABRO_HOME`, a NON-secret host path pointing at Step 5's per-tenant
-   server home. Because it is non-secret it is **dispatch CONFIGURATION,
+   `"App is not installed"` failure (outside-account branch).** Standing
+   the server up is NOT enough: the dispatch's `fabro` CLI must be told
+   to USE it, or it defaults to `~/.fabro` — the owner's shared server,
+   whose App has no installation on an outside-account adopter's target —
+   and fails at sandbox-creation with the "App is not installed for the
+   `<org>` organization" error. (A same-account adopter on the Step 2
+   shortcut WANTS that default: `~/.fabro` holds the serving App, and no
+   `FABRO_HOME` override is set.) Targeting is by `FABRO_HOME`, a
+   NON-secret host path pointing at this step's per-tenant server home. Because it is non-secret it is **dispatch CONFIGURATION,
    not a credential — it does NOT go in the `credential_wrapper`**, which
    is a pure secret injector (`op run`); putting a plain host path there
    would be a category error. Two forms, one intended and one executable
@@ -1045,12 +1070,15 @@ included — walks exactly these steps.
    installation covers THIS target repo: in the GitHub UI, the App's
    installation settings must list the target org/repo among its
    repository access. (Verifying the SERVING App can reach the target
-   automatically at dispatch time is part of the preflight the per-tenant
-   server in Step 5 owns.)
+   automatically at dispatch time is part of the preflight owned by
+   whichever server serves the dispatch — Step 5's per-tenant server on
+   the outside-account branch, the owner's shared server on the
+   same-account path.)
 
 **Idempotency report (terminal step for a beads-fabro adopter).** Extend
 the Phase-5 report with a factory-infrastructure section — one row each:
 GitHub App, dispatch credential set (wrapper), work-items tenant,
-per-tenant Fabro server, adapted dispatch workflow (n/a for a fleet-`uv`
+per-tenant Fabro server (n/a for a same-account adopter on the owner's
+shared server), adapted dispatch workflow (n/a for a fleet-`uv`
 adopter), and preflight — marked "already present" / "added" / "updated" /
 "n/a" so a re-run that changes nothing proves itself a no-op.
