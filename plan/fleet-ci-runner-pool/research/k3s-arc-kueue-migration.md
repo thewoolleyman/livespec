@@ -269,8 +269,44 @@ cross-repo index.
   stands for that green matrix (PR #1059); CURRENT routing is hosted. Named
   re-cut condition, carried by `.17`/`.18`: those four tests pass in-pod
   first, then re-flip and re-verify actual job labels. Live fleet routing
-  as of this amendment: **7 of 8 repos on k3s; livespec-overseer on
+  as of that amendment: **7 of 8 repos on k3s; livespec-overseer on
   hosted.**
+  **RE-CUT 2026-08-19, condition met (`livespec-s43svm.18`).** The four tests
+  were never the problem and neither was the pid namespace: ONE AppArmor
+  denial explains all four. Ubuntu's
+  `kernel.apparmor_restrict_unprivileged_userns=1` STACKS the AppArmor label
+  of every confined task, so a workflow-pod process carries
+  `cri-containerd.apparmor.d//&unconfined` rather than the bare profile name;
+  containerd's default profile grants intra-container `signal` and `ptrace`
+  only to `peer=cri-containerd.apparmor.d`, a bare peer name a stacked label
+  does not match, so the profile denied its own containers both operations.
+  `os.killpg` returns `EACCES` outright, and tmux's `#{pane_current_path}`
+  reads back EMPTY because tmux derives it by `readlink()`ing
+  `/proc/<pane pgrp>/cwd` — a ptrace-read — which is why the denial arrived as
+  an empty string rather than an error and laundered into four unrelated-looking
+  assertion failures. Plain docker is unaffected (`docker-default` is not
+  stacked the same way), which is precisely why the same Fabro image was green
+  under docker and red in a pod. Fixed in livespec-dev-tooling PR #1531: a
+  node-loaded `ci-runner-workflow` profile reproducing every containerd deny
+  rule verbatim and widening ONLY the two peer expressions, reaching the
+  workflow pod via `ACTIONS_RUNNER_CONTAINER_HOOK_TEMPLATE`. AppArmor stays in
+  enforce mode; no capability added, nothing privileged. Verified in a pod
+  reproducing the workflow pod's spec (default profile: the 4 tests fail and
+  `/proc/PID/cwd`, `os.killpg`, `pane_current_path` are all denied; with the
+  profile: all 11 pass), then in real CI — run 32199679954 on
+  https://github.com/thewoolleyman/livespec-overseer/pull/1133, gating jobs
+  carrying `labels=["livespec-overseer-k3s"]` with real pod runner names, the
+  full-suite `check-coverage` job green ON THE POD. Live fleet routing as of
+  this amendment: **8 of 8 repos on k3s.**
+  **Carry this forward — it generalizes past this repo:** in
+  `containerMode: kubernetes` the pod a job's tests run in is NOT the runner
+  pod. The container hook creates a separate `<runner-pod>-workflow` pod per
+  job and builds its spec itself with an EMPTY `securityContext`, so anything
+  set under a scale set's `template.spec` reaches the runner pod only. Reading
+  a scale set's `securityContext` and concluding you know what the tests
+  executed under is reading the wrong object — and the seven repos already on
+  k3s carry the same unfixed default; they are green only because their suites
+  do not exercise intra-pod `ptrace` or `signal`.
 - **livespec-driver-claude**, 2026-08-17: stood up ARC scale set
   `livespec-driver-claude-k3s` on poweredge-xubuntu, zero traffic (helm
   release, chart 0.14.2, ClusterQueue/LocalQueue
