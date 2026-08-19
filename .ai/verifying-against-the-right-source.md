@@ -25,12 +25,17 @@ If the answer is no, the signal is not evidence, however green it looks.
 
 ## Recorded instances, by observation date — 1-8 on 2026-07-20, 9-12 on
 ## 2026-07-21, 13 on 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23
-## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11; instances 1-16 span
+## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32 on 2026-08-19;
+## instances 1-16 span
 ## five repos and four independent operators
 
-Two gaps in that heading are deliberate rather than oversights. **Instances 17
-and 18 carry no recorded observation date**, so none is assigned to them here — a
-first draft of this correction invented one for both and it was backed out. And
+Three gaps in that heading are deliberate rather than oversights. **Instances
+17, 18, and 31 carry no recorded observation date**, so none is assigned to them
+here — a first draft of this correction invented one for 17 and 18 and it was
+backed out. Instance 31's RECORDING commit is dated 2026-08-12, and that is
+deliberately not promoted into the list above: a landing date is not an
+observation date, and quietly substituting one for the other is the same
+wrong-source substitution this file exists to catalogue. And
 the repo/operator tally is **scoped to instances 1-16**, because it could not be
 re-derived from the file; incrementing it on assumption would be the exact error
 this file exists to prevent.
@@ -1087,6 +1092,61 @@ structured error to stdout turns "no output" into an unreliable proxy for
 exist returns empty and reads as out-of-scope; here the polarity is inverted —
 absence returns something — which is worse, because the tell is a passing test
 rather than a suspicious blank.
+
+### 32. A watcher whose filter can never match is silent, and silence reads as "not finished yet"
+
+Every other instance here is a green signal that carried no information. This
+one is the same failure wearing the opposite face: NO signal, read as "the thing
+I am waiting for has not happened yet."
+
+Watching a merge commit's CI, the query was
+
+```sh
+gh run list --workflow CI --branch master --limit 12 \
+  --json headSha,status,conclusion \
+  --jq --arg s "$SHA" '.[] | select(.headSha | startswith($s)) | "\(.status) \(.conclusion)"'
+```
+
+The `--jq` option takes ONE expression and does not implement jq's own `--arg`.
+So `--arg` was consumed AS the expression, `s` and the SHA became stray
+positional arguments, and the intended filter was never applied. The command
+matched nothing and exited without complaint. The watcher then ran its full
+forty-minute timeout reporting nothing at all — while the run it was watching had
+already completed SUCCESSFULLY within the first few minutes.
+
+What makes this worth its own entry rather than a footnote to instance 31 is the
+tell, not the cause. In 31 a failed lookup PRINTS `null` and so defeats an
+emptiness test. Here the failed lookup prints nothing — which is exactly what a
+correctly-working watcher looks like while it waits. **A filter that cannot match
+and a job that has not finished produce byte-identical output: none.** There is
+no moment at which the broken watcher looks broken. It looked most trustworthy
+precisely when it was most wrong, because patient silence is what a watcher is
+supposed to do.
+
+Nothing about the forty quiet minutes invited suspicion. What exposed it was
+reading the underlying state directly for an unrelated reason and finding the run
+had been green the whole time.
+
+**The counter-move, in two parts.** First, keep the value out of the filter's
+argument list — interpolate it into the expression, or emit plain output and
+filter in the shell, where an unsupported flag fails loudly instead of quietly:
+
+```sh
+gh run list --workflow CI --branch master --limit 12 \
+  --json headSha,status,conclusion \
+  --jq '.[] | "\(.headSha) \(.status) \(.conclusion)"' | grep "^$SHA"
+```
+
+Second, and the part that generalises past this one flag: **a watcher's silence
+is not an observation.** Before concluding from quiet that something has not
+happened, read the underlying state once, directly. A watcher reports the
+transitions it can see; it cannot report that its own filter is incapable of
+seeing any.
+
+The habit this protects is the one instance 23 names — a query returning the
+answer you expected is the least likely to be audited. Prolonged silence from a
+watcher IS the expected answer while you are waiting, and it earns a direct check
+for exactly that reason.
 
 ## Why this file exists in livespec CORE
 
