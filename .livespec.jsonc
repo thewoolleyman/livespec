@@ -80,6 +80,7 @@
     "dispatcher": {
       "auto_approve_ready": true,
       "acceptance_mode": "ai-only",
+      "wip_cap": 10,
       "factories": {
         "hp": { "server": "https://hp-xubuntu.perch-rudd.ts.net:32276" },
         "vps": { "server": "https://vps.perch-rudd.ts.net:32276" }
