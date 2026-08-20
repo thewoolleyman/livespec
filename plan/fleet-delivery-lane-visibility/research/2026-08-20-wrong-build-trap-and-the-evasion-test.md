@@ -1,8 +1,26 @@
 # The wrong-build trap, and the test that separates a workaround from evasion
 
 Two findings that came out of authoring this plan and are worth more
-than the plan itself. Both are proposed as durable `.ai/` entries rather
-than plan-local notes. Neither is a requirement carrier.
+than the plan itself. Neither is a requirement carrier.
+
+**Both have been LANDED in core's `.ai/` tree; this note is the working
+record, not the home.** The core `livespec-foreman` seat argued the
+placement and was right: a research note under a plan is found by a
+future reader *of that plan*, which is the wrong door for guidance whose
+whole point is to reach someone who has never heard of the plan and is
+about to grep a plugin cache. Per `SPECIFICATION/contracts.md` §"Fleet
+agent-instruction core", durable agent guidance lives in `AGENTS.md` and
+sibling `.ai/<topic>.md` files, loaded progressively at the moment the
+topic is worked.
+
+- Finding 1 → `.ai/verifying-against-the-right-source.md` instance 35.
+- Finding 2 → `.ai/ci-gate-discipline.md` §"Restructuring work to get
+  past a gate".
+- Both summarised in the `AGENTS.md` progressive-load index, whose
+  entries for these two files enumerate their contents and so must move
+  in lockstep with them.
+
+No work-item is needed in any tenant; do not file one.
 
 Jointly derived with the core `livespec-foreman` seat on 2026-08-20;
 each claim below was executed or hashed by at least two seats

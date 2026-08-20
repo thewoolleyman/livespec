@@ -1286,6 +1286,74 @@ timeout, or baseline fitted to observed traffic inherits the health of the
 system that generated that traffic. Fitting a rule during an outage bakes the
 outage into the rule.
 
+### 35. The plugin cache holds many builds of one file, and reading the wrong one is the DEFAULT
+
+Every other instance here is a signal misread. This one is a *file* misread —
+the source was real, correct-looking code that simply was not the code running.
+
+While characterising the shipped `github_rate_limit_guard` hook, a session read
+it out of the plugin cache, quoted its matcher, and generalised a mechanism from
+it. The quoted code was genuine and parsed fine. It was also two builds stale,
+and the conclusion drawn from it was wrong.
+
+**The base rate is the finding.** Hashing every copy of that one hook on the
+host:
+
+| Variant | Copies | Status |
+|---|---|---|
+| `bcc352abbc4b196b049226b3e8a9c512` | 7 | stale |
+| `c52db7ef2b2686b4e4916b4b68eb57cd` | 5 | stale |
+| `db57c8eb7fb356ea86bee87c346bc42b` | 3 | **RUNNING** |
+
+Fifteen copies, three variants, the live one is **3 of 15** — a blind pick is
+**wrong 80% of the time**. This is not a cache that occasionally goes stale. It
+is an archive of every build the host has ever installed, in which the current
+one is a minority.
+
+**Two DIFFERENT hazards, and they need different remedies.** Measured on the
+same tree in the same minute by two sessions:
+
+- **A glob or `ls` is STABLE and BIASED.** The shell sorts a glob (POSIX
+  requires it), and `.` (0x2E) sorts before digits and letters, so semver-named
+  directories land ahead of every hash-named build. On this host `0.5.2/`,
+  `0.5.5/`, `0.5.7/` come first — and all three are stale variants. The bias is
+  reproducible, learnable, and reliably wrong.
+- **`find` is UNSTABLE.** It does not sort at all; it yields directory-entry
+  order, which mutates as builds are added. The identical `find … | head -1`
+  returned three different first results across two sessions on one machine
+  within two hours — a stale hash build, then the marketplace copy, then
+  `0.5.2/` — because a sibling release added a directory mid-session.
+
+Conflating the two costs the reader the remedy. An operator who reaches for
+`ls`, reads only the instability warning, tests it, sees stable ordering, and
+concludes the warning does not apply has walked into the *other* failure by way
+of the correct half of the advice.
+
+**What makes it hard to catch is that nothing looks wrong.** The stale build is
+real code with plausible behaviour, and its predictions matched every denial the
+session had actually observed. The two accounts only diverged when a second
+agent quoted different source, and even then it took hashing to settle which was
+live. Neither agent could have detected it alone.
+
+**Counter-move: never let the filesystem choose the build.** The running build
+is named in the session's own startup output; hash the candidate against it, or
+confirm every candidate agrees:
+
+```bash
+find ~/.claude/plugins -name '<hook>.py' -exec md5sum {} \; | awk '{print $1}' | sort | uniq -c
+```
+
+One line, and it converts archaeology into evidence — it reports the variant
+count directly, so a result of `1` means any copy is safe to read and anything
+higher means you must identify the live one before quoting it. The discriminator
+does not care which command found the file, so it survives both hazards above.
+
+**The general form:** any tool that installs versioned artifacts side by side —
+plugin caches, wheel caches, container layer stores, vendored dependency trees —
+turns "read the source" into "sample the source". Reading code is only evidence
+about a running system when you have established that the bytes you read are the
+bytes that run.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
