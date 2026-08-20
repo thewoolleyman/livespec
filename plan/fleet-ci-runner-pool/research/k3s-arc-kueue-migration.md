@@ -398,3 +398,65 @@ cross-repo index.
   run (see `.23`'s closing ledger comment for run ids). **Status: 8 of 8
   fleet repos proven at real production-traffic scale on the k3s/ARC
   path — this epic's ordered per-repo cutover sequence is COMPLETE.**
+- **livespec-driver-pi**, 2026-08-20: the NINTH repo, added after this epic's
+  ordered sequence closed at 8 of 8 — livespec-driver-pi did not exist as a
+  fleet member when the sequence ran. Stood up ARC scale set
+  `livespec-driver-pi-k3s` on poweredge-xubuntu (helm chart 0.14.2 installed
+  from the node's own cached tarball, so byte-identical to the sibling
+  releases; ClusterQueue/LocalQueue `livespec-driver-pi-cq`/`-lq` in the
+  `fleet-ci-runner-pool` cohort; name is 22 chars, well under the <=30-char
+  budget, no truncation needed). Zero-traffic bring-up verified first
+  (listener Running and long-polling the scale-set broker, ephemeral runner
+  set at 0), then real production traffic cut via `CI_RUNNER_LABELS`, proven
+  on this repo's own cutover PR #64: all 11 gating check jobs carried
+  `labels=["livespec-driver-pi-k3s"]` with distinct pod runner names and the
+  full matrix went green ON THE POD, `check-extension-quality` included — so
+  `npm ci` egress from the workflow pod works. (`ci-green` and
+  `export-telemetry` are hardcoded `runs-on: ubuntu-latest` in that repo's
+  `ci.yml` by design; the gate reporter deliberately does not depend on the
+  self-hosted pool.) Shares `check-no-workflow-edits`, so the cutover note
+  lives in that repo's own `AGENTS.md` ("CI runner routing"), pointing back
+  here. **Live fleet routing as of this entry: 9 of 9 repos on k3s.**
+
+  **Two corrections this leg forces on the guidance above, both of which cost
+  a full attempt:**
+
+  **(a) `maxRunners` is NOT transferable between repos, and the
+  "live-measured slot count" phrasing in the earlier entries invites copying
+  it.** Every entry above pairs a repo with a number in the 63-67 band, which
+  reads as a fleet norm. It is not: those repos run a per-target matrix, one
+  job per check slug, so their matrix width really is ~65. livespec-driver-pi
+  deliberately batches its ~69 check targets into `check-python-batch` /
+  `check-metadata-batch`, and its real width is **13**, measured from an
+  actual run's job count. Copying a sibling's number would have
+  over-provisioned roughly fivefold. Measure from a real run, never from
+  `check-targets.txt` and never from a sibling.
+
+  **(b) A new fleet repo needs TWO SEPARATE GitHub App grants, and holding
+  only the first makes the second's absence invisible.** The fleet automation
+  App (release-please, auto-merge) is distinct from
+  `thewoolleyman-ci-runners`, the App the ARC controller uses to obtain a
+  runner registration token. The latter is `repository_selection: selected`,
+  so each new repo must be added to it explicitly. livespec-driver-pi had the
+  first grant since 2026-08-16 — release automation demonstrably ran there —
+  and did not have the second. Nothing surfaced that until the scale set was
+  actually stood up and the controller failed with
+
+      POST /repos/thewoolleyman/livespec-driver-pi/actions/runners/registration-token
+      403 "Resource not accessible by integration"
+
+  which reads as a wrong permission but is a missing repository selection: the
+  installation already carried `administration: write`. Diagnosed by minting a
+  JWT from the App key on the node and reading the installation directly. This
+  obligation has been added to the per-class inventory tracked by
+  `livespec-icfycf`.
+
+  **One tuning note:** the CQ was created at `nominalQuota: 1` by analogy to
+  livespec-console-beads-fabro (also small) and corrected to **2** mid-run
+  once real traffic showed the analogy was wrong — console-beads is the
+  fleet's NON-GATING lane, while every gating repo carries 2. At quota 1 under
+  live cohort contention the pods sat `SchedulingGated` and the 13-job run
+  serialized; at 2 it burst to 4 concurrent by borrowing idle cohort capacity
+  and completed green. Cohort nominal sum is now 18 against a node
+  `ci-runner.io/churn-slot` capacity of 16 — the oversubscription
+  `patch-node-churn-capacity.sh` explicitly sanctions.
