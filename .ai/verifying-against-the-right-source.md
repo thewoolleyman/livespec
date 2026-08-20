@@ -1211,6 +1211,81 @@ trusting a periodic check, ask **how long the thing being detected remains
 detectable** — and if that interval can be shorter than the sampling period,
 the check cannot answer the question no matter how correct its filter is.
 
+### 34. A rule inferred from behaviour observed DURING A DEGRADED WINDOW, which then outlives the degradation and blocks the repaired behaviour
+
+Every other instance here is a reader drawing a wrong conclusion from a
+right-looking signal. This one is worse, because the wrong conclusion gets
+COMMITTED — frozen into an enforcement rule that then contradicts the system it
+governs, long after the evidence for it expired.
+
+`livespec-overseer` guards its workflow files: any change under
+`.github/workflows/` needs a reviewed, per-change exemption declaration. The
+automated pin-bump lane cannot author one, so the guard carries a narrow
+allowance — a bump passes without a declaration when EVERY altered line is a
+version pin:
+
+```sh
+[[ "$line" =~ ^[+-][[:space:]]*uses:[[:space:]]*[^[:space:]]+@v[0-9]+\.[0-9]+\.[0-9]+$ ]] && return 0
+[[ "$line" =~ ^[+-][[:space:]]*image:[[:space:]]*[^[:space:]]+:[a-z]+-v[0-9]+\.[0-9]+\.[0-9]+$ ]] && return 0
+```
+
+The allowance documents its own basis, which is the part that matters:
+
+```
+# Measured 2026-08-19/20 over the four most recent bumps (27404e6, a05cbb1,
+# cf916d5, 7d82d5d): every one alters ONLY these two line shapes.
+```
+
+That is careful work. Four real bumps, named by SHA, checked rather than
+assumed. And it produced a rule that froze the repo.
+
+**Because the window it sampled was broken.** Throughout 2026-08-19/20 the
+canonical-CI reconciler `ci_yaml_canonical_reconcile` hard-failed the bump job
+on every consumer that had a slug to adopt (`livespec-s43svm.34`). A bump that
+wrote a non-pin line into `ci.yml` was not rare in that window — it was
+*mechanically impossible*. The four samples could not have shown anything but
+pin lines. When the reconciler was repaired, the very first wave in which it
+wrote its aggregate line
+
+```
++          just check-self-hosted-uv-lane || failed="$failed check-self-hosted-uv-lane"
+```
+
+failed the guard, and `livespec-overseer` alone stayed two releases behind while
+the other seven Python consumers took the bump with the line auto-written.
+
+**The trap is that the sample is accurate and the inference is still void.** No
+amount of care in the measurement rescues it, and a larger sample would not have
+helped — every bump in that window, not just four, was pin-only. The defect is
+not sample size or sloppiness. It is that observed behaviour was treated as
+specification while the producer of that behaviour was in a degraded state, so
+the rule recorded a symptom of the outage as if it were a policy.
+
+Note the second-order cost: the guard did not merely fail to notice the repair,
+it actively PREVENTED it. A rule calibrated on a broken world becomes the thing
+standing in the way once the world is fixed, and it presents as a legitimate
+policy objection rather than as stale data — the guard's message is a correct
+statement of its rule.
+
+**Counter-move: derive an enforcement rule from the producer's SPECIFICATION or
+its writer source, not from a sample of its output.** The reconciler's writer
+defines exactly which line forms it can emit; that set is knowable by reading
+it, is complete, and does not change when the reconciler is broken. A sample of
+diffs is a measurement of the producer's current health as much as of its
+contract, and the two are indistinguishable from the outside.
+
+When you must calibrate from observation because no specification is reachable,
+record the assumption as a hypothesis with its window (`observed over <dates>;
+re-derive if the producer changes`) rather than as a settled invariant — and
+before trusting any such rule, ask **was the thing I sampled fully operational
+while I sampled it?** A quiet period is exactly as consistent with a broken
+producer as with a producer that never does the thing.
+
+The general form, which reaches past guards: any threshold, allowlist,
+timeout, or baseline fitted to observed traffic inherits the health of the
+system that generated that traffic. Fitting a rule during an outage bakes the
+outage into the rule.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
