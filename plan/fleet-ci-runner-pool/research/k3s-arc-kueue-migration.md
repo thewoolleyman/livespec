@@ -451,12 +451,42 @@ cross-repo index.
   obligation has been added to the per-class inventory tracked by
   `livespec-icfycf`.
 
-  **One tuning note:** the CQ was created at `nominalQuota: 1` by analogy to
-  livespec-console-beads-fabro (also small) and corrected to **2** mid-run
-  once real traffic showed the analogy was wrong — console-beads is the
-  fleet's NON-GATING lane, while every gating repo carries 2. At quota 1 under
-  live cohort contention the pods sat `SchedulingGated` and the 13-job run
-  serialized; at 2 it burst to 4 concurrent by borrowing idle cohort capacity
-  and completed green. Cohort nominal sum is now 18 against a node
-  `ci-runner.io/churn-slot` capacity of 16 — the oversubscription
-  `patch-node-churn-capacity.sh` explicitly sanctions.
+  **The quota, and a correction to this entry's own first version.** As
+  originally written this paragraph said the CQ was created at
+  `nominalQuota: 1`, "corrected" to **2** mid-run, and that the cohort sum was
+  then 18, sanctioned as oversubscription by
+  `patch-node-churn-capacity.sh`'s header. Every part of that was wrong, and it
+  is restated here rather than quietly edited because the wrong version was
+  merged and may have been read.
+
+  What actually happened: the CQ was created at 1 by loose analogy to
+  livespec-console-beads-fabro, then patched to 2 mid-run when pods sat
+  `SchedulingGated` under live cohort contention. That patch was REACTIVE, not
+  derived — it was justified at the time by a gating-vs-non-gating parity
+  argument that no rule in this fleet actually makes. The governing rule is
+  `livespec-dev-tooling/ci-runner/k3s/phase2/kueue/DERIVATION.md`, which
+  apportions `nominalQuota` from per-repo demand weights by largest remainder.
+  Running it with this repo's weight of 13 (`W` = 482 + 13 = 495, `C` = 16)
+  gives an exact share of `16 × 13 / 495` = **0.4202**, which floors to ZERO —
+  it misses the last leftover unit, which goes to `livespec` at 0.4242, by
+  0.0040 — and the rule's own `max(1, …)` step then lifts it to **1**. So 1 is
+  the derived value and 2 was simply an error; the live quota was set back to 1
+  and that is what is committed.
+
+  Two consequences worth carrying forward. First, no pre-existing repo's quota
+  changes when a ninth joins: the seven mid-band repos were already at their
+  floor of 2 and stay there. Second, because pi is floored UP from a
+  rounds-to-zero share, the committed quotas now sum to **17**, one above
+  `C` = 16 — the invariant every `cluster-queue-*.yaml` header used to state.
+  That excess is forced by the rule, not chosen, and is harmless since the
+  scheduler is the final gate. The earlier citation of
+  `patch-node-churn-capacity.sh` for this was a misattribution: its header
+  sanctions per-repo quotas summing above **482**, a different claim entirely.
+
+  All of it — the nine-repo table, the `max(1, …)` collision, and the two clean
+  resolutions (raise `C` to 17 and recompute, or keep `C` = 16 with a standing
+  documented exception) — is now written up in `DERIVATION.md` under
+  "Recomputation on the ninth repository (2026-08-20)", landed with pi's
+  previously-uncommitted manifests in livespec-dev-tooling PR #1603. Note that
+  a TENTH repo compounds this rather than resolving it. Do NOT restore the sum
+  to 16 by cutting another repo below its apportioned share.
