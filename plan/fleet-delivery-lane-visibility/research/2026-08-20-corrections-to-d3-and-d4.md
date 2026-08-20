@@ -5,6 +5,10 @@ change what the deferrals argue. Both were surfaced by the core
 `livespec-foreman` seat after that note was committed, and both were
 re-verified here before being recorded.
 
+Correction 2 then had to be corrected in turn, and that second round is
+the more instructive of the two — see "A correction to this correction"
+below.
+
 ## Correction 1 — D4's instance was CLOSED BY A FIX, not expired
 
 **What the original note said.** That the peer's claim about commit
@@ -55,38 +59,89 @@ decision remains theirs.
 **What the original note said.** That `github_rate_limit_guard` "denies
 `gh api --cache`, the exact remedy its own denial message prescribes."
 
-**That is true but is not the mechanism**, and the imprecision matters
-because it implies the trigger is something about caching. It is not.
-Read from the hook source at
-`hooks/github_rate_limit_guard.py`:
+**That is true but is not the mechanism.** The original note implied the
+trigger is something about caching; it is not. The cache flag is never
+inspected on any path — `_GH_API` captures a call's arguments only to
+test them for a mutating `-X`/`--method` value. So the denial message
+prescribes a remedy the code has no way to recognise.
 
-```python
-_LOOP_OR_SLEEP = re.compile(rf"\b(?:for|while|until)\b|{_SHELL_SELECT}|\bsleep\b", re.IGNORECASE)
-```
+### A correction to this correction — I read the wrong build
 
-`_deny_reason` denies when that pattern matches **anywhere in the whole
-command string** and any non-mutating `gh` read is present. The `--cache`
-flag is never inspected at all. So the trigger is bare token
-co-occurrence: a `for`, `while`, `until`, or `sleep` token anywhere in
-the command — inside a piped Python one-liner, a quoted string, a
-filename, a commit message — plus any `gh api` / `gh run` / `gh pr` read.
+The first version of this section characterised the matcher as firing on
+a loop token **anywhere in the command string**. That was drawn from a
+real file that was not the running one. A `find` over
+`~/.claude/plugins/` returns **fifteen** cached driver-claude builds of
+this hook, and taking the first result picked `53a7d5b097d4`, a stale one
+carrying a superseded pattern that matched the bare word with no
+positional anchor at all.
+
+The build this session actually loads is `ac4c58bf5086` — named in the
+session's own startup output — and it anchors the keyword to command
+position, matching only at the start of a line, after a `;`/`&`/`|`
+separator, or after `do`/`then`, with `MULTILINE` enabled. The hook's own
+comment says the anchor was added deliberately, because matching the bare
+word *"denied any `gh` command whose text merely contained 'for',
+'while', 'until' or 'sleep' — ordinary English that turns up constantly
+in PR titles, paths and jq filters."*
+
+**This is a fresh instance for `.ai/verifying-against-the-right-source.md`,
+and a nastier one than most it already records**, because nothing looked
+wrong: the file was real, the path was plausible, the code parsed, and
+every observation in this plan stayed consistent with it. Fifteen builds
+of the same file sit side by side and taking the first chooses
+arbitrarily among them. The right source was named in this session's own
+startup output the whole time.
+
+**What the anchor actually buys, measured rather than argued.** Running
+the live pattern against each observed case and attributing which
+sub-clause fired:
+
+| Case | Denied? | Fired via |
+|---|---|---|
+| Prose describing the regex's own alternation | yes | separator clause |
+| A `gh` read piped into a multi-line `python3 -c` | yes | line-start |
+| Heredoc containing a real shell loop | yes | line-start |
+| A bare cached `gh api` call, no loop token | **no** | — |
+| Prose with a loop word only mid-line | **no** | — |
+
+The last row **disconfirms the "anywhere in the string" claim directly**,
+which is why it is retracted rather than softened.
+
+**Where the peer's account also needs one refinement.** The core seat
+attributed the anchor's weakness entirely to `MULTILINE` making the
+start-of-string anchor match at every line start. That explains rows 2
+and 3. It does not explain row 1: this plan's own pull-request body fired
+via the **separator** clause, because prose describing regex alternation
+puts a loop keyword directly after a pipe character. The anchor buys even
+less than "almost nothing" — a separator inside quoted prose is enough.
+
+**The root cause both accounts converge on, and it is the right one.**
+The matcher has no lexical awareness: it cannot distinguish shell syntax
+from text, so a loop keyword at a command-like position inside a quoted
+`-c` string, a heredoc, or ordinary English is indistinguishable from a
+real shell loop. Every `gh pr` subcommand is likewise classified a read,
+mutations included, because the read pattern matches the subcommand
+family rather than the verb.
 
 **Empirically confirmed while gathering this plan's research.** A single
-`gh pr list ... | python3 -c "for p in json.load(...)"` was denied: one
-`gh` call, no shell loop, and the only matching token was the `for` in
-the piped Python. Meanwhile a bare `gh api --cache 60m ...` issued alone
-passed. The core seat independently hit the same thing with a
-`gh api --cache 2m` call batched alongside other commands.
+`gh` read piped into a multi-line Python one-liner was denied: one call,
+no shell loop, the only trigger a loop keyword at the start of a line
+inside the quoted Python. Meanwhile a bare cached read issued alone
+passed. The core seat independently hit the same thing with a cached read
+sitting beside other commands, and its disconfirming pair is the
+discriminating evidence neither of us gathered first: a batch containing
+**two** shell loops and **no** `gh` call passed, which proves the `gh`
+read is the discriminator rather than the batching.
 
 **Where the peer's proposed remedy is wrong, and R1 must not adopt it.**
-The core seat concluded the working remedy is "one call per step, which
-needs no skill-documented screen." That is right for an *incidental*
-denial — a cached read that happens to sit next to a `for` token. It is
-**wrong for the fleet-wide sweep R1 has to perform**. Issuing fourteen
-per-repo reads as fourteen separate steps is still a looped GitHub read;
-it merely spreads the loop across tool calls where the regex cannot see
-it. `needs-attention-internal/SKILL.md` addresses this case directly and
-denies it by name:
+The core seat initially concluded the working remedy is "one call per
+step, which needs no skill-documented screen", and has since withdrawn
+it. It is right for an *incidental* denial — a cached read that happens
+to sit near a loop keyword. It is **wrong for the fleet-wide sweep R1 has
+to perform**. Issuing fourteen per-repo reads as fourteen separate steps
+is still a looped GitHub read; it merely spreads the loop across tool
+calls where the regex cannot see it. `needs-attention-internal/SKILL.md`
+addresses this case directly and denies it by name:
 
 > **⛔ RUNNING THAT COMMAND ONCE PER MEMBER IS DENIED — use the ONE-CALL
 > SCREEN below first.**
@@ -97,11 +152,23 @@ must use the one-call GraphQL screen**, generated from
 list cannot silently fork from the manifest. What changes is only the
 *characterization* of the guard's defect, above.
 
+**Three live reproductions, all from authoring this plan.** The
+pull request carrying these corrections was denied on its first attempt,
+because its body text — describing the guard — contained what the guard
+matches on. The rewrite of this very section was denied for the same
+reason. In both, no `gh` read was looped; the prose was. That is the most
+legible statement of the defect available: the guard read *prose about
+loops* as loops.
+
 **The second-order harm, worth stating because it is the reason this
 correction is in the plan at all.** A guard whose denial message
-prescribes a remedy it then denies trains operators toward evasion — as
-it did here, in this plan's own research-gathering. That cost is larger
-than the rate-limit budget the guard protects. It remains owned
+prescribes a remedy it cannot detect, whose true remedy for fleet work it
+also cannot detect, and whose one *detectable* remedy — splitting the
+loop across invocations — is evasion, teaches the wrong lesson. Both
+operators who hit it on 2026-08-20 reached for a workaround before
+reaching for the correct screen. That is the shape
+`.ai/ci-gate-discipline.md` cares about, and it is separable from whether
+the rate-limit protection itself is worth keeping. It remains owned
 elsewhere (`livespec-driver-claude-mu5`) and is not admitted as a carrier
 here, but if it ever is, this is the argument.
 
@@ -115,5 +182,6 @@ the `livespec-driver-claude` tenant — anchor `livespec-driver-claude-d7d`,
 duplicates `-zgqrta` / `-4xc` / `-zeh4ft`, guard half `-tun`, and `-6o4`
 (P1, ready) which already names `livespec-orchestrator-beads-fabro` as
 the second false positive. Plan `resolve-core-root-predicate` (epic
-`livespec-driver-claude-cezqks`) owns both halves. Nothing is owed by
+`livespec-driver-claude-cezqks`) owns both halves. Core has since relayed
+its clause-lockstep observation to that seat directly. Nothing is owed by
 this plan.
