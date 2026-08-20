@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/thewoolleyman/livespec/compare/v0.36.0...v0.37.0) (2026-08-20)
+
+
+### Features
+
+* **skill:** add the pin-lag signal to needs-attention-internal ([0eabf34](https://github.com/thewoolleyman/livespec/commit/0eabf3465adc610ee3f0134e997451adfec44de1))
+
 ## [0.36.0](https://github.com/thewoolleyman/livespec/compare/v0.35.1...v0.36.0) (2026-08-19)
 
 
