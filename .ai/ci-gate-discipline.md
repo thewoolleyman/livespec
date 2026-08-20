@@ -49,6 +49,56 @@ env var to having NO effect).
   livespec-dev-tooling) is the durable guard — prefer adding one when
   removing any rejected escape mechanism.
 
+## Restructuring work to get past a gate: the test for evasion vs. a false positive
+
+The rule above forbids adding an escape mechanism. It says nothing about the
+commoner case, where no mechanism is added at all and an operator simply
+**restructures the work** until the gate stops matching. That gap is live, and
+both halves of it were walked on 2026-08-20 by two sessions within an hour.
+
+A gate that matches on the *shape* of a command rather than on what it does will
+produce false positives, and a false positive genuinely does need a way past it.
+So "I moved it into a file and it passed" is sometimes correct and sometimes
+evasion, and the two are visually identical. The distinguishing question is not
+*did you restructure it*:
+
+> **Does the restructured work still perform the behaviour the gate exists to
+> prevent?** If yes, restructuring is EVASION, however defective the gate. If
+> no, the gate mis-fired on text and you have worked around a false positive.
+
+The recorded pair, both against the shipped `github_rate_limit_guard` (which
+denies looped GitHub reads):
+
+| What was restructured | Still performs the governed behaviour? | Verdict |
+|---|---|---|
+| A loop over fourteen per-repo GitHub reads, moved into a script file so the matcher could not see the loop | **Yes** — that is precisely a looped read | **Evasion** |
+| Splitting those same fourteen reads across fourteen separate tool calls | **Yes** — the loop is relocated, not removed | **Evasion** |
+| A local analysis that imports the hook and runs its regexes against fixture strings, moved into a file because the *fixtures* contain the matched tokens | **No** — zero network calls; cannot consume one unit of the budget the gate protects | **False positive** |
+
+The second row is the one worth dwelling on, because it does not feel like
+evasion — it is "just doing them one at a time", it needs no file, and each
+individual call passes honestly. It is still the governed behaviour, merely
+spread across invocations where the matcher cannot see it. **A remedy that
+passes the gate while defeating its purpose is worse than one that fails
+loudly**, because it will be written down as guidance and repeated.
+
+Two obligations follow:
+
+- **State which one you are doing, at the moment you do it.** An unannotated
+  workaround is indistinguishable from evasion to every later reader, and the
+  legitimate case then becomes the precedent that excuses the illegitimate one.
+- **A false positive is a defect report, not a licence.** Working around one is
+  permitted; leaving it unrecorded is not. File or journal the mis-fire against
+  the gate's owner.
+
+**Why a false-positive-prone gate is a gate-discipline problem and not merely a
+noisy one.** The guard above prescribes a remedy in its own denial message that
+its code has no way to detect, and the one remedy it *can* detect — splitting
+the loop — is the evasive one. Both operators who hit it that day reached for a
+workaround before reaching for the correct approach. That is the gate teaching
+the wrong lesson, and it is separable from whether the protection is worth
+keeping: fix the matcher, and keep the gate.
+
 ## The `workflows` grant withheld from the DISPATCH CREDENTIAL is a deliberate boundary
 
 The boundary lives at the **dispatch credential**, NOT at the App

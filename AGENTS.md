@@ -672,7 +672,12 @@ existing file):
   merge-blocking gate (e.g. `check-master-ci-green`) and whenever such a gate
   blocks a repair. NEVER add a lever/env-var/escape mechanism to such a gate
   or demote it to warning — revert the breaking change (server-side revert PR
-  when local commits are blocked) and re-land in the right order.
+  when local commits are blocked) and re-land in the right order. Also read it
+  before RESTRUCTURING work to get past a gate that mis-fires: the test is
+  whether the restructured work still performs the behaviour the gate exists to
+  prevent — if it does, restructuring is evasion however defective the gate,
+  and splitting a loop across separate invocations is the case that does not
+  feel like evasion but is.
 - **`.ai/beads-gaps-workarounds.md`** — read when integrating with, working
   around, or debugging the `bd` (beads) work-items backend, and before filing
   a beads issue upstream: the living catalogue of beads gaps and the
@@ -761,7 +766,15 @@ existing file):
   which the reconciler that writes non-pin lines was hard-failing, so the rule
   recorded a symptom of an outage as policy, outlived the degradation, and then
   blocked the repaired behaviour; derive an enforcement rule from the producer's
-  writer source or specification, never from a sample of its output.
+  writer source or specification, never from a sample of its output, and — the
+  one entry where the wrong source is a FILE rather than a signal — a shipped
+  hook read out of the plugin cache, where fifteen copies of that one file sit
+  side by side in three variants and the RUNNING one is three of them, so a
+  blind pick is wrong eighty percent of the time; a glob is stable and biased
+  (semver names sort ahead of hash names, and the semver builds are the stale
+  ones) while `find` is unstable (directory-entry order, three different first
+  results across two sessions in two hours), so hash the candidate against the
+  build named in startup output rather than letting the filesystem choose.
 
 ## Working with the maintainer
 
