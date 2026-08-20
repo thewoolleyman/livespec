@@ -835,7 +835,26 @@ existing file):
   compressed fragments. A reviewing maintainer should never have to ask
   "what are the arrows for?"
 
-## When to ask, proceed, or self-resolve
+## Decision authority — when to ask, proceed, or self-resolve
+
+The fleet's canonical statement of
+"When to ask, proceed, or self-resolve": every other governed member's
+decision-authority section is adapted from this one, together with
+`livespec-orchestrator-beads-fabro/AGENTS.md` §"Drive authorized work to
+completion; do not over-ask". The default is to decide and report, not to
+escalate.
+
+- **Drive authorized work to completion; do not over-ask.** When the maintainer
+  names a goal and says to finish or continue it, execute the WHOLE arc —
+  implement, dispatch, PR, merge, iterate, archive — without pausing to confirm
+  each already-authorized step. An operator-flow step that says "present
+  options and let the user select" is satisfied by a standing directive once
+  the goal is named; do not re-prompt. Default to acting, then reporting
+  outcomes.
+- **A recorded next action is an instruction, not a menu.** When a handoff, a
+  work-item, or a plan timeline names exactly one next action, take it.
+  Re-presenting it as option 1 of a picker is a documented stall shape: on
+  2026-08-20 a track sat roughly sixteen hours doing exactly that.
 
 - **Ask one thing at a time.** When walking a structured list (critiques, TODOs,
   decisions), ask exactly one question per turn — never batch sub-items unless
@@ -865,6 +884,16 @@ existing file):
   back-to-back without per-step gates while still running all correctness/safety
   scans and the established commit pattern; stop only on a blocking issue,
   genuine ambiguity, a phase boundary, or an unauthorized destructive op.
+
+- **An unratified filter inside a check is conformance, not ratification.**
+  Narrowing, excluding, or filtering inside an enforcement check to match what
+  the ratified spec already says is a conformance fix — implement it and report
+  it. It only becomes a ratification question when the change would make the
+  check assert something the spec does not.
+- **A question you can answer with a recommendation is a finding, not a
+  maintainer question.** If you can state the options, the costs, and which one
+  you would pick, you have already done the deciding work. Decide it, record
+  the reasoning where the work is tracked, and report it as decided.
 
 ## Python and code conventions
 
