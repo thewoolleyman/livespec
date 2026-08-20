@@ -8,8 +8,8 @@ implementation: `bin/revise.py`) is the contract half. Drivers bind
 this prose to their runtime; nothing in this file names any specific
 agent runtime's tools or command namespace.
 
-Drive per-proposal `accept` / `modify` / `reject` decisions for
-every in-flight proposed-change file under
+Drive per-proposal `accept` / `modify` / `reject` decisions over
+the in-flight proposed-change files under
 `<spec-target>/proposed_changes/`, then cut a new
 `<spec-target>/history/vNNN/` snapshot via the revise CLI. Each
 decision is presented to the user for confirmation before the
@@ -18,11 +18,30 @@ doctor static runs before revise; post-step doctor static runs
 after the CLI exits, followed by the LLM-driven post-step
 phase.
 
+A revise pass covers **every** pending proposal by default, but it
+is NOT all-or-nothing: when the user asks to revise one specific
+named proposal, narrow the pass to that proposal alone with
+`--only-topic <topic>` (see Inputs and Step 3). Proposals left
+out of `decisions[]` stay in place for a future pass —
+`SPECIFICATION/constraints.md` clause (h) ratifies exactly this
+subset behavior. Reach for the narrowed pass whenever disposing
+of another thread's in-flight proposal would exceed what the
+user asked for, which is the common case when several threads
+have proposals pending at once.
+
 ## When to run
 
 - The user invokes the revise operation, says "revise the spec",
   "revise the livespec", "process pending proposed changes",
   or asks to advance the spec to a new version.
+- The user asks to revise, ratify, or dispose of ONE specific
+  named proposal — "revise only the `<topic>` proposal",
+  "ratify my amendment but leave the others pending" — including
+  when their authority covers only their own proposal and other
+  threads have proposals pending alongside it. Run the narrowed
+  single-proposal pass (`--only-topic <topic>`); do NOT decline
+  the request, and do NOT dispose of proposals the user did not
+  ask about.
 - The repo has a valid `.livespec.jsonc`, a populated spec
   tree, AND `<spec-target>/proposed_changes/` is non-empty
   (the CLI's pre-step doctor static enforces the first
