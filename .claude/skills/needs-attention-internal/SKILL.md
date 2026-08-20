@@ -4,15 +4,17 @@ description: >-
   Compose the livespec-fleet-DEVELOPMENT signals a fleet maintainer must watch
   but an end user does NOT control — CI red on any fleet repo, fleet-conformance
   drift, stale cross-repo pins, cross-repo consistency drift, ledger
-  status-conformance drift, and a weakened fork-approval tier on a repo that
-  routes gating CI to self-hosted capacity — into one point-in-time attention
+  status-conformance drift, a weakened fork-approval tier on a repo that
+  routes gating CI to self-hosted capacity, and a fleet member whose shared-library
+  pin has fallen more than one release behind — into one point-in-time attention
   list. It mostly
   reads signals already computed elsewhere (GitHub Actions for CI, the dev-tooling
-  conformance and pin-freshness checks, `/livespec:doctor` for drift); the two
+  conformance and pin-freshness checks, `/livespec:doctor` for drift); the three
   exceptions are the ledger status-conformance scan, which runs a cheap per-tenant
   `ledger-normalize --dry-run` directly because no scheduled workflow computes it,
-  and the fork-approval tier, which is a live repo setting no workflow can read
-  from CI.
+  the fork-approval tier, which is a live repo setting no workflow can read
+  from CI, and the pin-lag signal, which reads each member's committed pin over
+  `git` because the machinery that would report it is exactly what fails.
   All are normalized into the shared `attention_item` shape with `kind: "internal"`.
   This is the
   internal sibling of the shipped product `needs-attention`: the dividing test
@@ -28,7 +30,7 @@ description: >-
 
 You are `needs-attention-internal`: a **maintainer-only, local/unsynced**
 awareness surface for the livespec fleet's own *development* health. When
-invoked, you gather six dev-tooling-facing signals across the fleet and compose
+invoked, you gather seven dev-tooling-facing signals across the fleet and compose
 them into one flat, point-in-time attention list. Four are statuses another
 system already produces (you READ them cheaply); the remaining two — ledger
 status-conformance drift and the fork-approval tier — you determine yourself
@@ -44,7 +46,7 @@ sibling — the product `needs-attention` (in both orchestrator plugins) — ans
 skill answers the complementary question a fleet maintainer owns: "is anything
 wrong with the fleet's own development machinery right now?"
 
-## The product-vs-internal dividing test (why these six are here)
+## The product-vs-internal dividing test (why these seven are here)
 
 The single test that sorts a signal into product-vs-internal is: **does an end
 user have actionable control over it?**
@@ -59,7 +61,7 @@ user have actionable control over it?**
   end user cannot act on any of these — only a fleet maintainer can — so they
   live here, local and unsynced, never shipped.
 
-## The six internal signals and how to gather each
+## The seven internal signals and how to gather each
 
 Read the fleet member list LIVE from
 `/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
@@ -271,7 +273,7 @@ whose pins you want covered, or scope it to the repos the sweep targets.
 >
 > Adding signals for these is a design decision, not a bug fix, and belongs with
 > `livespec-39h1` (whose thesis is precisely that nothing reads these). Until then,
-> **a clean run of this skill means "the six signals are green", not "the fleet is
+> **a clean run of this skill means "the seven signals are green", not "the fleet is
 > healthy"** — say the former when reporting.
 
 ### Signal 4 — cross-repo consistency drift
@@ -390,6 +392,93 @@ the setting only changes when a human changes it, so a maintainer-facing signal 
 the proportionate home. If this ever needs to become a hard gate, escalate the App
 deliberately as its own decision — never implicitly as a side effect of adding a
 check.
+
+### Signal 7 — a fleet member's shared-library pin is more than one release behind
+
+Signal 3 watches the pin-staleness MACHINERY: the freshness sweep's status, and
+the bump PRs it files. Both are events. This signal watches the CONSEQUENCE —
+what each member's `master` actually pins, right now — and fires when a member
+has fallen more than one release behind.
+
+**Why a seventh signal rather than widening Signal 3.** A bump that HARD-FAILS
+opens no pull request at all, so there is nothing for Signal 3's `gh pr list` to
+find; and a bump that succeeds merges in about a minute, so it is absent from
+`--state open` almost immediately too. Signal 3 therefore reports the same
+silence for "bumping cleanly" and "cannot bump at all". That is not a bug in
+Signal 3 — an open bump PR is a real item — it is that the question "is this
+member CURRENT?" cannot be answered by looking at pull requests. Five consumers
+sat two releases behind across two release cycles, in red, and neither Signal 1
+(scoped to the workflow named `CI`) nor Signal 3 (scoped to open bump PRs) could
+see it (`livespec-s43svm.34`, `.35`).
+
+**This signal uses NO GitHub API.** It reads committed state out of the local
+clones over `git`, which is worth stating plainly given how much of this file is
+guard-denial workarounds: there is no rate-limit budget to spend, no `select(`
+or loop token to trip `github_rate_limit_guard`, no `--state` semantics to get
+wrong, and no commit anchoring to fail on a `repository_dispatch` run. A pin on
+`master` is a durable fact that does not stop being true because nobody looked
+in time.
+
+Latest release of the shared library, and each member's pinned tag:
+
+```bash
+# 1. the producer's newest RELEASE tag (pins track releases, not master)
+git -C /data/projects/livespec-dev-tooling fetch origin master --tags --quiet
+git -C /data/projects/livespec-dev-tooling tag --sort=-v:refname | head -1
+
+# 2. one member's pinned tag, read from committed state, NOT the working tree
+git -C /data/projects/<member> fetch origin master --quiet
+git -C /data/projects/<member> show origin/master:pyproject.toml \
+  | grep -E '^livespec-dev-tooling = \{' \
+  | grep -oE 'tag = "[^"]+"'
+```
+
+Enumerate members from `.livespec-fleet-manifest.jsonc` rather than a hardcoded
+list. A member with no `livespec-dev-tooling = {` line is NOT stale — it is a
+non-consumer; skip it and say so, never report it as missing a pin. Do not
+assume which members those are: verified 2026-08-20, ALL NINE non-producer fleet
+members carry the pin, including `livespec-console-beads-fabro`, which is the
+Rust console and carries no canonical check aggregate yet still pins the shared
+library for its Python tooling. An earlier draft of this section asserted that
+member pinned nothing; the live exercise below falsified it.
+
+**Firing rule.** Count the release tags strictly newer than the member's pinned
+tag. Fire when that count is **2 or more**. One release behind is the normal
+window between a release and its fan-out landing, so firing at one would emit an
+item on every member on every release for a few minutes; two or more means at
+least one fan-out wave did not reach this member.
+
+**Print the pinned tag and the latest tag on every member, including the current
+ones, before reporting any conclusion.** A zero count means nothing if the read
+returned an empty pin on every member — the same count-without-its-listing trap
+Signal 3 records. An empty pin is a FAILED READ (wrong path, renamed file,
+member not cloned), not a current member; treat it as fail-soft and name it.
+
+**`attention_item` shape.** `id` is `internal:pin-lag:<repo>`; `urgency` is
+`high` — unlike an open bump PR (Signal 3, `medium`, which is self-resolving
+once it merges), a lagging pin means the automatic path has already failed and
+will not retry itself. `summary` names both versions and the gap, e.g.
+"livespec-overseer pins livespec-dev-tooling v1.28.13, 4 releases behind
+v1.29.3". `source_ref` is `{repo: "<repo>", path: "pyproject.toml",
+work_item: null}`. `handoff` is `kind: "shell"` with the command that shows why
+the member did not take the bump:
+
+```
+gh run list --repo thewoolleyman/<repo> --workflow "Bump pin from sibling dispatch" --limit 5
+```
+
+That handoff is deliberately the EVENT query: the signal detects the state
+because state is reliable, and hands the maintainer the event because the event
+is where the diagnosis lives.
+
+**Live-exercised 2026-08-20.** Run against real fleet state during the v1.29.3
+wave, this signal emits exactly one item — `livespec-overseer`, pinning
+v1.28.13, four releases behind a latest release of v1.29.3 — and nothing on the
+other eight members, which all reached v1.29.3. That member is frozen by
+`livespec-s43svm.36`, so the demonstrating condition is real rather than
+constructed, and persists until .36 is resolved. Before .34's fix, the same
+signal would have emitted five items across two release cycles, which is
+precisely the outage it exists to have caught.
 
 ## Shaping each signal into an `attention_item`
 
