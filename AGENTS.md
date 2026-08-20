@@ -748,7 +748,20 @@ existing file):
   -q '.name'` on a 404 emitting the literal string `null`, non-empty and so
   passing an emptiness test for every row, which classified all thirteen fleet
   repositories as copier-template consumers when only two are; branch on the
-  command's exit status, never on whether its output is empty.
+  command's exit status, never on whether its output is empty, and — the two
+  entries about WATCHERS, where the instrument itself is the wrong source — a
+  filter so malformed it could never match, whose silence read as "not finished
+  yet", and its harder sibling, a perfectly well-formed filter over the WRONG
+  STATE-SPACE (`gh pr list --state open` asking "is a bump PR open?" when the
+  question was "did a bump happen?"), where a clean fast merge spends almost no
+  time in the polled state so SUCCESS ITSELF hides the event — watch the durable
+  consequence, never the transient that produces it, and — the one entry where
+  the wrong conclusion gets COMMITTED into an enforcement rule — a workflow
+  guard's pin-only allowlist calibrated on four bumps sampled during a window in
+  which the reconciler that writes non-pin lines was hard-failing, so the rule
+  recorded a symptom of an outage as policy, outlived the degradation, and then
+  blocked the repaired behaviour; derive an enforcement rule from the producer's
+  writer source or specification, never from a sample of its output.
 
 ## Working with the maintainer
 
