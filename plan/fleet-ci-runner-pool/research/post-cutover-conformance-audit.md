@@ -27,7 +27,7 @@ for days.
 | Execution identity | HOLDS | Runner pods run `runAsNonRoot: true`, `runAsUser: 1000`, `capabilities: drop [ALL]`, `allowPrivilegeEscalation: false` |
 | Containerized execution — rootless | HOLDS | No container runs as root; no init containers; `privileged: false` |
 | Containerized execution — no daemon socket in a job | HOLDS | Runner pods mount zero `hostPath` volumes |
-| Event routing | HOLDS | All nine gating `ci.yml` workflows trigger only on `pull_request` and `push` |
+| Event routing | HOLDS | All nine gating `ci.yml` workflows carry a byte-identical `on:` block — `pull_request:` unqualified, plus `push:` restricted to `branches: [master]`. The clause's allowed set is same-repository pull-request events and pushes to a protected branch, and the branch restriction was read verbatim rather than inferred from the trigger name |
 | Event routing — auxiliary lane | HOLDS | `livespec-overseer`'s two extra self-hosted-routed workflows (`release-lane-watch`, `release-readiness`) trigger only on `schedule` and `workflow_dispatch`, neither reachable by a non-collaborator |
 | A host is proven by EXECUTING a job | HOLDS | The cluster has executed thousands of jobs; a fresh proof job ran green on 2026-08-21 (run `32501915647`) |
 | Shared pool label + host-unique label | **DRIFT — open** | Satisfied by the podman pool (`local-ci` shared, `poweredge` host-unique). NOT satisfiable by ARC, whose runners register with an empty label array. `livespec-s43svm.40` |
