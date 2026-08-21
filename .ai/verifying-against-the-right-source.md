@@ -1502,6 +1502,29 @@ its runtime shadow.
 > wrong in two unrelated ways is itself the argument for reading a listing's
 > definition rather than its output.
 
+**The mirror form bit this entry's own author, four hours after writing it.**
+Surveying the same endpoint during the podman decommission, I found 18
+registrations in `livespec-orchestrator-beads-fabro` carrying
+`[self-hosted, local-ci]`, reported them as surviving residue against a "no live
+trace remaining" criterion, and recommended deletion. Twenty minutes later they
+were gone — confirmed by two sessions independently, `{"total_count":0}`. Nobody
+established what removed them.
+
+That is this entry inverted: transient PRESENCE read as a persistent state,
+where the entry above is transient ABSENCE read as a structural one. Same
+endpoint, same population, same session, opposite direction. Knowing the trap
+and having just catalogued it did not prevent it, because the reading did not
+feel like an inference — 18 rows with a label set is a fact, and "these exist and
+should be deleted" arrives as a description rather than a prediction.
+
+What limited the damage was a rule from somewhere else entirely: destructive
+forge mutations belong to whoever holds the authorization, so it was REPORTED
+rather than acted on. Deletes issued against already-gone rows would have been
+merely noisy; the same reflex aimed at a live zero-label ARC row is the deletion
+this whole thread twice warned against. **A habit that routes the destructive
+step through someone else is worth more here than knowing the trap**, because
+the knowledge did not fire and the habit did.
+
 **The general form:** any registry of transient participants — ephemeral CI
 runners, autoscaled workers, connection pools, service-mesh endpoints, container
 task lists, leases — will show an empty or partial set at rest. Absence there is
