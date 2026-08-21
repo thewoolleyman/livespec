@@ -13,7 +13,7 @@
 # runner host requirements" → "Availability MUST NOT become a merge dependency"
 # requires a route back to hosted capacity that needs no specification
 # revision, because §"CI as a merge gate (branch protection)" makes a single
-# all-green gate the sole required check. ci-green needs both matrices, so a
+# all-green gate the sole required check. ci-green needs every check matrix, so a
 # matrix job routed to self-hosted capacity that is not there does not FAIL —
 # it sits in `queued`, ci-green never reports, and every merge waits on a check
 # that will not arrive. Defaulting to the self-hosted label made exactly that
@@ -31,8 +31,11 @@
 # routing hidden behind `needs.<job>.outputs.*` would read as "this workflow
 # has no self-hosted job" and silently disable the forbidden-trigger check.
 #
-# setup / ci-green / export-telemetry are pinned to ubuntu-latest so the gate
-# stays reportable even when self-hosted capacity is down.
+# setup / ci-green / export-telemetry / release-gate-pre-tag are pinned to
+# ubuntu-latest so the gate stays reportable even when self-hosted capacity is
+# down. release-gate-pre-tag is pinned for a second reason on top of that one:
+# it sits on the release critical path, so a runner-pool fault must not be able
+# to stall every release.
 #
 # Direct tool invocations (ruff, pyright, pytest, python3) in `run:` lines
 # are forbidden by check-no-direct-tool-invocation; every step delegates
@@ -854,6 +857,69 @@ jobs:
           HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC: ${{ secrets.HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC }}
         run: bash .github/scripts/export-ci-telemetry.sh
 
+  # R3 (plan fleet-delivery-lane-visibility, epic livespec-n33rwg): the release
+  # gate, moved PRE-TAG.
+  #
+  # WHY. `release-tag.yml` runs these same three targets on TAG PUSH — after the
+  # release object exists and siblings can already consume it. It can notice a
+  # bad release; it cannot prevent one. That is not theoretical: `Release tag`
+  # failed on FIVE consecutive published cuts, v0.34.2 through v0.37.0, and every
+  # one of those releases shipped anyway.
+  #
+  # This job runs the SAME targets with the SAME levers on the release-please PR
+  # — the commit that creates the tag — so a red gate blocks the release instead
+  # of reporting it afterwards. `release-tag.yml` is deliberately KEPT: it still
+  # validates the tagged commit, and the two together mean a release is gated
+  # before it exists and verified after.
+  #
+  # NO NEW REQUIRED CONTEXT, which deferral D2 forbids. This job joins
+  # `ci-green.needs` — the existing sole required context. On every ordinary PR
+  # the `if:` below skips it, and a SKIPPED dependency is not a failure to
+  # ci-green, so ordinary PRs are completely unaffected. Only a release PR is
+  # made stricter.
+  #
+  # It CANNOT ride check-python-batch, which already runs
+  # check-no-lloc-soft-warnings: that job is gated on `py_changed`, and a
+  # release-please PR touches CHANGELOG.md and version files but no `.py`, so it
+  # skips on precisely the PR this gate must cover. It also runs in warn mode,
+  # without the levers.
+  #
+  # Pinned to ubuntu-latest rather than the self-hosted pool, like setup /
+  # ci-green / export-telemetry. This gate runs once per release and sits on the
+  # release critical path, so a runner-pool fault (a scale set that does not
+  # exist, a wedged pod holding a replica slot — livespec-s43svm.30 /.38) must
+  # not be able to stall every release.
+  release-gate-pre-tag:
+    name: release-gate-pre-tag
+    needs: setup
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
+    runs-on: ubuntu-latest
+    # The same per-check levers release-tag.yml sets. Without them these targets
+    # warn-and-pass (or skip) and the gate would gate nothing.
+    env:
+      LIVESPEC_RUN_MUTATION: "true"
+      LIVESPEC_FAIL_IF_HEADING_COVERAGE_TODOS_EXIST: "true"
+      LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - check-mutation
+          - check-no-todo-registry
+          - check-no-lloc-soft-warnings
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pinned binaries via mise
+        uses: jdx/mise-action@v4
+
+      - name: Install Python dev deps via uv
+        run: uv sync --all-groups
+
+      - name: just ${{ matrix.target }}
+        run: just ${{ matrix.target }}
+
   # fleet-ci-aggregate-coverage (epic livespec-cf4bcu) slice 5: the single
   # all-green gate job. It `needs:` every check-bearing job and fails if any
   # dependency failed or was cancelled — a pure GitHub-expression gate (no
@@ -866,7 +932,7 @@ jobs:
   # it is intentionally absent from `needs:`.
   ci-green:
     name: ci-green
-    needs: [check-python, check-per-file-coverage, check-coverage, check-python-batch, check-metadata, check-metadata-batch]
+    needs: [check-python, check-per-file-coverage, check-coverage, check-python-batch, check-metadata, check-metadata-batch, release-gate-pre-tag]
     if: always()
     runs-on: ubuntu-latest
     steps:
