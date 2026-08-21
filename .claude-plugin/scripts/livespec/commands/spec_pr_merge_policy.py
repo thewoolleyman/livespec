@@ -1,4 +1,11 @@
 # pyright: reportUnknownMemberType=none, reportUnknownVariableType=none, reportUnknownArgumentType=none
+#
+# livespec-lloc-soft-band-owner: livespec-n33rwg.2
+# This file measures 230 LLOC, inside the 201-250 soft band. The marker
+# names who owes the refactor; it does NOT bless the debt. Carrying it is
+# permitted, not blessed, and removing this block is part of closing the
+# item above. Without a marker the file fails the release gate AFTER the
+# tag is pushed, which is how v0.34.2..v0.37.0 all published un-gated.
 """Spec pull-request merge-policy gate supervisor.
 
 `SPECIFICATION/non-functional-requirements.md` requires this derivation to

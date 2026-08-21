@@ -10,6 +10,13 @@
 # this pragma). reportArgumentType is left ON so non-HKT firings still
 # surface; HKT-related reportArgumentType call sites carry per-line
 # ignore markers attached to the offending argument's line below.
+#
+# livespec-lloc-soft-band-owner: livespec-n33rwg.1
+# This file measures 227 LLOC, inside the 201-250 soft band. The marker
+# names who owes the refactor; it does NOT bless the debt. Carrying it is
+# permitted, not blessed, and removing this block is part of closing the
+# item above. Without a marker the file fails the release gate AFTER the
+# tag is pushed, which is how v0.34.2..v0.37.0 all published un-gated.
 """Revise sub-command supervisor.
 
 Per and Plan
