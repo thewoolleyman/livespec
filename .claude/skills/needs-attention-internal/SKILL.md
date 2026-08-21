@@ -354,9 +354,34 @@ gh api repos/thewoolleyman/<repo>/actions/variables/CI_RUNNER_LABELS --jq '.valu
 
 A 404 (variable absent), or a value whose every label is hosted (each entry
 beginning `ubuntu`, `windows`, or `macos`), means the precondition is not engaged
-for that repo — emit nothing and make NO second call. On today's fleet every
-member is hosted-only or has no variable at all, so this signal normally costs
-one call per member and zero follow-ups.
+for that repo — emit nothing and make NO second call.
+
+**The guard no longer short-circuits, and an earlier version of this paragraph
+said it did.** It used to state that every member was hosted-only or had no
+variable, so the signal "normally costs one call per member and zero
+follow-ups". The k3s cutover falsified that. As of 2026-08-21 NINE of the ten
+fleet members route gating CI to a self-hosted k3s scale set — `livespec` →
+`livespec-local-ci-k3s`, `livespec-dev-tooling` → `livespec-dev-tooling-k3s`,
+and likewise for `livespec-overseer`, `livespec-driver-claude`,
+`livespec-driver-codex`, `livespec-driver-pi`,
+`livespec-orchestrator-git-jsonl`, `livespec-runtime`, and
+`livespec-console-beads-fabro`. Only `livespec-orchestrator-beads-fabro` has no
+variable at all. So the second step now runs for nine members, and this signal
+costs two calls per member rather than one.
+
+That stale sentence was not merely inaccurate — it described the signal as
+effectively a no-op, which is the reading that stops anyone running it. When it
+was finally run on 2026-08-21, `livespec-overseer` and `livespec-driver-pi` were
+BOTH sitting at `first_time_contributors` while gating merges on self-hosted
+capacity: the precise violation this signal exists to catch, live and unnoticed
+since their cutovers. Both were repaired to `all_external_contributors` the same
+day; the systemic gap — the cutover engages the precondition and verifies
+nothing — is tracked as `livespec-s43svm.39`.
+
+The general lesson, worth more than this one signal: **a guard whose cheapness
+is asserted from a measured snapshot of the world will silently become a guard
+that never fires when the world moves.** State what makes the guard short-circuit,
+not how often you expect it to.
 
 > **Branch on `gh`'s EXIT CODE, never on whether its output is empty.** On a 404
 > `gh api --jq '.value'` writes the error object
