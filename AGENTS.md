@@ -774,7 +774,16 @@ existing file):
   (semver names sort ahead of hash names, and the semver builds are the stale
   ones) while `find` is unstable (directory-entry order, three different first
   results across two sessions in two hours), so hash the candidate against the
-  build named in startup output rather than letting the filesystem choose.
+  build named in startup output rather than letting the filesystem choose, and —
+  the two entries where the query was WELL-FORMED but aimed at the wrong SCOPE
+  and the wrong HOST — a per-repository runner endpoint whose field is literally
+  named `total_count` answering a question about the whole fleet, so one repo's
+  75 read as a contradiction of the fleet's 482 when the eight rows sum to
+  exactly 482, and its companion, a `systemctl` check run on the machine the
+  session happens to occupy rather than the machine the claim is about, where
+  "not running here" was reported as evidence against a service that was active
+  on another host; state each count's scope in words before comparing two, and
+  run a service check on the named host, over ssh if needed.
 
 ## Working with the maintainer
 

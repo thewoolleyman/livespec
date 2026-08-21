@@ -1354,6 +1354,54 @@ turns "read the source" into "sample the source". Reading code is only evidence
 about a running system when you have established that the bytes you read are the
 bytes that run.
 
+### 36. A PER-REPO endpoint answering a FLEET question, and a service checked on the wrong HOST
+
+Two errors that compounded into a maintainer escalation, both of which read as
+diligence rather than as mistakes.
+
+A foreman was reconciling two claims about the fleet's self-hosted runners: this
+epic's records said **482**, and its own live query said **75**. It reported the
+discrepancy as unresolved and recommended nobody act on either number.
+
+**Neither number was wrong.** 75 was `livespec`'s row; 482 was the eight-repo
+fleet total; the eight rows sum to exactly 482. The query
+`gh api repos/thewoolleyman/livespec/actions/runners` is a **per-repository**
+endpoint, and its `total_count` field is named as though it were a total of
+something the reader chose. It is not — it totals that one repo. The right
+source for "how many runners does the FLEET have" is eight calls and a sum, or a
+fleet inventory; a single repo's endpoint cannot answer it and does not say so.
+
+**Then the corroborating check was run on the wrong machine.** To test the peer
+session's claim that `ci-runner-rate-replenisher.service` was re-minting runners,
+the foreman ran `systemctl` **locally** — on `vmi3006760`, where the foreman
+happens to run — and reported "that service isn't running on this machine." True,
+and irrelevant: the service lived on `poweredge-xubuntu`. It was `active` and had
+been for eight days. Absence on the host you happen to occupy is not absence.
+
+**Both errors share a shape: the query was well-formed, executed cleanly, and
+returned a real number about a real thing — just not the thing being asked
+about.** There is no error to notice. A wrong-scope answer looks exactly like a
+right one, which is why it survived three sessions and reached the maintainer as
+"work out what's actually true before anyone acts."
+
+A third conflation was found while verifying, and it is the one still live: a
+repo's `total_count` **mixes populations and moves**. ARC/k3s runners register
+with an EMPTY label array and autoscale, so `livespec` read 75, then 82, then 80
+within seconds — 75 stranded podman-era registrations plus a churning ARC count.
+Two readings minutes apart produce an apparent discrepancy that is only
+autoscaling.
+
+**Counter-move:** before comparing two counts, state the SCOPE of each in words
+("this is one repo's; that is eight repos' sum") — if you cannot, you are not yet
+comparing them. For any claim about a service, a file, or a process, name the
+HOST it is claimed to be on and run the check **there**, over ssh if needed;
+never let the session's own machine stand in for the machine under discussion.
+And when a count can contain more than one population, split it by a
+distinguishing field before reporting a total. `livespec-s43svm.42` exists to
+make this particular family structurally unavailable, by ensuring the only
+sanctioned way to answer "how many runners" prints scope, population, host, cap
+and fleet total together.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
