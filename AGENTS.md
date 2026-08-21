@@ -783,7 +783,15 @@ existing file):
   session happens to occupy rather than the machine the claim is about, where
   "not running here" was reported as evidence against a service that was active
   on another host; state each count's scope in words before comparing two, and
-  run a service check on the named host, over ssh if needed.
+  run a service check on the named host, over ssh if needed.,
+  and — the one entry where the query was well-formed, hit the right endpoint, and
+  returned a TRUE result — a point-in-time listing of an EPHEMERAL population
+  read as a structural property: ARC runners were declared absent from the
+  repository runners API when they are merely invisible while idle, because
+  permanent podman registrations filled the same listing with enough rows to
+  make it look complete, so re-running the query only reproduces the same wrong
+  answer; before generalising from any listing, ask whether a row would still be
+  there if nothing were happening.
 
 ## Working with the maintainer
 

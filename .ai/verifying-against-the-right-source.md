@@ -25,13 +25,15 @@ If the answer is no, the signal is not evidence, however green it looks.
 
 ## Recorded instances, by observation date — 1-8 on 2026-07-20, 9-12 on
 ## 2026-07-21, 13 on 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23
-## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32-33 on 2026-08-19;
+## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32-33 on 2026-08-19,
+## 37 on 2026-08-21;
 ## instances 1-16 span
 ## five repos and four independent operators
 
-Three gaps in that heading are deliberate rather than oversights. **Instances
-17, 18, and 31 carry no recorded observation date**, so none is assigned to them
-here — a first draft of this correction invented one for 17 and 18 and it was
+The gaps in that heading are deliberate rather than oversights. **Instances
+17, 18, 31, 34, 35 and 36 carry no recorded observation date**, so none is assigned
+to them here — verified by reading each entry for an inline date rather than
+inferred from the heading's own silence — a first draft of this correction invented one for 17 and 18 and it was
 backed out. Instance 31's RECORDING commit is dated 2026-08-12, and that is
 deliberately not promoted into the list above: a landing date is not an
 observation date, and quietly substituting one for the other is the same
@@ -1401,6 +1403,81 @@ distinguishing field before reporting a total. `livespec-s43svm.42` exists to
 make this particular family structurally unavailable, by ensuring the only
 sanctioned way to answer "how many runners" prints scope, population, host, cap
 and fleet total together.
+
+### 37. A point-in-time listing of an EPHEMERAL population, read as a structural property
+
+Every query here was well-formed. This one was well-formed, hit the right
+endpoint, and returned a TRUE result — and the inference drawn from it was still
+wrong, because the population being listed does not persist.
+
+A post-cutover audit asked whether ARC-provisioned CI runners can carry the
+labels the specification requires. It queried
+`repos/thewoolleyman/livespec-console-beads-fabro/actions/runners`, got back
+sixteen podman-era runners and no ARC members, and concluded that **"ARC runners
+do not appear in the repository runners API at all"** — a structural claim, and
+the load-bearing evidence in a filed spec proposal.
+
+They do appear. Measured on `thewoolleyman/livespec` while a job was running:
+
+```json
+{"total_count":1,"runners":[{"id":31096,
+  "name":"livespec-local-ci-k3s-d4j8r-runner-xndz6",
+  "status":"offline","busy":false,"labels":[]}]}
+```
+
+**Why the first read saw nothing, and why that was not a defect.** An ARC scale
+set runs `minRunners: 0` and its registrations are ephemeral — one job, then
+deregister. A member exists in that listing only while it is serving work. The
+audit happened to query a repository at a moment when no job was running. Three
+consecutive reads of the same endpoint during a single CI run returned three
+runners, then two, then one.
+
+**The asymmetry is what made it convincing.** The two populations in that one
+listing have completely different lifetimes:
+
+| Population | Lifetime | Visible when idle? |
+|---|---|---|
+| podman-era JIT registrations | permanent until deleted | **yes** — all 482 |
+| ARC scale-set registrations | one job, then gone | **no** |
+
+So the endpoint returned a full, confident, non-empty answer — sixteen rows —
+that was complete about the permanent population and silent about the ephemeral
+one. An empty result invites suspicion. A *populated* result does not, and this
+one was populated by exactly the runners the reader was not asking about.
+
+**What no amount of re-running would have fixed.** Repeating the query is the
+standard counter-move for a flaky read, and it is useless here: the same repo
+idle at 3pm and idle at 4pm returns the same wrong answer twice, and two
+agreeing reads feel like corroboration. The defect is not in the sampling rate.
+It is that a listing answers *"which members are registered RIGHT NOW"*, and the
+question asked was *"what can this pool's members do"* — a property of the
+mechanism, not of the current instant.
+
+**Counter-move: before generalising from a listing, establish the lifetime of
+what it lists.** One question settles it — *would this row still be here if
+nothing were happening?* If no, the listing is a sample of a moving population
+and cannot support a structural claim, however many times it agrees with itself.
+Sample it while the population is at its maximum (here: during a job), or read
+the mechanism's own definition (`minRunners`, ephemeral registration) instead of
+its runtime shadow.
+
+> **Neighbour, not duplicate.** Entry 36 above also lands on an ARC runner
+> listing, and reaches it from a different direction: it is about SCOPE (a
+> per-repo `total_count` read as a fleet total) and notes in passing that the
+> count moves because ARC autoscales. This entry is about LIFETIME — the
+> inference from a listing's contents to a STRUCTURAL property of the
+> mechanism. Both were found within an hour of each other by two sessions who
+> did not share a query. That two independent readings of one endpoint went
+> wrong in two unrelated ways is itself the argument for reading a listing's
+> definition rather than its output.
+
+**The general form:** any registry of transient participants — ephemeral CI
+runners, autoscaled workers, connection pools, service-mesh endpoints, container
+task lists, leases — will show an empty or partial set at rest. Absence there is
+evidence about the moment, never about the mechanism. And when a transient and a
+durable population share one listing, the durable one supplies enough rows to
+make the reading look complete.
+
 
 ## Why this file exists in livespec CORE
 
