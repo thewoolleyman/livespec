@@ -6,18 +6,21 @@ description: >-
   drift, stale cross-repo pins, cross-repo consistency drift, ledger
   status-conformance drift, a weakened fork-approval tier on a repo that
   routes gating CI to self-hosted capacity, a fleet member whose shared-library
-  pin has fallen more than one release behind, and a gating CI job queued against
-  a runner pool that cannot serve it — into one point-in-time attention
-  list. It mostly
+  pin has fallen more than one release behind, a gating CI job queued against
+  a runner pool that cannot serve it, and a release lane that is failing or a
+  release that should have happened and did not — into one point-in-time
+  attention list. It mostly
   reads signals already computed elsewhere (GitHub Actions for CI, the dev-tooling
-  conformance and pin-freshness checks, `/livespec:doctor` for drift); the four
+  conformance and pin-freshness checks, `/livespec:doctor` for drift); the five
   exceptions are the ledger status-conformance scan, which runs a cheap per-tenant
   `ledger-normalize --dry-run` directly because no scheduled workflow computes it,
   the fork-approval tier, which is a live repo setting no workflow can read
   from CI, the pin-lag signal, which reads each member's committed pin over
-  `git` because the machinery that would report it is exactly what fails, and the
+  `git` because the machinery that would report it is exactly what fails, the
   pool-health signal, which classifies a stalled gating job against the live k3s
-  cluster because a workflow token can never hold cluster credentials.
+  cluster because a workflow token can never hold cluster credentials, and the
+  release-lane signal's absence half, which is computed here because no workflow
+  can observe a run that never ran.
   All are normalized into the shared `attention_item` shape with `kind: "internal"`.
   This is the
   internal sibling of the shipped product `needs-attention`: the dividing test
@@ -111,7 +114,8 @@ workflows and reports a misleading green.
 >
 > ```python
 > # genquery.py — emits the one-call fleet query.
-> # `ci` for Signal 1, `prs` for Signal 3, `queued` for Signal 8.
+> # `ci` for Signal 1, `prs` for Signal 3, `queued` for Signal 8,
+> # `release` for Signal 9.
 > import json, re, sys
 > from pathlib import Path
 >
@@ -124,6 +128,13 @@ workflows and reports a misleading green.
 >     "queued": (f"defaultBranchRef {{ target {{ ... on Commit {{ {QUEUED_RUNS} }} }} }} "
 >                f"pullRequests(states: OPEN, first: 20) {{ nodes {{ number headRefName "
 >                f"commits(last: 1) {{ nodes {{ commit {{ {QUEUED_RUNS} }} }} }} }} }}"),
+>     "release": ("defaultBranchRef { name target { ... on Commit { oid } } } "
+>                 "latestRelease { tagName createdAt tagCommit { oid checkSuites"
+>                 "(first: 20) { nodes { conclusion workflowRun { workflow { name "
+>                 "} } } } } } "
+>                 'rel: ref(qualifiedName: "refs/heads/release") { target { oid } } '
+>                 "pullRequests(states: OPEN, first: 20) { nodes { number title "
+>                 "createdAt mergeable } }"),
 > }
 >
 > raw = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc").read_text()
@@ -272,22 +283,29 @@ whose pins you want covered, or scope it to the repos the sweep targets.
 
 > **KNOWN COVERAGE GAPS — this skill does NOT currently see these, and the
 > omission is recorded rather than implied away.** All three were found on
-> 2026-08-11 by ad-hoc sweeps, not by this skill:
+> 2026-08-11 by ad-hoc sweeps, not by this skill. **Two are now CLOSED by
+> Signal 9** and are kept here, struck through in prose rather than deleted, so
+> the record of what was once invisible survives:
 >
-> - **A failing RELEASE gate.** Signal 1 reads only the workflow named `CI`.
->   livespec's release gate is `release-tag.yml`, which fires on TAG PUSH; it
->   failed on four consecutive published releases (v0.29.0 → v0.30.0) while every
->   `CI` run stayed green. Nothing here would have said so.
-> - **A blocked `release-please` PR.** Signal 3 matches only bump branches, so a
->   release PR stuck on a red check is invisible. One sat open **18.6 days** in
->   `livespec-console-beads-fabro` with auto-merge armed and unable to fire.
-> - **An adopter's gating workflow under a different name.** The fleet is
->   non-uniform: `resume`'s gating workflow is `check.yml`, not `ci.yml`.
+> - **~~A failing RELEASE gate.~~ CLOSED by Signal 9 (2026-08-21.)** Signal 1
+>   reads only the workflow named `CI`. livespec's release gate is
+>   `release-tag.yml`, which fires on TAG PUSH; it failed on four consecutive
+>   published releases (v0.29.0 → v0.30.0) while every `CI` run stayed green.
+>   It then did it AGAIN — five consecutive cuts, v0.34.2 → v0.37.0 — which is
+>   what finally motivated Signal 9.
+> - **~~A blocked `release-please` PR.~~ CLOSED by Signal 9 (2026-08-21.)**
+>   Signal 3 matches only bump branches, so a release PR stuck on a red check is
+>   invisible. The `livespec-console-beads-fabro` instance that sat **18.6 days**
+>   when this gap was written had reached **30 days** by 2026-08-22.
+> - **An adopter's gating workflow under a different name. STILL OPEN.** The
+>   fleet is non-uniform: `resume`'s gating workflow is `check.yml`, not
+>   `ci.yml`. Signal 9 does not close this — it reads release lanes, not gating
+>   lanes, and Signal 1 still hardcodes the name `CI`.
 >
-> Adding signals for these is a design decision, not a bug fix, and belongs with
-> `livespec-39h1` (whose thesis is precisely that nothing reads these). Until then,
-> **a clean run of this skill means "the eight signals are green", not "the fleet is
-> healthy"** — say the former when reporting.
+> The remaining gap is a design decision, not a bug fix, and belongs with
+> `livespec-39h1` (whose thesis is precisely that nothing reads these). Until
+> then, **a clean run of this skill means "the nine signals are green", not "the
+> fleet is healthy"** — say the former when reporting.
 
 ### Signal 4 — cross-repo consistency drift
 
@@ -744,6 +762,90 @@ admitted-versus-quota false positive recorded above; but neither is a positive
 observation of (d), and the first real one should be journalled on
 `livespec-s43svm.41` when it happens.
 
+### Signal 9 — a release lane is failing, or a release that should have happened did not
+
+A merged change is not a delivered one. This signal answers the delivery
+question directly: **did the last release publish through a passing gate, and is
+a release that should have happened actually happening?**
+
+It exists because BOTH halves have now failed unread, in different repos, at the
+same time:
+
+- **`livespec`**: `Release tag` failed on FIVE consecutive published cuts,
+  v0.34.2 → v0.37.0. The releases published anyway — the gate fires on tag push,
+  after the release object exists — so nothing was blocked and nothing was read.
+- **`livespec-console-beads-fabro`**: no release at all since `v0.3.0`
+  (2026-07-21). Release PR #404 sat MERGEABLE-but-BLOCKED for **30 days**.
+
+**THE TWO HALVES ARE COMPLEMENTARY AND NEITHER SUBSUMES THE OTHER. This is the
+whole reason the signal has two shapes, so do not collapse them:**
+
+|  | Releases still happening? | Gate result | Caught by |
+|---|---|---|---|
+| `livespec` | YES — tags kept advancing | RED | Shape A only |
+| `livespec-console-beads-fabro` | NO — none for 30 days | n/a, never ran | Shape B only |
+
+A lane-failure detector would have stayed silent on the console (no failing run
+exists — the run never happens). An absence detector would have stayed silent on
+`livespec` (releases were publishing on schedule; only the gate was red).
+
+**SHAPE A — the last release published through a failing gate.** The release
+gate's check suite attaches to the TAG COMMIT, so it is reachable from the
+one-call screen. This was NOT obvious: the fleet-sweep guidance assumed release
+run history needed the per-repo REST Actions endpoint, and it does for *history*
+— but for "how did the latest release's gate conclude?" GraphQL answers it with
+no loop and no per-repo call.
+
+**SHAPE B — a release that should have happened did not.** Three absence
+conditions, none of which involve a failing run:
+
+  - a `release-please` PR (title starts `chore(master): release`) open beyond a
+    threshold — treat **7 days** as attention-worthy, since a healthy one merges
+    in minutes;
+  - `defaultBranchRef` HEAD far ahead of `latestRelease`;
+  - a repo whose `release` ref has not advanced to match.
+
+**ONE CALL, NO LOOP.** Reuse Signal 1's `genquery.py` with the `release`
+selection — same generator, same member list, so this signal cannot silently
+fork from the manifest:
+
+```bash
+python3 genquery.py release > /tmp/q.graphql
+gh api graphql -f query="$(cat /tmp/q.graphql)" > /tmp/fleetrel.json
+```
+
+Parse the JSON in a SEPARATE call. A comprehension in the same command as the
+`gh` invocation is denied — the matcher keys on a loop token at command
+position, and a `for` at the start of a line inside a quoted `python3 -c` counts.
+That fired three times while this signal was being authored, on commands
+containing exactly one un-looped `gh` read. Splitting the PARSING out is the
+sanctioned move (it performs zero network calls, so it cannot be evasion);
+splitting the READS across calls would be evasion. See
+`.ai/ci-gate-discipline.md`.
+
+**WHAT THIS SIGNAL CANNOT SEE, recorded rather than implied away:**
+
+- **Lane HISTORY.** Shape A reads only the LATEST release's gate. It cannot say
+  "9 consecutive cuts failed" or "last green was 16 days ago". That depth needs
+  per-workflow run history, which is REST-only and per-repo. The prior art is
+  `livespec-overseer`'s `scripts/release-lane-watch.py` +
+  `overseer/release_lane_watch.py` (`overseer-hgq4wi.15`): stdlib-`urllib`, the
+  workflow-scoped `actions/workflows/<file>/runs` endpoint, three-valued
+  (0 healthy / 1 failing / 2 **cannot measure**), with `lane_state()` a pure
+  function of run history and therefore replay-testable. **Propagating that
+  per-repo watcher fleet-wide is the depth half of this signal and is tracked
+  under `livespec-n33rwg`. Do not reimplement it here.**
+- **Repos that publish no releases.** The four adopters (`openbrain`,
+  `dolt-server`, `resume`, `homelab`) carry no tags and no release branch. They
+  consume rather than publish, so both shapes are meaningless for them and they
+  are OUT OF SCOPE — not silently green.
+- **Whether a stalled release SHOULD have cut.** A repo with only
+  `docs:`/`chore:` commits since its last tag is correctly not releasing.
+  Shape B's HEAD-ahead condition will read that as lag. That is not a false
+  positive to suppress — it is precisely the commit-type deliverability defect
+  (a shipped-surface fix under a non-releasing commit type reaches zero running
+  seats), tracked as carrier R6 under `livespec-n33rwg`.
+
 ## Shaping each signal into an `attention_item`
 
 Normalize every fired signal into the shared shape (defined in
@@ -755,7 +857,11 @@ Normalize every fired signal into the shared shape (defined in
   `internal:pin-stale:livespec`, `internal:drift:livespec-console-beads-fabro`,
   `internal:ledger-drift:livespec`, `internal:fork-approval:livespec`.
   For an open bump PR, key on the PR to stay stable across runs, e.g.
-  `internal:pin-stale:livespec#916`. For per-item ledger granularity, suffix the
+  `internal:pin-stale:livespec#916`. For the release-lane signal, key the two
+  shapes apart so a repo can carry both at once, e.g.
+  `internal:release-gate-red:livespec` (Shape A, the last release published
+  through a failing gate) and `internal:release-stalled:livespec-console-beads-fabro`
+  (Shape B, a release that should have happened and did not). For per-item ledger granularity, suffix the
   work-item id, e.g. `internal:ledger-drift:livespec:livespec-3lev.8`.
   - **Grammar note (verified).** `validate_attention_item_id` in
     `livespec-runtime` currently accepts only the two-part prefixes `impl` /
@@ -780,7 +886,10 @@ Normalize every fired signal into the shared shape (defined in
   the cause decides — `high` for a pool that does not exist or holds a wedged
   runner (the job can never run, or is blocked by a dead replica), `low` for
   genuine capacity exhaustion (the system is correctly saying "wait"), and
-  nothing at all for a job that is simply scaling up.
+  nothing at all for a job that is simply scaling up; `high` for a release lane
+  in either shape — a red gate means every consumer is installing an artifact
+  that was never validated, and a stalled release means siblings cannot consume
+  this repo's work at all.
 - **`summary`** — one line naming the repo and what broke, e.g.
   "livespec-runtime CI is red on master (run 289…)".
 - **`source_ref`** — `{repo: "<repo>", path: <workflow-or-file>|null,
