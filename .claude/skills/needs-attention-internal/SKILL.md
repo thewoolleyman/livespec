@@ -5,16 +5,19 @@ description: >-
   but an end user does NOT control — CI red on any fleet repo, fleet-conformance
   drift, stale cross-repo pins, cross-repo consistency drift, ledger
   status-conformance drift, a weakened fork-approval tier on a repo that
-  routes gating CI to self-hosted capacity, and a fleet member whose shared-library
-  pin has fallen more than one release behind — into one point-in-time attention
+  routes gating CI to self-hosted capacity, a fleet member whose shared-library
+  pin has fallen more than one release behind, and a gating CI job queued against
+  a runner pool that cannot serve it — into one point-in-time attention
   list. It mostly
   reads signals already computed elsewhere (GitHub Actions for CI, the dev-tooling
-  conformance and pin-freshness checks, `/livespec:doctor` for drift); the three
+  conformance and pin-freshness checks, `/livespec:doctor` for drift); the four
   exceptions are the ledger status-conformance scan, which runs a cheap per-tenant
   `ledger-normalize --dry-run` directly because no scheduled workflow computes it,
   the fork-approval tier, which is a live repo setting no workflow can read
-  from CI, and the pin-lag signal, which reads each member's committed pin over
-  `git` because the machinery that would report it is exactly what fails.
+  from CI, the pin-lag signal, which reads each member's committed pin over
+  `git` because the machinery that would report it is exactly what fails, and the
+  pool-health signal, which classifies a stalled gating job against the live k3s
+  cluster because a workflow token can never hold cluster credentials.
   All are normalized into the shared `attention_item` shape with `kind: "internal"`.
   This is the
   internal sibling of the shipped product `needs-attention`: the dividing test
@@ -30,13 +33,15 @@ description: >-
 
 You are `needs-attention-internal`: a **maintainer-only, local/unsynced**
 awareness surface for the livespec fleet's own *development* health. When
-invoked, you gather seven dev-tooling-facing signals across the fleet and compose
+invoked, you gather eight dev-tooling-facing signals across the fleet and compose
 them into one flat, point-in-time attention list. Four are statuses another
-system already produces (you READ them cheaply); the remaining two — ledger
-status-conformance drift and the fork-approval tier — you determine yourself
-with a cheap per-tenant or per-repo query, because nothing else computes them
-(the ledger scan runs only inside a dispatch, and no CI workflow can read a
-repo's fork-approval setting at all). Your job is to gather each
+system already produces (you READ them cheaply); the other four — ledger
+status-conformance drift, the fork-approval tier, a member's pin lag, and
+pool health behind a queued gating job — you determine yourself, because nothing
+else computes them (the ledger scan runs only inside a dispatch, no CI workflow
+can read a repo's fork-approval setting at all, the pin-lag machinery is exactly
+what fails when a pin lags, and the pool classification needs a cluster read no
+workflow token can make). Your job is to gather each
 cheaply, normalize it into the shared `attention_item` shape, and render it for
 the maintainer.
 
@@ -46,7 +51,7 @@ sibling — the product `needs-attention` (in both orchestrator plugins) — ans
 skill answers the complementary question a fleet maintainer owns: "is anything
 wrong with the fleet's own development machinery right now?"
 
-## The product-vs-internal dividing test (why these seven are here)
+## The product-vs-internal dividing test (why these eight are here)
 
 The single test that sorts a signal into product-vs-internal is: **does an end
 user have actionable control over it?**
@@ -57,11 +62,13 @@ user have actionable control over it?**
 - **No → internal** (this skill): livespec CI is red, fleet-conformance has
   drifted, a cross-repo pin is stale, two repos have drifted out of consistency,
   a tenant's ledger holds a work-item at a non-lifecycle status, a repo routing
-  gating CI to self-hosted capacity has had its fork-approval tier weakened. An
+  gating CI to self-hosted capacity has had its fork-approval tier weakened, a
+  member's shared-library pin has fallen behind, a gating job is queued against a
+  pool that cannot serve it. An
   end user cannot act on any of these — only a fleet maintainer can — so they
   live here, local and unsynced, never shipped.
 
-## The seven internal signals and how to gather each
+## The eight internal signals and how to gather each
 
 Read the fleet member list LIVE from
 `/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
@@ -103,14 +110,20 @@ workflows and reports a misleading green.
 > Python — no `gh`, so it trips nothing):
 >
 > ```python
-> # genquery.py — emits the one-call fleet query. `ci` for Signal 1, `prs` for Signal 3.
+> # genquery.py — emits the one-call fleet query.
+> # `ci` for Signal 1, `prs` for Signal 3, `queued` for Signal 8.
 > import json, re, sys
 > from pathlib import Path
 >
 > OWNER = "thewoolleyman"
+> QUEUED_RUNS = ("checkSuites(first: 5) { nodes { createdAt "
+>                "checkRuns(first: 30, filterBy: {status: QUEUED}) { nodes { name } } } }")
 > SELECTIONS = {
 >     "ci":  "defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } } } }",
 >     "prs": "pullRequests(states: OPEN, first: 50) { nodes { number headRefName createdAt } }",
+>     "queued": (f"defaultBranchRef {{ target {{ ... on Commit {{ {QUEUED_RUNS} }} }} }} "
+>                f"pullRequests(states: OPEN, first: 20) {{ nodes {{ number headRefName "
+>                f"commits(last: 1) {{ nodes {{ commit {{ {QUEUED_RUNS} }} }} }} }} }}"),
 > }
 >
 > raw = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc").read_text()
@@ -273,7 +286,7 @@ whose pins you want covered, or scope it to the repos the sweep targets.
 >
 > Adding signals for these is a design decision, not a bug fix, and belongs with
 > `livespec-39h1` (whose thesis is precisely that nothing reads these). Until then,
-> **a clean run of this skill means "the seven signals are green", not "the fleet is
+> **a clean run of this skill means "the eight signals are green", not "the fleet is
 > healthy"** — say the former when reporting.
 
 ### Signal 4 — cross-repo consistency drift
@@ -505,6 +518,199 @@ constructed, and persists until .36 is resolved. Before .34's fix, the same
 signal would have emitted five items across two release cycles, which is
 precisely the outage it exists to have caught.
 
+### Signal 8 — a gating job is queued against a pool that cannot serve it
+
+A gating CI job sitting `queued` with no runner assigned has at least FOUR
+distinct causes, and at the moment an operator looks they are indistinguishable:
+
+  (a) **Queued and scaling up.** NORMAL. Observed gate times on this cluster run
+      4s to 293s, so anything inside a few minutes is the system working.
+  (b) **The pool does not exist.** The job requests a scale set no cluster
+      provides. GitHub never assigns it and never errors — it queues forever.
+      Observed live as `livespec-s43svm.38`.
+  (c) **The pool holds a wedged runner.** A pod is `Running` and `ready=true`
+      but its server-side registration is gone, so it occupies the replica slot
+      the queued job's own demand created and never claims work. Observed live
+      as `livespec-s43svm.30`.
+  (d) **Genuine capacity exhaustion.** Kueue has pending workloads and the
+      cohort has nothing left to borrow.
+
+This is ONE signal answering "does this queued job's pool exist, is it
+reachable, and can it actually serve this job — and if not, which cause is it?"
+It replaces three proposed half-detectors (`.30` scope item 2, `.38`'s detection
+half, and `.9`'s re-derivation), because three partial answers to one question
+would each look authoritative.
+
+**Two-step and guarded, in Signal 6's shape.** Step one is GitHub-only; step two
+is the cluster read.
+
+**STEP 1 — GUARD, one call, no loop.** Reuse Signal 1's `genquery.py` with a
+third selection. The guard short-circuits when the fleet-wide query returns ZERO
+queued check runs. That is the CONDITION — not a claim about how often it holds.
+Do not write "on today's fleet this is normally free" into this section: Signal 6
+carried exactly that sentence, the k3s cutover falsified it, and the signal went
+unrun through a live violation (`livespec-s43svm.39`).
+
+Signal 1's `genquery.py` already carries the `queued` selection — one generator,
+one member list, so this signal cannot silently fork from the manifest:
+
+```bash
+python3 genquery.py queued > /tmp/q.graphql
+gh api graphql -f query="$(cat /tmp/q.graphql)" > /tmp/queued.json
+```
+
+**The GraphQL answers "is anything queued", NOT "for how long".** A queued
+`CheckRun` carries no reliable queue timestamp, and the enclosing suite's
+`createdAt` is the suite's age, not the run's wait — on an old PR whose checks
+were re-run, those differ by days. Step 1 is therefore a screen, not a
+measurement. Age comes from step 1b, and only for the repos step 1 named.
+Verified live 2026-08-21: the query is accepted, `filterBy: {status: QUEUED}` is
+a valid `CheckRunFilter` field, and it returns empty `nodes` when nothing is
+queued.
+
+**STEP 1b — AGE AND POOL, per firing repo only.** For each repo step 1 named:
+
+```bash
+gh api "repos/thewoolleyman/<repo>/actions/runs?status=queued&per_page=20" \
+  --jq '.workflow_runs[] | "\(.id) \(.name) \(.run_started_at)"'
+gh api "repos/thewoolleyman/<repo>/actions/runs/<run-id>/jobs" \
+  --jq '.jobs[] | select(.status != "completed") | {name, status, started_at, runner_name, labels}'
+```
+
+`labels` is the RESOLVED `runs-on` — verified live 2026-08-21, a real job
+returned `"labels": ["livespec-dev-tooling-k3s"]`. Use it directly. Do NOT try
+to derive the requested pool by parsing workflow YAML: across the fleet's 155
+committed `runs-on` declarations, essentially every one is the indirection
+`${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}`, so the file
+never names a pool. The variable does, and the resolved job record does.
+
+Fire only on jobs past **300 seconds** without a runner. That threshold is the
+top of the observed 4–293s gate range, rounded up; re-derive it if the range
+moves rather than treating 300 as a constant.
+
+**STEP 2 — CLASSIFY**, in this order, because each test is cheaper and more
+decisive than the next.
+
+**(b) POOL DOES NOT EXIST — test first; it is static and unambiguous.**
+
+```bash
+ssh poweredge-xubuntu 'sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl \
+  -n arc-runners get autoscalingrunnersets \
+  -o jsonpath="{range .items[*]}{.metadata.name}{\"\n\"}{end}"'
+```
+
+No match for the job's `labels` → cause (b), urgency **high**: this job can
+never run.
+
+> **One allowance, and it is not a bug.** `[self-hosted, livespec-orchestrator]`
+> in `livespec-orchestrator-beads-fabro`'s `acceptance-live-golden-master.yml` is
+> the deliberately-privileged GATE RUNNER on the separate podman/JIT path. It is
+> not an ARC scale set, never appears in `autoscalingrunnersets`, and must NEVER
+> be reported as cause (b). Verified 2026-08-21: it is the ONLY literal
+> self-hosted `runs-on` in the fleet — every other repo reaches its pool through
+> `CI_RUNNER_LABELS`.
+
+A cheap PREFLIGHT of the same comparison, needing no queued job, is each repo's
+variable against that same list. Measured 2026-08-21: nine of ten members route
+to a k3s scale set and all nine match a live one; `livespec-orchestrator-beads-fabro`
+has no variable (404). Two live scale sets are referenced by nobody —
+`local-ci-k3s` (the orphan, `livespec-s43svm.28`) and `poweredge-xubuntu-k3s`.
+Unreferenced is fine; unresolvable is cause (b).
+
+> **Read that 404 with the exit status, never the output.** Running the variable
+> read across members with `$(gh api … || echo '(absent)')` printed BOTH the
+> error object and the fallback on the one absent member, because `gh api --jq`
+> writes `{"message":"Not Found",…,"status":"404"}` to STDOUT before exiting
+> non-zero. Reproduced live 2026-08-21. Use
+> `if ! value=$(gh api … 2>/dev/null); then` — the same rule Signal 6 states.
+
+**(c) POOL HOLDS A WEDGED RUNNER — consume the host sweeper; do NOT reimplement.**
+`scan-wedged-runners.timer` already sweeps every five minutes for the
+`Registration ... was not found` signature.
+
+```bash
+ssh poweredge-xubuntu 'sudo journalctl -u scan-wedged-runners.service \
+  --since "1 hour ago" --no-pager' | grep -E "pod=.*scale-set=|ESCALATION"
+ssh poweredge-xubuntu 'sudo cat /var/lib/ci-runner-k3s/wedged-runner-streak'
+```
+
+A `pod=… scale-set=<the job's pool>` line inside the window → cause (c),
+urgency **high**.
+
+> **The timer runs in `--clear` mode** (verified live 2026-08-21:
+> `ExecStart=…/scan-wedged-runners.sh --clear`), so by the time you look the pod
+> is usually already deleted and ARC has replaced it. The JOURNAL is the record,
+> not the cluster — querying pods finds nothing and proves nothing.
+>
+> **The streak file counts CONSECUTIVE sweeps, not occurrences.** The two real
+> wedges of 2026-08-19 landed 15 minutes apart, so each recorded
+> `consecutive runs with findings: 1` and the file now reads `0`. A zero streak
+> means "the last sweep was clean", never "this has not happened".
+
+**(d) CAPACITY EXHAUSTION — Kueue-side, not GitHub-side.**
+
+```bash
+ssh poweredge-xubuntu 'sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl \
+  get clusterqueue -o custom-columns=NAME:.metadata.name,PENDING:.status.pendingWorkloads,ADMITTED:.status.admittedWorkloads'
+ssh poweredge-xubuntu 'sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get node \
+  -o jsonpath="{.items[*].status.allocatable.ci-runner\.io/churn-slot}"'
+```
+
+Pending workloads on the repo's ClusterQueue with no borrowable cohort capacity
+→ cause (d), urgency **low**: the system is correctly saying "wait".
+
+**(a) SCALING UP — the residual.** None of (b), (c), (d) fired → scaling up.
+Emit nothing.
+
+**Two fields that look like health readings and are not.** ARC's "Calculated
+target runner count" log line reports `currentRunnerCount`, which is
+`w.targetRunners` — the listener's own last-patched target, not an observation of
+live runners. And ARC 0.14.2's `updateRunStatusFromPod` derives EphemeralRunner
+status from pod phase and readiness only; it never re-validates a Running
+runner's registration, which is why the host-side sweeper exists at all. Neither
+can answer (c).
+
+**`attention_item` shape.** `id` is `internal:pool-health:<repo>:<run-id>` —
+keyed on the run so it stays stable while the job remains queued and does not
+collide when two repos stall at once. `urgency` per cause above. `summary` names
+the repo, the pool, the wait, and the CAUSE, e.g. "livespec-driver-pi: job
+`check-types` queued 22m against `livespec-driver-pi-k3s`; pool holds a wedged
+runner (cleared 21:05)". `source_ref` is `{repo: "<repo>", path: null,
+work_item: null}`. `handoff` is `kind: "shell"`, chosen by cause: for (b) the
+`set-ci-runner-labels.sh --dry-run` that shows the mis-set pool; for (c)
+`ssh poweredge-xubuntu 'sudo journalctl -u scan-wedged-runners.service -n 50 --no-pager'`;
+for (d) the `kubectl get clusterqueue` above.
+
+**This signal adds a new dependency class to this skill, deliberately and
+visibly.** Signals 1–7 read GitHub, `git`, and `bd`. This one also needs **SSH to
+`poweredge-xubuntu` and `kubectl`** against the k3s cluster. That is a real
+widening, stated here rather than slipped in. When the host is unreachable, this
+signal FAILS SOFT like every other: emit
+`skipped: pool-health (poweredge-xubuntu unreachable: <reason>)`, keep whatever
+step 1/1b established, and never abort the scan. A job queued past the threshold
+with an unreachable cluster is reported as UNCLASSIFIED, not as healthy — the
+absence of a classification is itself worth the maintainer's attention.
+
+**Why here and not a CI gate.** The classification needs a cluster read, so a
+CI-resident detector would mean injecting cluster credentials into a job — the
+same escalation Signal 6 rejects for the fork-approval endpoint, and the opposite
+of the Credential-separation clause. The maintainer's shell already holds both
+credentials. And a stuck job is not a property of a CHANGE, so no per-commit
+check should assert it; it is a property of the world, which is what this surface
+is for. This answer and Signal 6's must stay consistent — if one is revisited,
+revisit both (`livespec-s43svm.39`, `livespec-s43svm.41`).
+
+**Live-exercised 2026-08-21.** Step 1 accepted and returning; step 1b's `labels`
+field confirmed on a real job; the (b) preflight run across all ten members
+against the live 11-scale-set list with no mismatch; the (c) consumer run against
+the host journal, which holds THREE real findings in fourteen days — the two
+genuine wedges of 2026-08-19 on `livespec-driver-claude-k3s` and
+`livespec-overseer-k3s` (`livespec-s43svm.30`), plus one deliberate
+`wedgeprobe-timer` probe. Those are real sweeper output, not fixtures. The (d)
+read returned all ten ClusterQueues at zero pending against 16 allocatable
+churn-slots — an idle cluster, so cause (d) has not been observed firing and this
+section does not claim it has.
+
 ## Shaping each signal into an `attention_item`
 
 Normalize every fired signal into the shared shape (defined in
@@ -537,7 +743,11 @@ Normalize every fired signal into the shared shape (defined in
   remappable ledger drift (`open`/`in_progress`, one-command fixable) and `high`
   for a residual ledger drift (a non-lifecycle status needing a lane decision);
   `high` for a weakened fork-approval tier (a live repo is gating merges on
-  self-hosted capacity that fork-controlled code can reach).
+  self-hosted capacity that fork-controlled code can reach); for pool health,
+  the cause decides — `high` for a pool that does not exist or holds a wedged
+  runner (the job can never run, or is blocked by a dead replica), `low` for
+  genuine capacity exhaustion (the system is correctly saying "wait"), and
+  nothing at all for a job that is simply scaling up.
 - **`summary`** — one line naming the repo and what broke, e.g.
   "livespec-runtime CI is red on master (run 289…)".
 - **`source_ref`** — `{repo: "<repo>", path: <workflow-or-file>|null,
@@ -566,15 +776,16 @@ repo must never abort the whole composition. This mirrors the fleet's
 ## Rendering — Markdown for the maintainer
 
 Render a Markdown list grouped by signal (CI / conformance / pins / drift /
-ledger / fork-approval) or by urgency (high first). Under each group, one row per item: the
+ledger / fork-approval / pin-lag / pool-health) or by urgency (high first). Under each group, one row per item: the
 summary, the owning repo named explicitly, and the ready-to-run
 `handoff.command`. Put any `skipped:` notes in their own short section so nothing
 strands silently.
 
 **The healthy case emits nothing.** When every fleet CI run is green,
 conformance passed, no pins are stale / no bump PRs are open, there is no drift to
-chase, every tenant's ledger is status-conformant, and no repo routing gating CI
-to self-hosted capacity has a weakened fork-approval tier, say so in one line
+chase, every tenant's ledger is status-conformant, no repo routing gating CI
+to self-hosted capacity has a weakened fork-approval tier, no member's pin has
+fallen behind, and no gating job is queued past the threshold, say so in one line
 ("fleet-dev is green — nothing internal needs attention") and stop. Emitting an
 empty list is the normal, expected outcome most of the time.
 
