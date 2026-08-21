@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/thewoolleyman/livespec/compare/v0.37.0...v0.37.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **release-gate:** fail an unowned LLOC soft-band file at per-commit time ([d2e857c](https://github.com/thewoolleyman/livespec/commit/d2e857c75a0af8fb78c05e0ba7dab03bc0420f64))
+
 ## [0.37.0](https://github.com/thewoolleyman/livespec/compare/v0.36.0...v0.37.0) (2026-08-20)
 
 
