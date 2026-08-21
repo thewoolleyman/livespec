@@ -9,6 +9,17 @@
   // reviewable opt-out. Written explicitly at install time so the obligation is
   // readable here rather than inferred from a verifier failure.
   "worktree_discipline": { "pack": "required" },
+  // Foreman human-valve disposition. Opts this repo's foreman seat into the
+  // CONSENSUS tier: a human valve or blocked session may be disposed by a
+  // unanimous review panel through foreman-act, instead of being surfaced
+  // report-only and left to sit. Enabled 2026-08-21 at the maintainer's
+  // explicit fleet-wide direction. The resolver's fail-closed default is
+  // "report-only", so an UNSET repo silently surfaces valves and never acts
+  // on them -- which is what this key exists to prevent. The contract floors
+  // are NOT relaxed: dissent, insufficient information, hard-risk, and
+  // human-gated-by-design decisions still escalate regardless of any panel
+  // verdict.
+  "livespec-overseer": { "foreman_valve_disposition": "consensus" },
   "template": "livespec",
   "spec_root": "SPECIFICATION",
   // ACTIVE spec_governance overrides (maintainer-directed fleet-wide autonomy
