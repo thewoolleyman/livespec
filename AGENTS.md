@@ -783,7 +783,7 @@ existing file):
   session happens to occupy rather than the machine the claim is about, where
   "not running here" was reported as evidence against a service that was active
   on another host; state each count's scope in words before comparing two, and
-  run a service check on the named host, over ssh if needed.,
+  run a service check on the named host, over ssh if needed,
   and — the one entry where the query was well-formed, hit the right endpoint, and
   returned a TRUE result — a point-in-time listing of an EPHEMERAL population
   read as a structural property: ARC runners were declared absent from the
@@ -791,7 +791,18 @@ existing file):
   permanent podman registrations filled the same listing with enough rows to
   make it look complete, so re-running the query only reproduces the same wrong
   answer; before generalising from any listing, ask whether a row would still be
-  there if nothing were happening.
+  there if nothing were happening, and — the one entry about acting on a
+  WARNING, recorded as a coda to the scope/host entry because it is that
+  entry's own recording going wrong — three sessions ran the same check-master
+  move within an hour, and the third is the dangerous one: distrusting a merge
+  or a report costs one cheap re-derivation, while distrusting a warning means
+  looking obstinate toward a peer who has just been right twice AND declining
+  the safe-looking action (close the PR, don't merge it), so compliance reads as
+  diligence exactly when the warning is wrong; here the warning was right about
+  the symptom (two identically-numbered entries would have shipped) and wrong
+  about the cause (they were distinct findings, not duplicates), so acting on it
+  would have discarded a real finding — a warning is a claim, so read the thing
+  it is about, not the evidence offered for it.
 
 ## Working with the maintainer
 

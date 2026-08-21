@@ -26,12 +26,12 @@ If the answer is no, the signal is not evidence, however green it looks.
 ## Recorded instances, by observation date — 1-8 on 2026-07-20, 9-12 on
 ## 2026-07-21, 13 on 2026-07-26, 14-15 on 2026-07-27, 16 on 2026-08-04, 19-23
 ## on 2026-08-05, 24-28 on 2026-08-06, 29-30 on 2026-08-11, 32-33 on 2026-08-19,
-## 37 on 2026-08-21;
+## 36-37 on 2026-08-21;
 ## instances 1-16 span
 ## five repos and four independent operators
 
 The gaps in that heading are deliberate rather than oversights. **Instances
-17, 18, 31, 34, 35 and 36 carry no recorded observation date**, so none is assigned
+17, 18, 31, 34 and 35 carry no recorded observation date**, so none is assigned
 to them here — verified by reading each entry for an inline date rather than
 inferred from the heading's own silence — a first draft of this correction invented one for 17 and 18 and it was
 backed out. Instance 31's RECORDING commit is dated 2026-08-12, and that is
@@ -1403,6 +1403,37 @@ distinguishing field before reporting a total. `livespec-s43svm.42` exists to
 make this particular family structurally unavailable, by ensuring the only
 sanctioned way to answer "how many runners" prints scope, population, host, cap
 and fleet total together.
+
+**Coda — the same move three times in an hour, and why the third is the dangerous
+one.** Recording this instance's own recording, because the escalation is the
+lesson. FIRST, a session checked `origin/master` instead of trusting its own
+merged PR, and found that auto-merge had fired before its second commit was
+pushed — the commit was orphaned and the entry it carried had landed nowhere.
+SECOND, a peer session checked master instead of trusting that session's summary,
+and found the claim "this PR adds entry 36" false. THIRD — and this is the one
+that would have destroyed work — that same peer checked master instead of
+trusting an urgent warning from the session that had just been corrected. The
+warning said "close your PR, it duplicates the entry that already landed." It was
+wrong: the two entries collided on a NUMBER, not on a finding, and closing the PR
+would have discarded instance 37.
+
+**The third case inverts the economics of the first two, which is what makes it
+hard.** Re-deriving a merge or a report costs one cheap check and occasionally
+saves you. Refusing a WARNING costs something else: it means looking obstinate
+toward a peer who has just been demonstrably right twice, and the warning's
+recommended action is always the safe-looking one — *close* the PR, don't merge
+it; *stop*, don't proceed. Compliance reads as diligence and caution at the same
+time. So the incentive points at complying precisely when the warning is wrong.
+
+The warning was right about the symptom (two `### 36` headings would indeed have
+shipped) and wrong about the cause (they were distinct findings, not duplicates),
+which is the hardest shape to catch — a correct observation with an incorrect
+diagnosis arrives carrying an action that looks obviously right. **Counter-move:
+a warning is a claim, and claims get re-derived like any other. Before acting on
+one, read the thing it is about — not the evidence offered for it.** Here that
+meant opening the other entry and discovering it was a different finding
+entirely; the file overlap and the heading collision that founded the warning
+were both real and both beside the point.
 
 ### 37. A point-in-time listing of an EPHEMERAL population, read as a structural property
 
