@@ -584,6 +584,14 @@ committed `runs-on` declarations, essentially every one is the indirection
 `${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}`, so the file
 never names a pool. The variable does, and the resolved job record does.
 
+> **Two field shapes verified against real queued jobs, both easy to get wrong.**
+> `started_at` IS populated on a `queued` job and carries the QUEUE time, so the
+> wait is `now - started_at` with no fallback needed — do not reach for the run's
+> `run_started_at` instead. And `runner_name` on a queued job is the EMPTY STRING,
+> not null, so `.runner_name // "<none>"` does NOT substitute: jq treats `""` as
+> truthy and only `null`/`false` trigger `//`. Test emptiness explicitly.
+
+
 Fire only on jobs past **300 seconds** without a runner. That threshold is the
 top of the observed 4–293s gate range, rounded up; re-derive it if the range
 moves rather than treating 300 as a constant.
@@ -659,6 +667,14 @@ ssh poweredge-xubuntu 'sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nod
 Pending workloads on the repo's ClusterQueue with no borrowable cohort capacity
 → cause (d), urgency **low**: the system is correctly saying "wait".
 
+> **Key (d) on `pendingWorkloads`, NEVER on admitted-versus-quota.** Measured
+> live 2026-08-21 under real load: `livespec-cq` carried `ADMITTED 9` against a
+> `nominalQuota` of 3, with `PENDING 0`. That is Fair Sharing working exactly as
+> designed — the queue borrowed six slots from the cohort — and a test comparing
+> admitted against nominal quota would have reported capacity exhaustion at the
+> precise moment the cluster was serving every job it had been given. The quota
+> is a fair-share weight, not a ceiling.
+
 **(a) SCALING UP — the residual.** None of (b), (c), (d) fired → scaling up.
 Emit nothing.
 
@@ -700,16 +716,33 @@ check should assert it; it is a property of the world, which is what this surfac
 is for. This answer and Signal 6's must stay consistent — if one is revisited,
 revisit both (`livespec-s43svm.39`, `livespec-s43svm.41`).
 
-**Live-exercised 2026-08-21.** Step 1 accepted and returning; step 1b's `labels`
-field confirmed on a real job; the (b) preflight run across all ten members
-against the live 11-scale-set list with no mismatch; the (c) consumer run against
-the host journal, which holds THREE real findings in fourteen days — the two
-genuine wedges of 2026-08-19 on `livespec-driver-claude-k3s` and
-`livespec-overseer-k3s` (`livespec-s43svm.30`), plus one deliberate
-`wedgeprobe-timer` probe. Those are real sweeper output, not fixtures. The (d)
-read returned all ten ClusterQueues at zero pending against 16 allocatable
-churn-slots — an idle cluster, so cause (d) has not been observed firing and this
-section does not claim it has.
+**Live-exercised 2026-08-21, in BOTH guard states.** Step 1 was run twice from
+the generator above, against real fleet state:
+
+- **Short-circuiting.** Ten repos returned (matching the manifest's control
+  count), zero queued check runs fleet-wide → no step 1b, no cluster call.
+- **Firing.** Re-run while this signal's own pull request was queuing, it
+  returned exactly one hit — `thewoolleyman/livespec` PR #2454,
+  `check-metadata-batch`. Step 1b on that run returned nine jobs at
+  `status=queued` with empty `runner_name` and `labels=livespec-local-ci-k3s`.
+  Classification: `livespec-local-ci-k3s` IS in the live scale-set list, so not
+  (b); no wedge in the journal window, so not (c); `livespec-cq` showed
+  `PENDING 0`, so not (d); residual → **(a) scaling up, emit nothing**. Which was
+  correct: every job started within seconds.
+
+The (b) preflight ran across all ten members against the live 11-scale-set list
+with no mismatch. The (c) consumer ran against the host journal, which holds
+THREE real findings in fourteen days — the two genuine wedges of 2026-08-19 on
+`livespec-driver-claude-k3s` and `livespec-overseer-k3s`
+(`livespec-s43svm.30`), plus one deliberate `wedgeprobe-timer` probe. Those are
+real sweeper output, not fixtures.
+
+**Cause (d) has never been observed firing, and this section does not claim it
+has.** Both (d) reads — idle, and under a nine-job load — returned zero pending.
+The load read is the more useful of the two, because it is what exposed the
+admitted-versus-quota false positive recorded above; but neither is a positive
+observation of (d), and the first real one should be journalled on
+`livespec-s43svm.41` when it happens.
 
 ## Shaping each signal into an `attention_item`
 
