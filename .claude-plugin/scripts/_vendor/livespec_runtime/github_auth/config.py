@@ -15,6 +15,8 @@ function of its inputs, mirroring
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from returns.result import Failure, Result, Success
+
 from livespec_runtime.github_auth.errors import GithubAppAuthError
 
 __all__: list[str] = ["DEFAULT_API_URL", "GithubAppConfig", "load_github_app_config"]
@@ -43,30 +45,39 @@ class GithubAppConfig:
     installation_id: str | None = None
 
 
-def load_github_app_config(*, environ: Mapping[str, str]) -> GithubAppConfig:
+def load_github_app_config(
+    *, environ: Mapping[str, str]
+) -> Result[GithubAppConfig, GithubAppAuthError]:
     """Resolve the App mint inputs from the wrapper-injected environment.
 
-    Fail-closed per the fleet contract: raises `GithubAppAuthError`
-    naming EVERY absent-or-empty required variable (a name mapping to
-    an empty string counts as missing), pointing the operator at the
-    calling tenant's credential_wrapper. The optional installation-id
-    pin and API-URL override fall back to their defaults when absent
-    or empty.
+    Fail-closed per the fleet contract: returns `Failure` carrying a
+    `GithubAppAuthError` that names EVERY absent-or-empty required
+    variable (a name mapping to an empty string counts as missing) and
+    points the operator at the calling tenant's credential_wrapper. The
+    optional installation-id pin and API-URL override fall back to their
+    defaults when absent or empty.
+
+    `Result`, not `IOResult`: the environ snapshot is injected by the
+    caller, so this stays a total, process-free function of its inputs.
     """
     missing = [name for name in (_APP_ID_VAR, _PRIVATE_KEY_VAR) if not environ.get(name)]
     if missing:
-        raise GithubAppAuthError(
-            detail=(
-                f"required GitHub App env var(s) {missing} absent or empty; "
-                "automated GitHub operations resolve their credential ONLY through "
-                "the calling tenant's credential_wrapper environment injection "
-                "(e.g. with-livespec-env.sh) — there is NO fleet fallback. Run under "
-                "the tenant's wrapper, or fix the wrapper to inject them."
-            ),
+        return Failure(
+            GithubAppAuthError(
+                detail=(
+                    f"required GitHub App env var(s) {missing} absent or empty; "
+                    "automated GitHub operations resolve their credential ONLY through "
+                    "the calling tenant's credential_wrapper environment injection "
+                    "(e.g. with-livespec-env.sh) — there is NO fleet fallback. Run under "
+                    "the tenant's wrapper, or fix the wrapper to inject them."
+                ),
+            )
         )
-    return GithubAppConfig(
-        app_id=environ[_APP_ID_VAR].strip(),
-        private_key_pem=environ[_PRIVATE_KEY_VAR],
-        api_url=environ.get(_API_URL_VAR) or DEFAULT_API_URL,
-        installation_id=environ.get(_INSTALLATION_ID_VAR) or None,
+    return Success(
+        GithubAppConfig(
+            app_id=environ[_APP_ID_VAR].strip(),
+            private_key_pem=environ[_PRIVATE_KEY_VAR],
+            api_url=environ.get(_API_URL_VAR) or DEFAULT_API_URL,
+            installation_id=environ.get(_INSTALLATION_ID_VAR) or None,
+        )
     )
