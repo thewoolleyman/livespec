@@ -32,7 +32,6 @@ from dataclasses import dataclass
 from operator import attrgetter
 from typing import Any, Literal, cast
 
-from livespec_runtime.cross_repo.errors import CrossRepoSchemaError
 from livespec_runtime.cross_repo.resolve import resolve_ref
 from livespec_runtime.cross_repo.types import (
     CrossRepoManifest,
@@ -217,18 +216,16 @@ def _parse_entry(*, raw: object) -> DependsOnEntry | None:
     """Dispatch a raw `depends_on` entry into a typed `DependsOnEntry`.
 
     Bare strings become `LocalDependency` (the pre-typed-form store shape).
-    A typed dict is parsed via `cross_repo.parse_depends_on_entry`. Any
-    other shape — or a dict that fails schema validation — returns None, so
-    `_entry_blocks` can fail closed.
+    A typed dict is parsed via `cross_repo.parse_depends_on_entry`, whose
+    failure track collapses to None here. Any other shape — or a dict that
+    fails schema validation — returns None, so `_entry_blocks` can fail
+    closed.
     """
     if isinstance(raw, str):
         return LocalDependency(work_item_id=raw)
     if isinstance(raw, dict):
         typed_raw = cast(dict[str, Any], raw)
-        try:
-            return parse_depends_on_entry(parsed=typed_raw)
-        except CrossRepoSchemaError:
-            return None
+        return parse_depends_on_entry(parsed=typed_raw).value_or(None)
     return None
 
 

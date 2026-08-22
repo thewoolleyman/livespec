@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Literal, TypeAlias
 
+from returns.result import Failure, Result, Success
 from typing_extensions import assert_never
 
 from livespec_runtime.cross_repo.errors import CrossRepoSchemaError
@@ -171,41 +172,57 @@ class CrossRepoManifest:
     targets: dict[str, CrossRepoTarget]
 
 
-def parse_depends_on_entry(*, parsed: dict[str, Any]) -> DependsOnEntry:
+def parse_depends_on_entry(
+    *, parsed: dict[str, Any]
+) -> Result[DependsOnEntry, CrossRepoSchemaError]:
     """Parse a dict-shaped depends_on entry into a typed variant.
 
-    Raises `CrossRepoSchemaError` with a descriptive `detail` when:
+    Returns `Failure` carrying a `CrossRepoSchemaError` with a
+    descriptive `detail` when:
     - the `kind` field is missing,
     - the `kind` value is not one of the four enumerated variants,
     - a per-kind required field is missing.
+
+    The per-kind `_parse_*` helpers still raise; this boundary discharges
+    them onto the failure track, so no caller of the public surface has
+    to catch. `Result`, not `IOResult`: the entry is validated in memory
+    and no IO is performed.
 
     The function does NOT validate the surrounding work-item record;
     that responsibility stays with the impl-plugin's store layer.
     """
     if "kind" not in parsed:
-        raise CrossRepoSchemaError(
-            detail="depends_on entry missing required field 'kind'",
+        return Failure(
+            CrossRepoSchemaError(
+                detail="depends_on entry missing required field 'kind'",
+            )
         )
     kind_raw = parsed["kind"]
     if kind_raw not in ("local", "sibling_work_item", "pull_request", "branch"):
-        raise CrossRepoSchemaError(
-            detail=(
-                f"depends_on entry has unknown kind {kind_raw!r}; "
-                f"expected one of: local, sibling_work_item, pull_request, branch"
-            ),
+        return Failure(
+            CrossRepoSchemaError(
+                detail=(
+                    f"depends_on entry has unknown kind {kind_raw!r}; "
+                    f"expected one of: local, sibling_work_item, pull_request, branch"
+                ),
+            )
         )
     kind: DependsOnKind = kind_raw
-    match kind:
-        case "local":
-            return _parse_local(parsed=parsed)
-        case "sibling_work_item":
-            return _parse_sibling_work_item(parsed=parsed)
-        case "pull_request":
-            return _parse_pull_request(parsed=parsed)
-        case "branch":
-            return _parse_branch(parsed=parsed)
-        case _:
-            assert_never(kind)
+    try:
+        match kind:
+            case "local":
+                entry: DependsOnEntry = _parse_local(parsed=parsed)
+            case "sibling_work_item":
+                entry = _parse_sibling_work_item(parsed=parsed)
+            case "pull_request":
+                entry = _parse_pull_request(parsed=parsed)
+            case "branch":
+                entry = _parse_branch(parsed=parsed)
+            case _:
+                assert_never(kind)
+    except CrossRepoSchemaError as invalid:
+        return Failure(invalid)
+    return Success(entry)
 
 
 def parse_cross_repo_manifest(*, parsed: dict[str, Any]) -> CrossRepoManifest:
