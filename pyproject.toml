@@ -384,6 +384,23 @@ ban-relative-imports = "all"
 # which v013 M5 forbids. Per-file-ignore scoped to the only place
 # LivespecError is raised.
 ".claude-plugin/scripts/livespec/io/**.py" = ["TRY003"]
+# `fleet-runner-inventory.py` is a LOCAL-ONLY maintainer CLI beside the
+# `needs-attention-internal` skill (livespec-s43svm.42) — not shipped, not in
+# `source_trees`, not part of the plugin or the copier template. Two rules are
+# incompatible with what it IS rather than with how it is written:
+#   T201 (`print` found) — the tool's entire output contract is a report on
+#     stdout. `sys.stdout.write` is banned repo-wide by `check-no-write-direct`,
+#     so `print` is the only available surface, not a lazy choice.
+#   S603 (subprocess call with untrusted input) — it must shell out to the `gh`
+#     CLI because GitHub's GraphQL schema exposes NO runner type or field at
+#     all, making the per-repository REST endpoint the only source. The call is
+#     already hardened beyond what S603 asks: the executable is resolved to an
+#     absolute path via `shutil.which`, the argv is a fixed three-element list,
+#     and nothing reaches a shell.
+# Scoped to the single file, and deliberately NOT a blanket `.claude/skills/`
+# exemption — that tree enters `source_trees` on adoption, and a directory-wide
+# ignore would silently pre-weaken it.
+".claude/skills/needs-attention-internal/fleet-runner-inventory.py" = ["T201", "S603"]
 # pytest convention: tests use bare `assert` for assertions.
 # S101 (flake8-bandit "use of assert detected") flags every test;
 # the discipline applies to shipped code, not test-time assertions.
