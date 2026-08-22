@@ -54,7 +54,7 @@ sibling — the product `needs-attention` (in both orchestrator plugins) — ans
 skill answers the complementary question a fleet maintainer owns: "is anything
 wrong with the fleet's own development machinery right now?"
 
-## The product-vs-internal dividing test (why these eight are here)
+## The product-vs-internal dividing test (why these ten are here)
 
 The single test that sorts a signal into product-vs-internal is: **does an end
 user have actionable control over it?**
@@ -67,11 +67,12 @@ user have actionable control over it?**
   a tenant's ledger holds a work-item at a non-lifecycle status, a repo routing
   gating CI to self-hosted capacity has had its fork-approval tier weakened, a
   member's shared-library pin has fallen behind, a gating job is queued against a
-  pool that cannot serve it. An
+  pool that cannot serve it, a release lane is failing or stalled, and a runner
+  registration exists that no workflow can route to. An
   end user cannot act on any of these — only a fleet maintainer can — so they
   live here, local and unsynced, never shipped.
 
-## The eight internal signals and how to gather each
+## The ten internal signals and how to gather each
 
 Read the fleet member list LIVE from
 `/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
@@ -846,6 +847,76 @@ splitting the READS across calls would be evasion. See
   (a shipped-surface fix under a non-releasing commit type reaches zero running
   seats), tracked as carrier R6 under `livespec-n33rwg`.
 
+### Signal 10 — registrations exist that no workflow can route to
+
+A self-hosted runner registration that no repository can send a job to is
+invisible by construction: it serves zero jobs, so nothing about job outcomes
+ever reveals it. **482 of them sat online for nine days after the k3s cutover,
+seen by no check**, until a human happened to survey the host. They advertised
+`local-ci` + `poweredge` while every repository had already been repointed at a
+scale-set name, so nothing could ever claim them.
+
+That is not merely untidy. It is a **live-but-broken lane**: a registration
+advertising a label whose execution layer no longer exists fails differently,
+and far more confusingly, than an absent one. Each also holds a credential that
+stays valid until the registration is deleted.
+
+**GATHER — one command, and it is the same command that answers "how much
+capacity does the fleet have".**
+
+```bash
+python3 .claude/skills/needs-attention-internal/fleet-runner-inventory.py --json
+```
+
+Fire one item per population whose `unroutable` field is non-null. The field
+carries the reason already phrased for a human.
+
+**Why this is ONE tool with the capacity inventory rather than a second
+detector.** `livespec-s43svm.42` asks for both, and they are the same read: you
+cannot decide that a population is unroutable without having split the
+registrations by population, and you cannot split by population without the
+configured scale sets. Building a separate stranded-registration detector would
+be a second half-answer to a question already answered — the exact failure mode
+Signal 8's own framing warns about.
+
+**THE THREE UNROUTABLE SHAPES, each demonstrated rather than reasoned.** Run
+against the recorded shape of the stranded population plus a live ARC row, the
+classifier returns:
+
+| Registration | Verdict |
+|---|---|
+| labels `self-hosted, local-ci, poweredge` | UNROUTABLE — carries labels no fleet repository requests |
+| labels `self-hosted, local-ci` (shared label only) | UNROUTABLE — same reason |
+| empty labels, name `ghost-pool-k3s-…-runner-…` | UNROUTABLE — ARC-shaped registration for no configured scale set |
+| empty labels, name `livespec-overseer-k3s-…-runner-…` | routable |
+
+The second row is the one that matters most. The decommission's deleter matched
+`local-ci` **AND** `poweredge`, while the contained lane's SHARED label was
+`local-ci` alone — so a shared-label-only registration was structurally
+invisible to both the deletion and the verification that followed it, and the
+verification still reported zero because zero was the true answer to the
+question it asked. This signal splits on the label set rather than on a
+conjunction of labels, so that row cannot hide.
+
+**READ THE INVENTORY'S OWN CAVEATS BEFORE ACTING ON A COUNT.** Two are load-bearing:
+
+- **Never cache this read.** `gh api --cache 60s` returned byte-identical STALE
+  output on this endpoint (`livespec-overseer` read 18 while live was 30, then
+  36, then 46). For a churning population a cached read answers a question about
+  the PAST, and its determinism makes the wrong answer look corroborated on
+  re-run. The tool never caches; do not add caching to "save" rate limit.
+- **An ARC count moving is not a discrepancy.** Registrations are ephemeral with
+  `minRunners: 0`, so two readings minutes apart legitimately differ. Only the
+  labelled populations are durable facts. A point-in-time listing of an
+  ephemeral population cannot support a durable claim in EITHER direction — not
+  "these exist and must be deleted", and not "these are absent so the pool is
+  gone" (`.ai/verifying-against-the-right-source.md` entries 37 and its coda).
+
+**DO NOT DELETE A ZERO-LABEL REGISTRATION** on the assumption it is a residual.
+That is a live ARC member serving a gating job. Deletion of any registration is
+a destructive forge mutation and belongs to whoever holds the authorization for
+it — this signal REPORTS, and its handoff command is a re-read, never a delete.
+
 ## Shaping each signal into an `attention_item`
 
 Normalize every fired signal into the shared shape (defined in
@@ -861,7 +932,10 @@ Normalize every fired signal into the shared shape (defined in
   shapes apart so a repo can carry both at once, e.g.
   `internal:release-gate-red:livespec` (Shape A, the last release published
   through a failing gate) and `internal:release-stalled:livespec-console-beads-fabro`
-  (Shape B, a release that should have happened and did not). For per-item ledger granularity, suffix the
+  (Shape B, a release that should have happened and did not). For an unroutable
+  registration population, key on the POPULATION rather than the repo, since one
+  repo can carry several, e.g.
+  `internal:unroutable-runners:livespec:labelled:local-ci,poweredge,self-hosted`. For per-item ledger granularity, suffix the
   work-item id, e.g. `internal:ledger-drift:livespec:livespec-3lev.8`.
   - **Grammar note (verified).** `validate_attention_item_id` in
     `livespec-runtime` currently accepts only the two-part prefixes `impl` /
@@ -886,7 +960,11 @@ Normalize every fired signal into the shared shape (defined in
   the cause decides — `high` for a pool that does not exist or holds a wedged
   runner (the job can never run, or is blocked by a dead replica), `low` for
   genuine capacity exhaustion (the system is correctly saying "wait"), and
-  nothing at all for a job that is simply scaling up; `high` for a release lane
+  nothing at all for a job that is simply scaling up; `medium` for an
+  unroutable registration population — no job can land on it, so it breaks
+  nothing today, but it is a stale credential and a live-but-broken lane that
+  will confuse the next person who reads a runner count, and it is the condition
+  that went nine days unseen; `high` for a release lane
   in either shape — a red gate means every consumer is installing an artifact
   that was never validated, and a stalled release means siblings cannot consume
   this repo's work at all.
@@ -905,6 +983,11 @@ Normalize every fired signal into the shared shape (defined in
     `dispatcher.py ledger-normalize --project-root /data/projects/<repo>` command
     (self-heals the auto-mappable items); for a residual ledger drift, the
     `bd update <id> --status <lifecycle>` the maintainer runs after choosing a lane.
+    For an unroutable registration population, `kind: "shell"` with the inventory
+    re-read (`python3 .claude/skills/needs-attention-internal/fleet-runner-inventory.py`)
+    — NEVER a delete command. Removing a registration is a destructive forge
+    mutation that belongs to whoever holds the authorization, and the shape most
+    likely to be mistaken for a residual is a live ARC member serving a job.
 
 ## Fail-soft — name the offender, never crash the scan
 
@@ -918,7 +1001,8 @@ repo must never abort the whole composition. This mirrors the fleet's
 ## Rendering — Markdown for the maintainer
 
 Render a Markdown list grouped by signal (CI / conformance / pins / drift /
-ledger / fork-approval / pin-lag / pool-health) or by urgency (high first). Under each group, one row per item: the
+ledger / fork-approval / pin-lag / pool-health / release-lane / unroutable-runners)
+or by urgency (high first). Under each group, one row per item: the
 summary, the owning repo named explicitly, and the ready-to-run
 `handoff.command`. Put any `skipped:` notes in their own short section so nothing
 strands silently.
@@ -927,7 +1011,9 @@ strands silently.
 conformance passed, no pins are stale / no bump PRs are open, there is no drift to
 chase, every tenant's ledger is status-conformant, no repo routing gating CI
 to self-hosted capacity has a weakened fork-approval tier, no member's pin has
-fallen behind, and no gating job is queued past the threshold, say so in one line
+fallen behind, no gating job is queued past the threshold, no release lane is
+red or stalled, and every runner registration belongs to a population some
+repository requests, say so in one line
 ("fleet-dev is green — nothing internal needs attention") and stop. Emitting an
 empty list is the normal, expected outcome most of the time.
 
