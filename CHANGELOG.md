@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.2](https://github.com/thewoolleyman/livespec/compare/v0.37.1...v0.37.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **spec-governance:** stop the .livespec.jsonc writers from eating comments ([8f9fa65](https://github.com/thewoolleyman/livespec/commit/8f9fa6547b146a0cf57f11640380c23dd8d77637))
+
 ## [0.37.1](https://github.com/thewoolleyman/livespec/compare/v0.37.0...v0.37.1) (2026-08-21)
 
 
