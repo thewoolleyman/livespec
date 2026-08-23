@@ -15,7 +15,8 @@ at the moment they engage, so nine repositories crossed that line with the
 preconditions merely assumed.
 
 Two of the fifteen clauses turned out not to hold. Both had been silently false
-for days.
+for days. (A third — the rootless clause — was recorded as HOLDS here on
+wrong-source evidence and found violated on 2026-08-23; see its row.)
 
 ## Verdicts
 
@@ -25,8 +26,8 @@ for days.
 | Availability — observe a host has stopped taking jobs | **VIOLATED — open** | `ci-runner-heartbeat.service` failed on every 5-minute firing since 2026-08-15 19:59; 1498 failures, zero successes in 14 days of journal. No OTLP collector exists on the host. `livespec-s43svm.20` |
 | Availability — retain a hosted-capacity route | HOLDS | Emptying or deleting `CI_RUNNER_LABELS` falls back to the hosted literal repeated inline at each `runs-on`; documented in `livespec-dev-tooling`'s `ci.yml` header |
 | Execution identity | HOLDS | Runner pods run `runAsNonRoot: true`, `runAsUser: 1000`, `capabilities: drop [ALL]`, `allowPrivilegeEscalation: false` |
-| Containerized execution — rootless | HOLDS | No container runs as root; no init containers; `privileged: false` |
-| Containerized execution — no daemon socket in a job | HOLDS | Runner pods mount zero `hostPath` volumes |
+| Containerized execution — rootless | **VIOLATED at audit time — WRONG-SOURCE verdict, corrected 2026-08-23; repaired** | The 2026-08-21 row read "HOLDS — no container runs as root", read off RUNNER pods (`runAsUser: 1000`). The pod a job's `container:` image actually runs in is the hook-created WORKFLOW pod, whose root was HOST root: `/proc/self/uid_map` read `0 0 4294967295` inside a live workflow pod on 2026-08-23. Repaired by `hostUsers: false` in the hook pod template (`livespec-dev-tooling` PR #1622 → `dda8ee3a`): re-read from inside a live workflow pod, `uid_map` is `0 3210149888 65536` and the job's processes run on the host as uid 678625280 (read with `ps` on the node). `livespec-s43svm.44` |
+| Containerized execution — no daemon socket in a job | HOLDS — re-derived against WORKFLOW pods 2026-08-23 | The 2026-08-21 row's evidence ("runner pods mount zero `hostPath` volumes") was the wrong pod. Re-read on the workflow pod: its only `hostPath` is the read-only warm uv cache lower at `/var/cache/ci-runner/warm` (`livespec-s43svm.2`); no daemon socket is mounted; `privileged` is not set; the AppArmor profile's `deny mount` holds. The verdict stands, now on the right evidence |
 | Event routing | HOLDS | All nine gating `ci.yml` workflows carry a byte-identical `on:` block — `pull_request:` unqualified, plus `push:` restricted to `branches: [master]`. The clause's allowed set is same-repository pull-request events and pushes to a protected branch, and the branch restriction was read verbatim rather than inferred from the trigger name |
 | Event routing — auxiliary lane | HOLDS | `livespec-overseer`'s two extra self-hosted-routed workflows (`release-lane-watch`, `release-readiness`) trigger only on `schedule` and `workflow_dispatch`, neither reachable by a non-collaborator |
 | A host is proven by EXECUTING a job | HOLDS | The cluster has executed thousands of jobs; a fresh proof job ran green on 2026-08-21 (run `32501915647`) |
@@ -79,7 +80,18 @@ whether it was still true.
   failure mode the sibling §"CI telemetry export" clause says its closed-loop
   design exists to eliminate.
 
-Both are the same shape: **a conditional obligation engaged by an architecture
+A third instance surfaced 2026-08-23 and is recorded in the table above rather
+than counted here, because it is a different shape: a **wrong-source verdict**.
+The two "Containerized execution" rows were read off RUNNER pods, whose
+`securityContext` never reaches the hook-created WORKFLOW pod the job actually
+executes in (`livespec-dev-tooling` `ci-runner/k3s/phase2/README.md` "The
+workflow pod is not the runner pod"). The rootless row was therefore a false
+HOLDS over a live violation, and a false HOLDS is worse than the violation it
+hides because it is what suppresses re-discovery. When re-deriving any row of
+this table, read the pod the job's steps run in — `<runner>-workflow` — not
+the runner.
+
+Both original violations are the same shape: **a conditional obligation engaged by an architecture
 change, with its verifier calibrated on the pre-change world.** That is the
 thing to look for after the next architecture change, and it is why
 `livespec-s43svm.39` asks for the precondition to be part of the CUTOVER rather
