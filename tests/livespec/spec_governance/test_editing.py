@@ -412,3 +412,46 @@ def test_editing_spec_pr_merge_module_is_a_leaf() -> None:
         "the spec-PR-merge module must not import from `editing`; the one-way "
         "dependency is what prevents an import cycle"
     )
+
+
+def test_proposal_override_success_reaches_the_edit_result_channel(*, tmp_path: Path) -> None:
+    """A SUCCEEDING proposal override returns an EditResult, not an error string.
+
+    ⚠️ This path was untested repo-wide. `write_proposal_override` still returns a
+    bare `Path | str` while the config writers moved to `IOResult`, so `_edit_result`
+    carries a branch for each — and only the config-writer branch had coverage.
+    Every existing proposal-override test stops at a validation guard BEFORE the
+    write, so nothing exercised the success path through the adapter.
+    """
+    proposals = tmp_path / "SPECIFICATION" / "proposed_changes"
+    proposals.mkdir(parents=True)
+    proposal = proposals / "sample-topic.md"
+    proposal.write_text("---\ntopic: sample-topic\n---\n\nBody.\n", encoding="utf-8")
+
+    result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:sample-topic:delegated",
+    )
+
+    assert isinstance(result, EditResult)
+    assert result.changed_path == Path("SPECIFICATION/proposed_changes/sample-topic.md")
+    assert "decision_policy: delegated" in proposal.read_text(encoding="utf-8")
+
+
+def test_proposal_override_string_error_reaches_the_edit_result_channel(*, tmp_path: Path) -> None:
+    """A proposal-override FAILURE surfaces as the error string, not an EditResult.
+
+    The companion to the success case above. `write_proposal_override` reports its
+    failures as bare strings while the config writers now use `IOResult`, so
+    `_edit_result` has to carry both spellings — and this is the only route that
+    still delivers a plain `str` to it.
+    """
+    (tmp_path / "SPECIFICATION" / "proposed_changes").mkdir(parents=True)
+
+    result = apply_action(
+        project_root=tmp_path,
+        action="set-revise-decision-mode:proposal:absent-topic:delegated",
+    )
+
+    assert isinstance(result, str)
+    assert result.startswith("proposal not found:")
