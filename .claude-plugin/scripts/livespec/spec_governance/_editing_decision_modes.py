@@ -16,7 +16,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
+from returns.io import IOFailure, IOResult, IOSuccess
+from returns.unsafe import unsafe_perform_io
+
+from livespec.errors import ValidationError
 from livespec.spec_governance.config import PROPOSAL_STEM_PATTERN
 from livespec.spec_governance.config_edit import write_config_value
 from livespec.spec_governance.proposal_edit import write_proposal_override
@@ -43,10 +48,25 @@ class EditResult:
     message: str
 
 
-def _edit_result(*, changed_path: Path | str) -> str | EditResult:
-    if isinstance(changed_path, str):
-        return changed_path
-    return EditResult(changed_path=changed_path, message="policy edit applied")
+def _edit_result(*, changed_path: Path | str | IOResult[Path, ValidationError]) -> str | EditResult:
+    """Adapt a config-edit outcome to this module's `str`-error / `EditResult` channel.
+
+    ⚠️ The config writers now REFUSE on the failure track rather than rewriting a
+    file they could not read. This is the one seam every caller already funnels
+    through, so that refusal reaches the existing error channel **without moving a
+    single call site** — the operator sees a message naming the broken block
+    instead of a success that silently destroyed their siblings.
+    """
+    if isinstance(changed_path, IOFailure):
+        return str(unsafe_perform_io(changed_path.failure()))
+    resolved: Path | str
+    if isinstance(changed_path, IOSuccess):
+        resolved = unsafe_perform_io(changed_path.unwrap())
+    else:
+        resolved = cast("Path | str", changed_path)
+    if isinstance(resolved, str):
+        return resolved
+    return EditResult(changed_path=resolved, message="policy edit applied")
 
 
 def _apply_revise_decision_action(
