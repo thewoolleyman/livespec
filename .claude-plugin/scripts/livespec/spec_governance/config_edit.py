@@ -1,11 +1,19 @@
 """JSONC text replacement helpers for spec-governance config edits."""
 
+# livespec-lloc-soft-band-owner: livespec-dev-tooling-8o8e.25
+
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
 from typing import Any, cast
+
+from returns.io import IOFailure, IOResult, IOSuccess
+from returns.result import Failure, Result, Success
+
+from livespec.errors import ValidationError
+from livespec.parse import jsonc
 
 __all__: list[str] = [
     "write_config_map_entry",
@@ -20,14 +28,26 @@ def write_config_value(
     project_root: Path,
     key: str,
     value: str | None,
-) -> Path | str:
-    """Set or clear one scalar spec_governance config value."""
+) -> IOResult[Path, ValidationError]:
+    """Set or clear one scalar spec_governance config value.
+
+    Refuses on the FAILURE track rather than rewriting a config it could not
+    read. `contracts.md` requires this CLI to "atomically replace only the
+    selected value while PRESERVING UNRELATED JSONC KEYS/COMMENTS" — which is
+    impossible when the existing block did not parse, so the honest outcome is a
+    refusal rather than a destructive success.
+    """
     config_path = project_root / _CONFIG_PATH
     text = config_path.read_text(encoding="utf-8") if config_path.exists() else "{\n}\n"
     surgical = _replace_existing_scalar(text=text, key=key, value=value)
     if surgical is not None:
-        return _atomic_replace(project_root=project_root, path=config_path, updated=surgical)
-    block = dict(_extract_block(text=text))
+        return IOSuccess(
+            _atomic_replace(project_root=project_root, path=config_path, updated=surgical)
+        )
+    existing = _extract_block(text=text)
+    if isinstance(existing, Failure):
+        return IOFailure(existing.failure())
+    block = dict(existing.unwrap())
     if value is None:
         _ = block.pop(key, None)
     else:
@@ -43,11 +63,18 @@ def write_config_map_entry(
     map_key: str,
     entry_key: str,
     value: str | None,
-) -> Path | str:
-    """Set or clear one entry in a spec_governance config map."""
+) -> IOResult[Path, ValidationError]:
+    """Set or clear one entry in a spec_governance config map.
+
+    Same contract as `write_config_value`: an unreadable existing block refuses
+    rather than being overwritten.
+    """
     config_path = project_root / _CONFIG_PATH
     text = config_path.read_text(encoding="utf-8") if config_path.exists() else "{\n}\n"
-    block = dict(_extract_block(text=text))
+    existing = _extract_block(text=text)
+    if isinstance(existing, Failure):
+        return IOFailure(existing.failure())
+    block = dict(existing.unwrap())
     raw_map = block.get(map_key)
     mapping = _string_map(value=raw_map)
     if value is None:
@@ -63,22 +90,39 @@ def write_config_map_entry(
     )
 
 
-def _extract_block(*, text: str) -> dict[str, Any]:
+def _extract_block(*, text: str) -> Result[dict[str, Any], ValidationError]:
+    """The existing `spec_governance` block; `{}` on SUCCESS when there is none.
+
+    ⛔ FOUR SITUATIONS USED TO COLLAPSE INTO `{}` HERE, and only one of them is an
+    answer. An ABSENT block means "nothing is configured yet", and the caller is
+    right to render a fresh one. A block that does NOT PARSE, one whose braces do
+    not close, and one that is not an object are FAILURES — and folding them into
+    an empty mapping made the caller believe there was nothing to preserve, so it
+    rendered the single key being written and `_replace_existing_block` overwrote
+    every sibling. The call then returned the SUCCESS spelling.
+
+    ⚠️ THE TRIGGER WAS A COMMENT — the entire reason this file is `.jsonc`. Parsing
+    is now done with `jsonc.loads`, exactly as the READ half in `config.py` already
+    did, so a legitimately commented block is preserved rather than destroyed.
+    """
     marker = '"spec_governance"'
     if marker not in text:
-        return {}
+        return Success({})
     start = text.find(marker)
     brace = text.find("{", start)
     if brace < 0:
-        return {}
+        return Failure(ValidationError("spec_governance block has no opening brace"))
     end = _matching_brace(text=text, start=brace)
     if end < 0:
-        return {}
-    try:
-        parsed = json.loads(text[brace : end + 1])
-    except json.JSONDecodeError:
-        return {}
-    return cast(dict[str, Any], parsed) if isinstance(parsed, dict) else {}
+        return Failure(ValidationError("spec_governance block is unterminated"))
+    parsed_result = jsonc.loads(text=text[brace : end + 1])
+    if isinstance(parsed_result, Failure):
+        return Failure(ValidationError("spec_governance block does not parse as JSONC"))
+    # No wrong-shape guard here on purpose: the slice always begins at `{` and ends
+    # at its matching `}`, so `jsonc.loads` either yields a dict or fails above. A
+    # guard for the impossible case would be a branch that reads as protection and
+    # cannot execute — the defect `8o8e.19` was filed for.
+    return Success(cast(dict[str, Any], parsed_result.unwrap()))
 
 
 def _replace_config_block(
@@ -87,17 +131,14 @@ def _replace_config_block(
     path: Path,
     text: str,
     block: dict[str, Any],
-) -> Path | str:
+) -> IOResult[Path, ValidationError]:
     rendered = _render_block(block=block)
     marker = '"spec_governance"'
     if marker not in text:
         updated = _insert_block(text=text, rendered=rendered)
     else:
-        updated_or_error = _replace_existing_block(text=text, rendered=rendered)
-        if updated_or_error.startswith("existing "):
-            return updated_or_error
-        updated = updated_or_error
-    return _atomic_replace(project_root=project_root, path=path, updated=updated)
+        updated = _replace_existing_block(text=text, rendered=rendered)
+    return IOSuccess(_atomic_replace(project_root=project_root, path=path, updated=updated))
 
 
 def _replace_existing_scalar(*, text: str, key: str, value: str | None) -> str | None:
@@ -167,10 +208,10 @@ def _replace_existing_block(*, text: str, rendered: str) -> str:
     marker = '"spec_governance"'
     start = text.find(marker)
     key_start = text.rfind("\n", 0, start) + 1
+    # Reached only after `_extract_block` has parsed this same block, so the braces
+    # are known to be present and balanced; re-guarding them here would be dead code.
     brace = text.find("{", start)
     end = _matching_brace(text=text, start=brace)
-    if brace < 0 or end < 0:
-        return "existing spec_governance block is malformed"
     replacement_start = key_start
     if "{" in text[key_start:start]:
         replacement_start = start
