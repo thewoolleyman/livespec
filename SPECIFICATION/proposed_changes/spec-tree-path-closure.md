@@ -4,7 +4,7 @@ author: claude-opus-5-plan-spec-tree-manifest-and-clause-citation
 created_at: 2026-08-24T00:14:43Z
 ---
 
-## Proposal: Close the spec tree: an undeclared path under a spec root is a doctor failure, and permitted non-spec files are declared as a second manifest kind
+## Proposal: Close the spec tree: an undeclared path under an explicitly-manifested spec root is a doctor failure
 
 ### Target specification files
 
@@ -14,7 +14,7 @@ created_at: 2026-08-24T00:14:43Z
 
 ### Summary
 
-Make the set of paths permitted under a spec root ratified, declared content, and make an undeclared path a doctor FAILURE that names it. The `spec_files` manifest gains a second file kind, `opaque` — a file livespec permits under the spec root but does not interpret (no markdown-shaped checks, no LLM-context inclusion, no parsing or rendering) — so the two cases the current text blesses by leaving them undeclared (an alternate diagram tool's rendered image; a non-spec companion file such as a per-directory agent-instruction file) acquire a declaration form instead of an exemption. A new `spec.md` §"Spec-tree path closure" states the rule, its explicitly refused case (a failure, never a warning and never a silence), its exact-paths-never-patterns property, its on-disk rather than git-tracked enumeration, and three visible exemptions (v1 implicit manifests, project-root spec roots, sub-spec trees). The clause names the implementation-side check that settles it by path. The `contracts.md` wire contract and the `constraints.md` renderer clause are amended in the same pass so no ratified statement is left asserting that the manifest does not enumerate such a file.
+Make the set of paths permitted under a spec root ratified, declared content, and make an undeclared path a doctor FAILURE that names it. Under a template that declares its `spec_files` manifest explicitly, the spec root is CLOSED over that manifest's `kind: markdown` entries — no new file kind is added, `markdown` remains the only kind, and the declared set is exact in both directions (every declared path must exist; every present path must be declared). A new `spec.md` §"Spec-tree path closure" states the rule, its explicitly refused case (a failure, never a warning and never a silence), its exact-paths-never-patterns property, its on-disk rather than git-tracked enumeration, and three visible exemptions (v1 implicit manifests, reported as `skipped`; project-root spec roots; sub-spec trees). The clause names the implementation-side check that settles it by path. The v136 clause permitting an externally-rendered image to sit undeclared INSIDE the spec root is reversed — such an image is committed outside the spec root — and the two v136-era sentences still describing the removed `diagram_source`/`diagram_rendered` mechanism are amended, so no ratified statement is left contradicting the closure.
 
 ### Motivation
 
@@ -28,43 +28,45 @@ A `SPECIFICATION/checks/` directory was created inside the homelab consumer's sp
 
 The consequence is now frozen: an unratified artifact sits inside an immutable ratified `history/v004/` snapshot, because the snapshot mechanism copies whatever is under the spec root. An independent ratification review had passed the neighbouring proposal correctly, by comparing file CONTENTS — nothing in the review was scoped to the file SET. Ratification governs contents with rigour and tree shape not at all.
 
-Two further cases measured in this fleet while scoping this proposal, both of which any closure rule must answer:
+**This proposal partly reverses a v136 decision, and says so.** The v136 revision (`mermaid-default-scrub-rendering`) removed the `diagram_source`/`diagram_rendered` manifest kinds and the whole render-on-revise pipeline, replacing them with a whole-tree history snapshot and a single clause permitting an externally-rendered image to be committed INSIDE the spec root, undeclared, on the reasoning that the snapshot preserves it anyway. That reasoning is true about PRESERVATION and silently false about PERMISSION: the same indiscriminate snapshot that carries a permitted image also carried `SPECIFICATION/checks/` into an immutable revision. This proposal keeps every v136 deletion — no diagram kinds, no rendering, no drift check — and reverses only the in-tree-undeclared-image clause, moving such an image outside the spec root. Two lines the v136 sweep left standing (`spec.md` §"Specification model", which still offers "diagram source, diagram rendered output" as declarable kinds, and the "Canonical architecture diagram" paragraph, which asserts the removed mechanism and its removed check "remain available") are amended here; `tests/livespec/validate/test_template_config.py` already asserts the validator rejects `diagram_source`.
 
-- `thewoolleyman/resume` carries `SPECIFICATION/AGENTS.md` — a legitimate per-directory agent-instruction file that is not spec content and that no manifest declares. A rule with no declaration form for a permitted non-spec file would break a correct repository.
+Two facts measured across the fleet while scoping this proposal, both of which shaped it:
+
+- Every non-markdown file under every fleet spec root (excluding the lifecycle-owned subdirectories) is one of the homelab `checks/` files — the exact thing this rule exists to fail. The alternate-diagram in-tree image permission has never been exercised, so no consumer is broken by moving that permission outside the tree.
 - The built-in `minimal` template sets `spec_root: "./"`, the project root. A closure rule that did not exempt project-root spec roots would condemn every unrelated file in the repository.
 
-`spec.md` §"Template manifest" already names the manifest as the source of truth and already carries the extension point; what is missing is that anything re-checks the tree against it, and a declaration form for the two cases the current text blesses by leaving them undeclared. The reconciliation mechanism — one manifest with a second `opaque` kind, exact paths only, rather than a second permitted-path list or a markdown-only tree with assets moved outside it — was selected by the maintainer on 2026-08-24 against those alternatives.
+`spec.md` §"Template manifest" already names the manifest as the source of truth and already carries the extension point; what is missing is that anything re-checks the tree against it. The maintainer selected the markdown-only closed form on 2026-08-24 over two alternatives — a second `opaque` manifest kind (withdrawn after the sweep above found no demand for it), and a link-derived exemption (rejected because the permitted set would no longer be readable from the manifest alone).
 
 ### Proposed Changes
 
-
 This proposal makes the set of paths permitted under a spec root ratified,
-declared content, and makes an undeclared path a doctor FAILURE. It adds one
-manifest file kind (`opaque`) so the currently-blessed undeclared cases have a
-declaration form, and it reconciles every clause that today asserts the
-manifest does not enumerate them.
+declared content, and makes an undeclared path a doctor FAILURE. It adds NO
+manifest file kind: `markdown` remains the only kind, and the spec tree is
+closed over exactly the manifest's markdown entries. Every clause that today
+permits an undeclared committed asset inside the spec root is amended to place
+that asset outside the spec root instead.
 
 ---
 
-### 1. `SPECIFICATION/spec.md` — §"Template manifest", opening paragraph
+### 1. `SPECIFICATION/spec.md` — §"Specification model", final sentence
 
-REPLACE this paragraph:
+REPLACE this sentence (the final sentence of the paragraph beginning "A spec tree is a directory rooted at the `spec_root` path"):
 
-> The active template MAY declare a `spec_files` manifest in `template.json` mapping spec-target-relative paths to per-file declarations. Each declaration MUST carry a `kind` field whose only value is `markdown`. The wire shape is codified in `contracts.md` §"Template manifest wire contract".
-
-WITH:
-
-> The active template MAY declare a `spec_files` manifest in `template.json` mapping spec-target-relative paths to per-file declarations. Each declaration MUST carry a `kind` field whose value is either `markdown` or `opaque`. A `kind: markdown` entry is ratified spec content: it is subject to markdown-shaped checks and is included in LLM context. A `kind: opaque` entry is a file livespec PERMITS under the spec root but does not interpret — it is excluded from markdown-shaped checks and from LLM-context inclusion, and livespec neither parses, renders, nor otherwise manages it; declaring a path `opaque` is a declaration of NON-management, and adds no diagram-source or rendered-output handling to livespec. Both kinds are captured identically by the whole-tree history snapshot. The wire shape is codified in `contracts.md` §"Template manifest wire contract".
-
-### 2. `SPECIFICATION/spec.md` — §"Template manifest", the extension-point sentence
-
-REPLACE this sentence (the final sentence of the paragraph beginning "The built-in `livespec` template's manifest MUST declare only the six markdown files"):
-
-> The built-in opinion stays narrow; the manifest is the extension point that lets custom templates add markdown files without forking the entire template surface.
+> Per §"Template manifest" below, the active template MAY declare additional file kinds (markdown sub-files, diagram source, diagram rendered output) beyond the canonical NLSpec markdown set; the manifest is the source of truth for per-kind behavior across heading-coverage, LLM-context inclusion, and history-snapshot scope.
 
 WITH:
 
-> The built-in opinion stays narrow; the manifest is the extension point that lets custom templates add markdown spec files, and declare permitted non-spec companion files as `kind: opaque`, without forking the entire template surface.
+> Per §"Template manifest" below, the active template MAY declare additional `kind: markdown` spec files beyond the canonical NLSpec markdown set; the manifest is the source of truth for which files are subject to heading-coverage and LLM-context inclusion, and — under an explicit manifest — for which paths may exist under the spec root at all (§"Spec-tree path closure"). The history snapshot captures the whole spec tree irrespective of the manifest.
+
+### 2. `SPECIFICATION/spec.md` — §"Template manifest", the `livespec-with-diagrams` sentence
+
+REPLACE this sentence (in the paragraph beginning "The built-in `livespec` template's manifest MUST declare only the six markdown files"):
+
+> The separate `livespec-with-diagrams` template variant seeds these Mermaid diagram conventions and example fenced blocks into its spec files; it differs from the built-in `livespec` template only in that seeded content.
+
+WITH:
+
+> The separate `livespec-with-diagrams` template variant seeds these Mermaid diagram conventions and example fenced blocks into its spec files; it differs from the built-in `livespec` template in that seeded content and in declaring its `spec_files` manifest explicitly (`template_format_version: 2`), which makes a project using it subject to §"Spec-tree path closure" while the built-in `livespec` template's implicit manifest is exempt.
 
 ### 3. `SPECIFICATION/spec.md` — §"Template manifest", "Alternate diagram tools"
 
@@ -74,25 +76,15 @@ REPLACE this paragraph:
 
 WITH:
 
-> **Alternate diagram tools.** If a diagram genuinely needs a tool Mermaid lacks (rare), an author MAY use an alternate tool such as PlantUML or Graphviz: render it to an image OUTSIDE livespec and commit that image alongside the markdown that references it (e.g., `![](diagrams/foo.svg)`). livespec treats such an image as an opaque committed asset — it does NOT detect, recommend, install, invoke, render, or otherwise manage any external diagram tool, and the manifest carries no diagram-specific file kinds: `opaque` is a single non-management kind, not a diagram kind. Under a template that declares `spec_files` explicitly, the committed image MUST be declared in the manifest by exact path as a `kind: opaque` entry, per §"Spec-tree path closure"; an image the manifest does not declare is a doctor failure, not a permitted asset. The committed image is preserved across revisions by the whole-tree history snapshot (see §"Lifecycle participation").
+> **Alternate diagram tools.** If a diagram genuinely needs a tool Mermaid lacks (rare), an author MAY use an alternate tool such as PlantUML or Graphviz: render it to an image OUTSIDE livespec and commit that image OUTSIDE the spec root, referencing it from the markdown by relative path (e.g., `![](../docs/diagrams/foo.svg)`). livespec treats such an image as an opaque committed asset — it does NOT detect, recommend, install, invoke, render, or otherwise manage any external diagram tool, and the manifest carries no diagram-specific file kinds. Under an explicit manifest the spec root is closed over its declared markdown files (§"Spec-tree path closure"), so an image committed INSIDE the spec root is a doctor failure, not a permitted asset; because the image lives outside the tree, the whole-tree history snapshot does not carry it, and a `history/vNNN/` revision resolves the reference against the repository at that revision's commit rather than against the snapshot.
 
-### 4. `SPECIFICATION/spec.md` — §"Template manifest" → "Lifecycle participation", lead-in
-
-REPLACE this line:
-
-> A `spec_files` manifest entry (always `kind: markdown`) participates in livespec's lifecycle on two axes:
-
-WITH:
-
-> A `spec_files` manifest entry participates in livespec's lifecycle on two axes, and its `kind` decides the first axis only:
-
-### 5. `SPECIFICATION/spec.md` — NEW `## ` section
+### 4. `SPECIFICATION/spec.md` — NEW `## ` section
 
 INSERT a new top-level section immediately AFTER the whole of §"Template manifest" (that is, after its final "Explicitly rejected alternatives" subsection) and immediately BEFORE the existing `## Lifecycle` heading:
 
 > ## Spec-tree path closure
 >
-> Under an active template that declares its `spec_files` manifest explicitly (`template_format_version: 2`), that manifest is the CLOSED definition of what may exist under the spec root. Every file under the spec root MUST be declared in `spec_files` by exact spec-target-relative path, with the sole exception of the three lifecycle-owned sibling subdirectories `history/`, `proposed_changes/`, and `templates/` and everything beneath them — the same set §"Template manifest" → "Lifecycle participation" excludes from the whole-tree history snapshot, named there and reused here so the two stay in lockstep. A file present under the spec root and absent from the manifest is a doctor static `fail` naming that path.
+> Under an active template that declares its `spec_files` manifest explicitly (`template_format_version: 2`), that manifest is the CLOSED definition of what may exist under the spec root. Every file under the spec root MUST be declared in `spec_files` by exact spec-target-relative path, with the sole exception of the three lifecycle-owned sibling subdirectories `history/`, `proposed_changes/`, and `templates/` and everything beneath them — the same set §"Template manifest" → "Lifecycle participation" excludes from the whole-tree history snapshot, named there and reused here so the two stay in lockstep. A file present under the spec root and absent from the manifest is a doctor static `fail` naming that path. The declared set is exact in both directions: every declared path MUST exist (the presence direction, settled by `doctor-template-files-present`) and every present path MUST be declared (the closure direction, settled by the check named at the end of this section).
 >
 > **The refused case is a failure, and it is neither a warning nor a silence.** An undeclared file under the spec root MUST produce a `fail`-status finding that names the offending path; it MUST NOT be reported as a warning, folded into a pass, or omitted. Ratification governs the CONTENTS of the files a template materializes; without this rule it governs the SHAPE of the tree not at all, and a directory can appear with no proposal, no revise, and no finding — after which the whole-tree history snapshot freezes it into an immutable ratified revision that was never ratified.
 >
@@ -102,35 +94,33 @@ INSERT a new top-level section immediately AFTER the whole of §"Template manife
 >
 > **Scope.** The rule binds only where the permitted set is EXPLICITLY declared and the spec root is a dedicated tree. Three exemptions, each stated so it is a visible decision rather than an accidental gap:
 >
-> - **v1 templates are exempt.** A `template_format_version: 1` template has an implicit manifest (§"Template schema versioning") and no way to declare a permitted companion file; closing that implicit set would forbid a legitimate file with no mechanism to permit it. For a v1 template the check MUST report `status: skipped` naming the template format version, so the exemption is surfaced on every run rather than passing silently. Migrating a template from v1 to v2 is how it opts into closure.
+> - **v1 templates are exempt.** A `template_format_version: 1` template has an implicit manifest (§"Template schema versioning") synthesized from its seed prompt's well-known file set, and no way to declare an additional file; closing that implicit set would forbid a legitimate template-added file with no mechanism to permit it. For a v1 template the check MUST report `status: skipped` naming the template format version, so the exemption is surfaced on every run rather than passing silently. Migrating a template from v1 to v2 is how it opts into closure.
 > - **Project-root spec roots are exempt.** A template whose `spec_root` resolves to the project root rather than to a dedicated subdirectory — the single-file shape, such as the built-in `minimal` template's `spec_root: "./"` — is exempt: there is no dedicated spec tree to close, and applying the rule would condemn every unrelated file in the repository.
 > - **Sub-spec trees are exempt.** A sub-spec tree under `<main-spec-root>/templates/<name>/` carries no template manifest of its own and already sits inside a lifecycle-owned exclusion of the main tree.
 >
 > This clause is settled on the implementation side by `.claude-plugin/scripts/livespec/doctor/static/spec_tree_manifested.py`, which contributes check id `doctor-spec-tree-manifested` to the doctor static phase; drift between this clause and the shipped behavior is caught by that check.
 
-### 6. `SPECIFICATION/contracts.md` — §"Template manifest wire contract", the declaration-object paragraph
+### 5. `SPECIFICATION/spec.md` — §"Contract + reference implementations architecture", "Canonical architecture diagram" paragraph, final sentence
 
-REPLACE this paragraph:
+REPLACE this sentence:
 
-> Each declaration object MUST carry `{"kind": "markdown"}` — a textual markdown spec file (subject to markdown-shaped checks and full LLM-context inclusion). `markdown` is the ONLY file kind: livespec manages no diagram-source or rendered-output kinds. Diagrams are fenced Mermaid blocks authored inside markdown spec files (per `spec.md` §"Template manifest"); an alternate diagram tool's rendered image, if any, is committed as an opaque asset that the manifest does not enumerate.
-
-WITH:
-
-> Each declaration object MUST carry a `kind`, and `kind` MUST be one of exactly two values. `{"kind": "markdown"}` is a textual markdown spec file, subject to markdown-shaped checks and full LLM-context inclusion. `{"kind": "opaque"}` is a file permitted under the spec root that livespec does not interpret: excluded from markdown-shaped checks and from LLM-context inclusion, never parsed, never rendered. livespec still manages no diagram-source or rendered-output kinds — `opaque` is one non-management kind, not a typed asset taxonomy, and carries no renderer, no MIME handling, and no tool detection. Diagrams are fenced Mermaid blocks authored inside markdown spec files (per `spec.md` §"Template manifest"); an alternate diagram tool's rendered image, if any, is committed under the spec root and MUST be enumerated by the manifest as a `kind: opaque` entry.
->
-> Manifest keys are exact spec-target-relative path strings. A key MUST NOT be a glob, wildcard, prefix, or directory-recursive pattern, and no sibling pattern-based permitted-path field exists; the manifest is the single enumerable statement of what may exist under the spec root, per `spec.md` §"Spec-tree path closure".
-
-### 7. `SPECIFICATION/contracts.md` — §"Template manifest wire contract", schema note
-
-REPLACE this sentence (the opening of the section's final paragraph):
-
-> The schema bump from v1 to v2 lands in `.claude-plugin/scripts/livespec/schemas/template_config.schema.json`; the paired dataclass under `livespec/schemas/dataclasses/template_config.py` MUST stay co-authoritative per the schema-dataclass-pairing convention (v013 M6).
+> The escape-hatch `diagram_source`/`diagram_rendered` manifest mechanism and its `doctor-diagram-source-rendered-drift` static check remain available ONLY for the PlantUML diagram types Mermaid lacks first-class support for (a Mermaid syntax lint MAY be added as a CI nicety but is not a contract requirement).
 
 WITH:
 
-> The schema bump from v1 to v2 lands in `.claude-plugin/scripts/livespec/schemas/template_config.schema.json`, whose per-file `kind` enum MUST admit exactly `markdown` and `opaque`; the paired dataclass under `livespec/schemas/dataclasses/template_config.py` MUST stay co-authoritative per the schema-dataclass-pairing convention (v013 M6), so its `SpecFileKind` literal carries the same two values.
+> A diagram type Mermaid lacks first-class support for follows the §"Template manifest" alternate-diagram-tools path: rendered outside livespec and committed outside the spec root (a Mermaid syntax lint MAY be added as a CI nicety but is not a contract requirement).
 
-### 8. `SPECIFICATION/constraints.md` — §"Renderer non-vendoring"
+### 6. `SPECIFICATION/contracts.md` — §"Template manifest wire contract", declaration-object paragraph, final sentence
+
+REPLACE this sentence:
+
+> Diagrams are fenced Mermaid blocks authored inside markdown spec files (per `spec.md` §"Template manifest"); an alternate diagram tool's rendered image, if any, is committed as an opaque asset that the manifest does not enumerate.
+
+WITH:
+
+> Diagrams are fenced Mermaid blocks authored inside markdown spec files (per `spec.md` §"Template manifest"); an alternate diagram tool's rendered image, if any, is committed as an opaque asset OUTSIDE the spec root, since under an explicit manifest the spec root is closed over the manifest's markdown entries (per `spec.md` §"Spec-tree path closure"). Manifest keys are exact spec-target-relative path strings; a key MUST NOT be a glob, wildcard, prefix, or directory-recursive pattern, and no sibling pattern-based permitted-path field exists.
+
+### 7. `SPECIFICATION/constraints.md` — §"Renderer non-vendoring"
 
 REPLACE this sentence:
 
@@ -138,13 +128,13 @@ REPLACE this sentence:
 
 WITH:
 
-> An author who needs a diagram type Mermaid lacks (per `spec.md` §"Template manifest") renders it with an alternate tool such as PlantUML or Graphviz OUTSIDE livespec and commits the resulting image as an opaque asset, declared in the active template's manifest as a `kind: opaque` entry where that template declares `spec_files` explicitly (per `spec.md` §"Spec-tree path closure").
+> An author who needs a diagram type Mermaid lacks (per `spec.md` §"Template manifest") renders it with an alternate tool such as PlantUML or Graphviz OUTSIDE livespec and commits the resulting image as an opaque asset OUTSIDE the spec root (per `spec.md` §"Spec-tree path closure").
 
 ---
 
 ### Revise co-edit required — `tests/heading-coverage.json`
 
-Change 5 adds one `## ` heading to `SPECIFICATION/spec.md`, so the accepting
+Change 4 adds one `## ` heading to `SPECIFICATION/spec.md`, so the accepting
 revise MUST carry `../tests/heading-coverage.json` in its `resulting_files[]`
 with this entry added:
 
@@ -165,11 +155,19 @@ No other `## ` heading is added, renamed, or removed by this proposal.
 
 - **No template is migrated from v1 to v2 here.** The built-in `livespec`
   template stays v1, so this ratification changes no fleet member's doctor
-  result on landing. Whether the built-in template should bump — which would
-  newly bind twelve fleet repos and require `thewoolleyman/resume` to declare
-  its existing `SPECIFICATION/AGENTS.md` — is a separate rollout decision with
-  cross-repo consequences, deliberately left to a follow-on.
+  result on landing. Two templates are ALREADY v2 and become closure-bound the
+  moment the check ships, with no further decision: the built-in
+  `livespec-with-diagrams` (whose one fleet consumer's tree equals its manifest
+  exactly, so it passes) and the homelab adopter's project-local template
+  (whose `SPECIFICATION/checks/` will fail — the program's intended Gate 0
+  outcome, remediated on the homelab side). Whether the built-in template
+  should bump — newly binding twelve fleet repos — is a separate rollout
+  decision with cross-repo consequences, deliberately left to a follow-on.
+- **No second manifest kind.** A kind for permitted-but-uninterpreted files was
+  designed and withdrawn: a sweep of every fleet spec root found no legitimate
+  non-markdown file under any of them, so the kind would have served a
+  hypothetical while re-adding contract surface v136 removed and requiring
+  further rules (declared-but-absent semantics) to be coherent.
 - **No `SPECIFICATION/checks/` directory is introduced into any template**, and
   no executable check is placed inside any spec tree. The executable check
   lives on the implementation side and the clause cites it by path.
-
