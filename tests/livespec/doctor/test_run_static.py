@@ -264,6 +264,7 @@ def test_run_static_main_emits_findings_json_to_stdout(
         "doctor-livespec-jsonc-valid",
         "doctor-template-exists",
         "doctor-template-files-present",
+        "doctor-spec-tree-manifested",
         "doctor-proposed-changes-and-history-dirs",
         "doctor-version-directories-complete",
         "doctor-version-contiguity",
@@ -337,6 +338,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-config-named-cli-callability",
         "doctor-template-exists",
         "doctor-template-files-present",
+        "doctor-spec-tree-manifested",
         "doctor-proposed-changes-and-history-dirs",
         "doctor-version-directories-complete",
         "doctor-version-contiguity",
@@ -401,6 +403,13 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             # correctly skip on their missing precondition.
             "doctor-wiring-completeness-cross-repo",
             "doctor-copier-template-workflow-coverage",
+            # doctor-spec-tree-manifested closes the spec tree over the
+            # manifest only under a template that declares `spec_files`
+            # explicitly. This fixture's template is v1, whose implicit
+            # manifest is prose-derived with no declaration form, so the
+            # check reports the ratified v1 exemption as `skipped` naming
+            # the format version rather than passing silently.
+            "doctor-spec-tree-manifested",
         ):
             assert (
                 finding["status"] == "skipped"
