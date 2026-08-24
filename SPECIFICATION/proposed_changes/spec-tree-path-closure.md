@@ -76,7 +76,17 @@ REPLACE this paragraph:
 
 WITH:
 
-> **Alternate diagram tools.** If a diagram genuinely needs a tool Mermaid lacks (rare), an author MAY use an alternate tool such as PlantUML or Graphviz: render it to an image OUTSIDE livespec and commit that image OUTSIDE the spec root, referencing it from the markdown by relative path (e.g., `![](../docs/diagrams/foo.svg)`). livespec treats such an image as an opaque committed asset — it does NOT detect, recommend, install, invoke, render, or otherwise manage any external diagram tool, and the manifest carries no diagram-specific file kinds. Under an explicit manifest the spec root is closed over its declared markdown files (§"Spec-tree path closure"), so an image committed INSIDE the spec root is a doctor failure, not a permitted asset; because the image lives outside the tree, the whole-tree history snapshot does not carry it, and a `history/vNNN/` revision resolves the reference against the repository at that revision's commit rather than against the snapshot.
+> **Alternate diagram tools.** If a diagram genuinely needs a tool Mermaid lacks (rare), an author MAY use an alternate tool such as PlantUML or Graphviz: render it to an image OUTSIDE livespec and commit that image OUTSIDE the spec root, referencing it from the markdown by relative path (e.g., `![](../docs/diagrams/foo.svg)`). livespec treats such an image as an opaque committed asset — it does NOT detect, recommend, install, invoke, render, or otherwise manage any external diagram tool, and the manifest carries no diagram-specific file kinds. Under an explicit manifest the spec root is closed over its declared markdown files (§"Spec-tree path closure"), so an image committed INSIDE the spec root is a doctor failure, not a permitted asset; because the image lives outside the spec root, the whole-tree history snapshot does not carry it: an alternate-tool image is not revision-pinned, and a relative reference authored for the live spec file does not resolve from a `history/vNNN/` snapshot two directory levels deeper. This is the accepted cost of keeping the spec root closed over markdown alone; an author who needs old revisions to render a diagram uses Mermaid.
+
+### 3b. `SPECIFICATION/spec.md` — §"Template manifest" → "Lifecycle participation", history-snapshots bullet
+
+REPLACE this sentence:
+
+> This preserves not only the manifest's markdown files but any other committed asset the markdown references (e.g., an image produced by an alternate diagram tool), so viewing an old revision in a browser renders correctly.
+
+WITH:
+
+> Under an explicit manifest the snapshotted set is exactly the manifest's markdown files, since the spec root is closed over them (§"Spec-tree path closure"); an externally-rendered image lives outside the spec root, is not carried by the snapshot, and does not render from an old revision.
 
 ### 4. `SPECIFICATION/spec.md` — NEW `## ` section
 
@@ -94,7 +104,7 @@ INSERT a new top-level section immediately AFTER the whole of §"Template manife
 >
 > **Scope.** The rule binds only where the permitted set is EXPLICITLY declared and the spec root is a dedicated tree. Three exemptions, each stated so it is a visible decision rather than an accidental gap:
 >
-> - **v1 templates are exempt.** A `template_format_version: 1` template has an implicit manifest (§"Template schema versioning") synthesized from its seed prompt's well-known file set, and no way to declare an additional file; closing that implicit set would forbid a legitimate template-added file with no mechanism to permit it. For a v1 template the check MUST report `status: skipped` naming the template format version, so the exemption is surfaced on every run rather than passing silently. Migrating a template from v1 to v2 is how it opts into closure.
+> - **v1 templates are exempt.** A `template_format_version: 1` template has only an implicit manifest (§"Template schema versioning") derived from its seed prompt's prose rather than from a machine-readable declaration; closing the tree over a prose-derived set would make the permitted set depend on how the prompt is read, and a v1 template has no declaration form with which to settle a disagreement. For a v1 template the check MUST report `status: skipped` naming the template format version, so the exemption is surfaced on every run rather than passing silently. Migrating a template from v1 to v2 is how it opts into closure.
 > - **Project-root spec roots are exempt.** A template whose `spec_root` resolves to the project root rather than to a dedicated subdirectory — the single-file shape, such as the built-in `minimal` template's `spec_root: "./"` — is exempt: there is no dedicated spec tree to close, and applying the rule would condemn every unrelated file in the repository.
 > - **Sub-spec trees are exempt.** A sub-spec tree under `<main-spec-root>/templates/<name>/` carries no template manifest of its own and already sits inside a lifecycle-owned exclusion of the main tree.
 >
