@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/thewoolleyman/livespec/compare/v0.37.2...v0.38.0) (2026-08-24)
+
+
+### Features
+
+* **doctor:** fail on any undeclared path under a v2 spec root (livespec-hipozh) ([22e0d73](https://github.com/thewoolleyman/livespec/commit/22e0d73cf186324593279440c27dce03fc5eb0d5))
+
 ## [0.37.2](https://github.com/thewoolleyman/livespec/compare/v0.37.1...v0.37.2) (2026-08-23)
 
 
