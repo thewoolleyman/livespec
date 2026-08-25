@@ -185,8 +185,10 @@ Dispatcher (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`). The Dispatch
 polls the ledger, dispatches each ready work-item into its own Fabro
 sandbox, runs `just check` plus `/livespec:doctor` as a hard janitor
 gate, verifies the merge, and closes the item — carrying routine
-cross-repo work unattended across the whole livespec fleet (livespec,
-livespec-impl-*, livespec-dev-tooling, livespec-runtime).
+cross-repo work across the whole livespec fleet (livespec,
+livespec-impl-*, livespec-dev-tooling, livespec-runtime), unattended
+under the shipped autonomous mode or in operator-triggered bounded
+waves; which mode drives it is a deployment choice.
 
 The project-local `/livespec-orchestrate` Layer-3 loop-driver skill
 that previously filled this role was **retired at the W6 dark-factory
@@ -198,30 +200,39 @@ hard-gate, and structured iteration journal are codified in the
 orchestrator repo's own specification. The retired skill is
 recoverable from git history.
 
-## Operator console (the Control Plane)
+## The Control Plane (operator cockpit)
 
-The **Control Plane** is the operator cockpit:
-[`livespec-console-beads-fabro`](https://github.com/thewoolleyman/livespec-console-beads-fabro),
-a single Rust binary with a **TUI-first** operator experience. It
-observes live state across the spec lifecycle, the Beads work-items, the
-Dispatcher waves and journals, Fabro runs and human gates, and GitHub
-pull requests — and it is where an operator flips **full autonomous
-mode** on (a dangerous, type-to-confirm switch) so the factory drives
-ready work to `done` unattended, surfacing only the truly-unresolvable
-items back to the cockpit.
+The **Control Plane** is the operator-cockpit role: one operator
+surface that observes live state across the spec lifecycle, the
+work-items ledger, Dispatcher waves and journals, sandbox runs and
+human gates, and GitHub pull requests — and surfaces what needs the
+human's attention. Two shipped realizations fill the role today, as
+peers (the fleet-manifest classes `console` and `control-plane-tool`):
 
-Launch the TUI with:
+- [`livespec-console-beads-fabro`](https://github.com/thewoolleyman/livespec-console-beads-fabro)
+  — the reference **console**: a single Rust binary with a **TUI-first**
+  operator experience. It runs operator-triggered bounded dispatch
+  drains, and it is where an operator flips **full autonomous mode** on
+  (a dangerous, type-to-confirm switch) so the factory drives ready
+  work to `done` unattended, surfacing only the truly-unresolvable
+  items back to the cockpit — a shipped, live-accepted capability.
+  Launch the TUI with `livespec-console-beads-fabro serve`; see the
+  console repo's
+  [README](https://github.com/thewoolleyman/livespec-console-beads-fabro#running-the-console-the-tui)
+  for the full launch command, prerequisites, keybindings, and the
+  autonomous-mode enable flow. The console is intended to be a
+  standalone downloadable binary; release-binary publishing is still
+  being set up, so for now it is built from source.
+- [`livespec-overseer`](https://github.com/thewoolleyman/livespec-overseer)
+  — the **operator-tool** peer: a two-pane overseer (a deterministic
+  daemon plus a thin operator surface) that runs bounded foreman and
+  grooming loops and supervises plan-driven worker sessions.
 
-```bash
-livespec-console-beads-fabro serve
-```
-
-The console is intended to be a standalone downloadable binary;
-release-binary publishing is still being set up, so for now it is built
-from source. See the console repo's
-[README](https://github.com/thewoolleyman/livespec-console-beads-fabro#running-the-console-the-tui)
-for the full launch command, prerequisites, keybindings, and the
-autonomous-mode enable flow.
+Which invocation mode drives the factory — the console-armed standing
+autonomous drain, operator-triggered bounded waves, or plan-driven
+worker sessions — is a deployment choice. The Control Plane is not a
+required dependency: the spec lifecycle and the orchestrator skills
+stay independently drivable without it.
 
 ## The work-item lifecycle
 
@@ -249,9 +260,11 @@ can be set to run automatically for low-risk work:
   check, a human, or both.
 
 The **factory loop** is the autonomous span in the middle: an
-orchestrator's *Dispatcher* continuously drains **ready** items (up to a
-per-repo concurrency cap), builds each in an isolated sandbox, runs the
-full checks, and **merges on green** into **acceptance**. Everything before
+orchestrator's *Dispatcher* drains **ready** items (up to a per-repo
+concurrency cap), builds each in an isolated sandbox, runs the full
+checks, and **merges on green** into **acceptance**. Whether the drain
+runs continuously (the console-armed full autonomous mode) or as
+operator-triggered bounded waves is a deployment choice. Everything before
 `ready` is shaping; everything after `acceptance` is sign-off; in between,
 the factory runs on its own.
 
@@ -271,8 +284,9 @@ stateDiagram-v2
     done --> [*]
 
     note right of active
-      Factory loop (autonomous): the Dispatcher
-      drains ready items, builds each in an
+      Factory loop: the Dispatcher drains ready
+      items — continuously (autonomous mode) or
+      in bounded waves — builds each in an
       isolated sandbox, and merges on green
       (up to a per-repo concurrency cap).
     end note
