@@ -28,7 +28,7 @@ HandoffKind = Literal["drive", "livespec-op", "plan", "shell"]
 _TWO_PART_COUNT = 2
 _THREE_PART_COUNT = 3
 _TWO_PART_PREFIXES = frozenset(("impl", "plan"))
-_THREE_PART_PREFIXES = frozenset(("host-only", "valve", "hygiene", "spec"))
+_THREE_PART_PREFIXES = frozenset(("host-only", "valve", "hygiene", "spec", "internal"))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
