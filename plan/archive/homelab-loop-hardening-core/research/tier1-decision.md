@@ -12,7 +12,11 @@ pull request, implementing exactly what is decided here.
 sentence needs rewording, because the peer-realization model the docs
 must present is ALREADY ratified:
 
-- `SPECIFICATION/spec.md` §"Fleet manifest" ratifies the
+- `SPECIFICATION/non-functional-requirements.md`'s ratified **Fleet
+  manifest** contract paragraph (miscited as `spec.md` §"Fleet manifest"
+  in the original record and in epic handoff 5; corrected at archive
+  time per the independent completeness review's non-blocking finding)
+  ratifies the
   `control-plane-tool` repo class as a Control-Plane member that "ships
   an operator TOOL rather than the cockpit APPLICATION the `console`
   class carries; the two are PEERS", and the committed
