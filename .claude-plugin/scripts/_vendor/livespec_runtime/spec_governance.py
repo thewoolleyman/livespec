@@ -20,6 +20,7 @@ __all__: list[str] = [
     "BlockVerification",
     "ConfigValueType",
     "ManifestRow",
+    "UnterminatedGovernanceBlockError",
     "documented_defaults",
     "manifest_rows",
     "verify_default_block",
@@ -60,6 +61,13 @@ class BlockVerification:
     documented: dict[str, Any] | None
     expected: dict[str, Any]
     drift: BlockDrift | None
+
+
+class UnterminatedGovernanceBlockError(Exception):
+    """Raised when a `spec_governance` comment block opens but never balances."""
+
+    def __init__(self) -> None:
+        super().__init__("unterminated spec_governance comment block")
 
 
 def manifest_rows() -> list[ManifestRow]:
@@ -169,7 +177,7 @@ def _comment_block(*, text: str) -> list[str] | None:
         balance += _brace_delta(text=content)
         if balance <= 0:
             return block
-    return None
+    raise UnterminatedGovernanceBlockError
 
 
 def _comment_content(*, line: str) -> str | None:

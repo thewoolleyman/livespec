@@ -27,6 +27,8 @@ import sys
 from collections.abc import Mapping
 from typing import TextIO
 
+from returns.pipeline import is_successful
+
 from livespec_runtime.github_auth.config import load_github_app_config
 from livespec_runtime.github_auth.errors import GithubAppAuthError
 from livespec_runtime.github_auth.mint import DEFAULT_MINT_SEAMS, MintSeams
@@ -73,9 +75,13 @@ def main(
         return 0
     if attributes.get("protocol") != "https":
         return 0
+    config_result = load_github_app_config(environ=environ)
+    if not is_successful(config_result):
+        detail = config_result.failure().detail
+        _ = stderr.write(f"livespec github_auth credential helper: {detail}\n")
+        return 1
     try:
-        config = load_github_app_config(environ=environ)
-        token = InstallationTokenProvider(config=config, seams=seams).token()
+        token = InstallationTokenProvider(config=config_result.unwrap(), seams=seams).token()
     except GithubAppAuthError as error:
         _ = stderr.write(f"livespec github_auth credential helper: {error.detail}\n")
         return 1
