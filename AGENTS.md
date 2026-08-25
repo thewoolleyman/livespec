@@ -68,7 +68,8 @@ the reference **Beads/Dolt + Fabro orchestrator's Dispatcher**
 dispatches each ready work-item into its own Fabro sandbox, runs
 `just check` + `/livespec:doctor` as a hard janitor gate, verifies the
 merge, and closes the item — carrying routine cross-repo work
-unattended.
+unattended under the shipped autonomous mode, or in operator-triggered
+bounded waves; invocation ownership is a deployment choice.
 
 Per `SPECIFICATION/spec.md` §"Contract + reference implementations
 architecture" and `non-functional-requirements.md` §"Orchestrator-internal
@@ -492,7 +493,7 @@ list` fails with "no beads database found" even though the plugin is present.
 - `just bootstrap` — first-touch setup on fresh clones; idempotently installs the canonical structural commit-refuse hook at `.git/hooks/pre-commit`, `.git/hooks/pre-push`, and `.git/hooks/commit-msg` (per `SPECIFICATION/non-functional-requirements.md` §"Primary-checkout commit-refuse hook" / §"Commit-refuse hook bootstrap procedure") — armed on install, refusing commits/pushes at the primary checkout structurally (when `git rev-parse --git-dir` equals `git rev-parse --git-common-dir`), with no `livespec.primaryPath` arming step — plus installs lefthook hooks and resolves plugin dependencies.
 - `just check` — full enforcement aggregate (lint, types, tests, coverage, AST checks).
 - `just check-pre-commit-doc-only` — fast subset for doc-only commits.
-- **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items unattended. See `### Cross-repo orchestration` above.
+- **Cross-repo orchestration** is carried by the reference **Beads/Dolt + Fabro Dispatcher** (`livespec-orchestrator-beads-fabro`'s `dispatcher.py`), which retired the project-local `/livespec-orchestrate` Layer-3 skill at the W6 cutover (2026-06-15). The dark factory polls the ledger, dispatches ready work-items into Fabro sandboxes, gates each on `just check` + `/livespec:doctor`, and closes merged items — unattended under the shipped autonomous mode, or in operator-triggered bounded waves (invocation ownership is a deployment choice). See `### Cross-repo orchestration` above.
 
 `just check` is the load-bearing safety net; it runs locally, in
 pre-push, and in CI. The doc-only subset is invoked only by lefthook
