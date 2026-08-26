@@ -35,7 +35,43 @@
     "in_flight_alignment": "default-align",
     "revise_decision_mode": "delegated",
     "ratification_review": "auto-spawn",
-    "ratification_reviewer_model": "fable",
+    // ⚠️ DELIBERATE, RECORDED, SELF-LIQUIDATING DEVIATION FROM RATIFIED TEXT.
+    // This was "fable". spec.md's own §effective_ratification_review states
+    // `Repo thewoolleyman/livespec MUST designate fable in its root
+    // .livespec.jsonc when this contract is implemented`, so designating
+    // anything else is a KNOWING departure from ratified text and is recorded
+    // as such rather than slipped in. Maintainer-directed 2026-08-26: "Just
+    // fix that, make it fall back to opus always, everywhere ... and make
+    // that change stick."
+    //
+    // WHY IT CANNOT WAIT FOR THE ORDINARY ROUTE. On 2026-08-26 Fable account
+    // capacity was exhausted and a ratification reviewer died mid-review
+    // returning no verdict. Because a revise REQUIRES conforming evidence
+    // from the designated model, every fable-designated repo was hard-blocked
+    // from ratifying anything: livespec (this repo), livespec-runtime,
+    // livespec-console-beads-fabro, livespec-overseer and the homelab
+    // adopter. Only livespec-orchestrator-beads-fabro (sonnet) could ratify.
+    // The remedy — an ORDERED reviewer list — is itself a change to THIS
+    // repository's spec.md, so the single-model dependency blocked
+    // ratification of its own fix. Keeping "fable" here would mean the
+    // deadlock could never be broken from inside the mechanism.
+    //
+    // WHAT IS NOT COMPROMISED: the independent-review floor is untouched. The
+    // reviewer is still a separate, read-only, independently-spawned agent;
+    // its evidence still declares reviewer_model honestly and must still
+    // carry NO BLOCKERS and the content digest. Nothing here fabricates an
+    // attestation or lets the deciding session review its own work — that
+    // was refused today and stays refused.
+    //
+    // HOW IT LIQUIDATES: proposed_changes/ratification-reviewer-fallback-list.md
+    // (filed as PR #2497) rewrites the MUST-designate sentence to require
+    // `fable` FIRST plus at least one further model, and widens this key to
+    // an ordered list. The first revise run under this deviation should be
+    // that proposal. Once it is ratified AND the ordered-list resolution is
+    // implemented, this value becomes ["fable", "opus"] and the deviation
+    // ends. Until then this single value is the only shape the current
+    // validator accepts (_model_value requires a plain string).
+    "ratification_reviewer_model": "opus",
     "spec_pr_merge": "auto-on-green"
   },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
