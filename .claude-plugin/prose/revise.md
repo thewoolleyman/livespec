@@ -430,9 +430,13 @@ intentionally produces a one-entry payload.
      safe default (`manual-spawn`) unless the proposed-change
      front matter carries `ratification_review_policy`, in
      which case the proposal override wins. In `auto-spawn`,
-     initiate a separate designated read-only Fable reviewer
-     using the configured
-     `spec_governance.ratification_reviewer_model`; in
+     initiate a separate designated read-only reviewer of
+     whatever model the configured
+     `spec_governance.ratification_reviewer_model` names —
+     the designation is the authority, and this prose MUST
+     NOT name a particular model, because a driver that
+     reads a hard-coded vendor here will spawn the wrong
+     reviewer whenever an adopter designates another; in
      `manual-spawn`, prompt the maintainer to provide the
      same evidence from an independent reviewer. The driver
      may spawn or ask; the Python revise CLI MUST only
