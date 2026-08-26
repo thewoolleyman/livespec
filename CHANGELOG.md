@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/thewoolleyman/livespec/compare/v0.38.0...v0.38.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **tests:** make the two accept-decision revise tests hermetic ([6779b8f](https://github.com/thewoolleyman/livespec/commit/6779b8f27b7bd1c53049b30598eb06040dcc847c))
+
 ## [0.38.0](https://github.com/thewoolleyman/livespec/compare/v0.37.2...v0.38.0) (2026-08-24)
 
 
