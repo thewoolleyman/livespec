@@ -796,6 +796,7 @@ def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
 def test_revise_main_materializes_resulting_files_for_accept_decision(
     *,
     tmp_path: Path,
+    monkeypatch: object,
 ) -> None:
     """For an `accept` decision, working-spec files in resulting_files are updated.
 
@@ -805,6 +806,24 @@ def test_revise_main_materializes_resulting_files_for_accept_decision(
     Phase-3 minimum-viable: write each `{path, content}` entry's
     content to its `<spec-target>/<path>` location verbatim.
     """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    # HERMETIC PROJECT ROOT. `revise.main` resolves `--project-root` to
+    # `Path.cwd()` when the flag is absent, and reads the ratification
+    # reviewer designation from `<project-root>/.livespec.jsonc`. Without
+    # this chdir the test read LIVESPEC'S OWN config and compared it against
+    # the reviewer_model literal in `_ratification_evidence` -- so the test
+    # passed only while that literal happened to equal this repo's live
+    # designation, and broke the moment the designation moved off fable.
+    # tmp_path carries no `.livespec.jsonc`, so the designation resolves to
+    # None and the reviewer-match check is skipped, exactly as it is for
+    # every sibling accept-decision test here. Do not replace this with a
+    # refreshed literal: that re-couples the test to a value the fleet
+    # changes deliberately.
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
     spec_target = tmp_path / "spec-root"
     proposed_changes = spec_target / "proposed_changes"
     proposed_changes.mkdir(parents=True)
@@ -1503,6 +1522,7 @@ def test_revise_main_snapshots_working_spec_files_into_history_vnnn(
 def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_decision(
     *,
     tmp_path: Path,
+    monkeypatch: object,
 ) -> None:
     """Per the snapshot-on-every-successful-revise invariant, snapshot reflects post-update content.
 
@@ -1511,6 +1531,24 @@ def test_revise_main_snapshot_captures_post_resulting_files_content_for_accept_d
     in `history/vNNN/` carries the new content, not the pre-update
     content. Pins the ordering of resulting-files-write -> snapshot.
     """
+    import pytest
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    # HERMETIC PROJECT ROOT. `revise.main` resolves `--project-root` to
+    # `Path.cwd()` when the flag is absent, and reads the ratification
+    # reviewer designation from `<project-root>/.livespec.jsonc`. Without
+    # this chdir the test read LIVESPEC'S OWN config and compared it against
+    # the reviewer_model literal in `_ratification_evidence` -- so the test
+    # passed only while that literal happened to equal this repo's live
+    # designation, and broke the moment the designation moved off fable.
+    # tmp_path carries no `.livespec.jsonc`, so the designation resolves to
+    # None and the reviewer-match check is skipped, exactly as it is for
+    # every sibling accept-decision test here. Do not replace this with a
+    # refreshed literal: that re-couples the test to a value the fleet
+    # changes deliberately.
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+
     spec_target = tmp_path / "spec-root"
     proposed_changes = spec_target / "proposed_changes"
     proposed_changes.mkdir(parents=True)
