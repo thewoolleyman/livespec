@@ -168,3 +168,49 @@ deliberately not exercised (gap 2), so booting is still an inference. Step 5 —
 add a GRUB entry for `sda3` and boot it — is the only thing that makes it a
 measurement, and it is optional and separately gated because it touches the boot
 menu of the live host.
+
+## Step 5 executed — the restore was BOOTED — 2026-08-28
+
+Step 5 is done. The rehearsed `sda3` restore was booted on the metal, with the
+iDRAC virtual console as the recovery net, and it came up as a working system.
+"Boots unaided" is now **measured, not inferred**.
+
+**Method — a reversible one-shot boot (default stayed `sda4` throughout):**
+temporarily un-hid the GRUB menu (`TIMEOUT 0→10`, style `menu`), added a custom
+direct-kernel entry (`--id restore-rehearsal-sda3`) that loads `sda3`'s
+`vmlinuz-7.0.0-30` with `root=UUID=<sda3>`, `update-grub`, then `grub-reboot`
+that id — which sets `next_entry` for the NEXT boot only. os-prober was disabled
+for the run so its flaky `sda3` chainload entry (it chainloads a bootloader the
+rehearsal deliberately never installed) could not be chosen by mistake. After
+the test, `/etc/default/grub` and `/etc/grub.d/40_custom` were restored
+byte-for-byte from backups and `update-grub` re-run — the host was left exactly
+as found.
+
+**Result:**
+- **Reboot #1 booted `sda3`.** `findmnt / → /dev/sda3`, kernel `7.0.0-30`. The
+  restored system reached multi-user with **`ssh`, `k3s`, and `tailscaled` all
+  active** — a fully functional clone (same hostname/machine-id, expected).
+- **One failed unit, and it is the informative one: `swap.img.swap`.** `/swap.img`
+  was **absent** on the restore — the backup *correctly* excludes swap contents,
+  but the preserved fstab still names the swap file, so the swap unit failed and
+  `systemctl is-system-running` read `degraded`. Harmless at runtime (the system
+  runs without swap), but a real defect of the restore procedure that **only a
+  boot could surface** — a file-inspection pass never would.
+- **Reboot #2 returned cleanly to `sda4`.** The one-shot was consumed (verified
+  `next_entry=` empty in `sda4`'s grubenv *before* rebooting), so a plain reboot
+  booted the default. The real system came back `running`, k3s node `Ready`,
+  zero failed units, swap intact (8 GiB) — confirming the swap gap is
+  restore-specific, not a host problem.
+
+**Fix applied.** `restore.sh` now recreates any swap FILE named in the restored
+fstab that is missing after the rsync — sized from `meta/swap-size-bytes.txt`
+(the backup now records the real size, 8 GiB) with an 8 GiB fallback, `chmod
+600` + `mkswap`, leaving swap PARTITIONS (`/dev/…`/`UUID=`) alone. The swap
+detection was unit-tested against mixed fstab lines. This closes the last defect
+the boot surfaced; `restore.sh` on the USB and at `research/restore.sh` carry it.
+
+**Remaining inference:** the bare-metal `grub-install` path (gap 2) is still not
+exercised — this boot used a direct-kernel GRUB entry from the live disk's
+bootloader, not a bootloader installed onto the restored disk. That path runs
+for real in Phase 6/7, where the ESP is rebuilt and `restore.sh` is invoked
+without `SKIP_BOOTLOADER`. Everything the OS itself needs to boot is now proven.
