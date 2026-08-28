@@ -399,6 +399,38 @@ consumes 0+1; Phase 6 consumes 2+4+5 plus an explicit go; Phase 7 closes
 it out. Destructive work never precedes a verified backup and a proven
 fallback.
 
+## Status as of 2026-08-28
+
+| Phase | State | Where the detail lives |
+|---|---|---|
+| 0 — controller/BIOS management | **DONE** | `phase0-controller-management-and-tooling.md` |
+| 1 — idle throughput measurement | **DONE** | `phase1-idle-throughput-measurement.md`, corrected by `phase2-measurement-correction-and-free-optimization.md` |
+| 2 — optimization decision | **DONE, drives ordered** | `phase2-*.md`, `drive-expansion-compatibility-proof.md` |
+| — CI churn relocated off `/` | **DONE** | `containerd-relocation-completed.md` |
+| — `io.pressure` instrumentation | **DONE, live** | `livespec-dev-tooling#1650`, installed on the host |
+| 3 — backup to USB | **DONE** | `phase3-backup-and-restore-procedure.md` |
+| 4 — verify the backup | **DONE for the backup; NOT for the restore** | `restore-verification-plan.md` |
+| 5 — prove CI falls back to GitHub-hosted | **NOT STARTED** | this document, Phase 5 |
+| 5.5 — `poweredge-xubuntu-info` repo | **NOT STARTED** | this document, Phase 5.5 |
+| 6 — execute the rebuild | blocked on 4-restore, 5, and the drives arriving | this document, Phase 6 |
+| 7 — restore and verify up | blocked on 6 | this document, Phase 7 |
+
+**Two corrections to this document's own assumptions, established by doing the
+work:**
+
+- Phase 2's option ranking is superseded. A full wipe to reset FTL state is
+  **not** justified — Phase 1 eliminated the exhaustion hypothesis. Four
+  drives were ordered instead, and RAID 10 requires destroy+recreate because
+  MegaRAID cannot migrate a single-span VD into a spanned one.
+- Phase 3 assumed the PVC root held **13 GB**. It holds **36 K at idle** — the
+  figure came from a measurement taken under load, and the directory is
+  transient per-job. That volatility later broke a backup pass.
+
+**The critical open item is that `restore.sh` has never been run.** Phase 4 is
+only half complete: the backup is verified, the restore is not. See
+`restore-verification-plan.md` for the calibrated risk and the free rehearsal
+that closes it, using the disposable `sda2`/`sda3` partitions.
+
 ## Open questions to resolve within the plan
 
 - The Phase 1 discriminator's verdict (drive headroom vs. floor) — decides
