@@ -20,13 +20,16 @@ CI fallback, rebuild, restore), because RAID 5 → RAID 10 cannot migrate in
 place. That is hours of downtime and real risk, for a drive that costs on the
 order of a couple of hundred dollars.
 
-**Recommendation: do the free optimization first, and treat the drive purchase
-as a separate, later decision made on reliability grounds rather than
-performance grounds.** tmpfs removes the hot path from storage altogether, which
-is a bigger win for CI than 2.7× random write, costs nothing, and needs no
-downtime. If the array is later rebuilt anyway — for a drive failure, or because
-the backup infrastructure from Phases 3–5 exists and makes it cheap — that is
-the moment to add the fourth drive and switch to RAID 10.
+**Recommendation: do the free optimization first, and buy the drive as a COLD
+SPARE rather than as a RAID 10 trigger.** tmpfs removes the hot path from
+storage altogether, which is a bigger win for CI than 2.7× random write, costs
+nothing, and needs no downtime. Separately, at **$226 all-in** (Dell-branded,
+tray included — the Dell option turns out to be the *cheapest* sane one) a
+fourth drive earns its keep immediately as insurance against a failure on 4-year-old
+drives, without touching the array or committing to anything. If the array is
+later rebuilt anyway — for a drive failure, or because the Phase 3–5 backup
+infrastructure exists and makes it cheap — that is the moment to switch to
+RAID 10, using the spare already on the shelf.
 
 ## The arithmetic
 
@@ -123,25 +126,105 @@ better performance.
 **So: worth knowing, not worth recommending over tmpfs.** It becomes interesting
 only if the scratch working set is too large for RAM.
 
-## Cost
+## Cost — priced 2026-08-28
 
-Drive pricing is in `phase2-pricing-comparison.md`; a focused pricing pass for a
-single ~960GB Dell-official enterprise SATA SSD was commissioned and its result
-should be recorded here when it lands. Expect the order of **one used enterprise
-960GB SATA SSD plus one genuine Dell G176J caddy (~$19.99)**, with a premium for
-Dell-branded over generic.
+**The headline result is that the Dell-branded option and the cheapest sane
+option are the same purchase.**
 
-The Dell-branded premium buys one concrete thing: non-Dell drives work fine on
-the H730P but are flagged "non-certified" in OMSA/iDRAC, which leaves **iDRAC
-health permanently amber** and can reduce predictive-failure alerting. On a
-rebuildable lab host that is largely cosmetic — but a permanently-amber health
-indicator is a real cost, because it trains you to ignore the indicator.
+| Option | Drive | Caddy | **All-in** | Stock |
+|---|---|---|---|---|
+| **Dell G13 `0X31G3`** (Intel D3-S4610, 960GB, 3 DWPD MU), refurb — **G176J tray included** | $226.00 | in box | **$226.00** | **60 units**, 3yr warranty, 100% health |
+| Samsung PM853T `MZ7GE960HMHP` — **exact match to the existing drives**, bare | $139.00 | $19.99 | **$158.99** | **1 unit only** |
+| Samsung PM863a `MZ7LM960HMJP`, bare | $174.00 | $19.99 | **$193.99** | 18 units |
+| Micron 5300 MAX (5 DWPD), bare | $209.00 | $19.99 | $228.99 | 45 units |
+| Dell-branded **new** | $1,545.95 | — | **$1,565.94** | 1 unit, ships the *wrong-generation* `DXD9H` tray |
 
-**The dominant cost is not the drive.** It is the destroy-and-recreate cycle
-RAID 10 requires: backup (Phase 3), verify the backup (Phase 4), prove the CI
+At $226 with the correct tray bundled, **the Dell-branded premium is effectively
+$32** over the nearest generic-with-stock (PM863a + caddy at $194) — not the
+four-figure gap the new-channel prices imply. What that $32 buys, factually:
+
+- A drive without Dell firmware is detected by the PERC as non-certified and
+  raises an advisory in iDRAC/OMSA that, per Dell's community documentation,
+  **cannot be dismissed** — it puts the storage subsystem in a permanent warning
+  state rather than OK. That is a real cost, because it trains you to ignore the
+  health indicator.
+- Dell's predictive-failure reporting and the DUP/Lifecycle-Controller firmware
+  update path only apply to Dell-firmware drives.
+- Non-Dell drives generally do work; scattered reports exist of third-party SSDs
+  being dropped offline, but that is anecdotal, not a documented incompatibility.
+
+Genuine new Dell **G176J caddies remain $19.99** at ServerPartDeals (60 in
+stock) — the earlier pricing note's figure is confirmed still current.
+
+### Purchasing traps, checked
+
+- **SAS masquerading as SATA is live at this exact price point.** The same
+  search returns a Seagate Nytro 3350 960GB **SAS 12Gb/s at $219** — $10 above
+  the SATA Micron, identical to the SATA PM883. Nothing in the price flags it,
+  and **the G176J tray is itself marketed as "SAS/SATA"**, so the tray's
+  description tells you nothing about the drive. Confirm the interface on the
+  drive's own spec block.
+- **Several "960GB SATA" Dell SKUs are 3.5"/hybrid-carrier parts** that will not
+  fit an R630's 2.5" SFF bay — `345-BECI`, `089Y1`, `0089Y1`, `Y1KT5`,
+  `400-ATED` — and they appear in the same searches at the same ~$226. Buy only
+  2.5" parts.
+- **Never substitute an "800GB" drive.** 800,166,076,416 B = 745 GiB, well below
+  the 894 GiB floor. The correct 960GB capacity point is 960,197,124,096 B =
+  **894.25 GiB**, clearing the existing drives by ~0.25 GiB.
+- **Verify the LBA count on arrival**, before committing the drive to the array.
+  The H730P's default coercion mode was not confirmed, so do not assume it gives
+  tolerance for a marginally smaller drive.
+
+### What the pricing does NOT cover
+
+**eBay is entirely unmeasured** — it blocked every fetch method available. The
+private-seller used market is normally the cheapest tier and usually below
+dealer pricing, so **the $139–226 figures above are DEALER prices and should be
+read as an upper bound**. A hand-check on eBay would likely find a lower floor.
+
+Also unverified: Dell.com's own price (403s every fetch), and one $1,350
+"for 11th/12th/13th Gen" listing whose own compatibility table names no 13G
+machine — a contradiction that was not resolved.
+
+**Inventory itself is a finding.** Across ServerPartDeals' entire 960GB SATA
+2.5" catalogue, **every in-stock unit is "Seller Refurbished"** — not one New or
+Manufacturer-Recertified drive is transactable. That is the NAND shortage
+showing up as availability, not merely as price, and it argues for buying while
+stock exists rather than assuming the option stays open.
+
+## The dominant cost is still not the drive
+
+At $226 the part is cheap. **The expensive thing is the destroy-and-recreate
+cycle RAID 10 requires** — backup (Phase 3), verify (Phase 4), prove the CI
 fallback (Phase 5), rebuild (Phase 6), restore and verify (Phase 7). Those
-phases have to happen anyway before any destructive work, but they are hours of
+phases must happen before any destructive work regardless, but they are hours of
 effort and carry the risk inherent in restoring a system from backup.
+
+## The purchase has value that does NOT require a rebuild
+
+This reframes the decision, and it is the strongest argument for buying now:
+
+**A fourth 960GB drive is immediately useful as a COLD SPARE for the existing
+RAID 5, with no rebuild, no downtime, and no commitment to RAID 10 at all.**
+
+The three drives are 4+ years old at 33,000–36,000 power-on hours. If one fails,
+the array runs **degraded** — and a degraded RAID 5 has zero redundancy — until
+a replacement ≥894 GiB physically arrives. Having a matching drive on the shelf
+turns that window from *days of shipping while unprotected* into *minutes*.
+Given that a RAID 5 rebuild is itself the risky operation (it reads every sector
+of both survivors), shortening the degraded window is worth real money.
+
+So the $226 buys three things at once:
+
+1. **Insurance now** — a cold spare against a failure on aging drives, usable
+   the day it arrives, requiring nothing.
+2. **Optionality later** — the fourth drive RAID 10 needs, if and when a rebuild
+   happens for any reason.
+3. **Availability** — locking in a correct-generation Dell part with the right
+   tray while 60 units exist, in a market where new inventory has vanished.
+
+None of that requires deciding about RAID 10 today, and none of it requires
+touching the running array.
 
 ## Recommendation
 
@@ -151,11 +234,21 @@ effort and carry the risk inherent in restoring a system from backup.
 2. **Now, free:** add host and `kubepods.slice` `io.pressure` gauges to the
    existing heartbeat, so the cold-versus-warm question is answered from real
    traffic instead of synthetic benchmarks.
-3. **Later, on reliability grounds:** if and when the array is rebuilt — because
+3. **Buy the drive now — as a COLD SPARE, not as a RAID 10 trigger.** At $226
+   all-in for the Dell G13 `0X31G3` with the G176J tray included, it is
+   immediately useful the day it arrives: it shortens the degraded-array window
+   after a failure from days-of-shipping to minutes, on drives that are 4+ years
+   old. It commits to nothing, touches nothing, and needs no downtime. It also
+   happens to be exactly the drive RAID 10 would need later. Availability is the
+   time pressure, not performance: every in-stock 960GB SATA unit at the
+   surveyed dealer is now refurbished, with no new inventory transactable.
+4. **Later, on reliability grounds:** if and when the array is rebuilt — because
    a drive fails, or because the Phase 3–5 backup infrastructure exists and
-   makes a rebuild cheap — add the fourth drive and build RAID 10 then. The
-   safer rebuild path is the durable argument; the 2.67× random write is a
+   makes a rebuild cheap — build RAID 10 then, using the spare bought in step 3.
+   The safer rebuild path is the durable argument; the 2.67× random write is a
    bonus.
-4. **Do not** buy the drive *in order to* trigger a rebuild. The performance
+5. **Do not** buy the drive *in order to* trigger a rebuild. The performance
    case does not justify the destructive cycle on its own, and step 2 may show
-   the array was never the constraint at CI's actual demand.
+   the array was never the constraint at CI's actual demand. Buying it as a
+   spare is a different decision with a different justification, and it does not
+   obligate the rebuild.
