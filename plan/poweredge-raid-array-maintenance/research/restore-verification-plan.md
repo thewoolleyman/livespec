@@ -3,6 +3,13 @@
 Written 2026-08-28, after Phases 3 and 4 completed. **Read this before running
 `restore.sh` for real, and before scheduling the Phase 6 rebuild.**
 
+> **UPDATE 2026-08-28 (later the same day): the rehearsal in "The test that
+> settles it" was executed. `restore.sh` was fixed and then run end-to-end
+> against `sda3`, steps 1–4 all passing. See "## Rehearsal result" at the
+> bottom. The section below records the pre-rehearsal risk position; it is kept
+> intact for the record, but "runs to completion" is no longer a hypothesis —
+> it was measured. The one thing still un-measured is step 5, an actual boot.**
+
 ## Bottom line
 
 The **backup** is verified. The **restore** is not, and the gap between those
@@ -10,7 +17,8 @@ two is the whole risk.
 
 `restore.sh` has **never been executed — not once, not even dry-run.** Every
 green signal so far is about the backup. A backup that has never been restored
-is a hypothesis.
+is a hypothesis. *(Pre-rehearsal statement — superseded by the rehearsal
+result below.)*
 
 ## Calibrated confidence, as of 2026-08-28
 
@@ -92,3 +100,71 @@ fallback.
 
 The rehearsal costs one `mkfs` on a partition already agreed to be disposable.
 Treat it as a Phase 4 completion requirement rather than a nice-to-have.
+
+## Rehearsal result — 2026-08-28
+
+The rehearsal was executed. Steps 1–4 all passed; step 5 (an actual boot) was
+deliberately not attempted this session. The fixed script is committed beside
+this note as `research/restore.sh` (it had lived only on the USB volume, which
+Phase 6 wipes).
+
+### Gap 1 fixed, and a fresh bug caught before it could ship
+
+`restore.sh` was rewritten so fstab regeneration **preserves every captured
+filesystem**, not just root and the ESP: it rewrites only the root (and, when an
+ESP is supplied, the ESP) line to the new disk's real UUID, carries swap, the
+`/var/cache/ci-runner` volume, and both containerd/PVC bind mounts through
+verbatim, and marks `nofail` — with a printed remap list — any `UUID=` volume
+whose captured UUID no longer resolves, so a missing device cannot wedge the
+boot.
+
+That new logic was proven **offline first**, against the real captured fstab,
+under two scenarios (UUIDs that still resolve → rehearsal; UUIDs gone → real
+rebuild). The offline test caught a genuine defect that *read as correct*: the
+"already has `nofail`?" check inspected the wrong field (the fs **type**, not
+the options column), so `/mnt/usb-backup`'s existing `nofail` was appended a
+second time (`defaults,nofail,noatime,nofail`). Fixed to read options as field
+4 of the line. This is the fourth "looked correct on reading" defect of this
+plan's scripting work, and the first caught by a test rather than by the
+maintainer — vindicating the verification plan's core warning.
+
+### Gap 2 hardened — the live ESP is now structurally protected
+
+The old ESP detection grabbed the first EFI System Partition globally. On this
+host that is the **live `sda1` ESP**, so the original bootloader step would have
+written to the running boot chain and EFI NVRAM during a rehearsal. The rewrite:
+the bootloader step runs only against an ESP named explicitly (`ESP_DEV=`),
+refuses an `ESP_DEV` that is the currently-mounted `/boot/efi`, and is skipped
+wholesale under `SKIP_BOOTLOADER=1` (the safe rehearsal default, which prints
+the exact manual bootloader commands for the real restore instead).
+
+### What the rehearsal measured (mkfs.ext4 sda3 → mount → `SKIP_BOOTLOADER=1 restore.sh`)
+
+- **Ran to completion**, reached `=== restore complete ===`, zero rsync errors
+  in the full log.
+- **fstab correct**: root remapped to sda3's real UUID
+  (`7a41175e-…`); ESP left un-remapped and commented (no ESP supplied); swap,
+  the cache volume, both bind mounts, and the USB entry all preserved; no remap
+  warnings (the cache/USB UUIDs still resolve on the live host — the
+  resolve-path branch). Original kept at `/etc/fstab.restored-original`.
+- **Boot artifacts present**: `vmlinuz-7.0.0-29/-30` and both initrds under
+  `/boot`.
+- **Ownership/permission fidelity exact**: `etc/shadow` 640, `root` 700, and —
+  the security-load-bearing check — setuid preserved on `passwd`/`chsh`
+  (`-rwsr-xr-x`), symlinks preserved (`usr/bin/sudo`).
+- **Completeness**: 18 G ≡ 18 G; 222 793 restored files vs 222 791 in the
+  source — a **+2** fully accounted for by `/lost+found` (from mkfs) and the new
+  `/etc/fstab.restored-original`.
+- **Live host untouched**: after unmount, `/`=sda4 and `/boot/efi`=sda1
+  unchanged. The rehearsed rootfs remains on the disposable `sda3` (label
+  `rehearsal-restore`) should a boot test be wanted before Phase 6 reclaims it.
+
+### Revised confidence
+
+"Runs to completion" moves from ~50% to **measured — it did**. "Boots unaided"
+moves from ~60% to **~90%**: everything a boot depends on (a correct fstab, a
+kernel/initrd, faithful ownership) is verified, but the GRUB install path was
+deliberately not exercised (gap 2), so booting is still an inference. Step 5 —
+add a GRUB entry for `sda3` and boot it — is the only thing that makes it a
+measurement, and it is optional and separately gated because it touches the boot
+menu of the live host.

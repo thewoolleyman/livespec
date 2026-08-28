@@ -409,7 +409,7 @@ fallback.
 | — CI churn relocated off `/` | **DONE** | `containerd-relocation-completed.md` |
 | — `io.pressure` instrumentation | **DONE, live** | `livespec-dev-tooling#1650`, installed on the host |
 | 3 — backup to USB | **DONE** | `phase3-backup-and-restore-procedure.md` |
-| 4 — verify the backup | **DONE for the backup; NOT for the restore** | `restore-verification-plan.md` |
+| 4 — verify the backup | **DONE** — backup verified; restore rehearsed end-to-end on `sda3` (steps 1–4 pass; boot test optional/deferred) | `restore-verification-plan.md` → "Rehearsal result", `research/restore.sh` |
 | 5 — prove CI falls back to GitHub-hosted | **NOT STARTED** | this document, Phase 5 |
 | 5.5 — `poweredge-xubuntu-info` repo | **NOT STARTED** | this document, Phase 5.5 |
 | 6 — execute the rebuild | blocked on 4-restore, 5, and the drives arriving | this document, Phase 6 |
@@ -426,10 +426,19 @@ work:**
   figure came from a measurement taken under load, and the directory is
   transient per-job. That volatility later broke a backup pass.
 
-**The critical open item is that `restore.sh` has never been run.** Phase 4 is
-only half complete: the backup is verified, the restore is not. See
-`restore-verification-plan.md` for the calibrated risk and the free rehearsal
-that closes it, using the disposable `sda2`/`sda3` partitions.
+**~~The critical open item is that `restore.sh` has never been run.~~ RESOLVED
+2026-08-28.** Phase 4 was half complete; the restore rehearsal has now been run
+end-to-end against the disposable `sda3`. `restore.sh` was first fixed (gap 1:
+it dropped `/var/cache/ci-runner` and the bind mounts; gap 2: it would have
+touched the live `sda1` ESP) and the fstab logic proven offline — which caught a
+fresh double-`nofail` bug that read as correct. The rehearsal ran to completion
+with a correct fstab, kernels present, exact ownership/setuid fidelity, and the
+live host untouched. See `restore-verification-plan.md` → "Rehearsal result".
+The only thing still un-measured is an actual boot (step 5), deliberately
+deferred. The remaining pre-Phase-6 gates are now **Phase 5** (prove CI falls
+back to GitHub-hosted runners) and **Phase 5.5** (the `poweredge-xubuntu-info`
+repo), plus a fleet-halted re-run of the backup for a coherent pre-rebuild
+snapshot.
 
 ## Open questions to resolve within the plan
 
