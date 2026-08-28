@@ -80,7 +80,19 @@ refuses to cross mount boundaries:
 `H`/`A`/`X`/`--numeric-ids`. For a rootfs backup those four are the difference
 between a copy and a restorable system.
 
-**Excluded:** `/swap.img` (8 G of swap file, not data) and `/lost+found`.
+**Excluded, and why each matters:**
+
+| Path | Reason |
+|---|---|
+| `/swap.img` | 8 G of swap file — not data |
+| `lost+found` | filesystem recovery stub |
+| **`/var/cache/ci-runner/k3s-storage/`** | **local-path PVC scratch.** A running CI job creates thousands of files here and deletes the whole tree when it finishes; 4 K at idle, gigabytes mid-job. Copying it is futile *and* races the job — this is what produced the rc=23 failure. Nothing here survives a job. |
+| `/var/log/pods/` | transient per-pod logs, rotated away mid-copy |
+| `*.premove` | the containerd relocation's rollback copies — 12 G duplicating what `var-cache-ci-runner/` already holds |
+
+The general rule this encodes: **exclude per-job ephemeral state rather than
+trying to copy it reliably.** A directory being deleted underneath rsync cannot
+be backed up meaningfully no matter how the exit code is handled.
 
 Alongside the data, `meta/` captures what a restore needs and the bytes do not
 carry: `sfdisk -d /dev/sda`, `blkid`, `fstab`, `dpkg --get-selections`, enabled
@@ -112,8 +124,39 @@ when a file vanishes mid-transfer — routine on a live system (here a
 `ci-warm-cache` pod log rotating away), and benign. Under `pipefail` that code
 propagated and killed the script after the rootfs pass. The ESP and cache
 passes **never ran, and nothing said so**: the log simply ended. `run-backup.sh`
-therefore does **not** use `set -e`, and prints each pass's `rc` instead. Codes
-**23** (partial) and **24** (vanished) are expected; anything else is real.
+therefore does **not** use `set -e` (see BashFAQ/105), and checks each pass's
+`rc` explicitly.
+
+**1a. Then the fix itself was wrong: rc=23 is NOT tolerable.** An earlier
+revision of this document and of the script classified **23** alongside 24 as
+"expected". **That was a defect, and it accepted an incomplete backup as
+success.** The two codes are not interchangeable:
+
+| Code | rsync's meaning | Correct handling |
+|---|---|---|
+| **0** | success | OK |
+| **24** | "some files vanished before they could be transferred" — deleted between rsync's scan and its copy | **WARN.** The files no longer exist to be backed up; nothing is lost. |
+| **23** | "some files/attrs were **not** transferred" — rsync tried and **failed** | **ERROR.** The backup is incomplete and must not be trusted. |
+
+Anything other than 0 or 24 is an error. The script now exits **non-zero** and
+prints `*** BACKUP FAILED ***` naming the offending pass, so success is decided
+by exit status rather than by eyeballing a log.
+
+**1b. What produced the rc=23, and the real fix.** A CI job started during the
+backup, created thousands of files under the local-path PVC scratch
+(`k3s-storage/pvc-…/_temp/sibling-clones/…`), and **deleted the entire tree when
+the job finished** — mid-copy. That directory is 4 K at idle and gigabytes
+mid-job.
+
+Backing it up is both futile and a guaranteed race, so **`k3s-storage/` is now
+excluded**, along with `/var/log/pods` and the `*.premove` rollback copies. The
+lesson generalises: **exclude per-job ephemeral state rather than trying to
+copy it reliably.** No amount of exit-code handling makes a copy of a directory
+that is being deleted underneath you meaningful.
+
+Note also that the script must not pipe rsync into anything, or `$?` becomes the
+downstream command's status and the real result is masked. rsync is invoked
+directly; the log is produced by `tee`-ing the whole script's output instead.
 
 **2. An ssh-launched job survives the client being interrupted.** Ctrl-C on the
 local side killed the tool call, not the remote process. Relaunching created
@@ -134,10 +177,15 @@ backup looks like the second time.
 
 ## Phase 4 — verifying
 
+**The script's exit status is the acceptance signal.** It exits **0** only if
+every pass returned 0 or 24, and prints a per-pass `=== SUMMARY ===`. A non-zero
+exit means the backup is not usable. Do not judge it by reading the log.
+
 **Re-run `run-backup.sh`. The second run must transfer almost nothing.** That
-effective no-op is the acceptance test: a large second transfer means the first
-pass was incomplete or an exclude is wrong. Check `Number of regular files
-transferred` per pass, and that all three passes report `rc=0`, `23` or `24`.
+effective no-op is the second acceptance test: a large second transfer means the
+first pass was incomplete or an exclude is wrong. The honest signal is the
+`xfr#N` counter — a *low* N on a re-run means rsync is confirming files already
+match.
 
 Then dry-run the restore path — `rsync -n` from `rootfs/` against a scratch
 target — and confirm it is also near-silent.
