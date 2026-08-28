@@ -318,6 +318,19 @@ would silently lose the array's original geometry and the audit trail.
    summarized to host-specific facts, with the fleet-wide machinery
    cross-linked rather than duplicated.
 
+9. **The future expansion/optimization options** — carried over from this
+   plan's `phase2-pricing-comparison.md` and
+   `phase2-single-drive-raid10-analysis.md`. Maintainer-requested
+   2026-08-28: these are to live in the host repo as well as here, so the
+   next person asking "what can this box take?" finds the answer beside the
+   hardware facts rather than inside a plan they would have to know existed.
+   Carry the **decision content** — the RAID 5 vs RAID 10 arithmetic, the
+   1U low-profile constraint, Slot 1's confirmed x4x4x4x4 bifurcation, the
+   bay/caddy requirements, the SAS-vs-SATA trap — and **date the price
+   figures explicitly as a 2026-08-28 snapshot taken during a NAND
+   shortage**, since those go stale within weeks while the constraints do
+   not.
+
 **Boundary:** creating a repo under the maintainer's GitHub account is an
 outward-facing action, so the repo creation itself is maintainer-gated even
 though the content authoring is not.
