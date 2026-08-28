@@ -245,6 +245,83 @@ fleet.
   hosted capacity with the self-hosted host quiesced. Record run IDs.
 - This is the go/no-go gate for Phase 6.
 
+### Phase 5.5 — Create the missing `poweredge-xubuntu-info` private repo
+
+**Goal:** this host is the only member of the per-host documentation family
+with no `*-info` repo. Create `thewoolleyman/poweredge-xubuntu-info` as a
+**PRIVATE** repo mirroring the content and purpose of the existing
+`vps-info`, `hp-xubuntu-info`, and `gmktec-xubuntu-info` — capturing the
+hardware, firmware, RAID/disk layout, iDRAC, and access facts this plan has
+been discovering, so they survive the rebuild rather than living only in
+plan research.
+
+**Why it sits here, immediately before the destructive work.** Everything
+Phases 0–2 measured describes a machine that Phase 6 is about to change.
+Recording the *pre-change* state is only possible now, and the restore in
+Phase 7 needs exactly these facts. A `*-info` repo written after the rebuild
+would silently lose the array's original geometry and the audit trail.
+
+**The family's conventions** (audited 2026-08-28 across all three siblings):
+
+- **`AGENTS.md` is the entry point, not a README.** Both `*-xubuntu-info`
+  repos have no README at all; only the much larger `vps-info` has one, and
+  it is a short pointer deferring to `AGENTS.md`. Add `CLAUDE.md` as a
+  **symlink** to `AGENTS.md` (the pattern `vps-info` and `openclaw-info`
+  use), never as a second file.
+- **No front matter anywhere.** Metadata is bolded `**Key**: value` lines or
+  a markdown Field|Value table.
+- **Hand-authored prose; nothing script-generated.** Facts are typed after
+  running a command, and the command is quoted alongside so a reader can
+  re-derive it.
+- **Timestamps are per-claim and inline** ("Recorded 2026-08-28", "OS at
+  time of recording"), not a single "last audited" header — and are paired
+  with an instruction to re-measure before acting.
+- **Secrets by reference only** — name the Environment, the variable, the
+  value *format*, and the loader path; never a value.
+- **Negative assertions are first-class** — write down what the host does
+  NOT have as loudly as what it does.
+- **Cross-repo links are explicit**, with the boundary stated: host-specific
+  facts live here; anything running on more than one host belongs in a fleet
+  repo. Default branch `main` (the newer siblings' choice).
+
+**Content to carry, from this plan and a live audit:**
+
+1. `## Platform` — PowerEdge R630, service tag `JBS0JB2`, BIOS 2.18.1
+   (2023-08-14), UEFI, 1U; 2 × Xeon E5-2696 v3 (72 threads), 188 GiB RAM;
+   Ubuntu 26.04 LTS, kernel `7.0.0-29-generic`.
+2. `## Storage` — PERC H730P Mini (FW `25.5.9.0001`), BBU Optimal, the RAID 5
+   VD and its three Samsung `MZ7GE960HMHP-000V3` drives, the partition
+   layout, and the measured performance envelope. **Include the negative
+   assertion that TRIM never reaches these drives and that `fstrim.timer`
+   reports healthy while doing nothing** — exactly the operational trap the
+   characterization documented.
+3. `## Management / iDRAC` — iDRAC 2.85, shared-LOM on `eno1`, the address,
+   and the Phase 0 finding that it is currently unreachable. Dell boot keys
+   (F2 System Setup, F11 Boot Manager, F10 Lifecycle Controller).
+4. `## Network / Tailscale identity` — `poweredge-xubuntu`, `100.78.140.72`,
+   `eno1` at `192.168.1.200`; ACL policy owned by `tailscale-admin`, edited
+   there by PR, never here.
+5. `## Remote access` — the `ssh poweredge-xubuntu` stanza's account caveat
+   (`cwoolley`, not `ubuntu`), mirroring `hp-xubuntu-info/TAILSCALE_SSH.md`
+   including its `## Verification` section.
+6. `## PCIe expansion` — Slot 1 x16 free, Slot 2 holding a Radeon Cedar
+   display adapter, and the **low-profile-only** constraint that the 1U
+   chassis imposes.
+7. `## Related repos` — `tailscale-admin` (tailnet ACLs and inventory) and
+   `livespec-dev-tooling` (the k3s/ARC CI-runner provisioning that already
+   targets this host). **Cross-link that provisioning; do not copy it here** —
+   `vps-info`'s README records, at cost, that a service running on several
+   hosts must not live in a per-host repo.
+8. The Kubernetes/k3s setup and install notes from the `fleet-ci-runner-pool`
+   plan's research (`design.md`, `k3s-arc-kueue-migration.md`,
+   `cache-tier-2-design.md`, `post-cutover-conformance-audit.md`) —
+   summarized to host-specific facts, with the fleet-wide machinery
+   cross-linked rather than duplicated.
+
+**Boundary:** creating a repo under the maintainer's GitHub account is an
+outward-facing action, so the repo creation itself is maintainer-gated even
+though the content authoring is not.
+
 ### Phase 6 — Execute the chosen optimization
 
 **Goal:** carry out the Phase 2 decision — over-provisioned recreate,
