@@ -409,7 +409,7 @@ fallback.
 | — CI churn relocated off `/` | **DONE** | `containerd-relocation-completed.md` |
 | — `io.pressure` instrumentation | **DONE, live** | `livespec-dev-tooling#1650`, installed on the host |
 | 3 — backup to USB | **DONE** | `phase3-backup-and-restore-procedure.md` |
-| 4 — verify the backup | **DONE** — backup verified; restore rehearsed end-to-end on `sda3` (steps 1–4 pass; boot test optional/deferred) | `restore-verification-plan.md` → "Rehearsal result", `research/restore.sh` |
+| 4 — verify the backup | **DONE + boot-proven** — backup verified; restore rehearsed AND **booted** on `sda3` (came up with ssh/k3s/tailscale active; surfaced + fixed the swap-recreation gap); returned cleanly to `sda4` | `restore-verification-plan.md` → "Rehearsal result" + "Step 5 executed", `research/restore.sh` |
 | 5 — prove CI falls back to GitHub-hosted | **NOT STARTED** | this document, Phase 5 |
 | 5.5 — `poweredge-xubuntu-info` repo | **NOT STARTED** | this document, Phase 5.5 |
 | 6 — execute the rebuild | blocked on 4-restore, 5, and the drives arriving | this document, Phase 6 |
@@ -433,12 +433,17 @@ it dropped `/var/cache/ci-runner` and the bind mounts; gap 2: it would have
 touched the live `sda1` ESP) and the fstab logic proven offline — which caught a
 fresh double-`nofail` bug that read as correct. The rehearsal ran to completion
 with a correct fstab, kernels present, exact ownership/setuid fidelity, and the
-live host untouched. See `restore-verification-plan.md` → "Rehearsal result".
-The only thing still un-measured is an actual boot (step 5), deliberately
-deferred. The remaining pre-Phase-6 gates are now **Phase 5** (prove CI falls
-back to GitHub-hosted runners) and **Phase 5.5** (the `poweredge-xubuntu-info`
-repo), plus a fleet-halted re-run of the backup for a coherent pre-rebuild
-snapshot.
+live host untouched. **Then it was booted (step 5, 2026-08-28): the restored
+`sda3` came up as a working system — ssh/k3s/tailscale active — and returned
+cleanly to `sda4`.** The boot surfaced one real defect (the backup excludes
+swap, but the fstab still referenced it, so `swap.img.swap` failed), now fixed —
+`restore.sh` recreates the swap file post-restore. See
+`restore-verification-plan.md` → "Rehearsal result" + "Step 5 executed". The
+only remaining inference is the bare-metal `grub-install` path (gap 2), which
+runs for real in Phase 6/7. The remaining pre-Phase-6 gates are now **Phase 5**
+(prove CI falls back to GitHub-hosted runners) and **Phase 5.5** (the
+`poweredge-xubuntu-info` repo), plus a fleet-halted re-run of the backup for a
+coherent pre-rebuild snapshot.
 
 ## Open questions to resolve within the plan
 

@@ -154,6 +154,37 @@ if [ -s "$REMAP_LIST" ]; then
 fi
 rm -f "$REMAP_LIST"
 
+# --------------------------------------------------------------- swap --
+# The backup EXCLUDES swap contents (correct — swap is never backed up), but the
+# restored fstab still names the swap FILE, so its swap unit fails on first boot
+# (a degraded-but-harmless state — proven by the sda3 boot rehearsal, where
+# swap.img.swap was the sole failed unit). Recreate any swap FILE the restored
+# fstab names but that is missing, sized from meta/swap-size-bytes.txt when the
+# backup recorded it, else an 8 GiB default. Swap PARTITIONS (/dev/… or UUID=)
+# are left alone — only files are recreated.
+echo "=== recreating swap file(s) named in the restored fstab ==="
+SWAP_DEFAULT_BYTES=8589934592   # 8 GiB fallback when the backup recorded no size
+swap_target_bytes() {
+  if [ -f "${SRC}/meta/swap-size-bytes.txt" ]; then
+    tr -cd '0-9' < "${SRC}/meta/swap-size-bytes.txt"
+  else
+    printf '%s' "$SWAP_DEFAULT_BYTES"
+  fi
+}
+awk '$0 !~ /^[[:space:]]*#/ && $3=="swap" && $1 ~ /^\// && $1 !~ /^\/dev\// {print $1}' \
+  "${TARGET}/etc/fstab" | while IFS= read -r swp; do
+  dst="${TARGET}${swp}"
+  if [ -e "$dst" ]; then echo "    ${swp}: already present, left as-is"; continue; fi
+  bytes=$(swap_target_bytes)
+  echo "    ${swp}: absent — recreating ${bytes} bytes"
+  rm -f "$dst"
+  if ! fallocate -l "$bytes" "$dst" 2>/dev/null; then
+    dd if=/dev/zero of="$dst" bs=1M count=$(( bytes / 1048576 )) status=none
+  fi
+  chmod 600 "$dst"
+  if mkswap "$dst" >/dev/null 2>&1; then echo "    ${swp}: mkswap OK"; else warn "mkswap failed on ${swp} — recreate it manually before relying on swap"; fi
+done
+
 # ------------------------------------------------------------- bootloader --
 if [ "$SKIP_BOOTLOADER" = "1" ]; then
   echo "=== bootloader step SKIPPED (SKIP_BOOTLOADER=1) ==="
