@@ -132,7 +132,8 @@ receive CI write traffic.
 **Purchasing constraints, both easy to get wrong (see the Phase 0 note):**
 - **Low-profile / half-height card.** The chassis is 1U. The "Length: Long"
   field on Slot 1 refers to length, not height.
-- **Power-loss protection (PLP) is mandatory, not optional.** See "Mixing SATA
+- **Power-loss protection (PLP) is a priced trade-off, not a precondition** —
+  an earlier revision wrongly called it mandatory. See "Mixing SATA
   and NVMe" below — this is the single most important requirement.
 
 ### 2. RAID 10 for the durable tier — meaningful, and bounded
@@ -242,11 +243,24 @@ NVMe has PLP; **consumer NVMe (e.g. Samsung 9xx Pro, WD Black) does not.** On a
 consumer part, a power loss can lose writes the drive has already acknowledged as
 durable — and this host runs k3s, whose etcd state assumes fsync means fsync.
 
-**Therefore: an enterprise NVMe with explicit power-loss protection is a hard
-requirement, not a preference.** A consumer NVMe would benchmark beautifully and
-introduce a silent corruption risk on power loss. Given the workload is
-partly disposable CI scratch, it is tempting to economise here; the k3s state on
-the same host is what makes it a bad trade.
+**This is a priced trade-off for the maintainer, NOT a precondition.** An
+earlier revision of this note called enterprise NVMe with power-loss protection
+a "hard requirement". **That was an assumption, and it was wrong** — it imported
+a production risk posture onto a machine the maintainer has since confirmed is
+**not production**: a rebuildable CI host with backups.
+
+The technical fact stands and is worth stating precisely: on power loss, a
+consumer NVMe can lose writes it has already acknowledged as durable, and k3s's
+etcd state assumes fsync means fsync. What changes is the **consequence**. On
+this host that is a reprovision from backup — annoying, bounded, and exactly what
+Phases 3–4 exist to make cheap — rather than lost production data.
+
+So the honest framing is a cost comparison, not a rule: consumer NVMe is
+materially cheaper and delivers essentially the same performance; the premium
+buys protection against a failure mode whose cost here is a restore. Note also
+that **used enterprise NVMe** often undercuts new consumer parts while retaining
+power-loss protection, which can make the trade-off moot. Surface all three as
+priced options and let the maintainer choose.
 
 ### Boot
 
@@ -286,7 +300,7 @@ point is to move CI churn off `/`, not to move the OS.
 
 ## Recommended target architecture
 
-1. **NVMe (low-profile, enterprise, PLP)** in Slot 1 → `containerd` image store
+1. **NVMe (low-profile)** in Slot 1 → `containerd` image store
    + k3s local-path PVC root. Mount-point based, so it is a remount rather than
    a k3s reconfiguration later.
 2. **SATA array rebuilt as RAID 10**, over-provisioned at creation → OS, k3s
