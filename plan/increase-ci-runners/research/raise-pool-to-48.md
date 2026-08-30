@@ -1,5 +1,20 @@
 # Raise the fleet CI runner pool to 48 churn-slots — approved ahead of the data
 
+> **RE-STEER 2026-08-30 — the live target is now 64, not 48, and the reclaim
+> flip is REJECTED.** After this note was written the maintainer re-steered the
+> target from 48 to **64** churn-slots ("go big or go home") and declared a
+> standing directive: **DO NOT EVER KILL HEALTHY JOBS** — so
+> `reclaimWithinCohort` stays `Never` on all nine ClusterQueues and the
+> "strongly recommended companion" reclaim→Any flip proposed lower in this note
+> is **NOT adopted**. This note's body below is preserved as the original
+> reasoning (the 16→48 argument applies unchanged to 16→64, only more so on the
+> idle-headroom side). The authoritative current state is: the epic
+> `livespec-zec4mz` handoff timeline, `livespec-dev-tooling` PR #1656, and that
+> repo's `ci-runner/k3s/phase2/kueue/DERIVATION.md` §"The derivation at C = 64
+> (2026-08-30)". The C=64 Hamilton apportionment is livespec 10, driver-codex 9,
+> driver-claude 9, orchestrator-git-jsonl/overseer/runtime/dev-tooling 8 each,
+> console-beads-fabro 2, driver-pi 2 = exactly 64.
+
 Maintainer-approved 2026-08-30. **This plan is deliberately bold: it is APPROVED
 EVEN THOUGH we have no hard disk-throughput data yet, and EVEN THOUGH the RAID-10
 disks tracked in `poweredge-raid-array-maintenance` (epic `livespec-g52yrb`) are
