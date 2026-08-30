@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.2](https://github.com/thewoolleyman/livespec/compare/v0.38.1...v0.38.2) (2026-08-30)
+
+
+### Bug Fixes
+
+* **deps:** adapt livespec to livespec-runtime v0.22.0 and bump the pin ([6bf59d9](https://github.com/thewoolleyman/livespec/commit/6bf59d9db88ba622471dd1bd04a66b8f5701d00b))
+
 ## [0.38.1](https://github.com/thewoolleyman/livespec/compare/v0.38.0...v0.38.1) (2026-08-26)
 
 
