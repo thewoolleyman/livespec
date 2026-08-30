@@ -11,17 +11,22 @@ from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult, IOSuccess
-from returns.result import Failure, Success
+from returns.result import Failure, Success, safe
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.errors import LivespecError, UsageError
 from livespec.io import cli, streams
 from livespec.spec_governance.config import parse_config_text
-from livespec.spec_governance.default_block import BlockDrift, verify_default_block
+from livespec.spec_governance.default_block import (
+    BlockDrift,
+    BlockVerification,
+    UnterminatedGovernanceBlockError,
+    verify_default_block,
+)
 from livespec.spec_governance.editing import EditResult, apply_action
 from livespec.spec_governance.journal import JournalAppend, append_journal_event
-from livespec.spec_governance.registry import manifest_rows
+from livespec.spec_governance.registry import ManifestRow, manifest_rows
 from livespec.spec_governance.spec_pr_merge import effective_spec_pr_merge
 
 __all__: list[str] = ["build_parser", "dispatch", "main"]
@@ -154,6 +159,18 @@ def _append_journal(
     return IOSuccess(result)
 
 
+@safe(exceptions=(UnterminatedGovernanceBlockError,))
+def _verified_default_block(*, text: str, manifest: list[ManifestRow]) -> BlockVerification:
+    """`@safe`-lifted call into the runtime's default-block verifier.
+
+    The verifier raises `UnterminatedGovernanceBlockError` when the
+    commented block opens but never balances. That is a malformed
+    operator-supplied file — an expected error, not a bug — so it rides
+    the failure track instead of propagating out of the supervisor.
+    """
+    return verify_default_block(text=text, manifest=manifest)
+
+
 def _check_default_block(*, source_path: Path) -> IOResult[dict[str, Any], LivespecError]:
     if not source_path.is_file():
         message = ": ".join(
@@ -163,10 +180,14 @@ def _check_default_block(*, source_path: Path) -> IOResult[dict[str, Any], Lives
             )
         )
         return IOResult.from_failure(UsageError(message))
-    verification = verify_default_block(
+    verification = _verified_default_block(
         text=source_path.read_text(encoding="utf-8"),
         manifest=manifest_rows(),
-    )
+    ).value_or(None)
+    if verification is None:
+        return IOResult.from_failure(
+            UsageError(_default_block_unterminated_message(source_path=source_path))
+        )
     if verification.drift is None:
         payload: dict[str, Any] = {
             "check_id": "spec-governance-default-block-ok",
@@ -178,6 +199,19 @@ def _check_default_block(*, source_path: Path) -> IOResult[dict[str, Any], Lives
     return IOResult.from_failure(
         UsageError(_default_block_drift_message(source_path=source_path, drift=verification.drift))
     )
+
+
+def _default_block_unterminated_message(*, source_path: Path) -> str:
+    payload = {
+        "check_id": "spec-governance-default-block-unterminated",
+        "path": str(source_path),
+        "hint": (
+            "The commented spec_governance block opens but never closes. "
+            "Balance the commented object, or drop the block entirely if this "
+            "repo does not intentionally carry the documentation."
+        ),
+    }
+    return json.dumps(payload, sort_keys=True)
 
 
 def _default_block_drift_message(*, source_path: Path, drift: BlockDrift) -> str:
