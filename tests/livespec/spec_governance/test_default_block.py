@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from livespec.spec_governance.default_block import documented_defaults, verify_default_block
+import pytest
+from livespec.spec_governance.default_block import (
+    UnterminatedGovernanceBlockError,
+    documented_defaults,
+    verify_default_block,
+)
 from livespec.spec_governance.registry import ManifestRow
 
 __all__: list[str] = []
@@ -17,16 +22,6 @@ def test_documented_defaults_extracts_commented_block() -> None:
 
 def test_documented_defaults_rejects_missing_or_unusable_blocks() -> None:
     assert documented_defaults(text="// Optional \u2014 credential_wrapper: next\n") is None
-    assert (
-        documented_defaults(
-            text=(
-                "// Optional \u2014 spec_governance: policy\n"
-                "not a comment\n"
-                "// Optional \u2014 credential_wrapper: next\n"
-            )
-        )
-        is None
-    )
     assert (
         documented_defaults(
             text=(
@@ -49,6 +44,23 @@ def test_documented_defaults_rejects_missing_or_unusable_blocks() -> None:
         )
         is None
     )
+
+
+def test_documented_defaults_raises_on_an_unterminated_block() -> None:
+    """A block that opens but never balances is a structural error, not an absent block.
+
+    livespec-runtime v0.22.0 replaced the silent `None` return with
+    `UnterminatedGovernanceBlockError` so a malformed block cannot be
+    mistaken for one that was never written.
+    """
+    with pytest.raises(UnterminatedGovernanceBlockError):
+        _ = documented_defaults(
+            text=(
+                "// Optional — spec_governance: policy\n"
+                "not a comment\n"
+                "// Optional — credential_wrapper: next\n"
+            )
+        )
 
 
 def test_verify_default_block_accepts_exact_manifest_defaults() -> None:

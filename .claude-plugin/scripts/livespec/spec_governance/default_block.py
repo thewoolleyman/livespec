@@ -10,6 +10,7 @@ from __future__ import annotations
 from livespec_runtime.spec_governance import (
     BlockDrift,
     BlockVerification,
+    UnterminatedGovernanceBlockError,
     documented_defaults,
     verify_default_block,
 )
@@ -17,6 +18,7 @@ from livespec_runtime.spec_governance import (
 __all__: list[str] = [
     "BlockDrift",
     "BlockVerification",
+    "UnterminatedGovernanceBlockError",
     "documented_defaults",
     "verify_default_block",
 ]

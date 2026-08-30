@@ -9,7 +9,6 @@ from livespec_runtime.attention_item import (
     AttentionUrgency,
     Handoff,
     SourceRef,
-    validate_attention_item_id,
 )
 
 __all__: list[str] = [
@@ -92,9 +91,8 @@ def compose_needs_attention(
     """Normalize injected primitive outputs into a flat attention list."""
     attention: list[AttentionItem] = []
     for lane in human_valve_lanes:
-        _append_if_valid(
-            attention=attention,
-            item=AttentionItem(
+        attention.append(
+            AttentionItem(
                 id=f"valve:{lane.verb}:{lane.work_item}",
                 kind="human-valve",
                 urgency=lane.urgency,
@@ -104,9 +102,8 @@ def compose_needs_attention(
             ),
         )
     for current_impl in _present(value=impl_next):
-        _append_if_valid(
-            attention=attention,
-            item=AttentionItem(
+        attention.append(
+            AttentionItem(
                 id=f"impl:{current_impl.work_item}",
                 kind="impl",
                 urgency=current_impl.urgency,
@@ -116,9 +113,8 @@ def compose_needs_attention(
             ),
         )
     for current_spec in _present(value=spec_next):
-        _append_if_valid(
-            attention=attention,
-            item=AttentionItem(
+        attention.append(
+            AttentionItem(
                 id=f"spec:{current_spec.op}:{current_spec.spec_target}",
                 kind="spec",
                 urgency=current_spec.urgency,
@@ -128,9 +124,8 @@ def compose_needs_attention(
             ),
         )
     for thread in plan_threads:
-        _append_if_valid(
-            attention=attention,
-            item=AttentionItem(
+        attention.append(
+            AttentionItem(
                 id=f"plan:{thread.topic}",
                 kind="plan",
                 urgency=thread.urgency,
@@ -140,9 +135,8 @@ def compose_needs_attention(
             ),
         )
     for finding in hygiene_scan:
-        _append_if_valid(
-            attention=attention,
-            item=AttentionItem(
+        attention.append(
+            AttentionItem(
                 id=f"hygiene:{finding.type}:{finding.resource}",
                 kind="hygiene",
                 urgency=finding.urgency,
@@ -158,8 +152,3 @@ def _present(*, value: _ValueT | None) -> tuple[_ValueT, ...]:
     if value is None:
         return ()
     return (value,)
-
-
-def _append_if_valid(*, attention: list[AttentionItem], item: AttentionItem) -> None:
-    if validate_attention_item_id(id=item.id):
-        attention.append(item)

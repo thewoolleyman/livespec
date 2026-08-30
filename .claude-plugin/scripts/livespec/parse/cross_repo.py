@@ -1,11 +1,16 @@
 """Pure Result-wrapping shims over `livespec_runtime.cross_repo` parsers.
 
-The runtime library raises `CrossRepoSchemaError` directly when a
-typed-union dict fails validation; livespec's no-raise-outside-io
-discipline forbids try/except at consumer sites. These shims use
-the canonical `@safe(exceptions=(...))` + `.alt(...)` pattern (see
-`livespec.parse.jsonc` for the precedent) to convert the
-runtime's raise-path into `Failure(ValidationError(...))`.
+The two runtime parsers surface a schema violation differently, so
+each shim meets it where it is. `parse_depends_on_entry` already
+returns its own `Result[..., CrossRepoSchemaError]` track (runtime
+v0.22.0 moved it off the raise-path), so its shim only re-labels the
+failure payload as livespec's `ValidationError`.
+`parse_cross_repo_manifest` still raises `CrossRepoSchemaError`
+directly, and livespec's no-raise-outside-io discipline forbids
+try/except at consumer sites, so its shim keeps the canonical
+`@safe(exceptions=(...))` + `.alt(...)` pattern (see
+`livespec.parse.jsonc` for the precedent) to convert that raise-path
+into `Failure(ValidationError(...))`.
 
 Two surface functions:
 
@@ -36,12 +41,6 @@ from livespec.errors import ValidationError
 __all__: list[str] = ["parse_entry", "parse_manifest"]
 
 
-@safe(exceptions=(CrossRepoSchemaError,))
-def _raw_parse_entry(*, parsed: dict[str, Any]) -> DependsOnEntry:
-    """`@safe`-lifted call into the runtime's typed-entry parser."""
-    return parse_depends_on_entry(parsed=parsed)
-
-
 def parse_entry(*, parsed: dict[str, Any]) -> Result[DependsOnEntry, ValidationError]:
     """Parse a typed-dict depends_on entry.
 
@@ -50,7 +49,7 @@ def parse_entry(*, parsed: dict[str, Any]) -> Result[DependsOnEntry, ValidationE
     `kind`, carries an unknown `kind`, or omits per-kind required
     fields.
     """
-    return _raw_parse_entry(parsed=parsed).alt(
+    return parse_depends_on_entry(parsed=parsed).alt(
         lambda exc: ValidationError(f"cross_repo depends_on entry: {exc.detail}"),
     )
 

@@ -28,7 +28,12 @@ if str(_VENDOR_DIR) not in sys.path:
     sys.path.insert(0, str(_VENDOR_DIR))
 
 import structlog  # noqa: E402
-from livespec_runtime.spec_governance import ManifestRow, verify_default_block  # noqa: E402
+from livespec_runtime.spec_governance import (  # noqa: E402
+    BlockVerification,
+    ManifestRow,
+    UnterminatedGovernanceBlockError,
+    verify_default_block,
+)
 
 __all__: list[str] = []
 
@@ -105,10 +110,21 @@ def _verify_block(
         )
         for row in _manifest_rows(manifest_path=resolved_manifest_path)
     ]
-    verification = verify_default_block(
+    verification = _verify_or_none(
         text=resolved_block_source_path.read_text(encoding="utf-8"),
-        manifest=rows,
+        rows=rows,
     )
+    if verification is None:
+        log.error(
+            "commented spec_governance defaults block opens but never closes",
+            check_id="spec-governance-template-block-unterminated",
+            path=str(block_source_path),
+            hint=(
+                "Balance the commented spec_governance object, or drop the block "
+                "entirely if the template intentionally documents no policy."
+            ),
+        )
+        return 1
     if verification.documented is None:
         log.error(
             "commented spec_governance defaults block is absent or unparsable",
@@ -137,6 +153,22 @@ def _verify_block(
         ),
     )
     return 1
+
+
+def _verify_or_none(*, text: str, rows: list[ManifestRow]) -> BlockVerification | None:
+    """Verify the commented block, reporting an unterminated one as None.
+
+    livespec-runtime v0.22.0 raises `UnterminatedGovernanceBlockError`
+    for a block that opens but never balances, where it previously
+    returned a silently absent block. That is a template defect this
+    check exists to report, so it becomes a verdict rather than a
+    traceback. `verify_default_block` never returns None itself, so a
+    None here means exactly "unterminated".
+    """
+    try:
+        return verify_default_block(text=text, manifest=rows)
+    except UnterminatedGovernanceBlockError:
+        return None
 
 
 def _resolve_path(*, cwd: Path, path: Path) -> Path:

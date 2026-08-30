@@ -9,6 +9,7 @@ __all__: list[str] = [
     "AttentionUrgency",
     "Handoff",
     "HandoffKind",
+    "InvalidAttentionItemIdError",
     "SourceRef",
     "validate_attention_item_id",
 ]
@@ -28,7 +29,19 @@ HandoffKind = Literal["drive", "livespec-op", "plan", "shell"]
 _TWO_PART_COUNT = 2
 _THREE_PART_COUNT = 3
 _TWO_PART_PREFIXES = frozenset(("impl", "plan"))
-_THREE_PART_PREFIXES = frozenset(("host-only", "valve", "hygiene", "spec"))
+_THREE_PART_PREFIXES = frozenset(("host-only", "valve", "hygiene", "spec", "internal"))
+
+
+class InvalidAttentionItemIdError(Exception):
+    """Raised when an `AttentionItem` is built with an id the grammar rejects.
+
+    Inherits `Exception` directly: consumers catch this domain type (or
+    `Exception`), never a builtin ancestor such as `ValueError`.
+    """
+
+    def __init__(self, *, id: str) -> None:
+        super().__init__(f"invalid attention item id: {id!r}")
+        self.id = id
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -59,6 +72,19 @@ class AttentionItem:
     summary: str
     source_ref: SourceRef
     handoff: Handoff
+
+    def __post_init__(self) -> None:
+        """Refuse construction when the id fails the stable-key grammar.
+
+        Enforced HERE rather than at each producer's emission boundary
+        because producers live in consuming repositories: an emission-side
+        rule is one this library states and cannot verify, which is the
+        exact shape that let the silent drop survive. Validating at
+        construction means no `AttentionItem` value can exist with an
+        invalid id, so every caller inherits the guarantee.
+        """
+        if not validate_attention_item_id(id=self.id):
+            raise InvalidAttentionItemIdError(id=self.id)
 
 
 def validate_attention_item_id(*, id: str) -> bool:
