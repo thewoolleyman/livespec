@@ -117,3 +117,51 @@ Honeycomb (`hostmetrics` `disk` scraper: `system.disk.operations`,
 `system.disk.io_time`, `system.disk.weighted_io_time`,
 `system.disk.pending_operations`) for the same window at the collector's
 scrape interval — the maintainer can query it; `sar` buckets are 10 minutes.
+
+## 8. Addendum — the Honeycomb host metrics agree (queried 2026-09-01 15:50Z)
+
+Queried through Honeycomb's remote MCP (`run_query` on environment
+`livespec`, dataset `metrics`, filters `host.name = poweredge-xubuntu`,
+`device = sda`), one query per 5-minute bucket, counters summed (Honeycomb
+stores the collector's cumulative sums as deltas). Derived: busy % =
+Σ`system.disk.io_time`/300; queue = Σ`system.disk.weighted_io_time`/300;
+write IOPS = Σ`system.disk.operations{write}`/300; write await =
+Σ`system.disk.operation_time{write}`/Σops. Reads were negligible (197 read
+ops in the whole window against ~400,000 writes); this is a pure write
+workload.
+
+| UTC | busy % | avg queue | write IOPS | write MB/s | write await |
+|---|---|---|---|---|---|
+| 13:40 | 93.8 | 99.4 | 986 | 96.8 | 101 ms |
+| 13:50 | 95.5 | 100.2 | 966 | 98.3 | 104 ms |
+| 14:00 | 93.5 | 99.7 | 812 | 95.8 | 123 ms |
+| 14:10 | 95.7 | 96.8 | 719 | 94.8 | 135 ms |
+| 14:20 | 94.6 | 117.7 | 1328 | 102.6 | 89 ms |
+| 14:30 | 97.9 | 101.5 | 979 | 99.4 | 104 ms |
+| 14:40 | 91.7 | 106.4 | 1363 | 90.1 | 78 ms |
+| 14:50 | 95.5 | 93.3 | 1045 | 94.3 | 89 ms |
+| 15:00 | 93.9 | 107.6 | 1187 | 97.0 | 91 ms |
+| 15:10 | 95.3 | 118.7 | 1237 | 94.3 | 96 ms |
+| 15:20 | 87.2 | 96.6 | 896 | 98.8 | 108 ms |
+| 15:25 | 6.3 | 8.4 | 204 | 19.0 | 41 ms |
+| 15:30 | 0.0 | 0.1 | 19 | 0.9 | 3 ms |
+| 15:35 | 32.0 | 35.0 | 858 | 84.6 | 41 ms |
+
+Same shape as `sar` (§3) from an independent sampler at 30-second
+resolution: for ~100 minutes the virtual disk served a flat ~1,000
+write requests/s at ~95 MB/s with ~100 requests queued and ~100 ms per
+request, then dropped to idle within one bucket of the pool emptying. For
+this workload shape (≈95 KB writes, allocation-heavy, near-zero reads) that
+is the device's service rate — the phase-2-correction's cold-allocating
+random-write regime — and the persistent 100-deep queue means demand
+exceeded it for the whole window. It is not the array's sequential ceiling,
+and it says nothing about what a different layout or media would do.
+
+Note on the reading at 15:35Z: busy 32 % with 858 IOPS at 41 ms await — the
+same device doing ~85 % of the IOPS at a third of the busy time once the
+queue is short. Latency, not bandwidth, is the cost of running this pool
+deep.
+
+`system.disk.pending_operations` reported 0 throughout — the gauge is not
+populated on this kernel/collector combination; the queue figure above
+comes from `weighted_io_time`.
