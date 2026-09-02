@@ -59,7 +59,7 @@ datastore is volatile, and it is reconstructed from Git.
 |---|---|
 | 1 | **Array stays RAID-5.** No RAID-10 migration. |
 | 2 | **Full destructive rebuild** of the array (not an online expansion) to get clean, full-size partitions and reclaim the stranded space. |
-| 3 | **Add one NVMe drive** on a low-profile PCIe→M.2 adapter in Slot 1 (the only free slot; the SATA bays cannot host NVMe). |
+| 3 | **Add NVMe in Slot 1** (the only free slot; the SATA bays cannot host NVMe). *Amended 2026-09-02 at purchase:* **two 4 TB drives on one dual-M.2 switch card, JBOD (no RAID), one LVM VG per drive** — see "Purchase — RESOLVED" below. |
 | 4 | **CI datastore (kine) → tmpfs**, rebuilt-on-boot from GitOps. Owned by the `ci-runner-pod-lifecycle-reliability` plan. |
 | 5 | **No `mdadm` write-behind mirror.** With kine in tmpfs, the NVMe holds only rebuildable/disposable data, so a live SATA fallback would only re-impose write load on the array for no benefit. |
 | 6 | **NVMe boot is temporary scaffolding.** During the array's downtime the OS runs from an NVMe clone; afterward the OS returns to the redundant RAID-5. NVMe's steady-state job is the container/work tier. |
@@ -89,7 +89,7 @@ script has a bug?"). It is not, and the reasoning is worth stating in the plan:
 | Tier | Medium | Data | Owning plan |
 |---|---|---|---|
 | Datastore | **tmpfs (RAM)** | kine `state.db` + WAL (~150 MB) | `ci-runner-pod-lifecycle-reliability` |
-| Hot bulk | **NVMe** | containerd image layers (`…/agent/containerd`) + runner work volumes (`…/k3s/storage`) | this plan |
+| Hot bulk | **NVMe ×2 (JBOD, LVM VG per drive)** | containerd image layers (`…/agent/containerd`) on drive A; runner work volumes (`…/k3s/storage`) on drive B — dedicated IO per tenant | this plan |
 | Cold bulk | **RAID-5 array** | warm caches (`/var/cache/ci-runner/warm`), base images, OS | this plan |
 
 The device→path binding is already designed to make this a **mount change, not a
@@ -215,16 +215,63 @@ place as a safety net — the value is independent of the tmpfs flip.
   datastore is a tmpfs candidate. Do not conflate the two.
 - **RAID-10** is dropped, not deferred.
 
-## Open purchase item — the NVMe drive spec has changed
+## Purchase — RESOLVED 2026-09-02: two-drive JBOD split, ordered
+
+Superseding the single-2TB spec below (kept for the reasoning trail): the
+maintainer ordered a **two-drive, no-RAID (JBOD) build** the same day —
+
+- **2× WD_Black SN8100 4 TB** (`WDS400T1X0M`, M.2 2280, single-sided,
+  6.5–7 W) — $659.99 each.
+- **1× StarTech PEX8M2E2 dual-M.2 adapter** (ASMedia **ASM2824 PCIe switch** —
+  needs NO BIOS bifurcation; x8 Gen3 uplink; low-profile bracket included) —
+  $169.99.
+
+Design: the card goes in Slot 1 (Gen3 **x8 electrical**, x16 connector —
+matches the card's x8 uplink exactly); each drive gets a dedicated Gen3 x4
+(~3.5 GB/s) behind the switch, 2×3.5 ≈ 7 GB/s under the ~7.9 GB/s uplink — no
+oversubscription. **No RAID: one LVM VG per physical drive**, splitting the two
+write-heavy tenants so they cannot contend — **containerd image layers on
+drive A, runner work volumes on drive B** — 8 TB total. LVM gives online
+grow/`pvmove`/`vgextend` so future volumes never require a rebuild. **Address
+PVs by `/dev/disk/by-id` (or wwid), never `/dev/nvme0n1` ordering** — the
+switch renumbers PCI buses and enumeration order can shift across boots.
+
+An independent adversarial fit-verification (separately-spawned reviewer,
+read-only against the live host + vendor docs, 2026-09-02) returned
+**PASS-WITH-CAUTIONS — no blocker**. Install-day checklist from it:
+
+1. **MANDATORY: swap the PEX8M2E2 to its included low-profile bracket** — it
+   ships with the full-height bracket attached, and Slot 1 is **low-profile,
+   half-length** (card 159 mm < 167.65 mm limit — fits).
+2. Eyeball that **Riser 2** (which carries Slot 1) is physically present when
+   the lid is open — every remote signal says yes (SMBIOS slot record, `Riser
+   Config Err: ok`), but no discrete riser-2 presence sensor exists.
+3. Both CPUs populated (Slot 1 hangs off CPU1 root port `00:03.2` — link-capable,
+   currently down); UEFI, BIOS 2.18.1, kernel `7.0.0-30` carries the mainline
+   ASM2824 retrain quirk; no driver needed — drives appear as two independent
+   NVMe controllers.
+4. Expect `LnkSta` **8 GT/s x8** on the card and **8 GT/s x4** per drive — that
+   is correct, not a fault.
+5. **Check `nvme smart-log` temps under the first sustained CI load** — the
+   drives and card ship with no heatsinks; likely fine at Gen3 speeds in R630
+   airflow, but this is now load-bearing because the host's iDRAC
+   third-party-card cooling response was DISABLED on 2026-09-02 (idle fans
+   ~7.5k → ~3.9k RPM; recorded with re-apply/revert commands in the
+   `poweredge-xubuntu-info` repo, `FAN_COOLING.md`). If a drive runs
+   persistently > ~70 °C, add low-profile M.2 heatsinks (must stay within the
+   slot's LP envelope).
+6. Correction to earlier research: the PSUs are **2× 495 W redundant** (not
+   1176 W); headroom still ample (~230 W projected vs 495 W).
+
+### Original sizing reasoning (superseded, kept for the trail)
 
 Because kine moved to tmpfs and the mirror is dropped, the NVMe no longer needs
 **power-loss protection** (the fsync-critical datastore left for RAM) and the
 960 GB enterprise option is now *under*-sized. The NVMe now holds container
 layers + work volumes, so the spec shifts to **capacity + sustained write +
-endurance**: a **2 TB DRAM-backed consumer NVMe** (e.g. Samsung 990 Pro 2 TB or
-WD SN850X 2 TB, ~$390–400, ~1200 TBW, next-day) is the better fit than the
-earlier enterprise-PLP pick. Plus the low-profile adapter (GLOTRENDS PA22110
-~$9 or StarTech PEX4M2E1 ~$26). Final selection is the maintainer's call.
+endurance**: a 2 TB DRAM-backed consumer NVMe was the initial pick; the
+maintainer then chose the two-drive 4 TB JBOD split above for per-workload IO
+isolation and 8 TB headroom at 64-runner concurrency.
 
 ## Read-first chain
 
