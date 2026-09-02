@@ -24,11 +24,13 @@ Model: Haiku 4.5 (`claude-haiku-4-5-20251001`) per li-949's cost analysis.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess  # documented integration-test usage
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import cast
 
@@ -252,6 +254,22 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
         ),
     )
     payload = _llm_generate_json(prompt=prompt, schema=schema)
+    # The ratification-review fields are MECHANICAL evidence (digests,
+    # reviewer identity, timestamps) required by the revise wrapper's
+    # spec-governance gate for every mutating decision. They are injected
+    # here rather than requested from the LLM — the LLM's job in this tier
+    # is payload generation, and evidence the gate checks byte-for-byte
+    # must never be hallucinated. Mirrors fake_claude.revise (duplicated,
+    # not imported, per the cross-module private-access discipline).
+    decisions = payload.get("decisions")
+    if isinstance(decisions, list):
+        typed_decisions = cast("list[dict[str, object]]", decisions)
+        # Comprehension-free in-place amendment keeps the narrowing simple.
+        _amend_decisions_with_ratification(
+            decisions=typed_decisions,
+            proposed_changes_dir=proposed_changes_dir,
+        )
+    time.sleep(1.1)
     return _invoke_with_json(
         wrapper="revise.py",
         flag="--revise-json",
@@ -263,6 +281,75 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
             str(project_root),
         ],
     )
+
+
+def _amend_decisions_with_ratification(
+    *,
+    decisions: list[dict[str, object]],
+    proposed_changes_dir: Path,
+) -> None:
+    """Attach ratification_review + ratification_evidence to each decision.
+
+    Mutates in place. A decision whose topic does not resolve to a proposal
+    file is left unamended — the wrapper then rejects it with its own
+    actionable error rather than this helper crashing the harness.
+    """
+    for decision in decisions:
+        topic = decision.get("proposal_topic")
+        if not isinstance(topic, str):
+            continue
+        proposal_path = proposed_changes_dir / f"{topic}.md"
+        if not proposal_path.is_file():
+            continue
+        decision["ratification_review"] = "manual-spawn"
+        decision["ratification_evidence"] = _ratification_evidence(
+            proposal_stem=topic,
+            proposal_bytes=proposal_path.read_bytes(),
+            resulting_files=[],
+        )
+
+
+def _canonical_digest(
+    *,
+    proposal_bytes: bytes,
+    resulting_files: list[dict[str, str]],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(len(proposal_bytes).to_bytes(8, "big"))
+    digest.update(proposal_bytes)
+    for entry in sorted(resulting_files, key=lambda item: item["path"].encode("utf-8")):
+        for value in (entry["path"].encode("utf-8"), entry["content"].encode("utf-8")):
+            digest.update(len(value).to_bytes(8, "big"))
+            digest.update(value)
+    return digest.hexdigest()
+
+
+def _ratification_evidence(
+    *,
+    proposal_stem: str,
+    proposal_bytes: bytes,
+    resulting_files: list[dict[str, str]],
+) -> dict[str, object]:
+    return {
+        "reviewer_identity": "fable",
+        "reviewer_model": "fable",
+        "separate_reviewer": True,
+        "read_only": True,
+        "reviewed_at": _created_at_from_proposal(proposal_bytes=proposal_bytes),
+        "verdict": "NO BLOCKERS",
+        "proposal_stem": proposal_stem,
+        "content_digest": _canonical_digest(
+            proposal_bytes=proposal_bytes,
+            resulting_files=resulting_files,
+        ),
+    }
+
+
+def _created_at_from_proposal(*, proposal_bytes: bytes) -> str:
+    for line in proposal_bytes.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("created_at: "):
+            return line.removeprefix("created_at: ")
+    return "2026-08-03T12:34:56Z"
 
 
 def _load_schema(*, name: str) -> dict[str, object]:
@@ -309,7 +396,14 @@ def _llm_generate_json(*, prompt: str, schema: dict[str, object]) -> dict[str, o
     """
     options = ClaudeAgentOptions(
         model=_MODEL,
-        max_turns=1,
+        # 8, not 1: the CLI's structured-output flow takes extra turns beyond
+        # the assistant's answer, so max_turns=1 dies with error_max_turns
+        # before structured_output is produced — at 1 this lane failed every
+        # weekly run from 2026-06-01 onward. Measured 2026-09-02 against the
+        # live API (livespec-n33rwg.3): a minimal schema fails at 1 and
+        # passes at 2; the real wire-contract schemas need more headroom.
+        # 8 bounds runaway cost while leaving room for schema-sized payloads.
+        max_turns=8,
         permission_mode="bypassPermissions",
         output_format={"type": "json_schema", "schema": schema},
     )
