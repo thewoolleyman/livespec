@@ -49,6 +49,49 @@ the array to reclaim stranded space.
 >    the table is therefore void: NVMe is never a boot device, even
 >    temporarily.
 
+> **Amendment 2026-09-04, NVMe interim (authoritative for the NVMe tier until
+> the StarTech card lands).** The NVMe power-off happened 2026-09-04 with a
+> DIFFERENT card and ONE drive, not the two-drive StarTech build below:
+>
+> - **Card:** `PCIE-PEX8747M4` (Broadcom PLX PEX8747 switch, Amazon ASIN
+>   B0GT5JBN37), host interface Gen3 **x4** (not x8), four M.2 Key-M sockets
+>   with on-card bifurcation. Seated in Slot 1; enumerates as upstream port
+>   `04:00.0` with downstream ports `05:08.0`/`05:09.0`/`05:10.0`/`05:11.0`.
+>   The StarTech PEX8M2E2 has NOT arrived (a second was ordered 2026-09-04).
+> - **Drive:** one WD_BLACK SN8100 4 TB (serial `25384T801085`, firmware
+>   `830ZRR05`), by-id `nvme-WD_BLACK_SN8100_4000GB_25384T801085`.
+> - **The card cannot run this drive at PCIe Gen3.** On both sockets tried
+>   (card socket 1 = `05:09.0`, card socket 4 = `05:11.0`) the Gen3 x4 link
+>   throws receiver errors (`RxErr+ BadTLP+ BadDLLP+`), I/O hits the 30 s
+>   NVMe timeout (~1 MB/s), and on socket 4 the driver probe failed outright.
+>   At **Gen2 x4** the same drive is clean and fast (1.6 GB/s writes, ~400k
+>   random-write IOPS, ~20-30 µs QD1 reads, zero link errors). Full diagnosis
+>   and the recipes live in `nvme-pex8747-gen3-link-fault.md`.
+> - **The Gen2 interim was built, then abandoned the same night.** Both
+>   tenants were migrated onto one VG (`nvmea`: LVs `containerd` and
+>   `workvols`, 1.5 TiB each) at a Gen2 cap, k3s ran on them with all 69
+>   images intact, and the cap was persisted in the boot path. The
+>   verification reboot then HALTED IN POST with Dell `UEFI0066` ("PCIe link
+>   training failure … Bus:5 Dev:17 Func:0, link disabled, system halted"):
+>   the firmware trains the switch's downstream links before any OS-side cap
+>   can apply. Socket 1 in the other PCIe slot halted the same way (Bus:4
+>   Dev:9), and the switch heatsink was extremely hot to the touch. Verdict:
+>   the card is defective or out of spec for this drive; it is being
+>   returned. The card and drive were pulled, the host was landed back on the
+>   array stand-in LVs (fstab restored from `/etc/fstab.pre-nvme-2026-09-04`,
+>   the boot unit, script, and driver blacklist removed, k3s drop-in kept),
+>   and the NVMe carries a copy of containerd that is STALE the moment CI runs
+>   again — on the next attempt, re-copy from the stand-ins, do not reuse it.
+> - **Next attempt = the StarTech PEX8M2E2 (x8, ASMedia ASM2824) with the
+>   two SN8100s, one VG per drive as designed below.** The re-usable pieces are
+>   in `nvme-pex8747-gen3-link-fault.md`: the link survey (run it BEFORE
+>   migrating anything; a clean Gen3 `LnkSta` with `CESta` all clear and QD1
+>   reads in the tens of µs is the acceptance), the migration sequence, and the
+>   fstab shape (`nofail` + device timeout on the NVMe mounts, binds requiring
+>   their NVMe mount, the k3s `RequiresMountsFor` drop-in). Do NOT plan on an
+>   OS-side link-speed cap: POST trains the links first, so a card that cannot
+>   do Gen3 with these drives cannot be rescued from the OS.
+
 Host: `poweredge-xubuntu` (Dell PowerEdge R630, PERC H730 / MegaRAID SAS-3 3108,
 8× 2.5" SATA bays, one free PCIe 3.0 x16 slot — Slot 1). Epic: `livespec-g52yrb`.
 
