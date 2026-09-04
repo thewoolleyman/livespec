@@ -1296,6 +1296,30 @@ contract diagram) and their rationale live in
   SUPER, deliberately confined to one dedicated `backup`@localhost user; tenant
   users intentionally lack it. Backups run hourly via the systemd
   `dolt-backup.timer` — never treat tenant-level backup denial as a bug or blocker.
+- **Claude-in-Chrome "extension not connected" on the VPS is an ACCOUNT
+  mismatch, never a missing Chrome.** The VPS runs exactly ONE Chrome
+  (`google-chrome-stable`), on the VNC display `:1`, profile
+  `~/.config/google-chrome-vnc`, remote debugging on `127.0.0.1:9222`; the
+  Claude extension is installed there and Claude Code's paired device ("VPS")
+  lives in that same profile. When `tabs_context_mcp` reports "not
+  connected", `list_connected_browsers` returns `[]`, and `switch_browser`
+  finds no browsers, the session has been rotated (caam / `/login`) onto a
+  different claude.ai account than the one the extension is signed into, and
+  the extension only pairs with sessions on the same account. Diagnose in one
+  step — compare this session's account with the extension's — and offer the
+  maintainer the two fixes (sign the extension into the session's account from
+  the VNC Chrome's Claude side panel, or `/login` the session onto the
+  browser's account); never enter credentials, never suggest reinstalling or
+  restarting Chrome, never hunt for a second Chrome. Recorded 2026-09-04 after
+  the maintainer had to explain it again. **The account-independent route is
+  the Playwright MCP**: it is registered with `--cdp-endpoint
+  http://127.0.0.1:9222`, so it attaches to that same VNC Chrome (the user's
+  logged-in session) with no claude.ai pairing at all — prefer it for browser
+  work. One gate: the Driver's `primary_checkout_playwright_guard` denies
+  Playwright calls whose session cwd is the primary checkout, so run them from
+  a secondary worktree (for a subagent, `isolation: worktree`). Handy probes:
+  `curl 127.0.0.1:9222/json/list` lists open tabs; `DISPLAY=:1 import -window
+  root <png>` screenshots the VNC desktop.
 - **Default tmux socket is maintainer-owned.** Never run tmux cleanup against the
   default socket namespace. Scratch tmux servers MUST use an explicit `-L <name>`
   or `-S <path>`, and `tmux kill-server` MUST NOT be run unless that same command
