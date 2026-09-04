@@ -102,6 +102,23 @@ the array to reclaim stranded space.
 >   `ci-runner-pod-lifecycle-reliability` session) never changes. Table and
 >   procedure in `nvme-pex8747-gen3-link-fault.md`.
 
+> **Amendment 2026-09-04, NVMe tier LIVE (authoritative for the tier until
+> the second drive lands).** The StarTech PEX8M2E2 arrived and was seated in
+> Slot 1 (low-profile bracket) with ONE SN8100 — the same drive the PEX8747
+> could not run. It passed the link survey on the first boot (Gen3 x8
+> uplink, Gen3 x4 to the drive, error bits clean, QD1 reads at 40 µs,
+> 3.5 GB/s sequential), which settles that the PEX8747 card, not the drive,
+> was the fault. Both write-hot tiers were then moved onto ONE VG `nvmea` on
+> that drive by copy + relabel with `/etc/fstab` untouched (quiet window
+> 17:06–17:08Z, fleet on GitHub-hosted, verified copy, 74 images before and
+> after) and a proving reboot came up unattended on the NVMe. The interim is
+> "both tenants on one drive"; when the second SN8100 arrives `ci-workvols`
+> moves to its own VG `nvmeb`, one tenant per drive as designed below. The
+> array's former tier LVs stay as `old-containerd` / `old-workvols`. The
+> procedure is now code in `livespec-dev-tooling`
+> `ci-runner/k3s/phase2/storage-layout/migrate-tier.sh`; the record and the
+> survey numbers are in `nvme-pex8747-gen3-link-fault.md` §"Resolution".
+
 Host: `poweredge-xubuntu` (Dell PowerEdge R630, PERC H730 / MegaRAID SAS-3 3108,
 8× 2.5" SATA bays, one free PCIe 3.0 x16 slot — Slot 1). Epic: `livespec-g52yrb`.
 

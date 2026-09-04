@@ -16,6 +16,54 @@ ever needed. The machine now runs with that slower setting applied at every
 boot. It is an interim: the different, better card already on order replaces
 this one.
 
+## Resolution 2026-09-04 — the StarTech PEX8M2E2 passes with the same drive; the card was the fault
+
+The retry on 2026-09-04 (~17:00Z) seated the originally specified StarTech
+PEX8M2E2 (ASMedia ASM2824 switch, Gen3 x8 uplink) in Slot 1 with the SAME
+SN8100 that had failed on the PEX8747 (serial `25384T801085`; the second
+SN8100 had not arrived). The link survey below passed on the first boot,
+which settles the open question above: the drive is fine, the PEX8747 was
+the fault.
+
+| Check | StarTech PEX8M2E2 + SN8100, first boot | Acceptance |
+|---|---|---|
+| Card upstream `04:00.0` `LnkSta` | 8 GT/s x8 | rated width |
+| Drive `08:00.0` `LnkSta` | 8 GT/s x4 ("downgraded" from its Gen5 `LnkCap`, expected) | Gen3 x4 |
+| Endpoint `CESta` after clear + I/O | all `-` | all `-` |
+| QD1 4k random read | 20.7k IOPS, avg 40 µs | tens of µs |
+| QD32 4k random read | 245k IOPS | — |
+| 1 MiB sequential read, QD16 | 3.5 GB/s | full Gen3 x4 |
+| `dmesg` | no `nvme … timeout` | none |
+| Drive temperature idle | 33–39 °C composite, sensor 1 50–54 °C | < 70 °C |
+
+The switch's upstream port showed a sticky `AdvNonFatalErr+` from boot
+enumeration; cleared once, it stayed clear under I/O. Topology: root port
+`00:03.2` → ASM2824 upstream `04:00.0` → downstream ports `05:00.0`,
+`05:04.0`, `05:08.0`, `05:0c.0` → drive `08:00.0`.
+
+**What was then done (one drive, both tenants, label identity).** The
+drive's stale VG `nvmea` from the Gen2 interim was wiped (`vgchange -an`,
+`vgremove`, `pvremove`, `wipefs -a`), never reused. A fresh VG `nvmea` on
+the by-id path got LVs `ci-containerd` and `ci-workvols` (1.5 TiB each,
+~640 GiB unallocated), ext4 under temporary labels (`tmp-containerd` /
+`tmp-workvols` on the day; the shipped tool uses `new-<suffix>`), a live
+bulk rsync (13 GB in 40 s, 2.2 GB in 19 s), then the quiet window at
+17:06–17:08Z with CI already routed to GitHub-hosted: k3s stopped, final
+delta, dry-run verification with zero non-directory differences and
+matching inode counts (123,758 / 386,900), unmount, relabel array volumes
+to `old-containerd` / `old-workvols` and the NVMe volumes to the role
+labels, `lvchange --refresh`, `mount -a` with fstab untouched, k3s started
+plus the three `After=k3s` oneshots; 74 images before and after, 18 pods
+Running, 0 failed units. A proving reboot at 17:08Z came up unattended at
+17:12Z with every tier path on `/dev/mapper/nvmea-ci--{containerd,workvols}`,
+the datastore on tmpfs, 74 images, link clean, 0 failed units.
+
+That one-off script is now the reproducible tool
+`ci-runner/k3s/phase2/storage-layout/migrate-tier.sh` in
+`livespec-dev-tooling` (`prepare` / `cutover`), and the traps below are
+`.ai/ci-node-storage-tiers.md` there. When the second SN8100 arrives,
+`ci-workvols` moves to its own VG (`nvmeb`) with the same two commands.
+
 ## What was observed
 
 | Condition | QD1 4k random read | 4k random write, QD32 x4 jobs | 1 MiB sequential write | PCIe error bits on the drive |
