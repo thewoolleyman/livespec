@@ -81,10 +81,15 @@ Two files, no `##` heading added/changed/removed, so **no
 ## The mechanical guard (R2, livespec-dev-tooling)
 
 `ci_gate_parity` — a new shared check reading `.github/workflows/ci.yml`
-statically. It FAILS when a gating job (one in `ci-green.needs`) has its
-real steps conditioned on the triggering event or on a changeset
-`.py`-predicate (the `needs.setup.outputs.py_changed == 'true'` shape). It
-warns by default and fails only under
+statically. It FAILS when a gating job (one in `ci-green.needs`) is
+conditioned — at the job level or in its real steps — on the triggering
+event or on a changeset `.py`-predicate (the
+`needs.setup.outputs.py_changed == 'true'` shape) in the FORBIDDEN
+DIRECTION: so that it runs on a `push` to `master` but is skipped, or runs
+a smaller check set, on a `pull_request`. A job conditioned to run
+pull-request-only (adding strictness — e.g. `release-gate-pre-tag`) is NOT
+flagged; the `py_changed` token is the discriminator for the retired
+mechanism. It warns by default and fails only under
 `LIVESPEC_FAIL_IF_CI_GATE_PARITY_GAPS_EXIST`, so it propagates to a
 not-yet-fixed repo safely (the `ci_matrix_completeness` pattern). It is a
 repo-metadata check → runs in `check-metadata-batch`, always. Per the
