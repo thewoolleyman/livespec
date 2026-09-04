@@ -1319,7 +1319,22 @@ contract diagram) and their rationale live in
   Playwright calls whose session cwd is the primary checkout, so run them from
   a secondary worktree (for a subagent, `isolation: worktree`). Handy probes:
   `curl 127.0.0.1:9222/json/list` lists open tabs; `DISPLAY=:1 import -window
-  root <png>` screenshots the VNC desktop.
+  root <png>` screenshots the VNC desktop. **Playwright-hang self-heal:** if a
+  Playwright call times out in `initializeServer` ("retrieving websocket url"
+  then a 30s timeout) WHILE `curl 127.0.0.1:9222/json/version` is healthy, a
+  stray/zombie CDP **worker** target (type `worker`, empty URL — spawned by a
+  page such as the local Beads app or the claude.ai side-panel iframe) is
+  wedging Playwright's attach; CDP cannot close a worker target
+  (`closeTarget` -> "doesn't support closing"). The one-step fix is to RECYCLE
+  Chrome: send `Browser.close` over the CDP browser websocket (from
+  `/json/version`'s `webSocketDebuggerUrl`) — the `vnc-desktop-start.sh`
+  respawn loop relaunches it clean in a few seconds. The profile does NOT
+  restore tabs (`restore_on_startup` unset), so reopen what you need (the
+  Amazon/login cookies persist, so the session stays signed in). Verified
+  2026-09-04: after the recycle, `Target.getTargets` showed zero `worker`
+  targets and Playwright attached and drove Amazon normally. Deeper cure (not
+  yet done, needs a session to verify): bump the ancient `playwright-mcp`
+  v0.0.75 pin, whose connect path is what hangs on the stray target.
 - **Default tmux socket is maintainer-owned.** Never run tmux cleanup against the
   default socket namespace. Scratch tmux servers MUST use an explicit `-L <name>`
   or `-S <path>`, and `tmux kill-server` MUST NOT be run unless that same command
