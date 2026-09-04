@@ -88,3 +88,15 @@ In `SPECIFICATION/non-functional-requirements.md`, replace this sentence verbati
 with:
 
 > The check runs as part of the full `just check` aggregate at pre-push and in CI unconditionally, with no zero-`.py` subsetting, per §"Pre-commit step ordering".
+
+#### Change 5 — contracts.md detection-surface paragraph: sweep the stale pre-push-subset reference
+
+In `SPECIFICATION/contracts.md` (the `master-direct-uncommitted-spec-edits` **Detection surface** paragraph), replace this fragment verbatim:
+
+> the doc-only pre-commit/pre-push subset
+
+with:
+
+> the doc-only pre-commit subset (at pre-push the check runs as part of the full `just check` aggregate)
+
+This drift-sweep completes Change 1/2: after retirement, pre-push has no subset, so the detection check runs at pre-push within the full aggregate. Prose-only; the fragment sits in an existing paragraph under an H2 that is unchanged, so no `tests/heading-coverage.json` co-edit arises.
