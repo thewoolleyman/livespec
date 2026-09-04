@@ -96,21 +96,73 @@ mount is missing; harmless and wanted with the array stand-ins). Backups
 `/etc/fstab.pre-nvme-2026-09-04` and `/etc/default/grub.pre-nvme-2026-09-04`
 were the revert sources.
 
-## Migration sequence that worked (reuse on the StarTech attempt)
+## Media-neutral tier identity (maintainer-directed 2026-09-04)
+
+The tiers are addressed by ROLE, not by medium, so moving a tier between the
+array and an NVMe never edits `/etc/fstab`: only the data copy and a
+performance comparison need the hardware. Identity is the ext4 **LABEL**,
+byte-identical on any medium (an ext4 label holds 16 bytes, which is why the
+names are this short — `standin-containe` had already been truncated):
+
+| Role | LV name (in whichever VG hosts it) | ext4 label | Today's home |
+|---|---|---|---|
+| warm cache | `ci-cache` | `ci-cache` | VG `poweredge` (array) |
+| containerd image store | `ci-containerd` | `ci-containerd` | VG `poweredge` (array) |
+| runner work volumes | `ci-workvols` | `ci-workvols` | VG `poweredge` (array) |
+
+Applied on the array 2026-09-04 (live, mounted, pool quiet):
+`lvrename poweredge standin-containerd ci-containerd`,
+`lvrename poweredge standin-workvols ci-workvols`,
+`tune2fs -L ci-containerd /dev/poweredge/ci-containerd`,
+`tune2fs -L ci-workvols /dev/poweredge/ci-workvols`. Filesystem UUIDs are
+unchanged, so the UUID-addressed fstab kept working; the
+`ci-runner-pod-lifecycle-reliability` session (epic `livespec-ifwnqj`) owns
+the follow-through: rewrite the tier fstab lines to `LABEL=`, put the lines
+and the k3s `RequiresMountsFor` drop-in in git (the livespec-dev-tooling
+storage-layout installer), and take the proving reboot.
+
+### Gotcha 3 — `udevadm trigger` on mounted LVM devices unmounts them and stops k3s
+
+The relabel step above was first followed by `udevadm trigger
+--subsystem-match=block` to refresh `/dev/disk/by-label/`. In the same
+second systemd began stopping k3s, then unmounted all four tier mounts, and
+containerd's shims were orphaned (every ARC listener pod went `Unknown`).
+Mechanism: the synthetic change event runs LVM's udev rules without the
+device-mapper activation cookie, which marks the dm device not-ready
+(`SYSTEMD_READY=0`); the fstab mount units are bound to their device unit,
+so systemd issues stop jobs for the mounts, and the k3s drop-in's
+`RequiresMountsFor` orders k3s's stop ahead of them. Recovery was `mount -a`,
+`systemctl start k3s`, re-running the After=k3s oneshots, and force-deleting
+the `Unknown` pods so their controllers recreated them. Counter-moves: after
+`tune2fs -L` on a mounted LV do NOT trigger udev; the by-label symlink is
+refreshed by `lvchange --refresh poweredge/<lv>` (a proper dm event) or
+simply appears at the next boot, and `blkid` already shows the new label
+immediately. Never run a blanket `udevadm trigger` on a host whose
+filesystems sit on device-mapper.
+
+## Migration sequence (amended for label identity; reuse on the StarTech attempt)
 
 With CI off and the survey clean: `systemctl stop k3s` then
 `/usr/local/bin/k3s-killall.sh` (this k3s version leaves the
 `/var/lib/rancher/k3s/*` bind mounts alone); `pvcreate` by `by-id`,
-`vgcreate`, `lvcreate`, `mkfs.ext4 -L`; temp-mount the new LVs and
+`vgcreate` one VG per drive; `lvcreate` with the SAME role LV names
+(`ci-containerd` on drive A's VG, `ci-workvols` on drive B's VG);
+`mkfs.ext4 -L <role>-new` with a TEMPORARY label so two filesystems never
+carry the same label at once; temp-mount the new LVs and
 `rsync -aHAXS --numeric-ids --delete` from `/var/cache/ci-runner/k3s-containerd/`
 and `…/k3s-storage/`; verify with a `-n -i` second pass (zero non-directory
-lines) and a file count; unmount binds, stand-ins, temp mounts; swap the two
-stand-in UUID lines in fstab for the NVMe UUIDs with
-`defaults,noatime,nofail,x-systemd.device-timeout=90s,x-systemd.requires-mounts-for=/var/cache/ci-runner`,
-and give each bind `nofail,x-systemd.requires-mounts-for=<its NVMe mount>`;
-`systemctl daemon-reload && mount -a`; `systemctl start k3s`; confirm
-`k3s crictl images -q | wc -l` unchanged and pods Running. The 12.7 GB
-containerd copy took ~35 s (array-read-bound at ~360 MB/s).
+lines) and a file count; unmount binds, the array tier mounts, and the temp
+mounts; in the quiet window relabel old→new
+(`tune2fs -L <role>-old /dev/poweredge/<role>` then
+`tune2fs -L <role> /dev/<nvme-vg>/<role>`), `udevadm trigger
+--subsystem-match=block`; `systemctl daemon-reload && mount -a` — fstab is
+NOT edited, the `LABEL=` lines simply resolve to the new medium; `systemctl
+start k3s`; confirm `k3s crictl images -q | wc -l` unchanged and pods Running.
+The emptied array LVs stay in place (relabelled `<role>-old`) as spare
+capacity. The 12.7 GB containerd copy took ~35 s (array-read-bound at
+~360 MB/s). The fstab shape stays: `nofail,x-systemd.device-timeout=90s` on
+the tier mounts, each bind `nofail` and requiring its tier mount, the k3s
+drop-in refusing to start without them.
 
 ## Link survey (run after ANY card or socket change)
 

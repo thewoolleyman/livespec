@@ -91,6 +91,16 @@ the array to reclaim stranded space.
 >   their NVMe mount, the k3s `RequiresMountsFor` drop-in). Do NOT plan on an
 >   OS-side link-speed cap: POST trains the links first, so a card that cannot
 >   do Gen3 with these drives cannot be rescued from the OS.
+> - **Media-neutral tier identity (maintainer-directed 2026-09-04, applied
+>   the same day).** The tiers are addressed by ROLE via ext4 label, the same
+>   name on any medium: `ci-cache`, `ci-containerd`, `ci-workvols` (16-byte
+>   label limit). The array LVs were renamed from `standin-*` to those names
+>   and relabelled live; the "stand-in" wording below is historical. On the
+>   NVMe day the per-drive VGs carry the SAME LV names, the new filesystems get
+>   a temporary label, and the cutover is a relabel in a quiet window —
+>   `/etc/fstab` (to be rewritten to `LABEL=` lines by the
+>   `ci-runner-pod-lifecycle-reliability` session) never changes. Table and
+>   procedure in `nvme-pex8747-gen3-link-fault.md`.
 
 Host: `poweredge-xubuntu` (Dell PowerEdge R630, PERC H730 / MegaRAID SAS-3 3108,
 8× 2.5" SATA bays, one free PCIe 3.0 x16 slot — Slot 1). Epic: `livespec-g52yrb`.
