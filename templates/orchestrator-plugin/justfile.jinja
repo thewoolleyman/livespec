@@ -397,9 +397,9 @@ check-pre-commit:
     fi
     just check
 
-# When zero `.py` files are staged, `check-pre-commit` delegates here.
-# Pre-push delegates here via `check-pre-push` for zero-py changesets.
-# Add doc-only-relevant repo-metadata checks (claude-md-coverage,
+# When zero `.py` files are staged, `check-pre-commit` delegates here as a
+# local commit-time speed optimization (pre-push and CI both run the full
+# aggregate regardless). Add doc-only-relevant repo-metadata checks (claude-md-coverage,
 # heading-coverage, vendor-manifest, no-direct-tool-invocation,
 # check-tools) as {{ plugin_full_name }} populates dev-tooling/checks/.
 check-pre-commit-doc-only:
@@ -408,22 +408,16 @@ check-pre-commit-doc-only:
     echo ":: doc-only subset (no repo-metadata checks wired yet — populate as scripts land)"
     exit 0
 
-# Skip the Python-code check subset when the pushed commits contain
-# zero `.py` changes; those checks are deterministic functions of
-# the source tree and would pass-or-fail identically against the
-# merge-base. Falls back to `origin/master` when no upstream branch
-# is configured locally.
+# Pre-push runs the FULL `just check` aggregate — the same gate CI runs,
+# with NO zero-.py subsetting (PR gate ≡ master gate). The green-token
+# short-circuit below is pure memoization of an IDENTICAL tree, not a
+# subset: it exits early only when the working tree is byte-identical to
+# the last tree that already passed `just check`, in which case re-running
+# it would be redundant (CI remains authoritative). Any real diff runs the
+# full aggregate.
 check-pre-push:
     #!/usr/bin/env bash
     set -uo pipefail
-    upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo "origin/master")
-    changeset=$(git diff --name-only "${upstream}..HEAD")
-    py_changed=$(echo "$changeset" | grep -E '\.py$' || true)
-    if [[ -z "$py_changed" ]]; then
-        echo ":: doc-only push detected (zero .py changes vs ${upstream}): running check-pre-commit-doc-only"
-        just check-pre-commit-doc-only
-        exit $?
-    fi
     if uv run python -m livespec_dev_tooling.green_token check 2>&1; then
         echo ":: pre-push: green token matched — tree byte-identical to last green check; skipping full aggregate (CI is authoritative)"
         exit 0
