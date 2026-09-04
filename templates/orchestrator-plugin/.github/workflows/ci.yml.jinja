@@ -5,10 +5,12 @@
 # livespec publishes a new release.
 #
 # Authority: livespec/SPECIFICATION/contracts.md
-#   §"Pre-commit step ordering" (c)-(d) — zero-py subsetting:
-#   master pushes + merge_group events always run the full aggregate
-#   (merge-queue safety net); pull_request events skip Python-code
-#   checks when the changeset contains zero .py files.
+#   §"Pre-commit step ordering" + non-functional-requirements.md
+#   §"CI as a merge gate (branch protection)": every gating check runs on
+#   `pull_request` exactly as on `push` to master — the PR gate is identical
+#   to the master gate (PR gate ≡ master gate). There is NO change-detection
+#   gate: a doc-only PR runs the full Python-code matrix like any other push,
+#   so a PR can never be greener than master will be after it merges.
 #
 # Authority: livespec/SPECIFICATION/non-functional-requirements.md
 #   §"Toolchain pins" — direct tool invocations (ruff, pyright,
@@ -40,60 +42,8 @@ on:
   merge_group:
 
 jobs:
-  setup:
-    name: detect-py-changes
-    runs-on: ubuntu-latest
-    outputs:
-      py_changed: ${{ '{{' }} steps.detect.outputs.py_changed {{ '}}' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # Need the base ref reachable for the PR diff below.
-          fetch-depth: 0
-
-      - name: Detect Python file changes
-        id: detect
-        env:
-          EVENT_NAME: ${{ '{{' }} github.event_name {{ '}}' }}
-          BASE_REF: ${{ '{{' }} github.base_ref {{ '}}' }}
-        run: |
-          set -uo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            # Full-depth fetch (checkout already set fetch-depth: 0) — a
-            # shallow `--depth=1` fetch doesn't bring in commits prior to
-            # the base ref tip, so `git diff origin/${BASE_REF}...HEAD`
-            # would intermittently fail with "no merge base" when the
-            # local clone's history didn't reach the divergence point.
-            # Keep `|| true` as a fallback: when fetch fails (auth,
-            # network) we still try the diff against whatever
-            # origin/${BASE_REF} ref the checkout already populated.
-            git fetch origin "$BASE_REF" || true
-            changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if echo "$changeset" | grep -qE '\.py$'; then
-              echo "py_changed=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "py_changed=false" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "py_changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      # `setup` is the change-detection GATE only — it deliberately does
-      # NO uv pre-warm. The check-python matrix jobs `needs: setup`, so
-      # any work here sits on the critical path before the matrix can
-      # start. Each matrix job restores ~/.cache/uv itself (keyed on
-      # uv.lock, with the `uv-${{ '{{' }} runner.os {{ '}}' }}-` prefix
-      # restore-key) and runs its own `uv sync`, so on the common
-      # unchanged-lock run the cache already exists and every job
-      # restores it in parallel with no PyPI fetch. A serial pre-warm
-      # here would only help the first run after a lock change — and the
-      # prefix restore-key already bounds that to the delta wheels — so
-      # it is not worth taxing every run's wall-clock.
-
   check-python:
     name: ${{ '{{' }} matrix.target {{ '}}' }}
-    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -104,26 +54,13 @@ jobs:
           - check-types
           - check-coverage
     steps:
-      # Per-step `if:` (not job-level) so each matrix entry still
-      # reports a status check named `${{ '{{' }} matrix.target {{ '}}' }}`. With
-      # job-level `if:`, a skipped matrix collapses to one
-      # `check-python` status, which doesn't satisfy branch
-      # protection's requirement that each specific check name be
-      # present.
-      - name: Skip when no .py changes
-        if: needs.setup.outputs.py_changed != 'true'
-        run: echo "::notice::skipped ${{ '{{' }} matrix.target {{ '}}' }} — no .py changes in this PR"
-
       - name: Checkout
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install pinned binaries via mise
-        if: needs.setup.outputs.py_changed == 'true'
         uses: jdx/mise-action@v2
 
       - name: Restore uv download cache
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
@@ -131,11 +68,9 @@ jobs:
           restore-keys: uv-${{ '{{' }} runner.os {{ '}}' }}-
 
       - name: Install Python dev deps via uv
-        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: just ${{ '{{' }} matrix.target {{ '}}' }}
-        if: needs.setup.outputs.py_changed == 'true'
         run: just ${{ '{{' }} matrix.target {{ '}}' }}
 
   # Metadata matrix runs unconditionally to preserve the repo-metadata
@@ -160,7 +95,7 @@ jobs:
   # {{ plugin_full_name }} does not send CI telemetry to Honeycomb.
   export-telemetry:
     name: export-telemetry
-    needs: [setup, check-python, check-metadata]
+    needs: [check-python, check-metadata]
     if: ${{ '{{' }} !cancelled() && (github.event_name == 'push' || github.event_name == 'merge_group') {{ '}}' }}
     runs-on: ubuntu-latest
     permissions:

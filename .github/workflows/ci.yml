@@ -1,8 +1,8 @@
-# Per-target matrix CI. Python-code checks gate on whether the changeset
-# contains any `.py` files; repo-metadata checks always run.
-#
-# Master pushes bypass the change-detection gate (they always run the full
-# aggregate as the post-merge safety net).
+# Per-target matrix CI. Every gating check runs on `pull_request` exactly as
+# on `push` to master — the PR gate is identical to the master gate (PR gate
+# ≡ master gate). There is NO change-detection gate: a doc-only PR runs the
+# full Python-code matrix the same as any other push, so a PR can never be
+# greener than master will be after it merges.
 #
 # RUNNER ROUTING — FAILS CLOSED TO HOSTED CAPACITY.
 #
@@ -31,7 +31,7 @@
 # routing hidden behind `needs.<job>.outputs.*` would read as "this workflow
 # has no self-hosted job" and silently disable the forbidden-trigger check.
 #
-# setup / ci-green / export-telemetry / release-gate-pre-tag are pinned to
+# ci-green / export-telemetry / release-gate-pre-tag are pinned to
 # ubuntu-latest so the gate stays reportable even when self-hosted capacity is
 # down. release-gate-pre-tag is pinned for a second reason on top of that one:
 # it sits on the release critical path, so a runner-pool fault must not be able
@@ -107,73 +107,8 @@ on:
     branches: [master]
 
 jobs:
-  setup:
-    name: detect-py-changes
-    runs-on: ubuntu-latest
-    outputs:
-      py_changed: ${{ steps.detect.outputs.py_changed }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          # Need the base ref reachable for the PR diff below.
-          fetch-depth: 0
-
-      - name: Detect Python validation inputs
-        id: detect
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          set -uo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            # Full-depth fetch (checkout already set fetch-depth: 0) — a
-            # shallow `--depth=1` fetch doesn't bring in commits prior to
-            # the base ref tip, so `git diff origin/${BASE_REF}...HEAD`
-            # would intermittently fail with "no merge base" when the
-            # local clone's history didn't reach the divergence point.
-            # Keep `|| true` as a fallback: when fetch fails (auth,
-            # network) we still try the diff against whatever
-            # origin/${BASE_REF} ref the checkout already populated.
-            git fetch origin "$BASE_REF" || true
-            if ! changeset=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
-              echo "::warning::Could not derive PR changeset; running Python validation" >&2
-              echo "py_changed=true" >> "$GITHUB_OUTPUT"
-            else
-              py_changed=false
-              while IFS= read -r changed_path; do
-                case "$changed_path" in
-                  *.py|pyproject.toml|uv.lock|.vendor.jsonc|.claude-plugin/scripts/_vendor/*)
-                    py_changed=true
-                    break
-                    ;;
-                esac
-              done <<< "$changeset"
-              echo "py_changed=$py_changed" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "py_changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      # `setup` is the change-detection GATE only — it deliberately does
-      # NO uv pre-warm. Every check-python and check-metadata matrix job
-      # `needs: setup`, so any work here sits on the critical path before
-      # check-coverage (the long pole) can even start. The matrix jobs
-      # each restore ~/.cache/uv themselves (keyed on uv.lock, with the
-      # `uv-${{ runner.os }}-` prefix restore-key) and run their own
-      # `uv sync`, so they are self-sufficient: on the common
-      # unchanged-lock run the cache already exists from a prior run and
-      # every job restores it in parallel with no PyPI fetch. A serial
-      # pre-warm here would only help the first run after a lock change —
-      # and even then the prefix restore-key means just the delta wheels
-      # re-fetch (in parallel, with UV_HTTP_RETRIES) — which does not
-      # justify taxing every run's wall-clock. See
-      # livespec-dev-tooling archive/research/justcheck-performance (work-item
-      # livespec-dev-tooling-7us.10).
-
   check-python:
     name: ${{ matrix.target }}
-    needs: setup
     # Routing per the header block: CI_RUNNER_LABELS when set, hosted capacity
     # when absent. The fallback MUST name a hosted label — see the header for
     # why an absent variable defaulting to a self-hosted label stalls the sole
@@ -225,18 +160,7 @@ jobs:
           - check-format
           - check-types
     steps:
-      # Per-step `if:` (not job-level) so each matrix entry still
-      # reports a status check named `${{ matrix.target }}`. With
-      # job-level `if:`, a skipped matrix collapses to one
-      # `check-python` status, which doesn't satisfy branch
-      # protection's requirement that each specific check name be
-      # present.
-      - name: Skip when no .py changes
-        if: needs.setup.outputs.py_changed != 'true'
-        run: echo "::notice::skipped ${{ matrix.target }} — no .py changes in this PR"
-
       - name: Checkout
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v5
 
       # GitHub-hosted routing keeps the baked `container:` image, so the
@@ -253,7 +177,6 @@ jobs:
       # because a conforming host gives each job a FRESH workspace rather than
       # a persistent one it has already trusted.
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
-        if: needs.setup.outputs.py_changed == 'true'
         run: git config --global --add safe.directory '*'
 
       # Tools are baked into the image; `mise install` is a near-no-op that
@@ -261,7 +184,6 @@ jobs:
       # repo .mise.toml, so `mise trust` is required for the shims to resolve.
       # (Replaces the GitHub-hosted mise-action install — the tools are baked.)
       - name: mise trust + install (baked tools — install is a near-no-op)
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           mise trust
           mise install
@@ -276,7 +198,7 @@ jobs:
       # lockfile; the self-hosted lane keeps using its warm on-host cache and
       # skips this step.
       - name: Restore uv cache (hosted lane only — self-hosted uses ~/.cache/uv)
-        if: needs.setup.outputs.py_changed == 'true' && env.LIVESPEC_CI_LANE == 'hosted'
+        if: env.LIVESPEC_CI_LANE == 'hosted'
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
@@ -285,11 +207,9 @@ jobs:
             uv-${{ runner.os }}-
 
       - name: Install Python dev deps via uv
-        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: just ${{ matrix.target }}
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           # pyright (check-types) shells out to `npm`; under the container-hooks
           # HOME the mise npm shim busy-loops (no node registered for that HOME).
@@ -313,7 +233,6 @@ jobs:
   # on separate runners; now the suite runs ONCE.
   check-per-file-coverage:
     name: check-per-file-coverage
-    needs: setup
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
@@ -323,28 +242,19 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      # Per-step `if:` (not job-level) so the job still reports its own status
-      # check name when skipped — same pattern as the check-python matrix.
-      - name: Skip when no .py changes
-        if: needs.setup.outputs.py_changed != 'true'
-        run: echo "::notice::skipped check-per-file-coverage — no .py changes in this PR"
-
       - name: Checkout
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v5
 
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
-        if: needs.setup.outputs.py_changed == 'true'
         run: git config --global --add safe.directory '*'
 
       - name: mise trust + install (baked tools — install is a near-no-op)
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           mise trust
           mise install
 
       - name: Restore uv cache (hosted lane only — self-hosted uses ~/.cache/uv)
-        if: needs.setup.outputs.py_changed == 'true' && env.LIVESPEC_CI_LANE == 'hosted'
+        if: env.LIVESPEC_CI_LANE == 'hosted'
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
@@ -353,11 +263,9 @@ jobs:
             uv-${{ runner.os }}-
 
       - name: Install Python dev deps via uv
-        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: just check-per-file-coverage
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           # The full suite spawns `node` in some tests; under the
           # container-hooks HOME the mise node/npm shims busy-loop or miss (no
@@ -375,7 +283,6 @@ jobs:
       # by default and `.coverage` is one; without it the upload silently ships
       # nothing and the consumer falls back to a full duplicate suite run.
       - name: Publish .coverage for the check-coverage consumer
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-data
@@ -395,7 +302,7 @@ jobs:
   # never wrong.
   check-coverage:
     name: ${{ matrix.target }}
-    needs: [setup, check-per-file-coverage]
+    needs: [check-per-file-coverage]
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
@@ -409,26 +316,19 @@ jobs:
         target:
           - check-coverage
     steps:
-      - name: Skip when no .py changes
-        if: needs.setup.outputs.py_changed != 'true'
-        run: echo "::notice::skipped ${{ matrix.target }} — no .py changes in this PR"
-
       - name: Checkout
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v5
 
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
-        if: needs.setup.outputs.py_changed == 'true'
         run: git config --global --add safe.directory '*'
 
       - name: mise trust + install (baked tools — install is a near-no-op)
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           mise trust
           mise install
 
       - name: Restore uv cache (hosted lane only — self-hosted uses ~/.cache/uv)
-        if: needs.setup.outputs.py_changed == 'true' && env.LIVESPEC_CI_LANE == 'hosted'
+        if: env.LIVESPEC_CI_LANE == 'hosted'
         uses: actions/cache@v4
         with:
           path: ~/.cache/uv
@@ -437,17 +337,14 @@ jobs:
             uv-${{ runner.os }}-
 
       - name: Install Python dev deps via uv
-        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: Download the producer's .coverage
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/download-artifact@v4
         with:
           name: coverage-data
 
       - name: just ${{ matrix.target }}
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           # Node-PATH shim for the standalone-fallback branch only: the normal
           # path reads the downloaded `.coverage` without spawning anything,
@@ -467,7 +364,6 @@ jobs:
   # it in ci-green.needs.
   check-python-batch:
     name: check-python-batch
-    needs: setup
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
@@ -477,30 +373,21 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Skip when no .py changes
-        if: needs.setup.outputs.py_changed != 'true'
-        run: echo "::notice::skipped check-python-batch — no .py changes in this PR"
-
       - name: Checkout
-        if: needs.setup.outputs.py_changed == 'true'
         uses: actions/checkout@v5
 
       - name: Trust workspace for git (hosted container root-vs-checkout uid)
-        if: needs.setup.outputs.py_changed == 'true'
         run: git config --global --add safe.directory '*'
 
       - name: mise trust + install (baked tools — install is a near-no-op)
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           mise trust
           mise install
 
       - name: Install Python dev deps via uv
-        if: needs.setup.outputs.py_changed == 'true'
         run: uv sync --all-groups
 
       - name: Run the batched python checks
-        if: needs.setup.outputs.py_changed == 'true'
         run: |
           failed=""
           just check-complexity || failed="$failed check-complexity"
@@ -538,7 +425,6 @@ jobs:
 
   check-metadata:
     name: ${{ matrix.target }}
-    needs: setup
     # Same baked image and same routing as check-python; the fallback MUST stay
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
@@ -838,7 +724,7 @@ jobs:
   # SPECIFICATION/non-functional-requirements.md §"CI telemetry export".
   export-telemetry:
     name: export-telemetry
-    needs: [setup, check-python, check-per-file-coverage, check-coverage, check-python-batch, check-metadata, check-metadata-batch]
+    needs: [check-python, check-per-file-coverage, check-coverage, check-python-batch, check-metadata, check-metadata-batch]
     if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'merge_group') }}
     runs-on: ubuntu-latest
     permissions:
@@ -878,20 +764,18 @@ jobs:
   # ci-green, so ordinary PRs are completely unaffected. Only a release PR is
   # made stricter.
   #
-  # It CANNOT ride check-python-batch, which already runs
-  # check-no-lloc-soft-warnings: that job is gated on `py_changed`, and a
-  # release-please PR touches CHANGELOG.md and version files but no `.py`, so it
-  # skips on precisely the PR this gate must cover. It also runs in warn mode,
-  # without the levers.
+  # It runs the release levers (mutation testing, heading-coverage TODO
+  # hard-fail, LLOC soft-warning hard-fail) that the ordinary check-python-batch
+  # leg runs only in WARN mode, so this job is what makes those targets actually
+  # gate on the release PR.
   #
-  # Pinned to ubuntu-latest rather than the self-hosted pool, like setup /
+  # Pinned to ubuntu-latest rather than the self-hosted pool, like
   # ci-green / export-telemetry. This gate runs once per release and sits on the
   # release critical path, so a runner-pool fault (a scale set that does not
   # exist, a wedged pod holding a replica slot — livespec-s43svm.30 /.38) must
   # not be able to stall every release.
   release-gate-pre-tag:
     name: release-gate-pre-tag
-    needs: setup
     if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     # The same per-check levers release-tag.yml sets. Without them these targets
@@ -926,10 +810,10 @@ jobs:
   # external action, no direct tool invocation, so it satisfies
   # non-functional-requirements.md §"Toolchain pins"). Branch protection
   # requires ONLY this context, so one stable name gates the whole matrix and
-  # never churns as checks are added. A SKIPPED dependency (e.g. the entire
-  # check-python matrix on a zero-.py PR) is not a failure, so ci-green stays
-  # green then. export-telemetry is push/merge_group-only and NOT a gate, so
-  # it is intentionally absent from `needs:`.
+  # never churns as checks are added. A SKIPPED dependency (e.g.
+  # release-gate-pre-tag on an ordinary non-release PR) is not a failure, so
+  # ci-green stays green then. export-telemetry is push/merge_group-only and
+  # NOT a gate, so it is intentionally absent from `needs:`.
   ci-green:
     name: ci-green
     needs: [check-python, check-per-file-coverage, check-coverage, check-python-batch, check-metadata, check-metadata-batch, release-gate-pre-tag]
