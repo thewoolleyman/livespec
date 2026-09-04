@@ -206,6 +206,7 @@ check:
         check-check-coverage-incremental
         check-check-mutation
         check-check-tools
+        check-ci-gate-parity
         check-ci-matrix-completeness
         check-claude-md-coverage
         check-comment-line-anchors
@@ -1208,3 +1209,6 @@ check-plan-no-tombstone:
 
 check-self-hosted-uv-lane:
     uv run python -m livespec_dev_tooling.checks.self_hosted_uv_lane
+
+check-ci-gate-parity:
+    uv run python -m livespec_dev_tooling.checks.ci_gate_parity

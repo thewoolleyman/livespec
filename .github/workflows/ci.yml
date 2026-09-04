@@ -116,7 +116,7 @@ jobs:
     # "green in CI" and "green in sandbox" mean the same environment.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -235,7 +235,7 @@ jobs:
     name: check-per-file-coverage
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -277,6 +277,7 @@ jobs:
           shims_dir="$(dirname "$(command -v npm)")"
           node_bin="$(cd "$shims_dir/../installs/node/latest/bin" 2>/dev/null && pwd || ls -d "$shims_dir/../installs/node"/*/bin 2>/dev/null | head -1)"
           [ -n "$node_bin" ] && export PATH="$node_bin:$PATH"
+          just check-ci-gate-parity || failed="$failed check-ci-gate-parity"
           just check-per-file-coverage
 
       # include-hidden-files is REQUIRED: upload-artifact@v4 excludes dotfiles
@@ -305,7 +306,7 @@ jobs:
     needs: [check-per-file-coverage]
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -366,7 +367,7 @@ jobs:
     name: check-python-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -429,7 +430,7 @@ jobs:
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
@@ -638,7 +639,7 @@ jobs:
     name: check-metadata-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.42.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.43.0
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
