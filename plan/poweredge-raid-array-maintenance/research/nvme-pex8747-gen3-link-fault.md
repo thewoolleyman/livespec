@@ -78,6 +78,72 @@ That one-off script is now the reproducible tool
 `.ai/ci-node-storage-tiers.md` there. When the second SN8100 arrives,
 `ci-workvols` moves to its own VG (`nvmeb`) with the same two commands.
 
+## Second drive 2026-09-06 — one tenant per drive, `ci-workvols` on XFS
+
+The second SN8100 (serial `25374X802154`) was seated in the card's one free
+socket during a quiet window (all ten repos on GitHub-hosted from 00:44Z,
+pool at zero runners, off-array backup `usb-backup-20260906` complete 3/3,
+poweroff ~01:05Z, boot ~01:28Z). The survey passed before any write:
+
+| Check | Second SN8100, first boot | Acceptance |
+|---|---|---|
+| Card upstream `04:00.0` `LnkSta` | 8 GT/s x8 | rated width |
+| New drive `06:00.0` / old drive `08:00.0` `LnkSta` | 8 GT/s x4 each | Gen3 x4 |
+| Endpoint `CESta` after clear + I/O | all `-` on both | all `-` |
+| QD1 4k random read (new drive) | 26.8k IOPS, avg 28.65 µs | tens of µs |
+| QD32 4k random read (new drive) | 296k IOPS | — |
+| `dmesg` | no `nvme … timeout` | none |
+| Composite temperature | 31 °C new / 34 °C old | < 70 °C |
+
+The device nodes SWAPPED across that boot — the new drive enumerated as
+`nvme0n1` and the old one as `nvme1n1` — which is exactly why every tool
+addresses drives by `/dev/disk/by-id/`; nothing noticed.
+
+`migrate-tier.sh prepare ci-workvols nvmeb <new by-id> 1.5T` (merged
+livespec-dev-tooling PR #1743) built VG `nvmeb`, LV `ci-workvols` 1.5 TiB,
+**XFS with `reflink=1`** under `LABEL=new-workvols` (the maintainer's
+option (a) from the ci-runner-pod-lifecycle-reliability plan's
+research/006 §4: the warm uv-cache seed becomes `cp --reflink`, so a job's
+writes never reach the shared generation) and copied 38 GB in 30 s. Then
+`cutover ci-workvols`: k3s stopped at 0 runners, delta copy, zero
+non-directory differences, inode counts 451,565 = 451,565, relabel.
+
+Two tool defects surfaced on that first live run and were fixed in
+livespec-dev-tooling PR #1746 before `reclaim`:
+
+- **Gotcha 4 — the installer ran by path, and the `scp` had dropped its
+  execute bit.** Cutover died between the relabel and the fstab type
+  rewrite; `mount -a` then refused the XFS volume under an `ext4` fstab
+  line, and the k3s-storage bind landed on the `ci-cache` directory
+  underneath. Recovered by mirroring the script's remaining lines by hand
+  (unmount the stray bind, `chmod +x`, run the installer — it rewrote the
+  line to `xfs` with backup `/etc/fstab.pre-storage-layout-20260906T013435Z`
+  — `mount -a`, start k3s and the oneshots): 86/86 images, 18 pods, 11
+  listeners. The tool now invokes the installer through `bash`.
+- **Gotcha 5 — `lv_of_device` matched `lv_path` against the resolved
+  `/dev/dm-N` node**, which never equals LVM's `/dev/<vg>/<lv>`, so every
+  `reclaim` refused with "old (none) or new (none) is not an LV" and the
+  cutover's `lvchange --refresh` had silently no-op'd. The tool now passes
+  the mapper device to `lvs` directly.
+
+Two units failed as a consequence of the cutover, not of the storage:
+`converge-ci-stack` was still running from the boot when k3s stopped
+(SIGTERM at its step 8c) and `ci-kueue-webhook-probe`'s timer fired while
+k3s was down. Both re-ran clean.
+
+With the merged fix, `reclaim ci-workvols` twice (the array copy, then the
+nvmea ext4 copy) and `reclaim ci-containerd` once removed the three `old-*`
+volumes. **End state:** VG `poweredge` = `root`, `swap`, `ci-cache`, 4.03 TiB
+free; VG `nvmea` = `ci-containerd` only (1.5 TiB ext4, 2.14 TiB free); VG
+`nvmeb` = `ci-workvols` only (1.5 TiB XFS, 2.14 TiB free). A proving reboot
+at 01:59Z came up unattended with both work-volume paths on
+`/dev/mapper/nvmeb-ci--workvols` (xfs), converge success, 11 listeners, 19
+pods Running, 0 failed units, link bits clean; the installer is a no-op.
+CI was restored on all ten repos at ~02:07Z through
+`set-ci-runner-labels.sh`. Open for the maintainer: whether to extend
+`nvmea/ci-containerd` over nvmea's free space (13 GB of 1.5 TiB used, so the
+recommendation is to leave it).
+
 ## What was observed
 
 | Condition | QD1 4k random read | 4k random write, QD32 x4 jobs | 1 MiB sequential write | PCIe error bits on the drive |
