@@ -310,8 +310,12 @@ So the "make mounts configurable" requirement (maintainer directive) refines to:
 **parameterize the storage *location*** — the containerd data-root, the
 local-path storage dir, and the bind-mount targets — so the tier a given
 workload lands on (array vs NVMe vs tmpfs) is a config choice, not a hardcoded
-path. This is a `livespec-dev-tooling` work-item to be filed as a child of this
-epic.
+path. Outcome: this was never filed as a child of this epic — the 2026-09-04
+media-neutral LABEL-identity directive (`livespec-el5y`, closed, child of
+`livespec-ifwnqj`; livespec-dev-tooling PRs #1694/#1695) made path
+parameterization unnecessary, and tier moves ship as
+`ci-runner/k3s/phase2/storage-layout/migrate-tier.sh` (PRs #1718, #1743,
+#1746). Recorded in epic `livespec-g52yrb` handoff 2026-09-04T08:28Z.
 
 ## Cross-plan dependency and acceptance gate
 

@@ -410,10 +410,12 @@ fallback.
 | — `io.pressure` instrumentation | **DONE, live** | `livespec-dev-tooling#1650`, installed on the host |
 | 3 — backup to USB | **DONE** | `phase3-backup-and-restore-procedure.md` |
 | 4 — verify the backup | **DONE + boot-proven** — backup verified; restore rehearsed AND **booted** on `sda3` (came up with ssh/k3s/tailscale active; surfaced + fixed the swap-recreation gap); returned cleanly to `sda4` | `restore-verification-plan.md` → "Rehearsal result" + "Step 5 executed", `research/restore.sh` |
-| 5 — prove CI falls back to GitHub-hosted | **NOT STARTED** | this document, Phase 5 |
-| 5.5 — `poweredge-xubuntu-info` repo | **NOT STARTED** | this document, Phase 5.5 |
-| 6 — execute the rebuild | blocked on 4-restore, 5, and the drives arriving | this document, Phase 6 |
-| 7 — restore and verify up | blocked on 6 | this document, Phase 7 |
+| 5 — prove CI falls back to GitHub-hosted | **DONE** — every host-down window ran the fleet on `ubuntu-latest` via the guarded label writer (livespec-dev-tooling `ci-runner/set-ci-runner-labels.sh`); last exercised 2026-09-06 00:44Z–02:07Z | epic `livespec-g52yrb` handoffs 2026-09-06T00:51Z and 02:05Z |
+| 5.5 — `poweredge-xubuntu-info` repo | **DONE** — private repo exists and carries the host record (`AGENTS.md`, `STORAGE_EXPANSION.md`, `FAN_COOLING.md`; PRs #7–#13) | `https://github.com/thewoolleyman/poweredge-xubuntu-info` |
+| 6 — execute the rebuild | **DONE 2026-09-04** — seven-drive RAID-5 VD, GPT ESP + LVM PV, restore from the Recovery USB with a real `grub-install`; two NVMe tiers landed 2026-09-04 and 2026-09-06 | `nvme-add-tmpfs-tiering-and-clean-raid5-rebuild-plan.md`, `nvme-pex8747-gen3-link-fault.md`, epic handoffs 2026-09-04T01:00Z and 2026-09-06T02:05Z |
+| 7 — restore and verify up | **DONE** — unattended proving reboots 2026-09-04 17:14Z and 2026-09-06 01:59Z; CI on all ten repos; churn-slot cap back at 64 and soak-read clean 2026-09-06 | child `livespec-e2vcqf` (closed 2026-09-06), spec history v218 |
+
+Archived 2026-09-06 after both plan archive gates passed (child disposition; independent completeness review `plan-completeness-review-poweredge-raid-array-maintenance-20260906T0511Z` on epic `livespec-g52yrb`).
 
 **Two corrections to this document's own assumptions, established by doing the
 work:**
