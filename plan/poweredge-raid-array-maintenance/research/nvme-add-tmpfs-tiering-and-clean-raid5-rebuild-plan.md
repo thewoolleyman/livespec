@@ -119,6 +119,20 @@ the array to reclaim stranded space.
 > `ci-runner/k3s/phase2/storage-layout/migrate-tier.sh`; the record and the
 > survey numbers are in `nvme-pex8747-gen3-link-fault.md` §"Resolution".
 
+> **Amendment 2026-09-06, second drive LIVE — the steady state this plan
+> designed is reached.** The second SN8100 went into the StarTech's one
+> remaining socket (the card has TWO M.2 sockets, not four; corrected the
+> same day), passed the link survey, and `ci-workvols` moved to its own VG
+> `nvmeb` — one tenant per drive as designed below — reformatted as **XFS
+> with reflink** (the maintainer's option (a) from the
+> ci-runner-pod-lifecycle-reliability plan's research/006 §4). Every
+> superseded copy was reclaimed: VG `poweredge` = `root`, `swap`,
+> `ci-cache`; VG `nvmea` = `ci-containerd`; VG `nvmeb` = `ci-workvols`.
+> Proving reboot clean, CI restored on all ten repos. The window's record,
+> two tool defects it surfaced (fixed in livespec-dev-tooling PR #1746), and
+> the end state are in `nvme-pex8747-gen3-link-fault.md` §"Second drive
+> 2026-09-06".
+
 Host: `poweredge-xubuntu` (Dell PowerEdge R630, PERC H730 / MegaRAID SAS-3 3108,
 8× 2.5" SATA bays, one free PCIe 3.0 x16 slot — Slot 1). Epic: `livespec-g52yrb`.
 
