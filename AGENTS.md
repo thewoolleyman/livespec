@@ -397,11 +397,20 @@ write still uses the worktree → PR → merge → cleanup path below.
    from the primary checkout's `master` and do all edits there. Every
    worktree lives under the per-user root `~/.worktrees/<repo>/<branch>`
    — NEVER as a peer of the clones under `/data/projects`, so the
-   workspace holds only first-class clones:
+   workspace holds only first-class clones. Create it with the
+   worktree-discipline pack's recipe, which adds the worktree under that
+   root, provisions the gitignored pack into it, and runs the hydrate
+   hook (run it from the primary checkout):
 
    ```bash
-   mise exec -- git -C /data/projects/livespec worktree add -b <branch> "$HOME/.worktrees/livespec/<branch>" master
+   mise exec -- just worktree-create <branch>
    ```
+
+   A raw `mise exec -- git -C /data/projects/livespec worktree add -b <branch>
+   "$HOME/.worktrees/livespec/<branch>" master` also yields a usable
+   worktree — the pre-commit and pre-push hooks install the pack before
+   any gate reads it, so the worktree can commit and push with no
+   `just bootstrap` — but it skips hydration, so prefer the recipe.
 
    `just bootstrap` registers `~/.worktrees` as one of mise's
    `trusted_config_paths`, so a freshly created worktree's `.mise.toml`

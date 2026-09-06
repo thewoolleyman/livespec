@@ -6,7 +6,19 @@
 # python-skill-script-style-requirements.md §"Enforcement suite —
 # Invocation surfaces" and §"Dev tooling and task runner".
 #
-# pre-commit ordering: the cheap commit-pairs gate first (inspects
+# pre-commit and pre-push both START with `just install-worktree-pack`
+# (contracts.md §"Pre-commit step ordering"): the worktree-discipline
+# pack is gitignored-and-installed, so a worktree created by a raw
+# `git worktree add`, or one that predates a livespec-dev-tooling pin
+# bump, would otherwise reach the gate with the pack absent or stale
+# and fail `worktree_pack_absent` after the whole aggregate ran. The
+# installer is idempotent, writes only ignored files, and installs
+# from the package THIS checkout resolves; the byte-identity verifier
+# in the aggregate still asserts the result. It must run before any
+# gate member that reads the pack, and the aggregate runs its members
+# alphabetically, so it lives here rather than inside a member.
+#
+# pre-commit ordering after that: the cheap commit-pairs gate (inspects
 # staged file list; doesn't run tests), then the heavy
 # `just check-pre-commit` aggregate (Red-mode-aware — skips
 # check-coverage when the staged tree matches the Red commit
@@ -21,11 +33,13 @@
 
 pre-commit:
   commands:
-    00-lint-autofix-staged:
+    00-install-worktree-pack:
+      run: just install-worktree-pack
+    01-lint-autofix-staged:
       run: just lint-autofix-staged
-    01-commit-pairs-source-and-test:
+    02-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
-    02-check-pre-commit:
+    03-check-pre-commit:
       run: just check-pre-commit
 
 commit-msg:
@@ -43,5 +57,7 @@ commit-msg:
 
 pre-push:
   commands:
-    check:
+    00-install-worktree-pack:
+      run: just install-worktree-pack
+    01-check-pre-push:
       run: just check-pre-push

@@ -12,10 +12,11 @@
 #
 # Authority: livespec/SPECIFICATION/contracts.md
 #   §"Pre-commit step ordering" — the gates wired here mirror the
-#   spec-required ordering: 00-lint-autofix-staged, 01-commit-pairs-
-#   source-and-test, 02-check-pre-commit at pre-commit;
-#   no-commit-on-master + red-green-replay at commit-msg; full
-#   aggregate (with zero-py subsetting) at pre-push.
+#   spec-required ordering: 00-install-worktree-pack, 01-lint-autofix-
+#   staged, 02-commit-pairs-source-and-test, 03-check-pre-commit at
+#   pre-commit; no-commit-on-master + red-green-replay at commit-msg;
+#   00-install-worktree-pack then 01-check-pre-push (the full aggregate)
+#   at pre-push.
 #
 # This is a STARTER scaffold. The aggregate below carries only the
 # tool-backed checks (ruff lint/format, pyright types, pytest+cov).
