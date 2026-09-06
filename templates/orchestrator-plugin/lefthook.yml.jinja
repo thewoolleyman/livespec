@@ -5,11 +5,14 @@
 # publishes a new release.
 #
 # Authority: livespec/SPECIFICATION/contracts.md
-#   §"Pre-commit step ordering" — pre-commit runs three commands in order
-#   (00-lint-autofix-staged, 01-commit-pairs-source-and-test,
-#   02-check-pre-commit); commit-msg runs red-green-replay; pre-push runs the
-#   full aggregate. Earlier steps fail-fast so a missing test pair surfaces
-#   without waiting for pytest.
+#   §"Pre-commit step ordering" — pre-commit runs, in order,
+#   00-install-worktree-pack (materializes the gitignored worktree-discipline
+#   pack from the pinned livespec-dev-tooling package before any gate reads
+#   it; idempotent, ignored files only), 01-lint-autofix-staged,
+#   02-commit-pairs-source-and-test, 03-check-pre-commit; commit-msg runs
+#   red-green-replay; pre-push runs 00-install-worktree-pack then
+#   01-check-pre-push (the full aggregate). Earlier steps fail-fast so a
+#   missing test pair surfaces without waiting for pytest.
 #
 # Worktree-discipline gate: the worktree-only repository mutation protocol (see
 # AGENTS.md §"Repository mutation protocol") is enforced by the STRUCTURAL
@@ -45,11 +48,13 @@
 
 pre-commit:
   commands:
-    00-lint-autofix-staged:
+    00-install-worktree-pack:
+      run: just install-worktree-pack
+    01-lint-autofix-staged:
       run: just lint-autofix-staged
-    01-commit-pairs-source-and-test:
+    02-commit-pairs-source-and-test:
       run: just check-commit-pairs-source-and-test
-    02-check-pre-commit:
+    03-check-pre-commit:
       run: just check-pre-commit
 
 commit-msg:
@@ -59,5 +64,7 @@ commit-msg:
 
 pre-push:
   commands:
-    check:
+    00-install-worktree-pack:
+      run: just install-worktree-pack
+    01-check-pre-push:
       run: just check-pre-push
