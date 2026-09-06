@@ -125,6 +125,23 @@
     // that surface round-trips the file through json.dumps and silently strips
     // every comment here while reporting green — tracked as bd-ib-lmi5.
     "dispatcher": {
+      // The five dispatch-time premises (2026-09-06). Since livespec-orchestrator-
+      // beads-fabro 39526e5c (2026-08-31) every sandbox prepare step is a
+      // projection of THIS file's declaration, and the fleet default for each is
+      // the ratified explicit no-op — so an undeclared repo's sandbox installs no
+      // pinned toolchain and no hook manager, and `uv sync` meets an untrusted
+      // `.mise.toml` (livespec-fyqg4a's run 01M1V87ADGQWT8MMT1MT05PQXZ died in
+      // its setup step exactly so). Declared verbatim as the other wired members
+      // (livespec-runtime, livespec-overseer) declare them.
+      "prepare_toolchain": {
+        "mise": ["sh", "-c", "mise trust && env -u GITHUB_TOKEN -u GH_TOKEN -u GITHUB_API_TOKEN mise install --quiet"],
+        "lefthook": ["uv", "run", "lefthook", "install"]
+      },
+      "conformance": {
+        "hook_install": { "mode": "internal_livespec_dev_tooling" },
+        "verify_commit_refuse_hook": { "mode": "internal_livespec_dev_tooling" },
+        "verify_plugin_resolution": { "mode": "internal_livespec_dev_tooling" }
+      },
       "auto_approve_ready": true,
       "acceptance_mode": "ai-only",
       "wip_cap": 10,
