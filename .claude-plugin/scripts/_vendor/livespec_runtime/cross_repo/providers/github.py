@@ -7,6 +7,14 @@ installed and authenticated
 runtime is consumed; absence is a configuration error surfaced by the
 caller's retry policy collapsing to `RefStatus.UNKNOWN`.
 
+No function here builds a `gh` invocation of its own. Each names the
+`gh` ARGUMENT TAIL it wants and hands it to `github_process.budgeted_gh`,
+which is the provider's seam onto `GithubBudgetedClient`; the client
+owns the conditional-read cache, the pacing, the backoff and the floor,
+and the transport owns the argv. That is what keeps the request-budget
+policy uniform across every GitHub read this library issues instead of
+per-caller.
+
 Each function returns an `IOResult`: the ANSWER on the success track,
 and a `GithubQueryFailed` naming the command and the reason on the
 failure track. The resolve-ref walker wraps them in
@@ -38,7 +46,7 @@ from livespec_runtime.cross_repo.providers.github_process import (
     GithubBudgetUnmeasurable,
     GithubFailure,
     GithubQueryFailed,
-    completed_gh,
+    budgeted_gh,
 )
 
 __all__: list[str] = [
@@ -84,13 +92,12 @@ def query_pull_request_state(*, github_url: str, number: int) -> IOResult[str, G
     The caller (resolve-ref walker) interprets `MERGED` or `CLOSED` as
     `RefStatus.CLOSED` and `OPEN` as `RefStatus.OPEN`.
     """
-    argv = ["gh", "pr", "view", str(number), "--repo", github_url, "--json", "state"]
-    completed = completed_gh(argv=argv)
-    if isinstance(completed, IOFailure):
-        return completed
-    return _decoded_field(
-        argv=argv, stdout=unsafe_perform_io(completed.unwrap()).stdout, key="state"
-    )
+    resource = shlex.join(["pr", "view", str(number), "--repo", github_url, "--json", "state"])
+    answered = budgeted_gh(resource=resource)
+    if isinstance(answered, IOFailure):
+        return answered
+    invocation = unsafe_perform_io(answered.unwrap())
+    return _decoded_field(argv=invocation.argv, stdout=invocation.stdout, key="state")
 
 
 def branch_exists_on_remote(*, github_url: str, name: str) -> IOResult[bool, GithubFailure]:
@@ -108,19 +115,24 @@ def branch_exists_on_remote(*, github_url: str, name: str) -> IOResult[bool, Git
     Per livespec/SPECIFICATION/history/v003/contracts.md: the 404 SHOULD
     be detected via `gh`'s
     structured response, not a substring match on stderr.
+
+    This is one of the two POLL-SHAPED reads here: the walker asks the
+    same question about the same branch again and again, and the answer
+    almost never changes. It therefore goes through the budgeted client's
+    CONDITIONAL path — the client revalidates a cached read with
+    `If-None-Match`, and a `304` answer costs no primary budget.
     """
     owner_name = _split_owner_name(github_url=github_url)
-    argv = ["gh", "api", f"repos/{owner_name}/branches/{name}"]
-    completed = completed_gh(argv=argv)
-    if isinstance(completed, IOFailure):
-        failure = unsafe_perform_io(completed.failure())
+    answered = budgeted_gh(resource=shlex.join(["api", f"repos/{owner_name}/branches/{name}"]))
+    if isinstance(answered, IOFailure):
+        failure = unsafe_perform_io(answered.failure())
         if isinstance(failure, GithubQueryFailed) and failure.http_404:
             return IOSuccess(_A_404_MEANS_THE_BRANCH_IS_GONE)
-        return completed
+        return answered
     return IOSuccess(_GH_ANSWERED_SO_THE_BRANCH_EXISTS)
 
 
-def _decoded_field(*, argv: list[str], stdout: str, key: str) -> IOResult[str, GithubFailure]:
+def _decoded_field(*, argv: str, stdout: str, key: str) -> IOResult[str, GithubFailure]:
     """The named string field of a `gh --json` payload, or why it is absent.
 
     A malformed payload and a payload missing the key both used to raise
@@ -133,13 +145,11 @@ def _decoded_field(*, argv: list[str], stdout: str, key: str) -> IOResult[str, G
         payload: dict[str, Any] = json.loads(stdout)
     except json.JSONDecodeError as undecodable:
         return IOFailure(
-            GithubQueryFailed(argv=shlex.join(argv), detail=f"undecodable response: {undecodable}")
+            GithubQueryFailed(argv=argv, detail=f"undecodable response: {undecodable}")
         )
     value = payload.get(key)
     if not isinstance(value, str):
-        return IOFailure(
-            GithubQueryFailed(argv=shlex.join(argv), detail=f"response carried no {key!r} string")
-        )
+        return IOFailure(GithubQueryFailed(argv=argv, detail=f"response carried no {key!r} string"))
     return IOSuccess(value)
 
 
@@ -156,15 +166,19 @@ def branch_merged_into_default(
     commit and `behind` when `name` has zero commits ahead of
     `default_branch` (i.e., `name` is merged). Both translate to
     `True`; `ahead` / `diverged` translate to `False`.
+
+    The second POLL-SHAPED read, and it takes the budgeted client's
+    CONDITIONAL path for the same reason `branch_exists_on_remote` does:
+    a comparison the walker repeats against an unchanged pair of refs is
+    revalidated rather than re-fetched.
     """
     owner_name = _split_owner_name(github_url=github_url)
-    argv = ["gh", "api", f"repos/{owner_name}/compare/{default_branch}...{name}"]
-    completed = completed_gh(argv=argv)
-    if isinstance(completed, IOFailure):
-        return completed
-    decoded = _decoded_field(
-        argv=argv, stdout=unsafe_perform_io(completed.unwrap()).stdout, key="status"
-    )
+    resource = shlex.join(["api", f"repos/{owner_name}/compare/{default_branch}...{name}"])
+    answered = budgeted_gh(resource=resource)
+    if isinstance(answered, IOFailure):
+        return answered
+    invocation = unsafe_perform_io(answered.unwrap())
+    decoded = _decoded_field(argv=invocation.argv, stdout=invocation.stdout, key="status")
     return decoded.map(lambda status: status in ("identical", "behind"))
 
 
