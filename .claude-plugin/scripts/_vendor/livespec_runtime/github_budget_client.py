@@ -16,13 +16,14 @@ from livespec_runtime.github_budget_client_support import (
     int_option,
     mapping_option,
     poll_interval,
-    snapshot_from_headers,
     unmeasurable_classification,
     with_snapshot,
 )
 from livespec_runtime.github_budget_measurement import (
+    RATE_LIMIT_RESOURCE,
     classify_github_failure,
     parse_rate_limit_snapshot,
+    snapshot_from_headers,
 )
 from livespec_runtime.github_budget_types import (
     GithubBudgetDeferred,
@@ -108,7 +109,13 @@ class GithubBudgetedClient:
                 value=value,
             )
             snapshot = snapshot_from_headers(headers=response.headers)
-            if response.status_code != _HTTP_FORBIDDEN:
+            # An UNMEASURED 403 is not a rate-limit verdict. `UNMEASURABLE`
+            # names a budget class, and both classes are read off the
+            # snapshot; without one there is nothing to classify, so the
+            # response goes back as the ordinary failure it is and the
+            # caller names it. Retrying it here would burn attempts and
+            # sleep to a reset time nobody reported.
+            if response.status_code != _HTTP_FORBIDDEN or snapshot is None:
                 return GithubBudgetSuccess(
                     response=with_snapshot(response=response, snapshot=snapshot)
                 )
@@ -193,6 +200,12 @@ class GithubBudgetedClient:
         if not deferrable or remaining_floor <= 0:
             return None
         snapshot = self._preflight_snapshot(snapshot_headers=snapshot_headers)
+        # An unmeasurable budget cannot refuse work. Refusing on a reading
+        # that was never taken would stall every deferrable caller whenever
+        # the transport could not report headers — failing CLOSED on an
+        # absence, which is the shape a floor exists to avoid, not adopt.
+        if snapshot is None:
+            return None
         failure = GithubBudgetDeferred(
             resource=resource,
             remaining=snapshot.remaining,
@@ -209,14 +222,14 @@ class GithubBudgetedClient:
         self,
         *,
         snapshot_headers: Mapping[str, str] | None,
-    ) -> GithubRateLimitSnapshot:
+    ) -> GithubRateLimitSnapshot | None:
         if snapshot_headers is not None:
             return parse_rate_limit_snapshot(headers=snapshot_headers)
         response = self.transport(
             request=GithubBudgetRequest(
                 method="GET",
-                resource="/rate_limit",
+                resource=RATE_LIMIT_RESOURCE,
                 headers={},
             )
         )
-        return parse_rate_limit_snapshot(headers=response.headers)
+        return snapshot_from_headers(headers=response.headers)

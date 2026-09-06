@@ -11,9 +11,9 @@ from typing import cast
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.unsafe import unsafe_perform_io
 
-from livespec_runtime.hygiene_scan_context import git, quote_path, worktrees
+from livespec_runtime.hygiene_scan_context import budgeted_gh_read, git, quote_path, worktrees
 from livespec_runtime.hygiene_scan_types import CommandUnavailable, ScanContext
-from livespec_runtime.hygiene_scan_worktrees import head_is_merged
+from livespec_runtime.hygiene_scan_worktree_merge import head_is_merged
 from livespec_runtime.needs_attention import HygieneScanFinding
 
 __all__: list[str] = [
@@ -152,7 +152,15 @@ def stale_branch_finding(*, context: ScanContext, branch: str) -> HygieneScanFin
 def stale_pr_findings(
     *, context: ScanContext
 ) -> IOResult[list[HygieneScanFinding], CommandUnavailable]:
-    argv = ["pr", "list", "--state", "open", "--json", GH_PR_FIELDS]
+    """Findings for open PRs that have gone stale, budget permitting.
+
+    The listing is a BULK read of usually-unchanged state and the scan is
+    advisory, so `budgeted_gh_read` declares it deferrable against a
+    reserved floor. A read that was declined, failed, or found nothing
+    all arrive here as an empty listing, which decodes to no findings —
+    the same answer the scan already gives when `gh` exits non-zero.
+    """
+    tail = ["pr", "list", "--state", "open", "--json", GH_PR_FIELDS]
     configured = git(
         repo_path=context.primary_path,
         argv=["config", "--get", "remote.origin.url"],
@@ -162,15 +170,12 @@ def stale_pr_findings(
         return configured
     origin = unsafe_perform_io(configured.unwrap()).stdout.strip()
     if origin != "":
-        argv.extend(["--repo", origin])
-    listed = context.runner(argv=["gh", *argv], cwd=context.primary_path)
+        tail.extend(["--repo", origin])
+    listed = budgeted_gh_read(context=context, resource=shlex.join(tail))
     if isinstance(listed, IOFailure):
         return listed
-    result = unsafe_perform_io(listed.unwrap())
-    if result.returncode != 0:
-        return IOSuccess([])
     try:
-        payload: object = json.loads(result.stdout)
+        payload: object = json.loads(unsafe_perform_io(listed.unwrap()))
     except json.JSONDecodeError:
         return IOSuccess([])
     if not isinstance(payload, list):

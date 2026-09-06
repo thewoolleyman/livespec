@@ -7,6 +7,12 @@ protocol, and a tree part-way through that change does not type-check.
 
 The railway carries exactly one failure — the command could not be
 SPAWNED. A non-zero EXIT is data (see `CommandUnavailable`).
+
+`budgeted_gh_read` is the GitHub half of that same concern. The scan's
+GitHub reads do not go to `gh` directly: they go through
+`GithubBudgetedClient` over the SAME injected runner, so a scan run
+against a budget near its floor declines its advisory reads instead of
+spending the last of a budget interactive work needs.
 """
 
 from __future__ import annotations
@@ -15,11 +21,18 @@ import shlex
 import subprocess
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from pathlib import Path
 
 from returns.io import IOFailure, IOResult, IOSuccess
 from returns.unsafe import unsafe_perform_io
 
+from livespec_runtime.github_budget import (
+    GhInvocation,
+    GithubBudgetedClient,
+    gh_invocation,
+    gh_transport,
+)
 from livespec_runtime.hygiene_scan_types import (
     CommandResult,
     CommandRunner,
@@ -30,6 +43,8 @@ from livespec_runtime.hygiene_scan_types import (
 
 __all__: list[str] = [
     "DEFAULT_STALE_DAYS",
+    "GH_READ_BUDGET_FLOOR",
+    "budgeted_gh_read",
     "build_context",
     "git",
     "parse_worktrees",
@@ -39,6 +54,11 @@ __all__: list[str] = [
 ]
 
 DEFAULT_STALE_DAYS = 30
+
+# Requests held back for work a human is waiting on. The scan is a
+# janitor: its findings keep until the next run, and an interactive
+# resolve walk's do not.
+GH_READ_BUDGET_FLOOR = 250
 
 
 def build_context(
@@ -174,3 +194,64 @@ def run_command(*, argv: list[str], cwd: Path) -> IOResult[CommandResult, Comman
 
 def quote_path(*, path: Path) -> str:
     return shlex.quote(str(path))
+
+
+def _gh_invoked(*, argv: list[str], context: ScanContext) -> GhInvocation:
+    """One command run through the scan's injected runner, as a `gh` outcome.
+
+    The two vocabularies line up exactly, which is why this is an
+    adaptation and not a re-implementation: `CommandUnavailable` means
+    the command could not be SPAWNED, and that is precisely what
+    `GhInvocation.unspawnable` records.
+    """
+    outcome = context.runner(argv=argv, cwd=context.primary_path)
+    if isinstance(outcome, IOFailure):
+        return GhInvocation(
+            argv=shlex.join(argv),
+            unspawnable=unsafe_perform_io(outcome.failure()).detail,
+        )
+    result = unsafe_perform_io(outcome.unwrap())
+    return GhInvocation(
+        argv=shlex.join(argv),
+        stdout=result.stdout,
+        stderr=result.stderr,
+        returncode=result.returncode,
+    )
+
+
+def budgeted_gh_read(*, context: ScanContext, resource: str) -> IOResult[str, CommandUnavailable]:
+    """One budgeted GitHub read's stdout, or the command that could not be SPAWNED.
+
+    `resource` is the shlex-joined `gh` argument tail; the transport
+    builds the argv, so this subsystem names WHAT it wants to read and
+    never HOW to invoke `gh`.
+
+    The read is declared DEFERRABLE with a reserved floor. Below the
+    floor the client refuses it outright, and that refusal, a non-zero
+    exit, and an empty answer are the SAME thing to every reader here —
+    nothing to report this pass — so all three yield an EMPTY string on
+    the success track rather than three shapes the callers would each
+    have to re-discriminate. Only a command that never ran takes the
+    failure track, which is exactly the contract `CommandUnavailable`
+    already documents.
+
+    The client is per-call because the scan is: one pass reads once, so
+    a cache that outlived the pass would answer a later scan from a
+    reading it took a scan ago.
+    """
+    client = GithubBudgetedClient(
+        transport=gh_transport(execute=partial(_gh_invoked, context=context)),
+        max_attempts=1,
+    )
+    outcome = client.request(
+        method="GET",
+        resource=resource,
+        deferrable=True,
+        remaining_floor=GH_READ_BUDGET_FLOOR,
+    )
+    if isinstance(outcome, IOFailure):
+        return IOSuccess("")
+    invocation = gh_invocation(value=outcome.unwrap().value)
+    if invocation.unspawnable is not None:
+        return IOFailure(CommandUnavailable(argv=invocation.argv, detail=invocation.unspawnable))
+    return IOSuccess(invocation.stdout if invocation.returncode == 0 else "")

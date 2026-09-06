@@ -1,10 +1,17 @@
-"""Support helpers for the budget-aware GitHub transport wrapper."""
+"""Support helpers for the budget-aware GitHub transport wrapper.
+
+The client's own bookkeeping, and nothing else: the cached-read record,
+the header and option readers, and the backoff arithmetic. The `gh`
+boundary itself — argv construction, response measurement, the durable
+signal — lives in `github_budget_measurement`, which already owned every
+other piece of reading what GitHub reported.
+"""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Literal, cast
 
-from livespec_runtime.github_budget_measurement import parse_rate_limit_snapshot
+from livespec_runtime.github_budget_measurement import snapshot_from_headers
 from livespec_runtime.github_budget_types import (
     GithubBudgetResponse,
     GithubRateLimitClassification,
@@ -20,7 +27,6 @@ __all__: list[str] = [
     "int_option",
     "mapping_option",
     "poll_interval",
-    "snapshot_from_headers",
     "unmeasurable_classification",
     "with_snapshot",
 ]
@@ -80,14 +86,10 @@ def poll_interval(*, headers: Mapping[str, str]) -> float:
     return float(value or 0.0)
 
 
-def snapshot_from_headers(*, headers: Mapping[str, str]) -> GithubRateLimitSnapshot:
-    return parse_rate_limit_snapshot(headers=headers)
-
-
 def with_snapshot(
     *,
     response: GithubBudgetResponse,
-    snapshot: GithubRateLimitSnapshot,
+    snapshot: GithubRateLimitSnapshot | None,
 ) -> GithubBudgetResponse:
     return replace(response, snapshot=snapshot)
 

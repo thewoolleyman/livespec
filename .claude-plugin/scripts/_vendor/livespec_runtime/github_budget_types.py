@@ -8,6 +8,8 @@ from typing import ClassVar, Literal, TypeAlias
 from returns.io import IOFailure
 
 __all__: list[str] = [
+    "GhExecutor",
+    "GhInvocation",
     "GithubBudgetDeferred",
     "GithubBudgetFailure",
     "GithubBudgetRequest",
@@ -21,6 +23,7 @@ __all__: list[str] = [
     "GithubRateLimitSnapshot",
 ]
 
+GhExecutor: TypeAlias = Callable[..., "GhInvocation"]
 GithubBudgetFailure: TypeAlias = "GithubBudgetDeferred | GithubBudgetUnmeasurable"
 GithubBudgetResult: TypeAlias = "GithubBudgetSuccess | IOFailure[GithubBudgetFailure]"
 GithubBudgetTransport: TypeAlias = Callable[..., "GithubBudgetResponse"]
@@ -57,6 +60,28 @@ class GithubRateLimitSnapshot:
     used: int
     reset: int
     resource: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GhInvocation:
+    """What one `gh` run printed, how it exited, or why it never ran.
+
+    `argv` is the shell-quoted command so an operator can rerun it, the
+    same reason `GithubQueryFailed` carries one.
+
+    `unspawnable` is the ONE structural failure — the binary is missing,
+    the working directory is gone — and it is deliberately NOT a fourth
+    exit code. "gh never ran" and "gh ran and exited non-zero" are
+    categorically different answers: the second is data every reader here
+    already branches on, and folding it into the first would turn a
+    404 into a configuration error.
+    """
+
+    argv: str
+    stdout: str = ""
+    stderr: str = ""
+    returncode: int = 0
+    unspawnable: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
