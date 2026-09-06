@@ -292,6 +292,31 @@ factory-safe *implementation* goes through the factory. Authoritative detail:
 the orchestrator's `SPECIFICATION/contracts.md` §"Dispatcher admission, WIP cap,
 and post-merge acceptance" and its `prose/plan.md` routing.
 
+## Delegates are polled on a deadline, never awaited
+
+A lead session that has dispatched work to sub-agents MUST NOT end its turn
+"waiting for their reports". Recorded instance, 2026-09-05: four consumer
+sub-agents each armed a background monitor for a bump PR's merge, said they
+were "waiting on the monitor notification", and went idle; the merges landed
+within ten minutes, the monitor never resumed any of them, and the lead sat
+on their silence for about seventeen hours until the maintainer wrote "You
+stalled. You failed." A delegate that is waiting on a notification is
+indistinguishable from a dead one, and a lead that waits on the delegate
+compounds the stall one level up.
+
+- **Re-derive delegate progress from the forge, not from its messages** — PR
+  opened, checks, merge — the same way any other claim is verified
+  (`.ai/verifying-against-the-right-source.md`).
+- **Arm a bounded deadline the moment you dispatch** (a monitor on the forge
+  state, or a scheduled check), and when it passes, wake the delegate ONCE
+  with an explicit "do not wait on anything; execute end to end now"; if it
+  still does not move, do that repository's work inline yourself.
+- **Brief delegates to poll in the foreground with bounded loops** and to
+  message the lead the moment they block. Forbid parking on a background
+  monitor in every dispatch brief.
+- **Sixteen idle delegates is a signal, not a queue** — check `ListAgents`
+  before assuming work is in flight; `idle` plus no PR on the forge is a stall.
+
 ## The Fabro factory is a shared concurrency surface — never gate on other runs
 
 The Fabro factory is a **shared, multi-tenant execution surface built to run
