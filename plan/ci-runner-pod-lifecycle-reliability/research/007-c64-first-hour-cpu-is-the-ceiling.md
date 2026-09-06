@@ -77,6 +77,41 @@ conditions. Every measurement is from `poweredge-xubuntu` between 03:36Z and
   load average before sampling `mpstat`. The conclusion survived the
   correction; the evidence for it did not exist until the sample.
 
+## Measurements the recommendation asked for (04:10–04:20Z, 29–33 runners)
+
+**sccache hit rate: 1.0 %.** `redis-cli INFO stats` on `sccache-redis`:
+137 `keyspace_hits` against 13,750 `keyspace_misses`, 381 keys, 227 MiB used
+of the 16 GiB ceiling, 0 evictions, uptime 7,892 s — i.e. since the 01:59Z
+proving reboot. Cause, both halves by design: redis is RAM-only ("one
+populate refills it after a restart", sccache/README.md), and the populator's
+guardrail skips the sccache build whenever the pool has more than 16 admitted
+jobs (`warm-cache-populate` 04:00Z: "pool busy (30 admitted jobs > threshold
+16); skipping the build this tick"). CI was restored at 02:07Z and has been
+above the threshold since, so the cache stays cold exactly when it is
+needed, and every Rust job recompiles its dependency graph. The README's
+16 GiB derivation also assumes 32 churn slots at 4 GiB each; at `C = 64`
+that arithmetic no longer closes (64 × 4 GiB exceeds allocatable), though the
+host's 143 GiB free shows the envelope was conservative.
+
+**CPU split by process family (six 10-second `ps` samples, 29 runners,
+load 47):** Python and node ~12.4 cores, `pytest-xdist` workers ~5.6 cores,
+runner processes ~5.5 cores, git/rsync/tar/rm ~6.6 cores, k3s ~1.2 cores,
+Rust/C compile **~0.9 cores**. In this window the fleet's CPU was Python
+test suites and checkout/teardown filesystem work, not compilation; the
+`rustc`/`clippy` processes that topped `top` at 03:44Z were one console
+fan-out. So the compile cache is the lever for the console repository's
+bursts and NOT the lever for the steady state.
+
+**The steady-state multiplier is pytest-xdist.** livespec's `justfile` sets
+the self-hosted lane to 25 % of cores per job (`-n 18` on this host,
+`LIVESPEC_TEST_PARALLELISM` overridable); two `-n 18` jobs were running in the
+sample. Ten concurrent Python test jobs is 180 workers on 72 threads, each
+worker paying its own collection and import cost — that fixed per-worker
+cost is what oversubscription wastes, since the test work itself is
+zero-sum. livespec-dev-tooling `livespec-dev-tooling-7us.7` ("Tune
+pytest-xdist worker cap for coverage runs") already owns this; the data is
+now on it.
+
 ## What this decides for the plan
 
 - Child `livespec-e2vcqf` (storage plan) has every storage criterion met and
@@ -88,9 +123,12 @@ conditions. Every measurement is from `poweredge-xubuntu` between 03:36Z and
   job-duration growth and control-plane responsiveness rather than from
   utilization, and the control plane's share of CPU under job contention is
   a host property that MUST hold. It is filed, not ratified, by this note.
-- Next measurement: `sccache` hit rate and the compile-versus-test CPU split
-  on a real fan-out, to size the cache lever before anyone proposes a number
-  above 64 again.
+- Measured (above): the compile cache is cold after every reboot for as long
+  as the pool stays busy, and the steady-state CPU is Python test workers,
+  not compilers. Two work-items carry the follow-through in
+  livespec-dev-tooling: the post-boot populate / persistence question under
+  the cache-tiers epic `livespec-dev-tooling-efqeip`, and the per-job xdist
+  cap under `livespec-dev-tooling-7us.7`.
 
 ## Read-first chain
 
