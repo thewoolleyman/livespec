@@ -13,7 +13,7 @@ from returns.unsafe import unsafe_perform_io
 
 from livespec_runtime.hygiene_scan_context import git, quote_path, worktrees
 from livespec_runtime.hygiene_scan_types import CommandUnavailable, ScanContext
-from livespec_runtime.hygiene_scan_worktrees import head_is_merged
+from livespec_runtime.hygiene_scan_worktree_merge import head_is_merged
 from livespec_runtime.needs_attention import HygieneScanFinding
 
 __all__: list[str] = [

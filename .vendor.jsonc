@@ -62,8 +62,8 @@
     {
       "name": "livespec_runtime",
       "upstream_url": "https://github.com/thewoolleyman/livespec-runtime",
-      "upstream_ref": "v0.22.1",
-      "vendored_at": "2026-09-06T07:22:59Z"
+      "upstream_ref": "v0.22.3",
+      "vendored_at": "2026-09-06T08:26:37Z"
     }
   ]
 }
