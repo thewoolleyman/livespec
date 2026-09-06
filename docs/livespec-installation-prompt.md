@@ -568,6 +568,120 @@ selection once the file exists:
   values from that plugin's onboarding; offer to add it, and note the
   post-seed factory infrastructure (Phase 6) it depends on.
 
+## Phase 4b — Wire the worktree-discipline pack
+
+**Bottom line first.** livespec's mutation protocol is "every change to
+a tracked file happens in an isolated git worktree, never on the shared
+primary checkout", and the machinery that enforces it is a small PACK of
+files the pinned `livespec-dev-tooling` package MATERIALIZES into
+`dev-tooling/` on demand — never tracked, so it cannot drift from the
+version this project pins. This phase adds the wiring, spread across
+four committed files, that makes the materialization happen. It is
+lettered `4b` because it slots between the two `.livespec.jsonc` phases
+and is independent of the Phase-2 orchestrator choice — it applies the
+same way to every adopter.
+
+**Why this prompt spells the lines out.** For a livespec FLEET member
+the wiring is asserted centrally: the fleet contract's
+`worktree-pack-wired` row reads each member's committed default branch
+and reports every line below that is missing. Adopters sit OUTSIDE that
+central sweep by ratified rule — the adopter lane is one row wide and
+the fleet's GitHub App is not installed on adopter repos — so for an
+adopter the enforcement is its OWN `just check`, running the same
+shipped package. That makes this prompt the surface responsible for
+naming the artifacts, which is why they appear literally below rather
+than as a pointer to a check the adopter never runs.
+
+**Applicability.** The pack targets a repo that already runs `just` and
+`lefthook`. If this project uses a different task runner or hook
+manager, translate each line into its equivalent — the pack itself is
+ecosystem-neutral pure-git shell — and record the translation; if the
+project runs neither, record this phase "n/a" and continue. Nothing
+here blocks seeding or any spec-side operation.
+
+Merge each of the following into whatever the file already has,
+preserving unrelated content, and record each as "already present" /
+"added" / "updated":
+
+1. **`justfile` — the two optional imports.** Both are `import?`, not
+   `import`: the fragments are gitignored and ABSENT until the
+   installer writes them, and the optional form is what lets `just`
+   parse a fresh clone before the pack exists.
+
+   ```just
+   import? 'dev-tooling/worktree.just'
+   import? 'dev-tooling/branch-protection.just'
+   ```
+
+2. **`justfile` — the installer recipe.** It delegates to the package's
+   installer module and never vendors a copy of the pack:
+
+   ```just
+   install-worktree-pack:
+       uv run python -m livespec_dev_tooling.install_worktree_pack
+   ```
+
+   On a non-`uv` toolchain keep the recipe NAME (the lefthook wiring
+   below and the fleet's remedy text both call `just
+   install-worktree-pack`) and invoke the same module through this
+   project's own Python entry point.
+
+3. **`.gitignore` — one entry per installed pack file.** The pack is
+   materialized, never committed. The installer also writes a generated
+   `dev-tooling/.gitignore` that ignores each file in place, so a
+   missing root entry is drift rather than an untracked-file risk — but
+   it is drift the fleet reports, so add all six:
+
+   ```gitignore
+   /dev-tooling/worktree-lib.sh
+   /dev-tooling/branch-protection.sh
+   /dev-tooling/gate-run.sh
+   /dev-tooling/check-no-workflow-edits.sh
+   /dev-tooling/worktree.just
+   /dev-tooling/branch-protection.just
+   ```
+
+4. **`lefthook.yml` — install the pack FIRST in both gated hooks.**
+   lefthook runs a hook's commands in NAME-SORTED order, so the `00-`
+   prefix is what makes file order and run order agree; a step written
+   first but named `99-` does not satisfy this. It must be `pre-commit`
+   AND `pre-push`: a pre-commit-only wiring leaves `git push` gating
+   against whatever pack the worktree happened to have, which is
+   exactly the case a worktree made by a raw `git worktree add` hits.
+
+   ```yaml
+   pre-commit:
+     commands:
+       00-install-worktree-pack:
+         run: just install-worktree-pack
+       # … this project's remaining pre-commit commands, named so they
+       # sort after the installer.
+
+   pre-push:
+     commands:
+       00-install-worktree-pack:
+         run: just install-worktree-pack
+       # … this project's remaining pre-push commands.
+   ```
+
+5. **`.livespec.jsonc` — state the policy.** Merge this top-level key
+   in, preserving every other key and comment:
+
+   ```jsonc
+   "worktree_discipline": { "pack": "required" }
+   ```
+
+   The VALUE is this project's decision — `"optional"` is a sanctioned,
+   reviewable opt-out — but the key must be PRESENT, so the policy is
+   something the project STATED rather than a tool's silent default.
+   If `.livespec.jsonc` does not exist yet (greenfield / brownfield
+   before seed), defer this key to Phase 5 and merge it alongside
+   `implementation.plugin`, exactly as Phase 4 defers its own.
+
+Verification: after wiring, `just install-worktree-pack` populates
+`dev-tooling/` and `git status` stays clean (every file it wrote is
+ignored). If the project has a `just check` aggregate, run it.
+
 ## Phase 5 — Verify, then hand off to the spec lifecycle
 
 1. **Plugins loaded**: `/livespec:help` (Codex:

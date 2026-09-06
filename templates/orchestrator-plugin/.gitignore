@@ -8,8 +8,17 @@
 # tolerate that). The per-ecosystem
 # dev-tooling/worktree-hydrate.sh stub stays TRACKED (it is not part of the
 # package pack).
+#
+# One entry per installed pack file EXCEPT the pack's own generated
+# dev-tooling/.gitignore, which ignores every pack file in place and so is
+# never named from here. The set is asserted by the fleet contract's
+# `worktree-pack-wired` row, whose ignore leg derives it from the installer's
+# single WORKTREE_PACK_FILES enumeration — so adding a pack file upstream
+# reds this template until the entry lands here too.
 /dev-tooling/worktree-lib.sh
 /dev-tooling/branch-protection.sh
+/dev-tooling/gate-run.sh
+/dev-tooling/check-no-workflow-edits.sh
 /dev-tooling/worktree.just
 /dev-tooling/branch-protection.just
 
