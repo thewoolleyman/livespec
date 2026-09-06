@@ -289,6 +289,7 @@ check:
         check-imports-architecture
         check-lint
         check-no-renderer-vendoring
+        check-no-workflow-edits
         check-prompts
         check-schema-dataclass-pairing
         check-spec-governance-manifest
@@ -358,30 +359,21 @@ check-static:
     uv run ruff check . || exit $?
     uv run pyright || exit $?
 
-# Factory-boundary guard used by dispatcher janitor scripts. Factory branches
-# must not carry workflow edits; when a task truly needs one, the maintainer
-# lands that diff outside the factory path.
-# No-errexit deviation: captures all workflow paths before explicit failure.
+# Factory-boundary workflow-edit guard. Delegates to the worktree pack's
+# single canonical body (`dev-tooling/check-no-workflow-edits.sh`, the
+# seventh pack member shipped by livespec-dev-tooling and installed
+# byte-identically fleet-wide by `just install-worktree-pack`;
+# livespec-dev-tooling-fy02). Factory branches must not carry
+# `.github/workflows/` edits without HUMAN authorization: the shared body
+# accepts only a tracked, per-change `.livespec-workflow-edit-exemption`
+# declaration whose work item a human has labelled `approval:workflow-edit`
+# in the ledger; no env override exists. It is a repo-LOCAL member of the
+# `check` aggregate (pre-push), NOT a CI slug — under GITHUB_ACTIONS it is a
+# deliberate no-op, since the bot lanes legitimately rewrite workflows there.
+# The Dispatcher's janitor ALSO invokes this recipe explicitly, ahead of
+# `check`, in every governed repo.
 check-no-workflow-edits:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    base_ref=origin/master
-    if ! git rev-parse --verify --quiet "${base_ref}" >/dev/null; then
-        base_ref=master
-    fi
-    {
-        git diff --name-only "${base_ref}...HEAD" -- .github/workflows
-        git diff --name-only --cached -- .github/workflows
-        git diff --name-only -- .github/workflows
-        git ls-files --others --exclude-standard -- .github/workflows
-    } | sort -u > /tmp/livespec-workflow-edits.$$
-    if [[ -s /tmp/livespec-workflow-edits.$$ ]]; then
-        echo "ERROR: factory branches must not modify .github/workflows/ files:" >&2
-        sed 's/^/  - /' /tmp/livespec-workflow-edits.$$ >&2
-        rm -f /tmp/livespec-workflow-edits.$$
-        exit 1
-    fi
-    rm -f /tmp/livespec-workflow-edits.$$
+    bash dev-tooling/check-no-workflow-edits.sh
 
 # `changed-files` — print the changed `.py` set this branch touches,
 # repo-root-relative, one path per line, sorted + de-duplicated
