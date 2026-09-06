@@ -257,6 +257,7 @@ check:
         check-tests-no-subprocess-spawn
         check-tool-backed-check-completeness
         check-vendor-manifest
+        check-work-item-interpolation-delimiters
         check-wrapper-shape
         # ---- Livespec-private block (extends after canonical) ----
         # Private checks whose intent is specific to livespec itself
@@ -1204,3 +1205,6 @@ check-self-hosted-uv-lane:
 
 check-ci-gate-parity:
     uv run python -m livespec_dev_tooling.checks.ci_gate_parity
+
+check-work-item-interpolation-delimiters:
+    uv run python -m livespec_dev_tooling.checks.work_item_interpolation_delimiters
