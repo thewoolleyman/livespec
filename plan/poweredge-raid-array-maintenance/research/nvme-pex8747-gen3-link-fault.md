@@ -41,6 +41,20 @@ enumeration; cleared once, it stayed clear under I/O. Topology: root port
 `00:03.2` → ASM2824 upstream `04:00.0` → downstream ports `05:00.0`,
 `05:04.0`, `05:08.0`, `05:0c.0` → drive `08:00.0`.
 
+**Card facts (corrected 2026-09-06; the maintainer caught the error).** The
+PEX8M2E2 is StarTech's *Dual* M.2 adapter: **two** M-key sockets (2242 /
+2260 / 2280), not four. The ASM2824 switch exposes four downstream ports in
+`lspci`, but the card wires only two of them to M.2 sockets — the other two
+downstream ports enumerate with nothing behind them. Reading the four ports
+as four sockets is exactly the mistake the 2026-09-04 records made
+("three empty sockets"); the four-socket card was the returned
+`PCIE-PEX8747M4`. With one SN8100 installed there is ONE free socket, so
+the second drive has no placement choice. Each socket gets Gen3 x4 from the
+Gen3 x8 uplink, so two drives share nothing below the switch. Sources:
+StarTech PEX8M2E2 product listing ("Dual M.2 PCIe SSD Adapter, x8/x16,
+2x M-Key, 2242/2260/2280, ASM2824, no bifurcation required") and its user
+manual (two M.2 slots, x8 PCIe 3.0, 0–70 °C operating).
+
 **What was then done (one drive, both tenants, label identity).** The
 drive's stale VG `nvmea` from the Gen2 interim was wiped (`vgchange -an`,
 `vgremove`, `pvremove`, `wipefs -a`), never reused. A fresh VG `nvmea` on
@@ -246,9 +260,9 @@ Dell runs the fans at full while the chassis is open; every earlier lid event
 cleared within five seconds of closing. Seat the lid; do not touch the fan
 settings (`poweredge-xubuntu-info` `FAN_COOLING.md`).
 
-## Drive temperature note
+## Drive temperature note (PEX8747 sockets — the returned four-socket card)
 
 Idle/light-load drive temperature read 39–41 °C in card socket 1 and 49–53 °C
-in card socket 4, at the same ambient. Socket 4 is the interim seat; watch
+in card socket 4 of the PEX8747, at the same ambient. Socket 4 was the interim seat; watch
 `nvme smart-log /dev/nvme0 | grep temperature` under the first sustained CI
 load (threshold for action stays ~70 °C per the install checklist).
