@@ -19,6 +19,20 @@
   // items through a different backend.
   "implementation": { "plugin": "livespec-orchestrator-beads-fabro" },
 
+  // This repo's worktree-discipline policy, STATED rather than defaulted. The
+  // pack is the shipped worktree-lib.sh / branch-protection.sh / gate-run.sh /
+  // check-no-workflow-edits.sh set plus the two `just` fragments the root
+  // justfile `import?`s, materialized from the pinned livespec-dev-tooling
+  // package by `just install-worktree-pack` (run first in both gated lefthook
+  // hooks) and gitignored, never tracked.
+  //
+  // The fleet contract's `worktree-pack-wired` row asserts the KEY is present,
+  // not which value it carries: "optional" is the sanctioned, reviewable
+  // opt-out. A scaffold is born "required" because the template also ships the
+  // justfile imports, the installer recipe, the ignore entries, and the
+  // lefthook first-command that make the policy real.
+  "worktree_discipline": { "pack": "required" },
+
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
   // plugin-resolution concern (concern #2). A livespec-impl-* plugin exposes the
   // required thin-transport `next` surface, so both runtimes are declared
