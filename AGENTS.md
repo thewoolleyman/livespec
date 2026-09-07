@@ -812,7 +812,15 @@ existing file):
   the symptom (two identically-numbered entries would have shipped) and wrong
   about the cause (they were distinct findings, not duplicates), so acting on it
   would have discarded a real finding — a warning is a claim, so read the thing
-  it is about, not the evidence offered for it.
+  it is about, not the evidence offered for it, and — the one entry where the
+  well-formed query hands back the INVERTED answer — the fleet's repositories
+  share a document shape, so resolving which repo OWNS a clause by grepping its
+  heading matches a same-named section at home and stops; the owner carries that
+  section as a sub-heading while the non-owner carries it as a top-level one, so
+  a `^## ` search finds zero hits in the repository that holds the definition and
+  one in the repository that does not, with no signal anything is off; grep for
+  the DEFINING SENTENCE rather than the heading, and read the citing spec's own
+  cross-reference, which has usually recorded the answer already.
 
 ## Working with the maintainer
 
