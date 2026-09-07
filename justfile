@@ -259,6 +259,7 @@ check:
         check-tool-backed-check-completeness
         check-vendor-manifest
         check-work-item-interpolation-delimiters
+        check-work-item-status-vocabulary
         check-wrapper-shape
         # ---- Livespec-private block (extends after canonical) ----
         # Private checks whose intent is specific to livespec itself
@@ -1212,3 +1213,6 @@ check-work-item-interpolation-delimiters:
 
 check-plan-record-conformance:
     uv run python -m livespec_dev_tooling.checks.plan_record_conformance
+
+check-work-item-status-vocabulary:
+    uv run python -m livespec_dev_tooling.checks.work_item_status_vocabulary
