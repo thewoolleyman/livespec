@@ -1533,6 +1533,76 @@ durable population share one listing, the durable one supplies enough rows to
 make the reading look complete.
 
 
+### 38. A matching HEADING is not evidence of OWNERSHIP, and the natural grep returns the inverted answer
+
+The fleet's repositories all carry the same-shaped `SPECIFICATION/` tree, and
+several carry sections with the SAME NAME. So resolving "which repo owns the
+clause I am citing?" by searching for the heading text finds a match in the
+searcher's own repo and stops there. The match is real. The ownership is not.
+
+A session filing a fix for a bare spec citation in
+`livespec-dev-tooling`'s `livespec_dev_tooling/checks/public_api_result_typed.py`
+needed the owning address for the private-helper definition that clause 0
+adopts. It grepped for the heading `Typechecker rule set`, matched
+`livespec-dev-tooling`'s own section, and wrote that address into the filed
+work-item as the prescribed fix. The implementing session caught it. The
+definition belongs to livespec CORE:
+
+```
+core   SPECIFICATION/non-functional-requirements.md:929
+       "Private helpers (single-leading-underscore prefix or not in `__all__`)"
+       under the section beginning at line 913
+core   SPECIFICATION/non-functional-requirements.md:810
+       clause 0 cites that section for the definition "rather than restating"
+
+dev-tooling  same-named section: ZERO matches for `private.helper` or `__all__`
+             it holds the pyright diagnostics list and nothing else
+```
+
+Landing the wrong address would not have been a cosmetic error. It would have
+reintroduced the sibling-relative citation defect that commit `2478ce6a` had
+already fixed in `vendor_update.py` — the class of defect the citing rule exists
+to prevent.
+
+**The inversion is the part worth remembering.** The two repositories do not
+carry the section at the same heading level. The OWNER carries it as a
+sub-heading; the NON-owner carries it as a top-level heading:
+
+```
+core         ### Typechecker rule set     (line 913)
+dev-tooling  ## Typechecker rule set      (line 42)
+```
+
+So the most natural search — anchored to a top-level heading, `^## Typechecker
+rule set` — returns ZERO hits in the repository that owns the definition and ONE
+hit in the repository that does not. The query is well-formed, it runs against
+the right files, and it hands back precisely the wrong answer with no signal
+that anything is off. Every heading-anchored search across these trees carries
+that hazard, because heading LEVEL is a local formatting decision each repository
+makes for itself while the section NAME is what travels.
+
+**The counter-move.** Never resolve ownership by heading. Grep for the DEFINING
+SENTENCE — the words that carry the rule you are about to cite — and confirm the
+candidate section actually contains it. A section that shares a name but not the
+definition is the impostor, and it is the one your search finds first. When the
+citing repository's own specification already cites the clause (core's line 810
+does), read that citation: the spec has usually recorded its own answer.
+
+**Coda, from the same incident: one finding is not the finding set.** The bare
+citation had been written into a PAIR of files, the check module and its mirror
+test. `doctor-static` short-circuits on the first hit in sorted path order, so
+the report named one file and the second sat invisible behind it. Fixing only
+the named file would have surfaced the test as the next finding and left the
+revise wrapper still at exit 3, with the fixer believing the work was done. A
+short-circuiting checker reports A violation, never THE violations; after fixing
+what it named, re-run it, or grep the whole tree for the pattern yourself.
+
+**The general form:** when many repositories share one document shape, a name
+match is a coincidence the layout makes likely, not evidence of ownership. Ask
+what the section SAYS, not what it is called. And when a report can stop at its
+first hit, its silence about everything else is a property of the instrument.
+
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
