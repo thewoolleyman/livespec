@@ -527,6 +527,34 @@ This generalises past CLIs. Any filter that silently tolerates an unknown
 predicate — an unrecognised flag, a typo'd label, a JSON path that matches no
 key — fails in this direction, and the failure always looks like good news.
 
+**Re-measured 2026-09-08, and the trap has MOVED — from the tool to the caller.**
+On `bd` v1.0.5, `bd list --search foo` does NOT silently accept the flag: it
+exits **1**, writes nothing to stdout, and prints `Error: unknown flag: --search`
+to **stderr**. So the mechanism recorded above no longer describes the tool.
+
+That makes the modern failure worse to spot, not better, because the only way to
+reach a false empty is now to DISCARD THE EVIDENCE YOURSELF. A dedup sweep on
+that date ran the same seven-query shape as
+`bd list --search "$q" 2>/dev/null | head -5` inside a `for` loop, and got four
+clean empty results that read exactly like "nothing exists" — one command away
+from filing a duplicate work-item. The tool shouted; the `2>/dev/null` ate it,
+and the exit status was never consulted because the loop only looked at stdout.
+
+So the counter-move has a cheaper primary form than the positive control:
+**never suppress stderr, and never ignore exit status, on a probe whose EMPTY
+result you intend to treat as a negative finding.** Redirect stderr somewhere you
+will read, or drop the redirect entirely; branch on the command's exit status
+rather than on whether its output is empty. The positive control above is still
+the right backstop for a filter that genuinely does tolerate an unknown
+predicate — but a loud failure you muted is the commoner case once tools
+harden, and it is invisible precisely because you wrote the muting.
+
+Worth noting for anyone tempted to skip the exit-code check on the strength of
+the original entry: this instance is a REPEAT. The class was already documented,
+by this same file, when it was hit again. Documentation of a trap does not
+protect against it when the habit that triggers it — reflexively appending
+`2>/dev/null` to a probe — lives somewhere the documentation is not being read.
+
 ### 18. A working tree one commit BEHIND is not the tree that failed
 
 `livespec-runtime` master CI went red on `check-public-api-result-typed`
