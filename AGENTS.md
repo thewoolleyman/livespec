@@ -1241,9 +1241,28 @@ contract diagram) and their rationale live in
   still surfaces promptly, now gated by the release rather than by raw HEAD.
   `bump-pin` rewriting a sibling's `compat.pinned` from `"master"` to a release
   tag is correct-by-design: the `"master"` values are bootstrap placeholders
-  that become release tags on the first successful fan-out. One accepted seam:
-  `refactor:`/`perf:` commits cut no release, so a behavior-changing refactor
-  reaches siblings only on the next `feat:`/`fix:` release.
+  that become release tags on the first successful fan-out. **Which commit
+  types actually cut a release is PER-REPO and is derived from that repo's
+  `release-please-config.json` `changelog-sections` — the `hidden: false`
+  sections release, plus any breaking marker.** On livespec that set is
+  `feat`, `fix`, `perf`, `refactor`, `revert`; on a repo declaring no
+  `changelog-sections`, release-please's defaults apply and `refactor` does
+  NOT release. Never hardcode a fleet-wide releasing set in either direction.
+  The non-releasing seam is therefore `docs:`/`chore:`/`test:`/`build:`/`ci:`/
+  `style:` — a change landing only under those reaches siblings solely on the
+  next releasing commit.
+
+  This paragraph previously read "One accepted seam: `refactor:`/`perf:`
+  commits cut no release." **That was false for livespec's config and is
+  corrected here rather than quietly dropped, because it had already been
+  copied into two work-items as a "trap" to design against.** The measurement
+  that refutes it: the range `v0.28.2..v0.28.3` is 36 commits — 5 `refactor`,
+  5 `chore`, 26 `docs`, with zero `feat`, `fix`, `revert` or breaking markers —
+  and release v0.28.3 was cut from exactly that range. The `v0.21.3` range's
+  only non-docs commit was a single `revert`. The negative control holds: a
+  docs-and-chore-only window of 30+ commits (2026-08-30 → 2026-09-08) cut
+  nothing. Derive an enforcement rule from the producer's config and its
+  observed output, never from this file's prose about it.
 - **Secrets are probe-only.** Read secret presence with `printenv NAME | wc -c`,
   never echo a value; never print tokens, env dumps, or remote URLs that may
   embed a token (e.g. a sandbox clone remote); on accidental exposure, rotate.
