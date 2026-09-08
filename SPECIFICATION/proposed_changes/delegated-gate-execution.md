@@ -60,7 +60,7 @@ Insert immediately after that amended bullet list, and immediately before the pa
 >
 > *The set.* Taking the executor's run and the pushing host's run together, every verification the repository's gate recipe would perform for that tree on the pushing host without delegation MUST actually be performed; a check that exits without failing but did not perform its verification — for any cause, credential causes included — has not performed it, and where that verification is one the recipe would perform on the pushing host without delegation it MUST be performed there; a narrowing that applies only on the delegated path and is not made good on the pushing host is not conforming, however it is expressed and whether or not it is version-controlled. A forge credential beyond a least-privilege, read-scoped token for that gate run MUST NOT be available to a remote executor performing a delegated gate — held by it, present in its environment, mounted into it, or obtainable by it from any service it can reach — and a credential from which such a forge credential can be obtained MUST NOT be available to it on those same terms.
 >
-> *The verdict.* A verdict EXISTS only when the delegated gate itself reported its own OUTCOME for this push. An executor that could not be reached or authenticated, a transport that reported its own success without carrying the gate's outcome, a process terminated by signal, and any stored or cached result are each an ABSENT verdict; the pushing host's own gate-skip marker is read to decide whether a gate runs at all and is never a verdict. The push is authorized only when every check the recipe would perform has passed — those covered by a present delegated verdict, and those performed on the pushing host — and a marker recording a tree as having passed the gate MUST NOT be written on anything less. An absent verdict MUST NOT be treated as a pass and MUST be reported as absent rather than as a failing check; where no fallback performs the uncovered checks on the pushing host, an absent verdict MUST refuse the push.
+> *The verdict.* A verdict EXISTS only when the delegated gate itself reported its own OUTCOME for this push. An executor that could not be reached or authenticated, a transport that reported its own success without carrying the gate's outcome, a process terminated by signal, and any result stored or cached from any other run are each an ABSENT verdict; the pushing host's own gate-skip marker is read to decide whether a gate runs at all and is never a verdict. The push is authorized only when every check the recipe would perform has passed — a check having passed only when no run of it counted toward this push, under a present delegated verdict or on the pushing host, failed, and every verification *The set* requires of it has been performed — and a marker recording a tree as having passed the gate MUST NOT be written on anything less. An absent verdict MUST NOT be treated as a pass and MUST be reported as absent rather than as a failing check; where no fallback performs the uncovered checks on the pushing host, an absent verdict MUST refuse the push.
 
 **Edit 3 — three scenarios in the `## Scenarios` section.**
 
@@ -88,7 +88,7 @@ Using that section's gherkin-blank-line convention (one step per paragraph, no f
 >
 > Given a repository has delegated its pre-push gate to a remote executor
 >
-> When the transport reports success without carrying the gate's completion status
+> When the transport reports success without carrying the gate's outcome
 >
 > And no fallback performs the uncovered checks on the pushing host
 >
@@ -103,6 +103,8 @@ Using that section's gherkin-blank-line convention (one step per paragraph, no f
 > Given a check target reports success without performing its verification when it lacks a sufficiently scoped credential
 >
 > And a repository has delegated its pre-push gate to a remote executor holding only a least-privilege read-scoped token
+>
+> And the repository's gate recipe would perform that check's verification on the pushing host without delegation
 >
 > When the delegated gate runs for a push
 >
