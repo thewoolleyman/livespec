@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.4](https://github.com/thewoolleyman/livespec/compare/v0.38.3...v0.38.4) (2026-09-08)
+
+
+### Refactoring
+
+* **spec-pr-merge:** extract the outcome type and its effects under the LLOC soft ceiling ([13f4f50](https://github.com/thewoolleyman/livespec/commit/13f4f50edd83114da7ff5fa30545bf7158fe0281))
+
 ## [0.38.3](https://github.com/thewoolleyman/livespec/compare/v0.38.2...v0.38.3) (2026-09-08)
 
 
