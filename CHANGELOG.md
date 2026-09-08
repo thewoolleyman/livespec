@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.3](https://github.com/thewoolleyman/livespec/compare/v0.38.2...v0.38.3) (2026-09-08)
+
+
+### Refactoring
+
+* **revise:** extract input validation and resolution to drop under the LLOC soft ceiling ([e635f2c](https://github.com/thewoolleyman/livespec/commit/e635f2c6d2df6752e57ff2acac5ac689fa4d8ae5))
+
 ## [0.38.2](https://github.com/thewoolleyman/livespec/compare/v0.38.1...v0.38.2) (2026-08-30)
 
 
