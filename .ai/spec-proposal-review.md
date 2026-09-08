@@ -188,6 +188,44 @@ instrument the reviewer is to use, or forbid the author's, or supply a
 cross-total the answer has to satisfy. Otherwise the review's independence
 extends to everything except the measuring.
 
+### The same class turned inside out: the BRIEF'S vocabulary written into the artifact
+
+The two shapes above are about a reviewer inheriting the author's instrument.
+There is a third, seen live on 2026-09-08, where the leak runs the other way:
+**a term that exists only in the REVIEW BRIEF gets written into the proposal**,
+where it is invisible to everyone who shares that brief and dangling to everyone
+who does not.
+
+A brief for a spec proposal named four guarantees the clause had to preserve —
+tree identity, the recipe-selected set, an absent verdict refusing the push, and
+no marker written on less. It was a good instrument, and successive rounds used
+it. Then a fix-round author, steeped in that vocabulary, wrote "none of the
+clause's **four guarantees** depends on it" into the proposal itself. The
+proposal enumerates **three** sub-rules, and says "three" four lines earlier. The
+number four appears nowhere in the document, or in the ratified spec, or in any
+design record.
+
+Every reviewer working from that brief read "four" as obviously correct, because
+for them it was. The defect survived a full independent review round and was
+caught only by a later reviewer who had been told, in the brief, not to assume
+the brief's own framing appeared in the document.
+
+What makes this its own entry rather than a typo. The other shapes leave a claim
+that is WRONG; this one leaves a claim that is **unverifiable from the document
+that makes it**. A maintainer reading only the proposal — which is the only thing
+ratification actually binds — hits a reference with no antecedent and cannot tell
+whether they are missing a list or the author was. And the usual defence does not
+apply: independent review does not catch it, because the reviewers are precisely
+the population that shares the vocabulary.
+
+**The briefing move this adds.** A brief that supplies a framing device — a
+numbered list of guarantees, a named set of properties, a coined shorthand — MUST
+tell the reviewer that the device is the REVIEW'S, not the document's, and that
+any appearance of it in the artifact is itself a finding. And an author working
+from review feedback should treat every term they did not read in the document as
+suspect: the fluency that makes a brief useful is the same fluency that smuggles
+its vocabulary into the work product.
+
 ## Why these sit together
 
 The unifying property is that **no gate fires**. Every class here survives the
