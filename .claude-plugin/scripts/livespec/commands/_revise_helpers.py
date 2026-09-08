@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 from datetime import datetime, timezone
+from pathlib import Path
 
 from livespec.schemas.dataclasses.revise_input import RevisionInput
 
@@ -46,6 +47,8 @@ __all__: list[str] = [
     "_compose_revision_body",
     "_now_utc_iso8601",
     "_resolve_author",
+    "_resolve_project_root",
+    "_resolve_spec_target",
 ]
 
 
@@ -176,3 +179,34 @@ def _compose_ratification_review_section(*, decision: dict[str, object]) -> str:
         f"content_digest: {evidence.get('content_digest', '')}",
     ]
     return "\n## Ratification Review\n\n" + "\n".join(lines) + "\n"
+
+
+def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
+
+    Per Plan  +:
+    `<spec-target>` is selected via --spec-target, defaulting to
+    the project's main spec root (`<project-root>/SPECIFICATION/`
+    under the built-in livespec template).
+    """
+    if namespace.spec_target is not None:
+        spec_target = Path(namespace.spec_target)
+        if spec_target.is_absolute():
+            return spec_target
+        return Path.cwd() / spec_target
+    project_root = _resolve_project_root(namespace=namespace)
+    return project_root / "SPECIFICATION"
+
+
+def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
+    """Resolve --project-root to a Path, defaulting to Path.cwd().
+
+    The post-step doctor invocation in `_revise_doctor._run_post_step_doctor`
+    forwards `--project-root` to `bin/doctor_static.py` so the doctor
+    resolves the spec root from the same project root the revise
+    wrapper resolved. Per `SPECIFICATION/contracts.md`:
+    `--project-root <path>` (default `Path.cwd()`).
+    """
+    if namespace.project_root is None:
+        return Path.cwd()
+    return Path(namespace.project_root)
