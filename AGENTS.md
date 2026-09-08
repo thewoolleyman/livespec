@@ -743,8 +743,11 @@ existing file):
   git-derived check universe, a signal distrusted without ever being checked
   and paid for destructively, a check that exited early leaving a clean
   stream rather than a clean result, a required check reporting success
-  having skipped its own command step, a CLI flag that does not exist
-  returning an empty result instead of an error, a local reproduction run
+  having skipped its own command step, a CLI flag that does not exist —
+  which on a hardened tool now EXITS NON-ZERO and says so on stderr, so the
+  false empty is reached only by a caller who suppresses stderr and branches on
+  whether output is empty rather than on exit status, a repeat instance caught
+  2026-09-08, a local reproduction run
   against a working tree one commit behind the one that actually failed, and —
   the one entry guarding the OPPOSITE error — a step named `Skip …` whose
   `skipped` status proves the check RAN, so reading its presence as the
