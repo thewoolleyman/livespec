@@ -709,11 +709,16 @@ existing file):
   PROPOSAL, latent in the text: claims that expire at ratification, negative
   assertions about sibling-owned surfaces that rot without notice, and
   clause-lockstep (counts and enumerations that must be re-derived when the set
-  they describe changes). Plus one defect of the REVIEW, latent in the method:
+  they describe changes). Plus defects of the REVIEW, latent in the method:
   independent reviewers sharing a flawed instrument, where the same wrong query
   reproduces the author's error and two NO-BLOCKERS verdicts read as
-  corroboration when they are one verdict counted twice. Each is drawn from a
-  defect that actually shipped.
+  corroboration when they are one verdict counted twice — and the same leak
+  running the OTHER way, where a framing device that exists only in the review
+  BRIEF (a numbered list of guarantees, a coined shorthand) is written into the
+  proposal itself, leaving a claim that is not wrong but UNVERIFIABLE from the
+  document that makes it, and that independent review cannot catch because the
+  reviewers are exactly the population sharing the vocabulary. Each is drawn from
+  a defect that actually shipped.
 - **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
   check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
