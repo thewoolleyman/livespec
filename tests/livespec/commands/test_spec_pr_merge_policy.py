@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 
 import pytest
-from livespec.commands import spec_pr_merge_policy
+from livespec.commands import _spec_pr_merge_outcome, spec_pr_merge_policy
 from livespec.commands._spec_pr_merge_gather import Observations
 from livespec.errors import LivespecError, PreconditionError
 from livespec.spec_governance.pr_merge_derivation import ApiFile
@@ -247,7 +247,7 @@ def test_journal_append_failure_prevents_registration(
     _write_project(root=tmp_path, global_policy="auto-on-green")
     _install_observations(monkeypatch=monkeypatch, observations=_ratifying_observations())
     monkeypatch.setattr(
-        spec_pr_merge_policy,
+        _spec_pr_merge_outcome,
         "append_journal_payload",
         lambda **_kwargs: "journal append failed: read-only file system",
     )
@@ -377,7 +377,7 @@ def test_step_output_write_failure_fails_the_step(
     _write_project(root=tmp_path, global_policy="auto-on-green")
     _install_observations(monkeypatch=monkeypatch, observations=_ratifying_observations())
     monkeypatch.setattr(
-        spec_pr_merge_policy.fs,
+        _spec_pr_merge_outcome.fs,
         "append_text",
         lambda **_kwargs: IOResult.from_failure(PreconditionError("fs.append_text: EACCES")),
     )

@@ -34,6 +34,25 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FAIL_LEVER = "LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST"
 
 
+def _parse_events(*, stderr: str) -> list[dict[str, object]]:
+    """Decode the check's structlog lines into event dicts.
+
+    Split out of `_release_tier_events` so its coverage does not depend on the
+    repository currently CARRYING soft-band debt. While `revise.py` and
+    `spec_pr_merge_policy.py` sat in the band this loop was exercised
+    incidentally by the real tree; discharging both markers emptied the band and
+    turned it into dead code. That is the correct end state for the repo, so the
+    parsing is proven against a synthetic line instead — a test whose coverage
+    evaporates once the debt it guards is paid is a test that punishes success.
+    """
+    events: list[dict[str, object]] = []
+    for line in stderr.splitlines():
+        loaded = json.loads(line)
+        assert isinstance(loaded, dict)
+        events.append(loaded)
+    return events
+
+
 def _release_tier_events(
     *,
     capsys: pytest.CaptureFixture[str],
@@ -44,12 +63,20 @@ def _release_tier_events(
     monkeypatch.setenv(_FAIL_LEVER, "true")
     return_code = no_lloc_soft_warnings.main()
     captured = capsys.readouterr()
-    events: list[dict[str, object]] = []
-    for line in captured.err.splitlines():
-        loaded = json.loads(line)
-        assert isinstance(loaded, dict)
-        events.append(loaded)
-    return return_code, events
+    return return_code, _parse_events(stderr=captured.err)
+
+
+def test_parse_events_decodes_one_diagnostic_per_line() -> None:
+    """The decoder is proven independently of the tree's current debt."""
+    stderr = '{"file": "a.py", "failing": true}\n{"file": "b.py", "failing": false}\n'
+    events = _parse_events(stderr=stderr)
+    assert [event["file"] for event in events] == ["a.py", "b.py"]
+    assert [event["failing"] for event in events] == [True, False]
+
+
+def test_parse_events_returns_empty_when_the_band_is_clean() -> None:
+    """No diagnostics is the SUCCESS shape, not a parse failure."""
+    assert _parse_events(stderr="") == []
 
 
 def test_no_soft_band_file_lacks_an_owning_work_item(
