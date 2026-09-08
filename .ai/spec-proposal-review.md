@@ -153,6 +153,41 @@ prescribes, arrived at from the opposite direction: class 3 deletes counts
 because they rot, this class deletes them because they cannot be verified
 unambiguously.
 
+### The same class over STRUCTURED output: right unit, wrong scope
+
+Unit conflation above is about *how much* a query counts. There is a second
+shape, seen live on 2026-09-08, where the unit is right and the SCOPE is wrong,
+and it is easier to fall into because the data is structured and looks
+authoritative.
+
+A proposal cited how many unlinked behavior clauses one spec file carries. The
+author derived it by grepping the check's output for lines containing both the
+check id and the filename: 326. The correct instrument reads the `spec_file`
+FIELD of each finding: 306. The gap is exactly the twenty findings ABOUT OTHER
+FILES whose clause text or heading path merely MENTIONS that filename. The
+serialized line contained the string; the record was not about that file.
+
+Two things make this worth its own entry. First, the output was JSON with a
+named field, and both the author and the reviewer grepped its serialization
+anyway — structured data invites the assumption that any query over it is
+structured. **Grepping a serialization is a different instrument from reading a
+field, and it silently widens the scope.** Second, the reviewer had been asked
+explicitly to VERIFY THAT NUMBER, and reproduced the author's 326.
+
+The arithmetic is what broke the tie, and it was free: the reviewer's own
+report gave a fleet-wide total of 505, and the four per-file counts under the
+correct instrument sum to exactly 505 while the wrong one would make them 525.
+**When a claim decomposes a total, check that the parts sum to it.** A
+cross-total is available far more often than it is used, and it needs no second
+tool.
+
+**The briefing move this adds.** "Verify this number" is an invitation to reach
+for the nearest query, which is frequently the one the author already ran. A
+brief that asks a reviewer to confirm a magnitude MUST either name the
+instrument the reviewer is to use, or forbid the author's, or supply a
+cross-total the answer has to satisfy. Otherwise the review's independence
+extends to everything except the measuring.
+
 ## Why these sit together
 
 The unifying property is that **no gate fires**. Every class here survives the
