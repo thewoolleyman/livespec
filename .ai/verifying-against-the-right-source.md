@@ -1631,6 +1631,207 @@ what the section SAYS, not what it is called. And when a report can stop at its
 first hit, its silence about everything else is a property of the instrument.
 
 
+### 39. A unit's JOURNAL is not a record of whether its WORK happened
+
+`converge-ci-stack.service` rebuilds the CI cluster from git on every boot. That
+matters more than usual on `poweredge-xubuntu`, because the k3s datastore lives
+on tmpfs: every boot starts with an EMPTY datastore, and the converge is the only
+thing that puts the cluster back. So "did it run at boot?" is a question about
+whether the fleet is one reboot from an empty cluster nothing rebuilds.
+
+Auditing `livespec-mx26zz` on 2026-09-08, a session asked that question the
+obvious way and got a frightening answer:
+
+```
+$ journalctl -u converge-ci-stack.service -b | head
+Sep 06 01:09:42  Starting converge-ci-stack.service ...
+                 ^^^^^^^^^^^^ the FIRST entry for this unit, this boot
+
+host booted      Sat 2026-09-05 19:01:43 PDT
+```
+
+Six hours late. The enable symlink was confirmed to predate the boot
+(`multi-user.target.wants/` dated 2026-09-02), so the unit was armed and
+apparently had not fired. The session wrote that down as a finding.
+
+It was wrong. The objects the converge creates say the cluster was rebuilt
+within ninety seconds of boot:
+
+```
+$ kubectl get ns/arc-runners -o jsonpath='{.metadata.creationTimestamp}'
+2026-09-06T02:02:22Z            # 19:02:22 PDT — boot + 39s
+$ kubectl get ns/arc-systems -o jsonpath='{.metadata.creationTimestamp}'
+2026-09-06T02:03:12Z            # boot + 89s
+```
+
+The reconstruct path worked. Whatever the journal was or was not carrying for
+that unit at 19:02 — rotation, a different invocation path, a vacuum — the
+*record of the actor* had a gap the *product of the action* did not.
+
+**The counter-move.** A log is a claim by a process that it did something. The
+artifacts it creates are the thing itself. When you can name what the work
+PRODUCES — a namespace, a file, a row, a pointer, a published symlink — read
+that, and treat the log as corroboration rather than as the finding. Here the
+question "did the converge run?" has a durable answer sitting in the cluster,
+free, that does not depend on journald having retained anything.
+
+**The general form:** this is the same shape as reading a job's hook behaviour
+out of the pod's stdout when the hook writes to the GitHub job log — the
+instrument is adjacent to the fact, and its silence is a property of the
+instrument, not evidence about the world. Prefer the durable consequence over
+any record of the actor that produced it.
+
+### 40. A watcher that returns PASSED without ever watching
+
+The fleet's sanctioned way to wait on CI is a detached gate runner, precisely so
+a killed tool call cannot destroy a verdict. On 2026-09-08 it was used twice to
+wait on a pull request's checks, and both times it came back like this:
+
+```
+started_at        : 2026-09-08T07:43:19Z
+finished_at       : 2026-09-08T07:44:26Z
+exit_code         : 0
+targets completed : 0 (failed: 0)
+NOTE: zero check targets completed — the gate produced no per-target evidence.
+VERDICT: the gate RAN TO COMPLETION and PASSED.
+```
+
+Sixty-seven seconds, and once, one second. The `output.log` explains it in a
+line:
+
+```
+Run CI (34144975299) has already completed with 'success'
+```
+
+`gh run watch` on an ALREADY-FINISHED run does not watch. It reads the current
+state, finds it terminal, and exits with a status derived from it. The exit code
+is honest about the run; it is silent about the fact that no waiting occurred.
+Wrap that in a gate runner whose contract is "PASSED means the gate ran to
+completion" and you get a verdict that is true, and that answers a question
+nobody asked.
+
+The failure this hides is the timing one. If the watch is started before the
+interesting run exists — a new push whose workflow has not registered yet, or a
+different run id than the one you meant — it terminates immediately against
+whatever it found, reports PASSED, and the session concludes the work is green
+while the real run is still queued.
+
+**The counter-move.** `targets completed : 0` is the tell, and it is printed. A
+wait that completed zero targets did not wait. When the question is "did this
+land?", read the DURABLE state — `gh pr view --json state,mergedAt,mergeCommit`
+— rather than the watcher's exit status. Both merges that day were confirmed
+that way, and only that way.
+
+**Coda: a filter that matches TOO MUCH buries the failure it was meant to find.**
+Hunting the cause of a rejected push in the same session, a grep for
+`-iE "FAIL|error"` over the gate output returned twenty lines of
+`"fail_env_var": "LIVESPEC_FAIL_IF_LLOC_SOFT_WARNINGS_EXIST"` and
+`"failing": false` — every one a WARNING whose JSON happens to contain the
+substring `fail`. The real cause, a single line reading
+`Failed targets (1): - check-no-workflow-edits`, was pushed off the end. This is
+the inverse of the never-matching filter in entry 32: there, silence read as
+"not finished"; here, noise read as "no clear failure". Both are the instrument
+answering instead of the artifact. When a filtered read of a failure looks
+strange, print the tail unfiltered before theorising.
+
+**The general form:** a tool that CAN answer instantly when the work is already
+done will do so, and its success is then a statement about the past, not about
+the thing you meant to observe. Ask what the instrument would have to have DONE
+to earn its answer, and check that it did it.
+
+### 41. A NON-EMPTY listing that still answers the wrong question
+
+Entry 37 records ARC runners vanishing from the repository runners API while
+idle, so a point-in-time listing reads as "none registered". This is that
+entry's inverse, from the same API, and it is the more seductive of the two:
+the listing came back FULL, and it still did not answer the question.
+
+`livespec-ifwnqj.2` exists because `acceptance-live-golden-master.yml` declares
+`runs-on: [self-hosted, livespec-orchestrator]` and, as recorded on 2026-09-04,
+"the repository has ZERO self-hosted runners registered ... so a dispatch today
+would queue forever". Re-checked on 2026-09-08:
+
+```
+$ gh api repos/.../actions/runners --jq '.total_count'
+6
+```
+
+Six, all `online`. Read as a count, the premise has expired and the item is
+stale. Read as a capability, nothing has changed:
+
+```
+name:   livespec-orchestrator-k3s-zr8dz-runner-2g5zq   status: online
+labels: []                                             <-- EMPTY
+repo variable CI_RUNNER_LABELS = ["livespec-orchestrator-k3s"]
+```
+
+They are ARC scale-set runners, and ARC selects by SCALE SET NAME rather than by
+label — they carry no labels at all. A label-anchored `runs-on` matches none of
+them. The job still hangs. The count moved from 0 to 6 without moving the answer
+one inch, and a session re-deriving the premise from the count would have closed
+the item as obsolete.
+
+**The counter-move.** The question was never "are there runners". It was "is
+there a runner that can take THIS job". Query the property the selector actually
+tests — here, does any runner carry the label — not the population it draws
+from. A count is the right instrument only when the thing you care about is
+quantity.
+
+**And the wrong fix is available and looks right.** Pointing the job at
+`livespec-orchestrator-k3s` makes it schedule immediately. It would then FAIL
+mid-run, because those runners are pool workflow pods carrying neither the
+operator secret environment nor the Fabro/bd/Dolt runtime the job needs — trading
+a legible queue for an illegible late failure, on the pool whose churn-slot cap
+is currently the only thing preventing a known kernel-level crash. A selector
+that matches is not a host that can serve.
+
+**The general form:** an empty result and a full result can be the same wrong
+answer, when the query measures a proxy for the property you need. Name the
+property in words first, then check the query tests it.
+
+### 42. A diff whose BASE has moved inflates the changeset
+
+A worktree branched from `master` some hours ago, in a fleet whose `master`
+advances several times an hour. To assess an interrupted agent's uncommitted
+work, a session asked the obvious question:
+
+```
+$ git diff origin/master --stat
+ 18 files changed, 820 insertions(+), 237 deletions(-)
+   ... livespec_dev_tooling/checks/_plan_ledger.py   | 32 +-
+   ... pyproject.toml                                |  2 +-
+   ... uv.lock                                       |  2 +-
+   ... tests/.../test_plan_record_conformance.py     | 122 ----
+```
+
+Alarming: the agent had been briefed to touch one observability tree, and this
+showed it deleting a test file and editing packaging. It had done none of that.
+`git diff origin/master` compares the working tree against a MOVING ref, so
+everything merged into `master` since the branch point appears — inverted, as
+though this change had undone it. The actual change was five files:
+
+```
+$ git status --short
+ M ci-runner/observability/README.md
+ M ci-runner/observability/boards/ci-runner-pool.json
+ M ci-runner/observability/ci-pool-attributed-gauges.service
+ M ci-runner/observability/ci-pool-attributed-gauges.sh
+ M ci-runner/observability/ci-pool-attributed-gauges.timer
+```
+
+**The counter-move.** For "what did this branch change", diff against the
+branch's OWN base — `git diff $(git merge-base HEAD origin/master)` — or, for
+uncommitted work, read `git status --short`, which cannot be confused by a
+moving ref because it describes the working tree against its own index and HEAD.
+Reach for `origin/master` only when you genuinely mean "how does this differ from
+the current tip", which is a different question and rarely the one being asked.
+
+**The general form:** a comparison is only as meaningful as the fixity of what it
+compares against. In a repository with concurrent writers, `origin/master` is not
+a landmark, it is a moving object, and the drift it introduces is attributed to
+whatever you were inspecting — which is exactly how an agent's careful five-file
+change reads as eighteen files including a deleted test.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
