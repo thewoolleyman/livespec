@@ -828,7 +828,22 @@ existing file):
   a `^## ` search finds zero hits in the repository that holds the definition and
   one in the repository that does not, with no signal anything is off; grep for
   the DEFINING SENTENCE rather than the heading, and read the citing spec's own
-  cross-reference, which has usually recorded the answer already.
+  cross-reference, which has usually recorded the answer already, and — the four
+  recorded while driving the CI host on 2026-09-08 — a systemd unit's JOURNAL
+  read as a record of whether its WORK happened, where the converge's first
+  entry sat six hours after boot while the namespaces it creates were stamped
+  ninety seconds after it, so read the objects the work PRODUCES and treat the
+  log as corroboration; a WATCHER that returns PASSED without ever watching,
+  because `gh run watch` against an already-finished run reads the terminal
+  state and exits, printing the tell `targets completed : 0` that a wait which
+  completed zero targets did not wait; a NON-EMPTY listing that still answers
+  the wrong question — entry 37's inverse, where six online runners read as "the
+  premise expired" when ARC selects by scale-set NAME and every one reports an
+  empty labels array, so the label-anchored job still hangs and the count moved
+  0→6 without moving the answer; and a DIFF WHOSE BASE HAS MOVED, where `git
+  diff origin/master` in a worktree branched hours earlier reported eighteen
+  files and a deleted test for a five-file change, so diff against the branch's
+  own merge-base, or read `git status`, which no moving ref can confuse.
 
 ## Working with the maintainer
 
