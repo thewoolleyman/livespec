@@ -42,14 +42,88 @@ is via re-export from `revise.py`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from returns.io import IOResult
 from returns.result import Failure, Result, Success
 
 from livespec.errors import LivespecError, PreconditionError, UsageError
+from livespec.io import fs
+from livespec.parse import jsonc
 from livespec.schemas.dataclasses.revise_input import RevisionInput
+from livespec.validate import revise_input as validate_revise_input_module
 
-__all__: list[str] = ["_validate_resulting_files"]
+_SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
+_REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
+
+__all__: list[str] = [
+    "_check_decisions_nonempty",
+    "_validate_payload",
+    "_validate_resulting_files",
+]
+
+
+def _check_decisions_nonempty(
+    *,
+    payload: dict[str, Any],
+) -> Result[dict[str, Any], LivespecError]:
+    """Reject payloads whose `decisions[]` is present-but-empty.
+
+    Per `SPECIFICATION/spec.md` revise
+    clause (b) (v052): the wrapper MUST fail hard with UsageError
+    (exit 2) when the inbound `--revise-json` payload's
+    `decisions[]` array is empty. A revise pass with zero
+    decisions would produce a no-op cut and is forbidden.
+
+    This pre-check fires BEFORE schema validation so the user
+    sees exit 2 (UsageError) for the explicit empty-list case
+    rather than exit 4 (ValidationError) from the schema's
+    `minItems: 1` constraint, which encodes the same precondition
+    as defense-in-depth. Other malformations (missing `decisions`
+    key, wrong type) fall through to schema validation
+    unchanged.
+    """
+    # The isinstance(payload, dict) guard remains for runtime
+    # defense-in-depth: jsonc.loads upstream returns Any, and
+    # while pyright's bind-chain widening surfaces a narrower
+    # dict type here, the runtime payload can still be a top-
+    # level non-dict (e.g. a JSON array) that needs to fall
+    # through to schema validation without crashing.
+    if isinstance(payload, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
+        decisions = payload.get("decisions")
+        if isinstance(decisions, list) and len(decisions) == 0:
+            return Failure(
+                UsageError(
+                    "revise: decisions[] array is empty; " "revise requires at least one decision",
+                ),
+            )
+    return Success(payload)
+
+
+def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
+    """Read revise_input.schema.json and validate the payload.
+
+    Composes fs.read_text(schema) -> jsonc.loads(schema-text) ->
+    validate_revise_input(payload, schema-dict). Mirrors
+    propose_change/critique's same stage; failures bubble via the
+    IOResult track (schema-file missing -> PreconditionError;
+    schema malformed -> ValidationError; payload schema-violation
+    -> ValidationError).
+    """
+    return (
+        fs.read_text(path=_REVISE_INPUT_SCHEMA_PATH)
+        .bind(
+            lambda schema_text: IOResult.from_result(jsonc.loads(text=schema_text)),  # pyright: ignore[reportArgumentType]
+        )
+        .bind(
+            lambda schema_dict: IOResult.from_result(  # pyright: ignore[reportArgumentType]
+                validate_revise_input_module.validate_revise_input(
+                    payload=payload,
+                    schema=schema_dict,
+                ),
+            ),
+        )
+    )
 
 
 def _iter_resulting_files_paths(

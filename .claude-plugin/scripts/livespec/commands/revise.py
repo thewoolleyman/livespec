@@ -10,13 +10,6 @@
 # this pragma). reportArgumentType is left ON so non-HKT firings still
 # surface; HKT-related reportArgumentType call sites carry per-line
 # ignore markers attached to the offending argument's line below.
-#
-# livespec-lloc-soft-band-owner: livespec-n33rwg.1
-# This file measures 227 LLOC, inside the 201-250 soft band. The marker
-# names who owes the refactor; it does NOT bless the debt. Carrying it is
-# permitted, not blessed, and removing this block is part of closing the
-# item above. Without a marker the file fails the release gate AFTER the
-# tag is pushed, which is how v0.34.2..v0.37.0 all published un-gated.
 """Revise sub-command supervisor.
 
 Per and Plan
@@ -48,7 +41,7 @@ from pathlib import Path
 from typing import Any
 
 from returns.io import IOResult
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
@@ -62,6 +55,8 @@ from livespec.commands._revise_helpers import (
 from livespec.commands._revise_helpers import (
     _now_utc_iso8601,
     _resolve_author,
+    _resolve_project_root,
+    _resolve_spec_target,
 )
 from livespec.commands._revise_only_topic import (
     _check_only_topic_matches as _check_only_topic_matches,
@@ -82,6 +77,11 @@ from livespec.commands._revise_ratification import (
     _validate_ratification_reviews,
 )
 from livespec.commands._revise_validation import (
+    _check_decisions_nonempty,
+    _validate_payload,
+    _validate_resulting_files,
+)
+from livespec.commands._revise_validation import (
     _iter_proposal_topics as _iter_proposal_topics,
 )
 from livespec.commands._revise_validation import (
@@ -91,25 +91,17 @@ from livespec.commands._revise_validation import (
     _validate_proposal_topics_exist as _validate_proposal_topics_exist,
 )
 from livespec.commands._revise_validation import (
-    _validate_resulting_files,
-)
-from livespec.commands._revise_validation import (
     _validate_resulting_files_paths as _validate_resulting_files_paths,
 )
 from livespec.commands._revise_validation import (
     _validate_resulting_files_targets_exist as _validate_resulting_files_targets_exist,
 )
-from livespec.errors import LivespecError, UsageError
+from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.io import git as io_git
 from livespec.parse import jsonc
-from livespec.validate import revise_input as validate_revise_input_module
 
 __all__: list[str] = ["build_parser", "main"]
-
-
-_SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
-_REVISE_INPUT_SCHEMA_PATH = _SCHEMAS_DIR / "revise_input.schema.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -316,97 +308,3 @@ def _maybe_run_post_step_doctor(
         revise_input=revise_input,
         project_root=_resolve_project_root(namespace=namespace),
     )
-
-
-def _check_decisions_nonempty(
-    *,
-    payload: dict[str, Any],
-) -> Result[dict[str, Any], LivespecError]:
-    """Reject payloads whose `decisions[]` is present-but-empty.
-
-    Per `SPECIFICATION/spec.md` revise
-    clause (b) (v052): the wrapper MUST fail hard with UsageError
-    (exit 2) when the inbound `--revise-json` payload's
-    `decisions[]` array is empty. A revise pass with zero
-    decisions would produce a no-op cut and is forbidden.
-
-    This pre-check fires BEFORE schema validation so the user
-    sees exit 2 (UsageError) for the explicit empty-list case
-    rather than exit 4 (ValidationError) from the schema's
-    `minItems: 1` constraint, which encodes the same precondition
-    as defense-in-depth. Other malformations (missing `decisions`
-    key, wrong type) fall through to schema validation
-    unchanged.
-    """
-    # The isinstance(payload, dict) guard remains for runtime
-    # defense-in-depth: jsonc.loads upstream returns Any, and
-    # while pyright's bind-chain widening surfaces a narrower
-    # dict type here, the runtime payload can still be a top-
-    # level non-dict (e.g. a JSON array) that needs to fall
-    # through to schema validation without crashing.
-    if isinstance(payload, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
-        decisions = payload.get("decisions")
-        if isinstance(decisions, list) and len(decisions) == 0:
-            return Failure(
-                UsageError(
-                    "revise: decisions[] array is empty; " "revise requires at least one decision",
-                ),
-            )
-    return Success(payload)
-
-
-def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
-    """Read revise_input.schema.json and validate the payload.
-
-    Composes fs.read_text(schema) -> jsonc.loads(schema-text) ->
-    validate_revise_input(payload, schema-dict). Mirrors
-    propose_change/critique's same stage; failures bubble via the
-    IOResult track (schema-file missing -> PreconditionError;
-    schema malformed -> ValidationError; payload schema-violation
-    -> ValidationError).
-    """
-    return (
-        fs.read_text(path=_REVISE_INPUT_SCHEMA_PATH)
-        .bind(
-            lambda schema_text: IOResult.from_result(jsonc.loads(text=schema_text)),  # pyright: ignore[reportArgumentType]
-        )
-        .bind(
-            lambda schema_dict: IOResult.from_result(  # pyright: ignore[reportArgumentType]
-                validate_revise_input_module.validate_revise_input(
-                    payload=payload,
-                    schema=schema_dict,
-                ),
-            ),
-        )
-    )
-
-
-def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
-    """Resolve --spec-target to a Path, defaulting to <project-root>/SPECIFICATION.
-
-    Per Plan  +:
-    `<spec-target>` is selected via --spec-target, defaulting to
-    the project's main spec root (`<project-root>/SPECIFICATION/`
-    under the built-in livespec template).
-    """
-    if namespace.spec_target is not None:
-        spec_target = Path(namespace.spec_target)
-        if spec_target.is_absolute():
-            return spec_target
-        return Path.cwd() / spec_target
-    project_root = _resolve_project_root(namespace=namespace)
-    return project_root / "SPECIFICATION"
-
-
-def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
-    """Resolve --project-root to a Path, defaulting to Path.cwd().
-
-    The post-step doctor invocation in `_revise_doctor._run_post_step_doctor`
-    forwards `--project-root` to `bin/doctor_static.py` so the doctor
-    resolves the spec root from the same project root the revise
-    wrapper resolved. Per `SPECIFICATION/contracts.md`:
-    `--project-root <path>` (default `Path.cwd()`).
-    """
-    if namespace.project_root is None:
-        return Path.cwd()
-    return Path(namespace.project_root)
