@@ -843,7 +843,19 @@ existing file):
   0→6 without moving the answer; and a DIFF WHOSE BASE HAS MOVED, where `git
   diff origin/master` in a worktree branched hours earlier reported eighteen
   files and a deleted test for a five-file change, so diff against the branch's
-  own merge-base, or read `git status`, which no moving ref can confuse.
+  own merge-base, or read `git status`, which no moving ref can confuse, and —
+  the two recorded while designing the release-lane reader on 2026-09-08 — a
+  query against the WRONG COMMIT read as structural invisibility, where this
+  repo's own skill asserts a scheduled run "attaches to no commit" and the first
+  check appeared to CONFIRM it, because the tip queried was ten minutes old and
+  no scheduled run could yet exist for it; the run does attach, to whatever was
+  HEAD when it fired, so take a known run's `head_sha` and query THAT commit
+  rather than asking whether a population is visible at the tip; and `$?` READ
+  THROUGH A PIPE, where checking a runner whose whole contract is a three-valued
+  exit code printed `exit=0` for the cannot-measure case because `$?` reported
+  `tail`'s status, one step from a bug report filed against correct code — when
+  the thing under test IS an exit code, capture it directly or use
+  `PIPESTATUS`, never through a pipe.
 
 ## Working with the maintainer
 
