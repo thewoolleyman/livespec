@@ -180,21 +180,33 @@ workflows and reports a misleading green.
 >   lacks. So treat non-`SUCCESS` as **"drill into this repo"** with the per-repo
 >   `gh run list` above (now a handful of one-shot calls, not a loop), never as
 >   "the `CI` workflow is red".
-> - **BLIND TO PAST COMMITS — not, as this once claimed, to scheduled runs.**
->   `statusCheckRollup` reads only the checks on the ONE commit queried, here the
->   current HEAD. A **scheduled** run is NOT invisible because "it attaches to no
->   commit": it attaches to whatever was HEAD when it fired, carried as its own
->   `head_sha`, and it appears in THAT commit's check suites. It is missed only
->   because that is a PAST commit — by the time the tip is read the branch has
->   moved ahead of it (measured on `livespec` 2026-09-08: the latest `Pin
->   freshness sweep` scheduled run sat **38 commits** behind HEAD). So the
->   2026-08-11 reading — all nine members `SUCCESS` while `Fleet conformance`
->   (Signal 2) was red on its third consecutive scheduled run — was the rollup
->   correctly reporting the HEAD commit, not a scheduled run being unreachable.
->   This is the SAME blindness as a red run on an EARLIER commit: a required gate
->   can go red on `master` and be invisible an hour later once a green commit
->   lands on top. To read a scheduled run, take a known run's `head_sha` and
->   query THAT commit, never the tip (`.ai/verifying-against-the-right-source.md`).
+> - **BLIND TO PAST COMMITS, not to scheduled runs.** This bullet once read
+>   *"the rollup hangs off a COMMIT, so it cannot see a scheduled workflow's
+>   failure at all — that failure attaches to no commit"* — **RETRACTED, measured
+>   false 2026-09-08** (quoted in place, not deleted, because it steered the
+>   Signal 9 reader design under `livespec-n33rwg.8`). A **scheduled** run
+>   attaches to whatever was HEAD when it fired, carried as its own `head_sha`,
+>   and it appears in THAT commit's check suites — verified directly: `Pin
+>   freshness sweep`, event `schedule`, on head commit `be290ffb`, sits in that
+>   commit's `checkSuites`. `statusCheckRollup` reads only the ONE commit queried,
+>   here the current HEAD, so a scheduled run is missed ONLY because it sits on a
+>   PAST commit the tip has since moved ahead of (measured on `livespec`: 38
+>   commits behind HEAD for yesterday's run, 54 the day before, 95 three days
+>   back). So the 2026-08-11 reading — all nine members `SUCCESS` while `Fleet
+>   conformance` (Signal 2) was red on its third consecutive scheduled run — was
+>   the rollup correctly reporting the HEAD commit, not a scheduled run being
+>   unreachable; it is the SAME blindness as a red run on an EARLIER commit, which
+>   is how a required gate can go red on `master` and be invisible an hour later
+>   once a green commit lands on top.
+>
+>   **The data is REACHABLE — but do NOT naively walk history to reach it.** Take
+>   a known run's `head_sha` and query THAT commit
+>   (`.ai/verifying-against-the-right-source.md`). A reader that instead walks the
+>   last N commits, folding to latest-run-per-workflow, carries a
+>   velocity-dependent trap: on a busy day the run falls out of the window and the
+>   reader reports green BECAUSE IT SAW NOTHING — a vacuous **false green**, not a
+>   healthy lane. That hazard is exactly why Signal 9's Shape C reads the
+>   watcher's durable `release-lane-red` issue rather than walking run history.
 >
 > **So a green screen means "no member's HEAD commit has a failing check right
 > now" — nothing more.** Signal 2 is what covers the scheduled tier, and neither
