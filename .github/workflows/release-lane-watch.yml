@@ -35,6 +35,6 @@ jobs:
       actions: read
       contents: read
       issues: write
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-lane-watch.yml@v1.80.0
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-lane-watch.yml@v1.83.0
     with:
       workflows: "release-tag.yml release-readiness.yml"
