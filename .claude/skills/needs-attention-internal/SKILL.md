@@ -135,7 +135,9 @@ workflows and reports a misleading green.
 >                 "} } } } } } "
 >                 'rel: ref(qualifiedName: "refs/heads/release") { target { oid } } '
 >                 "pullRequests(states: OPEN, first: 20) { nodes { number title "
->                 "createdAt mergeable } }"),
+>                 "createdAt mergeable } } "
+>                 'lanered: issues(states: OPEN, labels: ["release-lane-red"], '
+>                 "first: 10) { totalCount nodes { number title updatedAt } }"),
 > }
 >
 > raw = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc").read_text()
@@ -178,12 +180,21 @@ workflows and reports a misleading green.
 >   lacks. So treat non-`SUCCESS` as **"drill into this repo"** with the per-repo
 >   `gh run list` above (now a handful of one-shot calls, not a loop), never as
 >   "the `CI` workflow is red".
-> - **BLIND.** The rollup hangs off a COMMIT, so it cannot see a **scheduled**
->   workflow's failure at all — that failure attaches to no commit. Verified
->   2026-08-11: all nine members read `SUCCESS` while `Fleet conformance` (Signal
->   2) was red on its third consecutive scheduled run. It is equally blind to a
->   red run on an EARLIER commit, which is how a required gate can go red on
->   master and be invisible an hour later once a green commit lands on top.
+> - **BLIND TO PAST COMMITS — not, as this once claimed, to scheduled runs.**
+>   `statusCheckRollup` reads only the checks on the ONE commit queried, here the
+>   current HEAD. A **scheduled** run is NOT invisible because "it attaches to no
+>   commit": it attaches to whatever was HEAD when it fired, carried as its own
+>   `head_sha`, and it appears in THAT commit's check suites. It is missed only
+>   because that is a PAST commit — by the time the tip is read the branch has
+>   moved ahead of it (measured on `livespec` 2026-09-08: the latest `Pin
+>   freshness sweep` scheduled run sat **38 commits** behind HEAD). So the
+>   2026-08-11 reading — all nine members `SUCCESS` while `Fleet conformance`
+>   (Signal 2) was red on its third consecutive scheduled run — was the rollup
+>   correctly reporting the HEAD commit, not a scheduled run being unreachable.
+>   This is the SAME blindness as a red run on an EARLIER commit: a required gate
+>   can go red on `master` and be invisible an hour later once a green commit
+>   lands on top. To read a scheduled run, take a known run's `head_sha` and
+>   query THAT commit, never the tip (`.ai/verifying-against-the-right-source.md`).
 >
 > **So a green screen means "no member's HEAD commit has a failing check right
 > now" — nothing more.** Signal 2 is what covers the scheduled tier, and neither
@@ -806,6 +817,42 @@ conditions, none of which involve a failing run:
   - `defaultBranchRef` HEAD far ahead of `latestRelease`;
   - a repo whose `release` ref has not advanced to match.
 
+**SHAPE C — a release LANE is persistently red or cannot be measured, read from
+the watcher's durable issue.** Shapes A and B answer the LATEST release and the
+ABSENCE of one; neither carries lane HISTORY (streak length, last-green
+timestamp), and neither sees a lane that owns NO release object — a daily
+readiness canary, the console's release-binary lane, a driver's release-dispatch
+lane. That depth is measured per-repo by the release-lane watcher propagated
+under `livespec-n33rwg.5`. But a watcher that reports only by redding its own
+cron run is a signal nobody reads — this epic's own thesis one level up. So the
+watcher records the durable CONSEQUENCE, not the transient run: on a failing or
+unmeasurable lane it opens (or updates) an issue labelled `release-lane-red` in
+that repo and closes it on recovery. This signal READS those issues, as one more
+selection on the SAME one-call screen — no per-repo loop, nothing for the
+rate-limit guard to deny:
+
+```graphql
+lanered: issues(states: OPEN, labels: ["release-lane-red"]) {
+  totalCount nodes { number title updatedAt }
+}
+```
+
+Fire ONE attention item per repo carrying an open `release-lane-red` issue,
+quoting the issue title (the watcher writes the lane name, the state, and the
+last-green date into it). Silence here is MEANINGFUL, not merely absent: the
+issue persists for as long as the lane is red, so "no open `release-lane-red`
+issue" is a positive statement of health rather than a poll window that happened
+to miss a transient run — watch the durable consequence, never the transient
+that produces it.
+
+**Shape C is LIVE only once its producer ships.** The watcher-writes-issue half
+— a `livespec-dev-tooling` reusable workflow carrying `issues: write`, plus a
+thin shim in each publishing repo — is tracked under `livespec-n33rwg.5` and is
+gated on a human `approval:workflow-edit` label. Until it merges and the shims
+run, this selection reads zero for every repo. That is correct, not broken: a
+reader tolerant of no data, waiting for its producer — never a green that hides a
+red lane.
+
 **ONE CALL, NO LOOP.** Reuse Signal 1's `genquery.py` with the `release`
 selection — same generator, same member list, so this signal cannot silently
 fork from the manifest:
@@ -834,8 +881,10 @@ splitting the READS across calls would be evasion. See
   workflow-scoped `actions/workflows/<file>/runs` endpoint, three-valued
   (0 healthy / 1 failing / 2 **cannot measure**), with `lane_state()` a pure
   function of run history and therefore replay-testable. **Propagating that
-  per-repo watcher fleet-wide is the depth half of this signal and is tracked
-  under `livespec-n33rwg`. Do not reimplement it here.**
+  per-repo watcher fleet-wide is the depth half of this signal, tracked under
+  `livespec-n33rwg.5`; its red-lane output is now READ by Shape C above, through
+  the durable `release-lane-red` issue. Do not reimplement the watcher here —
+  read its issue.**
 - **Repos that publish no releases.** The four adopters (`openbrain`,
   `dolt-server`, `resume`, `homelab`) carry no tags and no release branch. They
   consume rather than publish, so both shapes are meaningless for them and they
