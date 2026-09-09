@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="660" viewBox="0 0 1440 660" role="img" aria-labelledby="title desc">
+<title id="title">Eligible lines existing on default branches</title>
+<desc id="desc">Eligible physical lines at each month-end default-branch snapshot, stacked by governed repository.</desc>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#24292f}.title{font-size:22px;font-weight:600}.axis{font-size:13px}.label{font-size:15px;font-weight:600}.legend{font-size:12px}.grid{stroke:#d8dee4;stroke-width:1}.frame{stroke:#57606a;stroke-width:1.25;fill:none}</style>
+<rect width="1440" height="660" fill="#ffffff"/>
+<text class="title" x="110" y="35">Eligible lines existing on default branches</text>
+<line class="grid" x1="110" y1="520" x2="1060" y2="520"/>
+<text class="axis" x="98" y="524" text-anchor="end">0</text>
+<line class="grid" x1="110" y1="430" x2="1060" y2="430"/>
+<text class="axis" x="98" y="434" text-anchor="end">1,000,000</text>
+<line class="grid" x1="110" y1="340" x2="1060" y2="340"/>
+<text class="axis" x="98" y="344" text-anchor="end">2,000,000</text>
+<line class="grid" x1="110" y1="250" x2="1060" y2="250"/>
+<text class="axis" x="98" y="254" text-anchor="end">3,000,000</text>
+<line class="grid" x1="110" y1="160" x2="1060" y2="160"/>
+<text class="axis" x="98" y="164" text-anchor="end">4,000,000</text>
+<line class="grid" x1="110" y1="70" x2="1060" y2="70"/>
+<text class="axis" x="98" y="74" text-anchor="end">5,000,000</text>
+<polygon points="110,468.82 426.67,456.81 743.33,442.75 1060,439.99 1060,520 743.33,520 426.67,520 110,520" fill="#332288" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec</title></polygon>
+<polygon points="110,462.59 426.67,443.08 743.33,423.43 1060,394.27 1060,439.99 743.33,442.75 426.67,456.81 110,468.82" fill="#88CCEE" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-dev-tooling</title></polygon>
+<polygon points="110,461.97 426.67,442.13 743.33,421.37 1060,392.21 1060,394.27 743.33,423.43 426.67,443.08 110,462.59" fill="#44AA99" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-driver-claude</title></polygon>
+<polygon points="110,461.33 426.67,440.93 743.33,419.73 1060,390.56 1060,392.21 743.33,421.37 426.67,442.13 110,461.97" fill="#117733" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-driver-codex</title></polygon>
+<polygon points="110,461.33 426.67,440.93 743.33,419.18 1060,390.01 1060,390.56 743.33,419.73 426.67,440.93 110,461.33" fill="#999933" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-driver-pi</title></polygon>
+<polygon points="110,452.2 426.67,415.59 743.33,360.39 1060,316.71 1060,390.01 743.33,419.18 426.67,440.93 110,461.33" fill="#DDCC77" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-orchestrator-beads-fabro</title></polygon>
+<polygon points="110,449.56 426.67,412.02 743.33,356.67 1060,312.98 1060,316.71 743.33,360.39 426.67,415.59 110,452.2" fill="#CC6677" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-orchestrator-git-jsonl</title></polygon>
+<polygon points="110,448.18 426.67,409.98 743.33,353.02 1060,307.63 1060,312.98 743.33,356.67 426.67,412.02 110,449.56" fill="#882255" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-runtime</title></polygon>
+<polygon points="110,445.12 426.67,396.83 743.33,333.62 1060,283.82 1060,307.63 743.33,353.02 426.67,409.98 110,448.18" fill="#AA4499" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-console-beads-fabro</title></polygon>
+<polygon points="110,445.12 426.67,391.03 743.33,298.3 1060,251.65 1060,283.82 743.33,333.62 426.67,396.83 110,445.12" fill="#661100" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>livespec-overseer</title></polygon>
+<polygon points="110,379.29 426.67,381.79 743.33,287.96 1060,241.3 1060,251.65 743.33,298.3 426.67,391.03 110,445.12" fill="#6699CC" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>openbrain</title></polygon>
+<polygon points="110,378.18 426.67,380.57 743.33,286.01 1060,237.45 1060,241.3 743.33,287.96 426.67,381.79 110,379.29" fill="#AA4466" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>dolt-server</title></polygon>
+<polygon points="110,378.18 426.67,374.74 743.33,280.16 1060,231.6 1060,237.45 743.33,286.01 426.67,380.57 110,378.18" fill="#4477AA" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>resume</title></polygon>
+<polygon points="110,378.18 426.67,371.42 743.33,275.83 1060,227.26 1060,231.6 743.33,280.16 426.67,374.74 110,378.18" fill="#228833" fill-opacity="0.88" stroke="#ffffff" stroke-width="0.8"><title>homelab</title></polygon>
+<rect class="frame" x="110" y="70" width="950" height="450"/>
+<text class="axis" x="110" y="548" text-anchor="middle">2026-06</text>
+<text class="axis" x="426.67" y="548" text-anchor="middle">2026-07</text>
+<text class="axis" x="743.33" y="548" text-anchor="middle">2026-08</text>
+<text class="axis" x="1060" y="548" text-anchor="middle">2026-09</text>
+<text class="label" x="585.0" y="588" text-anchor="middle">Month (UTC)</text>
+<text class="label" transform="translate(28 295.0) rotate(-90)" text-anchor="middle">Physical lines</text>
+<text class="label" x="1100" y="70">Repositories</text>
+<rect x="1100" y="85" width="18" height="18" rx="2" fill="#332288"/>
+<text class="legend" x="1128" y="99">livespec</text>
+<rect x="1100" y="113" width="18" height="18" rx="2" fill="#88CCEE"/>
+<text class="legend" x="1128" y="127">livespec-dev-tooling</text>
+<rect x="1100" y="141" width="18" height="18" rx="2" fill="#44AA99"/>
+<text class="legend" x="1128" y="155">livespec-driver-claude</text>
+<rect x="1100" y="169" width="18" height="18" rx="2" fill="#117733"/>
+<text class="legend" x="1128" y="183">livespec-driver-codex</text>
+<rect x="1100" y="197" width="18" height="18" rx="2" fill="#999933"/>
+<text class="legend" x="1128" y="211">livespec-driver-pi</text>
+<rect x="1100" y="225" width="18" height="18" rx="2" fill="#DDCC77"/>
+<text class="legend" x="1128" y="239">livespec-orchestrator-beads-fabro</text>
+<rect x="1100" y="253" width="18" height="18" rx="2" fill="#CC6677"/>
+<text class="legend" x="1128" y="267">livespec-orchestrator-git-jsonl</text>
+<rect x="1100" y="281" width="18" height="18" rx="2" fill="#882255"/>
+<text class="legend" x="1128" y="295">livespec-runtime</text>
+<rect x="1100" y="309" width="18" height="18" rx="2" fill="#AA4499"/>
+<text class="legend" x="1128" y="323">livespec-console-beads-fabro</text>
+<rect x="1100" y="337" width="18" height="18" rx="2" fill="#661100"/>
+<text class="legend" x="1128" y="351">livespec-overseer</text>
+<rect x="1100" y="365" width="18" height="18" rx="2" fill="#6699CC"/>
+<text class="legend" x="1128" y="379">openbrain</text>
+<rect x="1100" y="393" width="18" height="18" rx="2" fill="#AA4466"/>
+<text class="legend" x="1128" y="407">dolt-server</text>
+<rect x="1100" y="421" width="18" height="18" rx="2" fill="#4477AA"/>
+<text class="legend" x="1128" y="435">resume</text>
+<rect x="1100" y="449" width="18" height="18" rx="2" fill="#228833"/>
+<text class="legend" x="1128" y="463">homelab</text>
+</svg>
