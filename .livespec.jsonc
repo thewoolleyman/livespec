@@ -144,6 +144,53 @@
       },
       "auto_approve_ready": true,
       "acceptance_mode": "ai-only",
+      // Park the `pr` node on the Claude adapter, OFF Codex.
+      //
+      // WHY. `dispatcher.codex_models` expands UNCONDITIONALLY -- its `pr` tier
+      // fires even for a repo (like this one) that configures no `codex_models`
+      // block at all -- and pins the fleet default `gpt-5.4-mini`. That slug is
+      // absent from the catalog reachable by the codex-acp version the sandbox
+      // image bakes, so the publish leg is dead here exactly as it was in
+      // livespec-dev-tooling:
+      //
+      //   run 01M226QY0MKN4QNMJ62T589GXE (livespec-sab5gn.5), 2026-09-09,
+      //   node `pr`, dead after 6.2s:
+      //     Warning: Model metadata for `gpt-5.4-mini` not found.
+      //     {"status":400,"error":{"message":"The 'gpt-5.4-mini' model is not
+      //      supported when using Codex with a ChatGPT account."}}
+      //
+      // implement, janitor and review all PASSED on that run (the
+      // implementation_diff node exited 0, i.e. `git diff --quiet` returned 1 --
+      // there WAS a diff, and the review node read the file and approved it);
+      // only `pr` died, so the work was done and stranded with no branch pushed.
+      // The fabro run reports `succeeded` while the dispatcher reports `failed`
+      // at pr-view "no PR found for branch". That disagreement is what makes
+      // this read as a work-item defect when it is not one.
+      //
+      // WHY HERE AND NOT IN workflow.toml. `repository_acp_overlays` builds the
+      // codex-shorthand overlays first and then `overlays.update()`s the
+      // explicit `acp_nodes` table over them, so THIS key wins. Editing
+      // `pr_adapter` in the orchestrator's own workflow.toml would leave a green
+      // tree and an UNCHANGED live adapter.
+      //
+      // WHY NOT THE DOCUMENTED TIER OPT-OUT. `codex_models.pr.model = ""`
+      // removes only the `model` / `model_reasoning_effort` keys inside
+      // `CODEX_CONFIG`; the posture keys and the Codex command are emitted
+      // regardless, so the node stays on Codex and stays dead.
+      //
+      // COST NOTE. The `pr` tier exists to keep a scripted git/gh recipe off the
+      // expensive implementer tier. This parks it on the same Claude adapter the
+      // implementer uses -- a deliberate cost regression taken over a dead
+      // publish leg, the same trade livespec-dev-tooling,
+      // livespec-console-beads-fabro and homelab already made. The value is
+      // byte-identical to workflow.toml's own `pr_adapter` default.
+      //
+      // REVERT CONDITION: a re-measured reachable-model table for the codex-acp
+      // version the sandbox image bakes, naming a `pr`-tier slug that completes
+      // a turn. Tracked for the fleet on livespec-dev-tooling-zwsl.
+      "acp_nodes": {
+        "pr": "npx -y @agentclientprotocol/claude-agent-acp"
+      },
       "wip_cap": 10,
       "factories": {
         "hp": { "server": "https://hp-xubuntu.perch-rudd.ts.net:32276" },
