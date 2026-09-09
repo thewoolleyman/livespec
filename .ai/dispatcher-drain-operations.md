@@ -350,6 +350,36 @@ unattributable — the very thing the valve exists to prevent. The valve itself 
 specified in `livespec-orchestrator-beads-fabro`'s `SPECIFICATION/scenarios.md`;
 what belongs here is the prohibition on going around it.
 
+## Drive an item or delegate it — never both
+
+Promoting an item to `ready` IS handing it to the factory. Working that same item
+by hand afterwards means two owners are racing on one work-item, and the factory
+is not aware it is racing anyone.
+
+Observed 2026-09-08 on `livespec-dev-tooling-37p0`. The item was promoted to
+`ready` while the factory credential was exhausted, then driven in-session
+because dispatch was refused. When the credential recovered the Dispatcher did
+exactly what it should: it picked up a ready item and opened a PR — **nine
+seconds after the in-session PR merged**, from a branch cut before that merge.
+The dispatch collided on two already-released files, its auto-merge could never
+fire, and no CI check ever reported on it.
+
+**The dispatch behaved correctly throughout. The driver was the fault.**
+
+Two consequences worth internalising rather than just the rule:
+
+- **The losing branch may be the better one.** Here it was: the factory placed
+  the runner INSIDE the package where per-file coverage reaches it, with a
+  10-case test suite, while the in-session branch put it in `.github/scripts/` —
+  outside the coverage universe, with no direct tests at all. It also carried two
+  replay cases the in-session suite lacked, one of them load-bearing. Closing a
+  duplicate is therefore a SALVAGE operation, not a cleanup: read the loser's
+  diff before closing it, and take what is better.
+- **A blocked dispatch is not a released claim.** "The factory cannot run it
+  right now" is not the same as "the factory no longer owns it." If you take an
+  item back to drive by hand, take it back explicitly — move it out of `ready`
+  first — so the queue and the operator cannot both believe they hold it.
+
 ## Re-enumerate the ready queue on every iteration
 
 A ready set is a point-in-time snapshot that goes stale the moment you act on

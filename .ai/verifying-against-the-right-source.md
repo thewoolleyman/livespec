@@ -1832,6 +1832,56 @@ a landmark, it is a moving object, and the drift it introduces is attributed to
 whatever you were inspecting — which is exactly how an agent's careful five-file
 change reads as eighteen files including a deleted test.
 
+### 43. A query against the WRONG COMMIT, read as structural invisibility
+
+`needs-attention-internal/SKILL.md` states that the one-call screen "cannot see a
+**scheduled** workflow's failure at all — that failure attaches to no commit."
+Measured 2026-09-08, that is FALSE. A scheduled run attaches to the commit that
+was HEAD when it fired, carried as its own `head_sha`, and appears normally in
+that commit's `checkSuites`.
+
+**What makes this a good entry is that the first check APPEARED to confirm the
+claim.** Querying `defaultBranchRef.target` — the current tip — returned only
+`push`-triggered suites and no scheduled ones. That reads as proof. It is not:
+the tip was ten minutes old, so no scheduled run *could* exist for it yet. The
+absence was a property of the clock, not of the API. Reading it as structural
+blindness is instance 37's ephemeral-population trap wearing different clothes.
+
+The control that settles it costs one call: take a KNOWN scheduled run's
+`head_sha` from the REST runs endpoint, then query THAT commit. Do not ask
+whether a population is visible at the tip; ask whether a specific known member
+is visible where it actually lives.
+
+The true limitation is narrower and has different consequences: the run sits on
+a PAST commit, and how far back is a function of the repo's commit velocity —
+measured on `livespec`, 38 commits for yesterday, 54 for the day before, 95 for
+three days back. So a history-walking reader is not impossible, it is
+**velocity-dependent**, and a window too shallow for the repo reports green
+because it saw nothing. The false claim and the true one point at different
+designs, which is why the distinction was worth the measurement.
+
+### 44. `$?` after a pipeline is the LAST command's status, not the one you care about
+
+While live-exercising a runner whose whole contract is a three-valued exit code
+(0 healthy / 1 failing / 2 cannot-measure), the check was written as:
+
+```bash
+python3 runner.py no-such-workflow.yml 2>&1 | tail -2; echo "exit=$?"
+```
+
+It printed `exit=0` for the cannot-measure case, which looked like a genuine
+defect in the exit contract — the exact defect the runner exists to prevent, a
+watcher that cannot measure reporting healthy. **The runner was correct.** `$?`
+reported `tail`'s status, not python's. Re-run without the pipe, the codes were
+2 and 0 as designed.
+
+The near-miss is the point: this was one step away from a bug report filed
+against correct code, and from "fixing" a contract that was already right. When
+the thing under test IS an exit code, never read it through a pipe — capture it
+directly, or use `PIPESTATUS`. More generally, a measurement apparatus that
+silently substitutes one program's answer for another's is the same class as
+every entry above.
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,
