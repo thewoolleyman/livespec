@@ -1,0 +1,40 @@
+# release-lane-watch.yml — livespec's shim onto the shared release-lane watcher.
+#
+# Authority: plan/fleet-delivery-lane-visibility (epic livespec-n33rwg),
+#   carrier livespec-n33rwg.5. Delegates to livespec-dev-tooling's
+#   reusable-release-lane-watch.yml, which surveys each named lane and
+#   reconciles ONE durable `release-lane-red` issue for this repo (opening or
+#   updating it while a lane is failing or unmeasurable, closing it on
+#   recovery). That issue is READ by needs-attention-internal Signal 9 Shape C
+#   — the durable signal is the issue, not this scheduled run.
+#
+# WATCHED SET — this repo's own release lanes, one WITH a release object and
+#   one WITHOUT, per the carrier's amendment that the fan-out must include a
+#   no-release-object lane or it is mostly ceremony:
+#     - release-tag.yml       — the tag/release lane (has a release object;
+#                               already covered in depth-only terms by Signal 9,
+#                               carried here for streak/last-green history).
+#     - release-readiness.yml — the readiness canary; it publishes NO release
+#                               object, so Signal 9 structurally cannot see it,
+#                               which is exactly where the watcher earns its keep.
+#
+# NO `secrets: inherit`: the watcher runs on github.token with actions:read
+# (lane history) and issues:write (the durable issue) and needs no App secrets;
+# carrying secrets:inherit would be cargo-culted from the pin-freshness shim.
+
+name: Release lane watch
+
+on:
+  schedule:
+    - cron: '23 8 * * *'  # 08:23 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  watch:
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-release-lane-watch.yml@v1.80.0
+    with:
+      workflows: "release-tag.yml release-readiness.yml"
