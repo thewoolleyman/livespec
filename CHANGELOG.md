@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.5](https://github.com/thewoolleyman/livespec/compare/v0.38.4...v0.38.5) (2026-09-09)
+
+
+### Bug Fixes
+
+* **dispatcher:** park the pr node on the Claude adapter, off Codex ([f51b66d](https://github.com/thewoolleyman/livespec/commit/f51b66d44124269541756c92a183dbd84b236694))
+
 ## [0.38.4](https://github.com/thewoolleyman/livespec/compare/v0.38.3...v0.38.4) (2026-09-08)
 
 
