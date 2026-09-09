@@ -1,0 +1,2 @@
+work_item=livespec-n33rwg.5
+reason=Adds .github/workflows/release-lane-watch.yml, livespec's shim onto livespec-dev-tooling's reusable-release-lane-watch.yml (pinned v1.80.0), deploying the Option B producer for plan carrier livespec-n33rwg.5. It watches release-tag.yml plus the no-release-object release-readiness canary and grants issues:write so the shared watcher can reconcile this repo's durable release-lane-red issue that Signal 9 Shape C reads. Maintainer authorized this workflow-only shim on 2026-09-09; no product code changes.
