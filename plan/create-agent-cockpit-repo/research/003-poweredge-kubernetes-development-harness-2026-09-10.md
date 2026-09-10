@@ -131,7 +131,8 @@ it in the reboot reconstruction DAG:
 
 - distinct builder, ephemeral-test, dogfood, and VM-runner/broker-client
   service accounts;
-- a read-only external driver that can submit only an admission-locked,
+- a constrained external run requester that can submit only an
+  admission-locked,
   reviewed commit/run request and read its own status/logs/artifacts;
 - no external-driver ability to create arbitrary Jobs/Pods or select arbitrary
   service accounts, Secrets, PVCs, images, commands, nodes, or security
@@ -298,18 +299,18 @@ plane is a materially larger operational change.
 ## Autonomous driver access
 
 The current `gates` kubeconfig is deliberately insufficient and must remain so.
-Create a short-lived/refreshed kubeconfig wrapper for a read-only external
-driver. Distribute it to authorized cockpit agents using the existing
+Create a short-lived/refreshed kubeconfig wrapper for a constrained external
+run requester. Distribute it to authorized cockpit agents using the existing
 refresh-over-Tailscale-SSH pattern. It may submit only schema/admission-locked
 run requests and read the resulting status/logs/artifacts; it cannot create an
-arbitrary Pod or Job.
+arbitrary Pod or Job, mutate a workload, or use `pods/exec`.
 
 Agents may autonomously:
 
 - request protected GitHub Actions/ARC builds that publish signed GHCR images;
 - submit and cancel reviewed integration-run objects/templates;
-- read status/events/logs and exec into their own test pods;
-- roll the dogfood StatefulSet to a reviewed commit;
+- read only status/events/logs scoped to their submitted run;
+- request a controller-owned dogfood rollout to a reviewed immutable digest;
 - request, observe, and tear down bounded KVM acceptance runs;
 - collect artifacts and retry after code/config fixes.
 

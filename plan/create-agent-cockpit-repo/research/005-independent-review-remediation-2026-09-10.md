@@ -27,9 +27,10 @@ G0-G3 cannot be autonomous until a cluster administrator establishes a bounded
 substrate. Add gate **G-1** with the PowerEdge/k3s configuration repository as
 owner and immutable receipts for:
 
-- namespace labels enforcing the selected Pod Security level;
-- four separate identities: read-only external driver, image builder,
-  long-running dogfood workload, and VM-runner/broker client;
+- namespace labels enforcing Restricted Pod Security;
+- at least six separate identities: constrained external run requester, image
+  builder, ephemeral-test workload, long-running dogfood workload,
+  VM-runner/broker client, and controller/reconciler;
 - admission policy that restricts each identity to reviewed workload templates,
   service accounts, images, volumes, resources, security contexts, and nodes;
 - ResourceQuota, LimitRange, NetworkPolicy, PriorityClass/Kueue admission, and
@@ -43,18 +44,25 @@ owner and immutable receipts for:
 - namespace-scoped kubeconfigs/wrappers with rotation and revocation tests;
 - fake test services and, if ever needed, a separate non-production tailnet.
 
-The external driver must not have arbitrary Pod or Job creation. Namespace
+The constrained run requester must not have arbitrary Pod or Job creation,
+`pods/exec`, or direct workload mutation. Namespace
 RBAC is insufficient because a principal that can author arbitrary pods can
 indirectly select service accounts, secrets, PVCs, images, and host-adjacent
-features. The driver may submit a commit/run request to an admission-locked
+features. The requester may submit a commit/run request to an admission-locked
 controller or narrow broker and read only its own status, logs, and artifacts.
 Negative tests must prove that it cannot select another service account, mount
 another Secret/PVC/hostPath, change an image or command outside the reviewed
 template, request privileged mode/capabilities, target another node/namespace,
 or create an arbitrary pod.
 
-G-1 is allowed to require one consolidated administrator ceremony. After its
-receipts pass, agents can drive G0-G3 without incremental maintainer work.
+Split enablement into G-1a and G-1b. A human/cluster-admin-owned G-1a uses a
+temporary isolated spike namespace and credential to compare the runner and
+broker; it has a fixed seven-day deadline, produces a signed decision record,
+and tears down all temporary authority. G-1b installs only the selected
+production-shaped substrate and runs the full negative suite. An inconclusive
+spike defaults to the narrow host broker and blocks G-1b until its risks are
+resolved. After G-1b passes, agents can drive G0-G3 without incremental
+maintainer work.
 
 ## PowerEdge reboot reconstruction is a hard invariant
 
@@ -63,16 +71,21 @@ as durable authority. Every harness object must therefore be part of the
 PowerEdge boot-reconstruction DAG, in dependency order:
 
 1. host LV/filesystem/mount and fail-closed directory guard;
-2. node labels, namespace, Pod Security labels, policies, quotas, limits,
-   priority/admission objects, and KVM device/broker substrate;
-3. static PV, PVC binding/claimRef recovery, service accounts, RBAC, and
-   admission-locked templates;
-4. dogfood workload, Services, canaries, and monitoring;
-5. refreshed external-driver credentials.
+2. CRDs, controller/operator service accounts and credentials, controller
+   deployments, admission/image-policy webhooks and certificates, Kueue, and
+   readiness gates, with fail-closed admission throughout bootstrap;
+3. node labels, namespaces, Restricted Pod Security labels, policies, quotas,
+   limits, priority/admission objects, and KVM device/broker substrate;
+4. static PV, PVC binding/claimRef recovery, workload service accounts with
+   `automountServiceAccountToken: false` where unused, RBAC, Secrets/ConfigMaps,
+   and admission-locked templates;
+5. dogfood workload, Services, canaries, and monitoring;
+6. refreshed constrained-requester credentials.
 
 Acceptance must reboot PowerEdge from a deliberately empty/reconstructed k3s
 datastore, then prove the whole DAG, PVC rebinding, workload readiness, KVM
-lane, and external driver. A successful one-time `kubectl apply` is not proof.
+lane, and constrained requester. A successful one-time `kubectl apply` is not
+proof.
 
 ## Resource and scheduling envelope
 
@@ -82,19 +95,24 @@ Capacity observations are snapshots, not entitlements. The initial envelope is:
 - dogfood request 1 CPU/4 GiB and limit 8 CPU/24 GiB;
 - all ephemeral integration work combined: request 2 CPU/4 GiB, limit 12
   CPU/24 GiB;
-- namespace cap: 20 CPU, 56 GiB RAM, 350 GiB persistent storage, 100 GiB
-  ephemeral/scratch storage, and bounded object counts;
+- per-namespace quotas plus one aggregate ClusterQueue/host-cgroup cap: 20 CPU,
+  56 GiB RAM, 350 GiB persistent storage, 100 GiB ephemeral/scratch storage,
+  and bounded object counts across all cockpit namespaces and broker guests;
 - VM/job active deadline 90 minutes, one automatic retry, explicit cleanup;
 - low-priority/Kueue admission behind production CI, with preemption or
   suspension rather than starving ARC runners;
 - QEMU overlays and package/build scratch on the dedicated NVMe work area, not
   kubelet's ordinary ephemeral root.
 
-Tune only from measured telemetry and committed review. G-1 and G3 must capture
+The VM's 8 vCPU/24 GiB and QEMU overhead count within that aggregate cap even
+when a host broker launches it. Tune only from measured telemetry and committed
+review. G-1 and G3 must capture
 CPU, memory, disk latency/capacity, inode, and I/O-pressure baselines. During a
 cockpit run, existing CI queue delay and success rate may not regress beyond a
 ratified threshold; the initial proposed threshold is less than 10% p95 queue
-delay regression and no induced CI failures.
+delay regression and no induced CI failures. G-1b must ratify baseline duration,
+minimum samples, attribution method, comparison window, and fail/abort behavior
+before the SLO can admit work.
 
 ## Image supply chain
 
@@ -272,9 +290,10 @@ configuration.
 
 ## External seam and ownership contract
 
-Create `config/external-seams.yml` for `1password-env-wrapper`,
-`otel-collector`, `tailscale-admin`, PowerEdge/k3s reconstruction, GHCR/ARC,
-and every agent driver. Each row names owning repository/team, exact pin/API,
+Create `config/external-seams.yml` for `1password-env-wrapper`, `homelab`'s AWS
+wrapper, `otel-collector`, `tailscale-admin`, `poweredge-xubuntu-info` k3s
+reconstruction, GHCR/ARC, the evidence store, and every agent driver. Each row
+names owning repository/team, exact pin/API,
 compatibility range, update policy, deployment order, health evidence,
 rollback commit, and deprecation dependency. Cross-repository changes land in
 dependency order and rollback in reverse order; no copied canonical file may

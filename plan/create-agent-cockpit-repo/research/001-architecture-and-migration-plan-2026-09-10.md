@@ -35,6 +35,8 @@ The repository remains standalone in operation while consuming a small set of
 versioned external seams:
 
 - `1password-env-wrapper` for the credential-loader implementation;
+- `homelab` for the canonical AWS wrapper and Parameter Store consumer
+  contract, if remeasurement confirms current host authority;
 - `otel-collector` for the shared collector distribution and normalization;
 - `tailscale-admin` for tailnet policy and administrative receipts;
 - official/pinned distributions of Tailscale, Chrome, 1Password, Claude Code,
@@ -64,10 +66,11 @@ The reviews identified these corrections to the initial framing:
    starter projects, and smoke tests. Either parameterize and release that
    behavior upstream or provision only an explicit, pinned subset in the new
    repository. The first implementation should own the selected subset.
-2. The installed AWS wrapper is not presently backed by the tracked source that
-   `vps-info` documentation claims. Current `homelab` documentation says that
-   source was deleted and survives in an old tag/installed copies. Recover,
-   review, and rehome it before claiming AWS identity reproducibility.
+2. Re-measure the AWS wrapper before implementation. Current host authority
+   names `homelab/provision/with-homelab-aws.sh` as canonical source and says
+   its installed copy is reconciled every five minutes. Preserve that owner and
+   exact pin if confirmed; never edit or rehome the installed copy based on
+   stale documentation.
 3. Existing host roles embed `vps`, `100.89.189.118`, `/data/projects`, and a
    provider kernel hostname. All four must become inventory values or runtime
    discoveries.
@@ -548,8 +551,8 @@ Exit: local non-secret cockpit checks pass on a clean Ubuntu VM.
 1. Implement Tailscale installation/dynamic discovery and the untagged
    enrollment/SSH/key-expiry receipt workflow.
 2. Integrate a pinned 1Password wrapper release with a fresh per-host seal.
-3. Recover/review/rehome the AWS wrapper source; implement an optional separate
-   reseal and STS check.
+3. Verify and pin the `homelab` AWS-wrapper source, preserving its reconciliation
+   contract; implement an optional separate reseal and STS check.
 4. Implement explicit gh/glab and agent-login gates with actionable pending
    states.
 
@@ -598,7 +601,7 @@ Exit: all three agents have accepted evidence; “configured” alone is not a p
 ### Phase 7 — establish G-1 and build the PowerEdge autonomous harness
 
 1. Have the PowerEdge/k3s owner establish G-1: separate builder/test/dogfood/VM
-   identities, a read-only external driver, admission-locked templates,
+   identities, a constrained external run requester, admission-locked templates,
    Pod-Security labels, quotas/limits/network policy/low priority, GHCR image
    trust, and reboot-reconstruction receipts.
 2. Allocate a retained, capacity-bounded NVMe local PV on
