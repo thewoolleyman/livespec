@@ -694,8 +694,8 @@
     "heading": "## Operator-owned Git work retains the declared author",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Ratifies end-to-end author selection and fail-closed publication behavior across interactive, Red→Green replay, Fabro, mechanical-bot, third-party, and all-ref failure paths. A scenario describes end-to-end behavior, so the mapped test MUST resolve to the integration tier or above; work-item livespec-7goynx owns that executable coverage and replaces this TODO with the integration test id when it lands.",
+    "test": "tests.integration.test_operator_git_authorship.test_interactive_replay_and_agent_work_all_carry_the_operator_pair",
+    "reason": "Integration-tier: the module sits under the `tests.integration` node-id prefix AND declares `pytestmark = pytest.mark.integration`. It exercises end-to-end author selection and fail-closed publication over real git repositories, the committed config schema, the shipped validator, and the shipped `git-author-policy` Verifier — one test per scenario in the section, covering interactive/replay/agent work, the Red→Green amend sharing one validated author, conflicting environment and explicit-author overrides, the malformed declaration, narrow mechanical authorship, preserved third-party imports, the non-opted-in adopter, and the scan's own reported count.",
     "work_item": "livespec-7goynx",
     "clauses": [
       {

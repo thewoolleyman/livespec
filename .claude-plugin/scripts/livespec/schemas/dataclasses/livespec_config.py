@@ -34,7 +34,9 @@ from dataclasses import dataclass, field
 from livespec.types import SpecRoot, TemplateName
 
 __all__: list[str] = [
+    "GitAuthorPolicy",
     "LivespecConfig",
+    "MechanicalAuthor",
     "OrchestratorConfig",
     "SpecClis",
 ]
@@ -104,6 +106,40 @@ class OrchestratorConfig:
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
+class MechanicalAuthor:
+    """One exact author pair permitted to author mechanical output.
+
+    Mirrors one entry of livespec_config.schema.json's
+    `git_author.mechanical_authors` array. Both fields are
+    schema-required and non-empty; the pair is matched
+    byte-for-byte, so a bot whose display name changed needs its
+    new pair declared rather than inferred.
+    """
+
+    name: str
+    email: str
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class GitAuthorPolicy:
+    """The opt-in operator-author declaration.
+
+    Mirrors livespec_config.schema.json's `git_author` object.
+    `operator_name` and `operator_email` are schema-required when
+    the section is present; the section itself is optional
+    (`LivespecConfig.git_author` is `None` when absent, meaning the
+    project has not opted into operator-author enforcement).
+    `mechanical_authors` defaults to empty, which is the strictest
+    reading: no identity other than the operator pair may author a
+    commit the project introduces.
+    """
+
+    operator_name: str
+    operator_email: str
+    mechanical_authors: tuple[MechanicalAuthor, ...] = ()
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
 class LivespecConfig:
     """The `.livespec.jsonc` config wire dataclass.
 
@@ -112,7 +148,10 @@ class LivespecConfig:
     `spec_clis` object naming the seven spec-side CLIs, the
     optional `orchestrator` selection, and the optional
     `credential_wrapper` argv prefix (empty by default, meaning
-    no credential wrapper is applied). Unknown top-level
+    no credential wrapper is applied), and the optional
+    `git_author` opt-in declaration (`None` by default, meaning
+    the project has not opted into operator-author
+    enforcement). Unknown top-level
     sections in the payload are tolerated per the schema root's
     `additionalProperties: true` and are NOT carried on this
     dataclass — each plugin or sibling consumer validates its
@@ -134,3 +173,4 @@ class LivespecConfig:
     spec_clis: SpecClis = field(default_factory=SpecClis)
     orchestrator: OrchestratorConfig | None = None
     credential_wrapper: list[str] = field(default_factory=list)
+    git_author: GitAuthorPolicy | None = None
