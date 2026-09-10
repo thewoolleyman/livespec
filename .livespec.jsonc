@@ -9,6 +9,33 @@
   // reviewable opt-out. Written explicitly at install time so the obligation is
   // readable here rather than inferred from a verifier failure.
   "worktree_discipline": { "pack": "required" },
+  // Operator-owned factory work uses this exact Git author independently of
+  // the GitHub App that transports a push. These four historical/current bot
+  // pairs are the only mechanical authors used by this repo's release and
+  // dependency-pin automation; they never replace the operator author in a
+  // Dispatcher/Fabro implementation run.
+  "git_author": {
+    "operator_name": "Chad Woolley",
+    "operator_email": "thewoolleyman@gmail.com",
+    "mechanical_authors": [
+      {
+        "name": "livespec-pr-bot[bot]",
+        "email": "livespec-pr-bot[bot]@users.noreply.github.com"
+      },
+      {
+        "name": "livespec-pr-bot[bot]",
+        "email": "283469463+livespec-pr-bot[bot]@users.noreply.github.com"
+      },
+      {
+        "name": "thewoolleyman-factory-bot[bot]",
+        "email": "thewoolleyman-factory-bot[bot]@users.noreply.github.com"
+      },
+      {
+        "name": "thewoolleyman-factory-bot[bot]",
+        "email": "283469463+thewoolleyman-factory-bot[bot]@users.noreply.github.com"
+      }
+    ]
+  },
   // Foreman human-valve disposition. Opts this repo's foreman seat into the
   // CONSENSUS tier: a human valve or blocked session may be disposed by a
   // unanimous review panel through foreman-act, instead of being surfaced
