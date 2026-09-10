@@ -691,6 +691,48 @@
     "work_item": "livespec-6fb1"
   },
   {
+    "heading": "## Operator-owned Git work retains the declared author",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Ratifies end-to-end author selection and fail-closed publication behavior across interactive, Red→Green replay, Fabro, mechanical-bot, third-party, and all-ref failure paths. A scenario describes end-to-end behavior, so the mapped test MUST resolve to the integration tier or above; work-item livespec-7goynx owns that executable coverage and replaces this TODO with the integration test id when it lands.",
+    "work_item": "livespec-7goynx",
+    "clauses": [
+      {
+        "gap_id": "gap-4vcwazaf",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-ut6bcdpc",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-bptmpybr",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-67tdkvh2",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-su5owjlc",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-jqt2gakj",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-b4jmnvh5",
+        "scenario": "Operator-owned Git work retains the declared author"
+      },
+      {
+        "gap_id": "gap-mfrk5mps",
+        "scenario": "Operator-owned Git work retains the declared author"
+      }
+    ]
+  },
+  {
     "heading": "## A fleet CI host is rebuilt from bare metal by the committed procedure",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
