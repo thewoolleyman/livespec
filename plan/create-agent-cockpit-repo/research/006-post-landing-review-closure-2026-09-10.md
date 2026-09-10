@@ -246,6 +246,12 @@ removal proof and retains the tombstone so a replacement cannot be confused
 with the old identity. Rollback restores the prior registry commit but never a
 retired node key.
 
+Allocation merges are serialized through a merge queue or an equivalent
+compare-and-swap against the current registry-tip commit. The merge-time check
+revalidates uniqueness after rebasing on that tip; a losing collision must pick
+a new instance number and retry. Two individually green, concurrently opened
+PRs can therefore never reserve the same number.
+
 ## Remaining measured desktop details
 
 The measured-current-surface ledger explicitly captures Chrome's `set +e`
