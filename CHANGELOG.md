@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/thewoolleyman/livespec/compare/v0.38.5...v0.39.0) (2026-09-10)
+
+
+### Features
+
+* enforce effective git author identity in commit paths ([2570277](https://github.com/thewoolleyman/livespec/commit/2570277508eddf5997bdd133e84c3ec60c24db29))
+
 ## [0.38.5](https://github.com/thewoolleyman/livespec/compare/v0.38.4...v0.38.5) (2026-09-09)
 
 
