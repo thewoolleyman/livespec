@@ -360,6 +360,60 @@ already-authorized local golden-master because an unrelated, idle, human-blocked
 `livespec-dev-tooling` run was parked in the factory — and re-asked a question
 the maintainer had already answered.)
 
+## A factory or tooling BREAKAGE stops the line — fix the root cause, never route around it
+
+When shared factory or fleet tooling is **broken** — a bad model/adapter config,
+a stale-but-fixable build the session is dispatching through, a mint/credential
+outage, a gate wedged by a defect — **stop the line.** Do not get clever and find
+a private path around it to keep your own work moving.
+
+**The correct response to a breakage, in order:**
+
+1. **Halt** the activity that hit the breakage. A breakage is an ANDON signal,
+   not an obstacle to dribble past.
+2. **Fix the root cause, or notify whoever owns it and WAIT** for the fix. Filing
+   the report is not the end — you then wait for the fix to actually land.
+3. **Let the fix roll out through the NORMAL channel** (release → `ensure-plugins`
+   / session reload → the ordinary dispatch path), confirm the normal path now
+   works, and only then resume. No pins, no hand-picked builds, no bypasses.
+
+**Why routing around a breakage is forbidden, even when it "works":**
+
+- **It normalizes outages.** A broken-window workaround makes the line look
+  "handled" while it is still broken for everyone who does not know your trick.
+  Broken windows breed broken windows.
+- **It hides the breakage from proper resolution.** A green run obtained via a
+  bypass removes the pressure that would have gotten the real fix shipped.
+- **It never validates the real rollout.** Proving something works through a
+  hand-picked build or a re-routed factory says nothing about the path every
+  other session and every fleet member actually uses; a latent rollout gap
+  survives your green checkmark.
+
+**Distinguish a BREAKAGE from a transient and from a permanent limitation** —
+only the first stops the line:
+
+- A **transient** (a rate-limit window that resets, an intermittent ENOSPC, a
+  dropped connection) is waited out and retried **on the normal path** — that is
+  not a bypass, and prove it is transient (read the actual error) before assuming
+  so.
+- A **permanent tool limitation** (a documented capability gap you must design
+  within) is worked *within*, not *around* a broken state — it is not a defect
+  awaiting a fix.
+- A **breakage** is a genuine defect that should be fixed. Stop, fix or
+  escalate-and-wait, resume on the normal path.
+
+**Recorded incident (maintainer correction, 2026-09-10).** Driving a factory
+dispatch, a session found it was dispatching through the plugin build it had
+*started* with — stale, and baking a since-fixed broken model adapter. Instead of
+reloading the session onto the current build and waiting for the fix to reach the
+normal path, it pinned the explicit fixed-build `drive.py` to route around the
+stale build, and got a green run. The maintainer's ruling: *"the correct thing is
+to fix the root cause (or notify someone to fix it and wait), then wait for the
+fix to get rolled out. Pinning it is a broken-window workaround that normalizes
+factory outages and breakages. STOP THE ASSEMBLY LINE FOR BREAKAGES."* The green
+run was real, but it validated only the pinned path, not the rollout every other
+session depends on.
+
 ## Cross-cutting disciplines index
 
 Each entry names the discipline and points at its authoritative detail — read the
@@ -423,6 +477,16 @@ named section before acting; do not rely on this summary alone.
   multiplexed factory compute. Never re-ask an already-authorized action because
   unrelated work is running. Detail: this file §"The Fabro factory is a shared
   concurrency surface — never gate on other runs".
+- **A factory/tooling BREAKAGE stops the line** — a genuine defect (bad model
+  config, a stale-but-fixable build the session dispatches through, a mint/gate
+  outage) is halted, its root cause fixed or escalated-and-WAITED-on, and resumed
+  only on the NORMAL path once the fix rolls out. Never pin a build, re-route, or
+  otherwise route around a breakage to keep moving — that normalizes the outage,
+  hides it from a real fix, and validates only your private path. A transient
+  (rate-limit reset, intermittent ENOSPC) is waited out and retried on the normal
+  path; a permanent limitation is designed within — neither is a bypass. Detail:
+  this file §"A factory or tooling BREAKAGE stops the line — fix the root cause,
+  never route around it".
 - **Declare `blocked:` immediately; never manufacture busywork** — when the real
   work is gated on a human and nothing can legitimately advance, say so at once
   rather than producing filler to look productive. A cleared blocked-marker is a
