@@ -232,6 +232,10 @@ Because PowerEdge exposes `/dev/kvm` and VT-x, a Kubernetes runner can launch a
 real Ubuntu guest without installing KubeVirt initially. Use QEMU/KVM with
 user-mode networking where practical and pass only the KVM device plus the
 specific guest disks. Do not make the agent cockpit pod itself privileged.
+The comparative decision and reconsideration triggers are recorded in
+`004-virtualization-runtime-decision-2026-09-10.md`: direct QEMU is the initial
+runtime, KubeVirt is the preferred scale-up path, and Firecracker is reserved
+for a future high-density/disposable-worker requirement rather than VPS parity.
 
 Each acceptance run:
 
