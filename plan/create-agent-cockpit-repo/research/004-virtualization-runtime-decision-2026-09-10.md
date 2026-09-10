@@ -1,12 +1,20 @@
-# Virtualization runtime decision: QEMU/KVM first
+# Virtualization runtime decision: QEMU/KVM guest, control-plane spike first
 
 Date: 2026-09-10
 
 ## Decision
 
-Use direct QEMU with KVM acceleration for the PowerEdge full-machine test lane.
-Do not adopt Firecracker, KubeVirt, Cloud Hypervisor, Kata Containers, Incus,
-LXD, or libvirt as an initial dependency.
+Use QEMU with KVM acceleration as the PowerEdge full-machine guest runtime. Do
+not adopt Firecracker, KubeVirt, Cloud Hypervisor, Kata Containers, Incus, LXD,
+or libvirt as an initial dependency.
+
+Do **not** preselect a direct QEMU Kubernetes Job as the control plane. First
+run the bounded feasibility spike in
+`005-independent-review-remediation-2026-09-10.md`, comparing a non-privileged,
+admission-locked Job with a narrow root-owned PowerEdge QEMU broker. Direct
+execution wins only if it does not require privileged pods, arbitrary host
+paths, broad workload-authoring authority, runtime sockets, uncontrolled
+network capabilities, or leaked lifecycle state. Otherwise use the broker.
 
 This is a workload-fit decision, not a claim that QEMU is universally the best
 virtual-machine monitor. The cockpit harness needs one or a few trusted,
@@ -19,19 +27,20 @@ exists only to prove behaviors that share-the-host-kernel containers cannot.
 ## Required shape
 
 ```text
-Kubernetes Job on poweredge-xubuntu
-  └── qemu-system-x86_64 with /dev/kvm
+admission-locked Kubernetes request on poweredge-xubuntu
+  └── selected after spike: non-privileged runner OR narrow host broker
+        └── qemu-system-x86_64 with /dev/kvm
         ├── checksum-pinned Ubuntu cloud-image base
         ├── disposable qcow2 root overlay
         ├── ephemeral NoCloud/cloud-init seed
         └── retained or freshly cloned workspace/data disk
 ```
 
-Run QEMU directly from the Job rather than adding a persistent libvirt daemon.
-Use KVM acceleration, virtio disks/network, qcow2 backing overlays, a serial
-console, and user-mode networking where it satisfies the test. Add only the
-narrow device/capability access required by measured failures; do not begin
-with a privileged cockpit pod.
+Do not add a persistent libvirt daemon. Use KVM acceleration, virtio
+disks/network, qcow2 backing overlays, a serial console, and user-mode
+networking where it satisfies the test. Add only the narrow
+device/capability access justified by the spike; a privileged cockpit pod is
+not an acceptable outcome.
 
 The guest boots its own Linux kernel and systemd. It therefore exercises a real
 machine hostname, enablement/reboot ordering, fstab/mount behavior,
@@ -42,7 +51,7 @@ and root-disk replacement independently from the Kubernetes host kernel.
 
 | Alternative | Strength | Why it is not the initial choice |
 |---|---|---|
-| Direct QEMU/KVM | Broad hardware/boot compatibility; ordinary Ubuntu cloud images; cloud-init; qcow2 overlays; familiar diagnostics | Selected; its larger feature surface and slower startup are acceptable for a few trusted test guests |
+| QEMU/KVM guest | Broad hardware/boot compatibility; ordinary Ubuntu cloud images; cloud-init; qcow2 overlays; familiar diagnostics | Selected VMM; direct Job versus narrow broker remains gated by the security spike |
 | Firecracker | Small device model, fast startup, high density, strong microVM isolation posture | Requires more bespoke kernel/rootfs, networking, disk, API/jailer, and Kubernetes integration; density/startup are not current requirements |
 | KubeVirt | Kubernetes-native VM API, lifecycle, Services, PVC integration, and mature multi-VM operations | Installs an additional cluster virtualization control plane and still uses QEMU/KVM underneath; excessive for one initial guest and absent from the cluster today |
 | Cloud Hypervisor | Modern, smaller cloud-focused VMM with conventional virtio concepts | Less operational familiarity and ecosystem/tooling than QEMU without a measured benefit for this workload |
@@ -85,8 +94,8 @@ commodity VPS can be rebuilt.
   explicit;
 - serial console and QEMU diagnostics are straightforward to collect as
   Kubernetes Job artifacts;
-- the implementation can remain a small, version-pinned launcher rather than a
-  permanent virtualization service;
+- the implementation can remain a small, version-pinned launcher or a narrow
+  host broker rather than a general-purpose virtualization service;
 - successful QEMU tests transfer directly to the external-VPS acceptance lane,
   while the container lane separately tests future pod viability.
 
@@ -131,15 +140,19 @@ compatibility while replacing bespoke lifecycle glue.
 
 ## Acceptance implications
 
-The implementation must not grade “QEMU process started” as success. The guest
-lane passes only when the VM:
+The implementation must not grade “QEMU process started” as success. Before
+guest acceptance, G-1 must prove the selected control plane's admission,
+device, resource, cleanup, reboot reconstruction, and negative security tests.
+The guest lane then passes only when the VM:
 
 - boots from a known Ubuntu base with its own systemd and kernel;
 - accepts the same `ubuntu` bootstrap and Ansible roles intended for a VPS;
 - reaches a clean second convergence;
 - reboots and restores every enabled cockpit service;
-- proves Tailscale test identity, SSH, VNC/XFCE/Chrome/CDP, 1Password wrapper
-  sealing semantics, Claude/Codex/Pi, MCPs, and Honeycomb evidence;
+- proves Tailscale contract-fake or separate-test-tailnet behavior,
+  VNC/XFCE/Chrome/CDP, 1Password wrapper sealing semantics,
+  Claude/Codex/Pi, MCPs, and Honeycomb evidence; production untagged identity
+  and Tailscale SSH remain G4/G5-only evidence;
 - destroys and recreates its root disk while retaining only the declared data
   disk;
 - exports machine-readable results tied to the Git commit and test-run ID.

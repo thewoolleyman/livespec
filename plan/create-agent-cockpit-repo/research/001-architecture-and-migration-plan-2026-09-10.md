@@ -156,10 +156,16 @@ agent-cockpit-info/
 │   ├── repos.yml
 │   ├── agent-config.yml
 │   ├── mcp.yml
-│   └── telemetry.yml
+│   ├── telemetry.yml
+│   ├── requirements-traceability.yml
+│   ├── measured-current-surface.yml
+│   ├── state-paths.yml
+│   └── external-seams.yml
 ├── schemas/
 │   ├── repos.schema.json
-│   └── cockpit.schema.json
+│   ├── cockpit.schema.json
+│   ├── evidence.schema.json
+│   └── traceability.schema.json
 ├── roles/
 │   ├── cockpit_base/
 │   ├── cockpit_identity/
@@ -225,6 +231,13 @@ symlink. If other durable paths are placed on the disk, declare them one by one
 and prohibit whole-home persistence by default because it mixes credentials,
 caches, and work product.
 
+`config/state-paths.yml` is the authority for every persisted path: exact path,
+owner/mode, class, sensitivity, disk, migration, backup owner, RPO/RTO, restore,
+destruction, and guest-sharing policy. The initial recovery objective is a
+12-hour RPO and four-hour RTO, proven by restoring to a fresh volume. Encryption
+must declare unlock and recovery-key custody; host-bound credentials are never
+mistaken for a portable disk-recovery mechanism.
+
 ## Bare-host bootstrap DAG
 
 The bootstrap is restartable and deliberately includes human identity gates:
@@ -275,9 +288,17 @@ gate rather than being silently skipped.
 During the independent read-only review, a gitignored local environment file in
 `1password-env-wrapper` was accidentally exposed to internal tool/model logs.
 No value is copied into this plan. Before using the affected credential to
-bootstrap a new host, rotate the affected 1Password service-account credential
-and reseal every host that consumes it. This is a separate authorized recovery
-action; the planning session must not rotate it implicitly.
+bootstrap a new host, inventory its consumers, mint a replacement while the old
+credential remains valid, reseal/test every host, and revoke the old credential
+only after every positive and rollback probe passes. Pin the wrapper to an exact
+reviewed commit until it has a release, probe its required `op` beta feature,
+and seal explicitly with `systemd-creds --with-key=host`.
+
+This migration must not remove or rewrite the current VPS
+`with-homelab-env.sh`. It remains live for `vps-restic-backup`,
+`cloudflare-mcp`, `honeycomb-mcp`, and
+`honeycomb-trigger-recipients-check`; those server-side consumers are outside
+the cockpit move.
 
 ## Workstation behavior to preserve
 
@@ -288,7 +309,9 @@ expanded left status width, and `detach-on-destroy on`. Add an automated tmux
 configuration parse/smoke test.
 
 Preserve Ctrl-R as the Atuin-backed history search and test the binding in an
-interactive zsh shell. Install only the useful cockpit baseline, including
+interactive Bash shell as originally requested and in zsh if zsh remains the
+login shell; define and test the fallback when Atuin is unavailable. Install
+only the useful cockpit baseline, including
 zsh, Atuin, fzf, zoxide, mise, Bun/Node, uv, just, ripgrep, jq, fd, keyutils,
 `systemd-creds`, gh, glab, AWS CLI, `op`, and the selected agent-driving tools.
 NTM, caam, cass, cm, `bd`/`bv`, `hl`, notifications, and factory clients need an
@@ -325,6 +348,9 @@ Preserve the complete measured stack:
 Acceptance must prove remote tailnet VNC, Chrome rendering, 1Password Desktop,
 CDP from localhost, and rejection from public/wildcard interfaces. The unit
 must rediscover a changed Tailscale IP after re-enrollment or reboot.
+Drive real keyboard and pointer input and retain a redacted screenshot receipt;
+also prove Chrome crash/respawn, one intended profile, preserved sandboxing,
+1Password shared-D-Bus unlock, and its bounded runtime/cgroup behavior.
 
 ## Repository reconciliation contract
 
@@ -355,12 +381,13 @@ The reconciler is non-destructive:
 
 ### Initial snapshot from the current workspace
 
-The live `~/workspace` is currently a symlink to `/data/projects`. Its 42
-top-level Git repositories are the seed list below. Preserve destination names
-in the initial manifest, then prune deliberately. The two Tailscale destinations
-share one origin and must be explicitly declared as such. `myproject` has no
-origin and therefore goes into the migration exception list, not the clone
-manifest.
+The live `~/workspace` is currently a symlink to `/data/projects`. The list
+below is a dated seed observation, not a durable count: independent measurements
+already differed by one repository. Re-inventory and hash it at migration
+freeze. Preserve destination names in the initial manifest, then prune
+deliberately. The two Tailscale destinations share one origin and must be
+explicitly declared as such. `myproject` has no origin and therefore goes into
+the migration exception list, not the clone manifest.
 
 ```text
 1password-env-wrapper
@@ -411,6 +438,13 @@ The implementation task that writes `repos.yml` must capture the full normalized
 origin URLs from this measured snapshot and must mark provider/manual-auth
 requirements explicitly.
 
+Migration fidelity also covers staged/untracked/selected ignored files, local
+branches, unpushed commits, tags, stashes, required reflogs, linked worktrees and
+absolute `.git` pointers, submodules, LFS, alternates, shallow/sparse state,
+every remote, push URL, and upstream. Cutover is a single-writer transaction
+with source/destination inventories and hashes; the old and new copies are
+never concurrently writable.
+
 ## Observability contract
 
 Reuse the `otel-collector` project through a pinned cockpit deployment shape;
@@ -432,6 +466,12 @@ Minimum telemetry, independent of content capture:
   explicit external owner and reconciliation test;
 - one real accepted trace from each agent after bootstrap and reboot.
 
+A canonical cockpit launcher is the supported choke point for shell/tmux,
+factory/NTM/Fabro, automation, and direct Claude/Codex/Pi work. The measured
+denominator is launcher invocations plus discovered direct-agent processes;
+interactive, exec, automation, startup failures, restarts, and exporter failure
+must all yield a correlated lifecycle event or an explicit bypass failure.
+
 Do not label an MCP API key or MCP registration as agent telemetry. Codex
 version-sensitive instrumentation must be verified against the pinned CLI's
 supported configuration/schema; the current local CLI alone is not a durable
@@ -445,10 +485,11 @@ tool results may be exported. The current host has full-content capture enabled,
 but that is evidence of current state, not consent to a fleet default.
 
 The safe provisional default is content capture off, with operational metadata,
-errors, timing, token counts, and redacted/allowlisted tool dimensions on. If
-content capture is approved, define filtering, truncation, Honeycomb access
-control, retention, environment-specific policy, and secret/PII tests before
-enabling it.
+errors, timing, token counts, and redacted/allowlisted tool dimensions on. The
+policy covers Honeycomb, local logs, JUnit/JSON, screenshots, serial consoles,
+cloud-init, and trace links. Define filtering, cardinality budgets, retention,
+access, deletion, artifact expiry, and planted-secret negative tests before any
+content capture is enabled.
 
 ## Implementation phases
 
@@ -480,6 +521,11 @@ acceptance.
 3. Add lint/schema/unit tests and the PowerEdge harness interface described in
    `003-poweredge-kubernetes-development-harness-2026-09-10.md`.
 4. Add `cockpit-doctor` with machine-readable and human output.
+5. Create schema-validated requirements-traceability, measured-current-surface,
+   state-path, external-seam, and evidence ledgers described in
+   `005-independent-review-remediation-2026-09-10.md`; every verbatim seed
+   clause and every measured service/tool/config/MCP/hook/path gets an owner,
+   disposition, gate, and acceptance receipt.
 
 Exit: CI is green, bootstrap reaches Ansible, and sample inventories validate.
 
@@ -549,23 +595,29 @@ reported; restore is rehearsed.
 
 Exit: all three agents have accepted evidence; “configured” alone is not a pass.
 
-### Phase 7 — build the PowerEdge autonomous harness
+### Phase 7 — establish G-1 and build the PowerEdge autonomous harness
 
-1. Add the `agent-cockpit-dev` namespace, scoped driver identity, quotas,
-   network policy, and commit-addressed deployment manifests.
+1. Have the PowerEdge/k3s owner establish G-1: separate builder/test/dogfood/VM
+   identities, a read-only external driver, admission-locked templates,
+   Pod-Security labels, quotas/limits/network policy/low priority, GHCR image
+   trust, and reboot-reconstruction receipts.
 2. Allocate a retained, capacity-bounded NVMe local PV on
    `poweredge-xubuntu`, initially 250 GiB, and bind it as the real
-   `/home/ubuntu/workspace` for `agent-cockpit-dev-0`.
-3. Build the digest-pinned Ubuntu 26.04 plus XFCE image and fast integration
-   Jobs.
+   `/home/ubuntu/workspace` for `agent-cockpit-dev-0`; add fail-closed mounting,
+   same-node fencing, independent backup, and fresh-LV restore.
+3. Build signed/SBOM/provenance-bearing Ubuntu 26.04 plus XFCE images through
+   protected ARC/GitHub Actions into GHCR and deploy only immutable digests.
 4. Run a one-replica dogfood StatefulSet and prove that Pod replacement loses
    processes but preserves declared work state.
-5. Add the `/dev/kvm`-backed QEMU runner and prove bare bootstrap, systemd,
-   reboot, resealing semantics, Tailscale test identity, VNC, telemetry, and
-   destroy/rebuild against an Ubuntu guest.
+5. Spike an admission-locked non-privileged QEMU runner against a narrow
+   host-side broker, select the safer measured design, and prove bare bootstrap,
+   systemd, reboot, resealing, fake/separate-tailnet networking, VNC,
+   telemetry, destroy/rebuild, deadlines, and orphan cleanup.
 6. Publish machine-readable evidence and Honeycomb run correlation for every
    gate, and let agents iterate without maintainer intervention until G0–G3 are
    green.
+7. Reboot PowerEdge with an empty/reconstructed k3s datastore and prove the
+   entire host-mount → policy → PV/PVC/RBAC → workload/driver DAG.
 
 Exit: the cluster provides repeatable container and real-VM acceptance, the
 NVMe workspace survives workload replacement, and every original requirement
@@ -573,7 +625,10 @@ has evidence or a named final external-identity gate.
 
 ### Phase 8 — provision and dogfood `agent-cockpit-0`
 
-1. Provision a new VPS with a fresh attached persistent disk.
+1. Ratify the provider contract (image identity, attached-disk semantics,
+   encryption/unlock/recovery, firewall/IPv4/IPv6, console/rescue, backups,
+   cloud-init retention, destroy behavior, and external scanner), then provision
+   a new VPS with a fresh attached persistent disk.
 2. Run bootstrap from committed/pinned source, complete manual identity gates,
    and run Ansible twice.
 3. Reboot and prove unattended service recovery, then run the full remote
@@ -583,7 +638,8 @@ has evidence or a named final external-identity gate.
 5. Destroy and rebuild the compute instance while preserving only the declared
    disk/work-state inputs; prove recovery.
 
-Exit: one host has passed convergence, reboot, real use, and destroy/rebuild.
+Exit: one host has passed convergence, reboot, real use, external scanning, and
+destroy/rebuild, and has met the quantitative dogfood threshold below.
 
 ### Phase 9 — migrate active work from `vps`
 
@@ -624,8 +680,9 @@ cockpit material from:
 - agent configs, hooks, and scripts with `/data/projects` or VPS literals.
 
 Preserve Dolt, beads-web, both VPS backup systems, `fabro-hosts`-owned services,
-and other intentional server/CI workloads. Before deleting old cockpit units,
-prove zero relevant tmux sessions/processes and keep a reviewed removal list.
+the four live `with-homelab-env.sh` consumers, and other intentional server/CI
+workloads. Before deleting old cockpit units, prove zero relevant tmux
+sessions/processes and keep a reviewed removal list.
 
 Exit: `vps-info` describes the bespoke server that remains, not a deprecated
 agent cockpit; no canonical cockpit role exists in two repositories.
@@ -635,27 +692,41 @@ agent cockpit; no canonical cockpit role exists in two repositories.
 The migration is not complete until all of the following are evidenced:
 
 - fresh supported Ubuntu reaches a converged cockpit from committed pins;
-- second Ansible run is clean; reboot restores enabled services;
+- second Ansible run is clean and independently verifies files/hashes, package
+  versions, units, settings, listeners, and probes; reboot restores services;
 - kernel, inventory, and Tailscale names equal `agent-cockpit-{n}`;
 - Tailscale is Running, untagged, SSH-enabled, key expiry disabled, and remotely
   reachable;
-- VNC is tailnet-only; no cockpit listener binds public IP, `0.0.0.0`, or `[::]`;
+- VNC is externally unreachable from public/non-tailnet paths and responds over
+  the tailnet; socket-level wildcard assertions follow the chosen implementation
+  contract rather than substituting for an external probe;
 - XFCE, Chrome, loopback CDP, and 1Password Desktop work in the VNC session;
 - tmux configuration and Atuin Ctrl-R match the preserved behavior;
 - Claude, Codex, and Pi each complete a real task with required MCPs/plugins;
 - gh can access private GitHub repositories; glab either passes or reports its
   explicit blocked gate; AWS CLI works and workload STS passes if enabled;
 - all declared repositories clone into `/home/ubuntu/workspace`; dirty state is
-  never destroyed;
-- each agent emits the agreed telemetry and each host has a working silence
-  detector;
+  never destroyed, and the complete Git-topology migration round-trips;
+- every synthetic/discovered agent invocation is accounted for by the telemetry
+  denominator and each host has a delivered, tested silence alert;
 - no secret or host identity appears in Git, logs, cloud-init, or another
   host's sealed state;
 - compute destroy/rebuild with declared persistent state succeeds;
 - PowerEdge container Jobs, the retained dogfood StatefulSet, and a disposable
-  KVM guest all pass their capability-appropriate gates before VPS promotion;
+  KVM guest all pass their capability-appropriate gates after G-1, including
+  escape negatives, full datastore reconstruction, resource SLOs, image trust,
+  storage failure/restore, and VM orphan cleanup;
 - `agent-cockpit-1` proves there are no hidden `-0` assumptions;
 - old VPS cockpit activity reaches zero before deprecation changes merge.
+
+Quantitative promotion receipts are mandatory. Before G4: 7 consecutive days,
+30 real non-production tasks (at least 5 per agent), 3 dogfood Pod replacements,
+2 VM root rebuilds, one full PowerEdge reboot/reconstruction, and one fresh-LV
+backup restore. Before VPS deprecation: 14 consecutive `agent-cockpit-0` days,
+50 real tasks (at least 10 per agent), 2 reboots, one compute replacement, one
+external public-interface scan, one delivered alert, and zero new VPS cockpit
+sessions throughout a 14-day rollback window. `agent-cockpit-1` must pass its
+own fresh bootstrap and remote acceptance.
 
 ## Rollback
 
@@ -690,7 +761,8 @@ completely working. Implementation therefore proceeds with these defaults:
 
 Implementation should be filed as dependency-layered children for Phases 1–11,
 not one giant “build cockpit” item. Agents escalate before G0–G3 completion only
-for a genuine authority or safety blocker. When G0–G3 are green, present one
+for a genuine authority or safety blocker. G-1 is the one-time administrative
+enablement ceremony; after it passes, agents can drive G0–G3. When G0–G3 are green, present one
 consolidated maintainer packet covering the external VPS/provider selection,
 production Tailscale and account enrollments, credential rotation/resealing,
 persistent-disk backup owner, and any behavior that cannot safely be proven
