@@ -362,3 +362,159 @@ def test_validate_livespec_config_credential_wrapper_absent_yields_empty_list() 
         case _:
             msg = f"expected Success(LivespecConfig), got {result}"
             raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_absent_yields_none() -> None:
+    """A project that omits `git_author` has not opted in.
+
+    Absence is the adopter default: core imposes no operator
+    identity on a project that does not declare one.
+    """
+    result = livespec_config.validate_livespec_config(payload={}, schema=_SCHEMA)
+    match result:
+        case Success(value):
+            assert value.git_author is None
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_round_trips_operator_and_bots() -> None:
+    """A declaration materializes the operator pair and every mechanical pair."""
+    payload: dict[str, object] = {
+        "git_author": {
+            "operator_name": "Chad Woolley",
+            "operator_email": "thewoolleyman@gmail.com",
+            "mechanical_authors": [
+                {
+                    "name": "livespec-pr-bot[bot]",
+                    "email": "livespec-pr-bot[bot]@users.noreply.github.com",
+                },
+            ],
+        },
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Success(value):
+            policy = value.git_author
+            assert policy is not None
+            assert policy.operator_name == "Chad Woolley"
+            assert policy.operator_email == "thewoolleyman@gmail.com"
+            assert len(policy.mechanical_authors) == 1
+            assert policy.mechanical_authors[0].name == "livespec-pr-bot[bot]"
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_mechanical_authors_default_to_empty() -> None:
+    """Omitting `mechanical_authors` is the strictest reading, not an open door."""
+    payload: dict[str, object] = {
+        "git_author": {
+            "operator_name": "Chad Woolley",
+            "operator_email": "thewoolleyman@gmail.com",
+        },
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Success(value):
+            policy = value.git_author
+            assert policy is not None
+            assert policy.mechanical_authors == ()
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_rejects_a_missing_operator_email() -> None:
+    """Both operator fields are required once the section is present."""
+    payload: dict[str, object] = {"git_author": {"operator_name": "Chad Woolley"}}
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Failure(_):
+            return
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_rejects_an_unknown_field() -> None:
+    """A typo'd key must fail validation, not become an inert declaration."""
+    payload: dict[str, object] = {
+        "git_author": {
+            "operator_name": "Chad Woolley",
+            "operator_email": "thewoolleyman@gmail.com",
+            "operater_email": "thewoolleyman@gmail.com",
+        },
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Failure(_):
+            return
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_rejects_an_unknown_mechanical_field() -> None:
+    """The unknown-field rejection reaches inside each mechanical entry too."""
+    payload: dict[str, object] = {
+        "git_author": {
+            "operator_name": "Chad Woolley",
+            "operator_email": "thewoolleyman@gmail.com",
+            "mechanical_authors": [
+                {"name": "bot", "email": "bot@example.com", "note": "release job"},
+            ],
+        },
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Failure(_):
+            return
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_validate_livespec_config_git_author_rejects_an_empty_operator_name() -> None:
+    """An empty identity field cannot be matched byte-for-byte against anything."""
+    payload: dict[str, object] = {
+        "git_author": {"operator_name": "", "operator_email": "thewoolleyman@gmail.com"},
+    }
+    result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+    match result:
+        case Failure(_):
+            return
+        case _:
+            msg = f"expected Failure(ValidationError), got {result}"
+            raise AssertionError(msg)
+
+
+def test_this_repository_declares_the_canonical_fleet_operator_pair() -> None:
+    """This repository's own `.livespec.jsonc` opts in with the fleet pair.
+
+    Per `SPECIFICATION/non-functional-requirements.md` every fleet
+    member MUST declare the canonical operator identity. Reading the
+    committed config through the real validator proves the shipped
+    declaration is both well-formed and correct, rather than merely
+    present.
+    """
+    from livespec.parse import jsonc
+
+    config_path = _SCHEMA_PATH.parents[4] / ".livespec.jsonc"
+    parsed = jsonc.loads(text=config_path.read_text(encoding="utf-8"))
+    match parsed:
+        case Success(payload):
+            result = livespec_config.validate_livespec_config(payload=payload, schema=_SCHEMA)
+        case _:
+            msg = f"expected the committed config to parse, got {parsed}"
+            raise AssertionError(msg)
+    match result:
+        case Success(value):
+            policy = value.git_author
+            assert policy is not None
+            assert policy.operator_name == "Chad Woolley"
+            assert policy.operator_email == "thewoolleyman@gmail.com"
+        case _:
+            msg = f"expected Success(LivespecConfig), got {result}"
+            raise AssertionError(msg)

@@ -20,7 +20,12 @@ individually overridable).
 section is present (schema-required four keys) and to `None`
 when absent. `credential_wrapper` materializes to the payload's
 argv-form prefix when present and to `[]` when absent (no
-credential wrapper applied). Unknown top-level sections validate
+credential wrapper applied). `git_author` materializes to
+`GitAuthorPolicy` when the section is present and to `None` when
+absent; the schema rejects unknown fields inside it and inside
+each `mechanical_authors` entry, so a typo'd key is a validation
+failure rather than a silently-inert declaration.
+Unknown top-level sections validate
 per the schema root's `additionalProperties: true` and are
 dropped here — each plugin or sibling consumer validates its own
 section on read.
@@ -36,7 +41,9 @@ from returns.result import Result, safe
 
 from livespec.errors import ValidationError
 from livespec.schemas.dataclasses.livespec_config import (
+    GitAuthorPolicy,
     LivespecConfig,
+    MechanicalAuthor,
     OrchestratorConfig,
     SpecClis,
 )
@@ -97,6 +104,30 @@ def _build_orchestrator(*, raw: dict[str, Any] | None) -> OrchestratorConfig | N
     )
 
 
+def _build_git_author(*, raw: dict[str, Any] | None) -> GitAuthorPolicy | None:
+    """Materialize the optional GitAuthorPolicy from the validated dict.
+
+    Returns None when the section is absent — the project has not
+    opted into operator-author enforcement, and core imposes no
+    identity on it. When present, schema-level validation has
+    already required both operator fields and constrained every
+    `mechanical_authors` entry to an exact non-empty name/email
+    pair, so direct indexing is safe. The array materializes to a
+    tuple so the policy value stays hashable and immutable
+    alongside the rest of the frozen config.
+    """
+    if raw is None:
+        return None
+    return GitAuthorPolicy(
+        operator_name=raw["operator_name"],
+        operator_email=raw["operator_email"],
+        mechanical_authors=tuple(
+            MechanicalAuthor(name=entry["name"], email=entry["email"])
+            for entry in raw.get("mechanical_authors", [])
+        ),
+    )
+
+
 @safe(exceptions=(_JsonSchemaValueException,))
 def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> LivespecConfig:
     """Decorator-lifted validate-and-construct call.
@@ -127,6 +158,7 @@ def _raw_validate(*, payload: dict[str, Any], schema: dict[str, Any]) -> Livespe
         spec_clis=_build_spec_clis(raw=validated.get("spec_clis")),
         orchestrator=_build_orchestrator(raw=validated.get("orchestrator")),
         credential_wrapper=validated.get("credential_wrapper", []),
+        git_author=_build_git_author(raw=validated.get("git_author")),
     )
 
 

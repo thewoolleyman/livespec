@@ -42,6 +42,8 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 __all__: list[str] = []
 
 
@@ -101,6 +103,7 @@ def _run_wrapper(
     )
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_phase_3_exit_criterion_round_trip(*, tmp_path: Path) -> None:  # noqa: PLR0915
     """Full round-trip: seed -> propose-change -> critique -> revise -> prune-history -> doctor.
 

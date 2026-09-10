@@ -14,6 +14,24 @@ The autouse fixture below scrubs the inherited GIT_* vars from
 calls inherit a clean environment and operate on the
 tmp_path-scoped `.git` they create themselves.
 
+The scrub covers the IDENTITY vars (`GIT_AUTHOR_NAME`,
+`GIT_AUTHOR_EMAIL`, `GIT_AUTHOR_DATE`, and their `GIT_COMMITTER_*`
+counterparts) for the same reason, and the failure they cause is
+sharper than the working-tree one above. `git commit --amend`
+exports the amended commit's preserved author into the hook
+environment, so the suite running under the Red -> Green amend
+this repo mandates sees an ambient author that a plain `git
+commit` does not. Since `livespec.io.git` now resolves the
+identity git would ACTUALLY write (`git var GIT_AUTHOR_IDENT`,
+which honours those vars) rather than reading `git config` alone,
+an unscrubbed identity var silently overrides the per-test git
+config a test just wrote into its tmp repo — the test then
+asserts against the AMBIENT author instead of its own fixture.
+That is invisible on a bare `pytest` run and fails only inside
+the amend, which is the least convenient place to discover it.
+Tests that are ABOUT an identity override set one explicitly on
+top of the clean baseline.
+
 Per-test-file `_scrub_git_env` helpers (in many existing tests)
 remain as documentation + defense-in-depth and continue to work
 unchanged — `monkeypatch.delenv` is idempotent when the var has
@@ -45,6 +63,12 @@ _GIT_ENV_PASSTHROUGH_VARS: tuple[str, ...] = (
     "GIT_NAMESPACE",
     "GIT_LITERAL_PATHSPECS",
     "GIT_PREFIX",
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+    "GIT_COMMITTER_DATE",
 )
 
 _LIVESPEC_ENV_PASSTHROUGH_VARS: tuple[str, ...] = ("LIVESPEC_CURRENCY_GATE",)
@@ -57,6 +81,43 @@ def _scrub_inherited_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(var, raising=False)
     for var in _LIVESPEC_ENV_PASSTHROUGH_VARS:
         monkeypatch.setenv(var, "warn")
+
+
+@pytest.fixture
+def deterministic_git_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Pin a resolvable, self-consistent git author identity for one test.
+
+    `livespec.io.git.get_git_user` resolves the identity git would
+    actually write and fails when it disagrees with — or is absent
+    from — configuration, per the operator-author rule in
+    `SPECIFICATION/non-functional-requirements.md`. A test that
+    drives a command through that seam therefore depends on the
+    HOST's git identity unless it pins one: a developer machine
+    resolves the developer's own pair, a bare CI runner
+    auto-detects `runner@<hostname>`, and a host setting
+    `user.useConfigOnly` resolves nothing at all. Same test, three
+    outcomes.
+
+    Pointing `GIT_CONFIG_GLOBAL` at a scratch config supplies one
+    pair to BOTH reads — `git var GIT_AUTHOR_IDENT` and
+    `git config --get user.name`/`user.email` — so they agree by
+    construction and the test asserts the behavior it is about
+    rather than the host's configuration. Tests that are ABOUT the
+    disagreement set their own `GIT_AUTHOR_*` override on top; the
+    environment beats the config file, which is the divergence
+    under test.
+    """
+    config_path = tmp_path_factory.mktemp("gitconfig") / "config"
+    _ = config_path.write_text(
+        "[user]\n\tname = Test User\n\temail = test@example.com\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(config_path))
+    monkeypatch.delenv("GIT_AUTHOR_NAME", raising=False)
+    monkeypatch.delenv("GIT_AUTHOR_EMAIL", raising=False)
 
 
 def _resolve_log_level() -> int:

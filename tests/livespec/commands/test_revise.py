@@ -12,6 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
 from livespec.commands import revise
 
 __all__: list[str] = []
@@ -469,6 +470,7 @@ def test_revise_main_rejects_multiple_decisions_with_only_topic_guard(
     assert "exactly one decisions[] entry" in serialized
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     *,
     tmp_path: Path,
@@ -501,6 +503,7 @@ def test_revise_main_uses_cwd_specification_default_when_no_target_flags(
     assert revision_md.exists(), f"expected {revision_md} to be written"
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_resolves_relative_spec_target_against_cwd_not_project_root(
     *,
     tmp_path: Path,

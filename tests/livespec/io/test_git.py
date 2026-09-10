@@ -41,7 +41,9 @@ from pathlib import Path
 
 import pytest
 from livespec.io import git as io_git
+from livespec.parse.git_author import GitIdentity
 from livespec.spec_governance.pr_merge_derivation import LOCAL_DIFF_ARGS
+from returns.io import IOResult
 from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 
@@ -1115,6 +1117,176 @@ def test_diff_name_only_returns_failure_for_an_unknown_ref(
         head_ref="HEAD",
         diff_args=("--name-only",),
     )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_get_effective_author_reads_the_identity_git_would_write(*, tmp_path: Path) -> None:
+    """`get_effective_author` returns the configured pair when nothing overrides it."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+
+    result = io_git.get_effective_author(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(identity):
+            assert identity == GitIdentity(name="Test User", email="test@example.com")
+        case _:
+            raise AssertionError(f"expected IOSuccess(<GitIdentity>), got {result!r}")
+
+
+def test_get_effective_author_honours_the_author_environment_override(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`GIT_AUTHOR_*` beats configuration, and the reader must see that.
+
+    This is the divergence a `git config user.email` read cannot
+    see, and the reason the guard resolves through `git var`.
+    """
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "Override Author")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "override@example.com")
+
+    result = io_git.get_effective_author(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(identity):
+            assert identity == GitIdentity(name="Override Author", email="override@example.com")
+        case _:
+            raise AssertionError(f"expected IOSuccess(<GitIdentity>), got {result!r}")
+
+
+def test_get_effective_author_fails_closed_when_git_cannot_resolve_one(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No configured identity and `user.useConfigOnly` set is a hard failure.
+
+    An absent identity MUST NOT resolve to a host-invented
+    fallback, so the read stays on the failure track rather than
+    handing back whatever git would otherwise guess.
+    """
+    _ = subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    _ = subprocess.run(
+        ["git", "config", "--local", "user.useConfigOnly", "true"],
+        cwd=tmp_path,
+        check=True,
+    )
+    monkeypatch.delenv("GIT_AUTHOR_NAME", raising=False)
+    monkeypatch.delenv("GIT_AUTHOR_EMAIL", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "empty-home"))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "empty-global-config"))
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", str(tmp_path / "empty-system-config"))
+
+    result = io_git.get_effective_author(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_get_effective_author_fails_on_an_unparseable_ident(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An ident line the parser rejects must not resolve to an identity."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+
+    def _fake_run(*, argv: list[str], cwd: Path | None = None) -> object:  # noqa: ARG001
+        assert argv[-1] == "GIT_AUTHOR_IDENT"
+        return IOResult.from_value(
+            subprocess.CompletedProcess(args=argv, returncode=0, stdout="garbage", stderr=""),
+        )
+
+    monkeypatch.setattr("livespec.io._git_author.run_subprocess", _fake_run)
+
+    result = io_git.get_effective_author(project_root=tmp_path)
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_list_commit_authors_returns_identity_and_message_per_commit(*, tmp_path: Path) -> None:
+    """Each introduced commit's author and full message travel together.
+
+    The message half carries the preserved-third-party trailer, so
+    the classifier needs both to decide a non-operator author.
+    """
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "first.txt", content=b"first\n")
+
+    result = io_git.list_commit_authors(project_root=tmp_path, rev_range="HEAD")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(commits):
+            assert len(commits) == 1
+            assert commits[0].identity == GitIdentity(
+                name="Test User",
+                email="test@example.com",
+            )
+            assert "fixture commit" in commits[0].message
+        case _:
+            raise AssertionError(f"expected IOSuccess(<tuple>), got {result!r}")
+
+
+def test_list_commit_authors_returns_empty_for_a_range_selecting_nothing(*, tmp_path: Path) -> None:
+    """An empty newly-introduced set is a real answer, not a failure."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "first.txt", content=b"first\n")
+
+    result = io_git.list_commit_authors(project_root=tmp_path, rev_range="HEAD..HEAD")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(commits):
+            assert commits == ()
+        case _:
+            raise AssertionError(f"expected IOSuccess(()), got {result!r}")
+
+
+def test_list_commit_authors_fails_for_an_unresolvable_range(*, tmp_path: Path) -> None:
+    """An unknown ref must not be swallowed into an empty commit list."""
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    _git_commit_file(cwd=tmp_path, path=tmp_path / "first.txt", content=b"first\n")
+
+    result = io_git.list_commit_authors(project_root=tmp_path, rev_range="no-such-ref..HEAD")
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_get_git_user_fails_when_the_effective_author_disagrees_with_config(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Revision metadata MUST NOT record an author the commit will not carry.
+
+    With `GIT_AUTHOR_*` overriding a canonical configuration, a
+    config-only read would record the canonical pair while the
+    commit carrying the revision file records the override. The
+    shared effective-identity rule refuses instead.
+    """
+    _git_init_with_user(cwd=tmp_path, name="Test User", email="test@example.com")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "Override Author")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "override@example.com")
+
+    result = io_git.get_git_user()
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
         case Failure(_):

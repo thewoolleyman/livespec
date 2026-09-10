@@ -44,6 +44,7 @@ from livespec.doctor.static import (
     config_named_cli_callability,
     copier_template_workflow_coverage,
     gherkin_blank_line_format,
+    git_author_policy,
     livespec_jsonc_valid,
     master_direct_uncommitted_spec_edits,
     no_cross_spec_reference,
@@ -90,6 +91,7 @@ STATIC_CHECKS = (
     no_spec_section_citation_in_code,
     wiring_completeness_cross_repo,
     agents_ai_reference_resolution,
+    git_author_policy,
 )
 
 

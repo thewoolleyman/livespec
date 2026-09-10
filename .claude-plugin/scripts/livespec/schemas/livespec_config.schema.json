@@ -134,6 +134,46 @@
         }
       }
     },
+    "git_author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator_name", "operator_email"],
+      "description": "OPTIONAL opt-in declaration of the exact Git author identity this project's operator-owned commits MUST carry, per contracts.md §\"Spec-side CLI contract\" and non-functional-requirements.md. Absence means the project has NOT opted into operator-author enforcement and core imposes no identity on it; presence activates the author-policy obligations. The declaration describes commit identity, not GitHub or credential identity: a GitHub App or token owner MAY remain the committer or forge audit actor, but MUST NOT replace the operator author.",
+      "properties": {
+        "operator_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exact Git author name every operator-owned commit MUST carry, byte-for-byte."
+        },
+        "operator_email": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exact Git author email every operator-owned commit MUST carry, byte-for-byte."
+        },
+        "mechanical_authors": {
+          "type": "array",
+          "description": "OPTIONAL exact author pairs permitted to author commits containing exclusively mechanical release, dependency-pin, backup, tripwire, or equivalent generated output. A commit carrying operator-owned judgment or authored content MUST use the operator pair even when automation transports it. An identity absent from this array is never a permitted mechanical author.",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "email"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The mechanical job's exact Git author name."
+              },
+              "email": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The mechanical job's exact Git author email."
+              }
+            }
+          }
+        }
+      }
+    },
     "credential_wrapper": {
       "type": "array",
       "items": { "type": "string" },

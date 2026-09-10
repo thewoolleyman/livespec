@@ -16,18 +16,16 @@ Per style doc: the io/ layer is the impure boundary; every operation
 that touches git lives here
 under `@impure_safe` so the railway flows through `IOResult`.
 The git facade exposes `get_git_user` returning the conventional
-`"Name <email>"` author string from local git config, used by
+`"Name <email>"` author string, used by
 `livespec.commands.revise.main` (and `seed.main`'s revision-auto-
 capture path) to populate the revision-file `author_human`
 front-matter field and `revision_front_matter.schema.json`.
 
-lands the smallest viable surface: the happy path
-where both `git config --get user.name` and
-`git config --get user.email` return non-empty values. Subsequent
-cycles widen the unset/missing-git fallbacks (the `"unknown"`
-literal when git is available but either value is unset;
-PreconditionError when the git binary itself is missing entirely)
-under typed Failure carriers as consumer pressure forces them.
+`get_git_user` resolves that string by the effective-identity rule
+rather than from `git config` alone, and fails when the configured
+pair and the pair git would actually write disagree — see its
+docstring and `livespec/io/_git_author.py` for why the two reads
+are not interchangeable.
 
 The composition mechanism is `livespec.io.proc.run_subprocess`
 rather than a direct `subprocess.run` import: every git operation
@@ -66,18 +64,31 @@ from livespec.errors import LivespecError, PreconditionError
 # private siblings `_git_remote` and `_git_pull_request` (extracted to
 # keep this file under the per-file LLOC ceiling) and are re-exported
 # here so the public seam stays `io.git.<name>` for every consumer.
+# `_git_author` carries the same split for the author-identity
+# readers: everything answering "who authored this" lives there
+# together, which is also the cohesion boundary — this file's own
+# readers answer questions about trees, branches, and worktrees.
+from livespec.io._git_author import (
+    CommitAuthor,
+    get_effective_author,
+    get_git_user,
+    list_commit_authors,
+)
 from livespec.io._git_pull_request import diff_name_only, merge_base
 from livespec.io._git_remote import list_remote_branches
 from livespec.io._git_worktrees import Worktree, list_worktrees
 from livespec.io.proc import run_subprocess
 
 __all__: list[str] = [
+    "CommitAuthor",
     "Worktree",
     "diff_name_only",
     "get_default_branch_name",
+    "get_effective_author",
     "get_git_user",
     "is_git_repo",
     "list_at_head",
+    "list_commit_authors",
     "list_merged_branches",
     "list_remote_branches",
     "list_status_porcelain",
@@ -92,32 +103,6 @@ __all__: list[str] = [
 # canonical shape `<mode> SP <type> SP <object-id> TAB <name>`; the
 # prefix split yields three tokens with type at index 1.
 _LS_TREE_TYPE_COLUMN_INDEX: int = 1
-
-
-def get_git_user() -> IOResult[str, LivespecError]:
-    """Read `git config user.name` + `user.email` and combine them.
-
-    Returns IOSuccess(`"Name <email>"`) when both git config
-    values are set and non-empty in the surrounding repository's
-    local config. The composition: read user.name via the proc
-    facade, bind the user.email read on top, map the two
-    captured stdouts into the conventional Git author format.
-
-    happy-path-only: when either git config value is
-    unset (returncode != 0) or empty (whitespace-only stdout),
-    the literal substring is emitted as-is. Later cycles widen
-    this to the `"unknown"` fallback + the PreconditionError lift
-    when the git binary is missing.
-    """
-    return run_subprocess(argv=["git", "config", "--get", "user.name"]).bind(
-        lambda name_completed: run_subprocess(
-            argv=["git", "config", "--get", "user.email"],
-        ).map(
-            lambda email_completed: (
-                f"{name_completed.stdout.strip()} <{email_completed.stdout.strip()}>"
-            ),
-        ),
-    )
 
 
 def is_git_repo(*, project_root: Path) -> IOResult[bool, LivespecError]:

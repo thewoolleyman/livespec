@@ -356,6 +356,7 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
         "doctor-no-spec-section-citation-in-code",
         "doctor-wiring-completeness-cross-repo",
         "doctor-agents-ai-reference-resolution",
+        "doctor-git-author-policy",
     }
     sub_spec_check_ids = {
         "doctor-template-files-present",
@@ -410,6 +411,11 @@ def test_run_static_main_emits_per_tree_findings_for_sub_specs(
             # check reports the ratified v1 exemption as `skipped` naming
             # the format version rather than passing silently.
             "doctor-spec-tree-manifested",
+            # doctor-git-author-policy enforces an OPT-IN declaration:
+            # this fixture's .livespec.jsonc carries no `git_author`, so
+            # the project has not opted in and core imposes no operator
+            # identity on it. Skipping is the contract, not a gap.
+            "doctor-git-author-policy",
         ):
             assert (
                 finding["status"] == "skipped"
