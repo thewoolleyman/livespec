@@ -117,9 +117,12 @@ cockpit.
   provider is selected. The host bootstrap contract and cloud-init interface
   are in scope now; provider-specific resource creation is reconsidered before
   provisioning `agent-cockpit-0`.
-- **Kubernetes/container execution:** defer implementation until two bare-host
-  rebuilds pass. Reconsider as a worker execution layer, not as a containerized
-  copy of the entire interactive desktop/identity host.
+- **Kubernetes production placement:** defer declaring Kubernetes the
+  production owner until cluster container, KVM, fresh-VPS, and second-instance
+  gates pass. Kubernetes development/testing is now in scope immediately: use
+  the PowerEdge cluster for fast Ubuntu-plus-XFCE container tests, a retained
+  NVMe-backed dogfood StatefulSet, and a KVM guest for host-level parity. See
+  `003-poweredge-kubernetes-development-harness-2026-09-10.md`.
 - **LiveSpec adoption:** defer until the second-host acceptance review. Adopt
   only if its governance benefits an independent backlog.
 - **Cockpit data backup service:** do not copy VPS backup services. Define the
@@ -449,19 +452,24 @@ enabling it.
 
 ## Implementation phases
 
-### Phase 0 — contain and ratify
+### Phase 0 — contain and lock autonomous defaults
 
-1. Rotate the credential exposed to internal review logs and reseal consumers.
-2. Confirm the standalone/pinned-seam architecture.
-3. Decide per-cockpit versus shared 1Password service accounts (recommended:
-   per-cockpit), whether AWS workload identity is required, and the content
-   capture policy.
-4. Select supported Ubuntu release(s)/architecture, initial VPS provider, disk
-   encryption/backup owner, and instance-number allocation authority.
-5. Decide the explicit ACFS-derived utility keep/drop list.
+1. Quarantine the credential exposed to internal review logs from all test
+   paths; rotate and reseal it before any production bootstrap consumes it.
+2. Lock the standalone/pinned-seam architecture for implementation.
+3. Use per-cockpit identities, install AWS CLI with AWS workload identity as a
+   separate optional profile, and keep telemetry content capture off.
+4. Use Ubuntu 26.04 LTS amd64 for cluster test lanes while keeping the external
+   VPS provider selection deferred until cluster parity is green.
+5. Re-express a measured, pinned ACFS-derived utility subset rather than
+   installing ACFS wholesale.
+6. Treat the original maintainer turn in
+   `002-original-requirements-seed-2026-09-10.md` as a completeness-review
+   requirement carrier.
 
-Exit: decisions and security receipt are recorded; no implementation child
-assumes unresolved credential/privacy policy.
+Exit: autonomous defaults are recorded; test lanes require no production
+credential; remaining human-only identity steps are batched for final
+acceptance.
 
 ### Phase 1 — create the repository and executable contract
 
@@ -469,8 +477,8 @@ assumes unresolved credential/privacy policy.
    Ansible layout, schemas, CI, dependency pinning, and changelog policy.
 2. Add a bootstrap contract that works from supported bare Ubuntu with only
    provider SSH/cloud-init and an ephemeral way to clone the private repo.
-3. Add lint/schema/unit tests and a container/VM syntax tier that does not
-   pretend to validate Tailscale/VNC/systemd end-to-end.
+3. Add lint/schema/unit tests and the PowerEdge harness interface described in
+   `003-poweredge-kubernetes-development-harness-2026-09-10.md`.
 4. Add `cockpit-doctor` with machine-readable and human output.
 
 Exit: CI is green, bootstrap reaches Ansible, and sample inventories validate.
@@ -541,7 +549,29 @@ reported; restore is rehearsed.
 
 Exit: all three agents have accepted evidence; “configured” alone is not a pass.
 
-### Phase 7 — provision and dogfood `agent-cockpit-0`
+### Phase 7 — build the PowerEdge autonomous harness
+
+1. Add the `agent-cockpit-dev` namespace, scoped driver identity, quotas,
+   network policy, and commit-addressed deployment manifests.
+2. Allocate a retained, capacity-bounded NVMe local PV on
+   `poweredge-xubuntu`, initially 250 GiB, and bind it as the real
+   `/home/ubuntu/workspace` for `agent-cockpit-dev-0`.
+3. Build the digest-pinned Ubuntu 26.04 plus XFCE image and fast integration
+   Jobs.
+4. Run a one-replica dogfood StatefulSet and prove that Pod replacement loses
+   processes but preserves declared work state.
+5. Add the `/dev/kvm`-backed QEMU runner and prove bare bootstrap, systemd,
+   reboot, resealing semantics, Tailscale test identity, VNC, telemetry, and
+   destroy/rebuild against an Ubuntu guest.
+6. Publish machine-readable evidence and Honeycomb run correlation for every
+   gate, and let agents iterate without maintainer intervention until G0–G3 are
+   green.
+
+Exit: the cluster provides repeatable container and real-VM acceptance, the
+NVMe workspace survives workload replacement, and every original requirement
+has evidence or a named final external-identity gate.
+
+### Phase 8 — provision and dogfood `agent-cockpit-0`
 
 1. Provision a new VPS with a fresh attached persistent disk.
 2. Run bootstrap from committed/pinned source, complete manual identity gates,
@@ -555,7 +585,7 @@ Exit: all three agents have accepted evidence; “configured” alone is not a p
 
 Exit: one host has passed convergence, reboot, real use, and destroy/rebuild.
 
-### Phase 8 — migrate active work from `vps`
+### Phase 9 — migrate active work from `vps`
 
 1. Inventory every tmux session/pane, current working directory, child process,
    dirty/untracked file, unpushed ref, active task, agent transcript/handoff,
@@ -570,7 +600,7 @@ Exit: one host has passed convergence, reboot, real use, and destroy/rebuild.
 Exit: no active cockpit work depends on the old VPS and rollback evidence is
 still available.
 
-### Phase 9 — prove fleet semantics with `agent-cockpit-1`
+### Phase 10 — prove fleet semantics with `agent-cockpit-1`
 
 Provision a second fresh host with only a new instance number and credentials.
 Repeat bootstrap, idempotence, reboot, remote acceptance, and telemetry tests.
@@ -578,7 +608,7 @@ Any host-specific code or copied identity is a release blocker.
 
 Exit: the same commit produces two independently enrolled cattle instances.
 
-### Phase 10 — deprecate old owners
+### Phase 11 — deprecate old owners
 
 After the rollback window and second-host proof, remove or redirect duplicated
 cockpit material from:
@@ -622,6 +652,8 @@ The migration is not complete until all of the following are evidenced:
 - no secret or host identity appears in Git, logs, cloud-init, or another
   host's sealed state;
 - compute destroy/rebuild with declared persistent state succeeds;
+- PowerEdge container Jobs, the retained dogfood StatefulSet, and a disposable
+  KVM guest all pass their capability-appropriate gates before VPS promotion;
 - `agent-cockpit-1` proves there are no hidden `-0` assumptions;
 - old VPS cockpit activity reaches zero before deprecation changes merge.
 
@@ -639,21 +671,27 @@ commits and reconverging the old VPS; bespoke VPS services remain untouched
 throughout. The persistent cockpit disk and its independent backup are the
 recovery source for work product, while every machine identity is re-minted.
 
-## Decisions required before implementation children are filed
+## Autonomous execution posture
 
-1. Confirm the standalone `agent-cockpit-info` recommendation, with optional
-   adopter review only after two-host proof.
-2. Confirm per-instance 1Password service accounts, or explicitly accept a
-   shared credential's larger revocation/blast radius.
-3. Decide whether AWS workload authentication is a cockpit requirement or only
-   AWS CLI installation is required.
-4. Decide the Honeycomb content policy. Recommended default: operational
-   metadata on, prompt/response/tool content off until explicitly approved.
-5. Choose the initial VPS provider, supported Ubuntu release/architecture,
-   persistent-disk encryption/backup owner, and instance-number allocator.
-6. Confirm that selected ACFS conveniences will be re-expressed and pinned in
-   the cockpit repository rather than installing ACFS wholesale.
+The maintainer authorized agents to drive development and tests on the
+PowerEdge cluster without piecemeal questions until the system is deemed
+completely working. Implementation therefore proceeds with these defaults:
 
-Once these are confirmed, record the scope event on `livespec-livyxu` and file
-dependency-layered implementation children for Phases 1–10. Do not file one
-giant “build cockpit” item.
+1. standalone `agent-cockpit-info`, with optional adopter review only after
+   two-host proof;
+2. per-instance credentials and identities;
+3. AWS CLI required, AWS workload identity a separately gated optional profile;
+4. operational Honeycomb telemetry on, prompt/response/tool content capture off;
+5. Ubuntu 26.04 LTS amd64 for cluster tests, 250 GiB retained PowerEdge NVMe
+   development storage, and a cluster-managed test instance allocator;
+6. selected ACFS conveniences re-expressed and pinned, no wholesale install;
+7. fast container, long-running StatefulSet, and full-host KVM gates before an
+   external VPS is provisioned.
+
+Implementation should be filed as dependency-layered children for Phases 1–11,
+not one giant “build cockpit” item. Agents escalate before G0–G3 completion only
+for a genuine authority or safety blocker. When G0–G3 are green, present one
+consolidated maintainer packet covering the external VPS/provider selection,
+production Tailscale and account enrollments, credential rotation/resealing,
+persistent-disk backup owner, and any behavior that cannot safely be proven
+with scoped test identities.
