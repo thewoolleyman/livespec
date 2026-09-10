@@ -66,7 +66,10 @@ GitHub assigned job `102845676189` to ephemeral runner
 projection. It completed in five seconds and its runner pod was removed.
 
 The authoritative host record landed in `poweredge-xubuntu-info` PR #19 as
-commit `b30b237`. The HP backup addition is separately documented in
+commit `b30b237`. A final stale-fact sweep found one historical storage note
+whose 188 GiB figure was not clearly scoped to its pre-upgrade date;
+`poweredge-xubuntu-info` PR #20 corrected it and merged as `44fd34d`. The HP
+backup addition is separately documented in
 `hp-xubuntu-info` PR #3 (`631a8e8`): the guarded USB backup and verification
 completed before that host was shut down for relocation.
 
@@ -143,6 +146,12 @@ ten repositories again passed the strict-tier check and independently read
 back its exact self-hosted value, so none remains routed to GitHub-hosted
 capacity.
 
-No `livespec-dev-tooling` carrier changed during this maintenance: the existing
-host-unique proof workflow and routing writer were used as designed, so no
-tracked change belongs in that repository.
+The existing host-unique proof workflow and routing writer required no
+operational change. The final stale-fact sweep did find dated capacity prose in
+`livespec-dev-tooling` that still read like current state: two sccache passages
+said 188 GiB and that churn capacity remained 64, and the phase-1 README did
+not explicitly distinguish its 188 GiB baseline from current inventory. PR
+#2217 corrected those carriers to the current 377 GiB, restored C=32 state and
+unchanged 16 GiB Redis ceiling; all required checks passed and it merged as
+`55d514c0`. Both affected primary clones were refreshed and their temporary
+worktrees removed.
