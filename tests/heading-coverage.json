@@ -363,32 +363,32 @@
     "heading": "## Error path \u2014 authoring batch input requires attention",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "test": "tests.integration.test_authoring_batch_attention.test_contradictory_batch_envelope_escalates_to_attention",
+    "reason": "Integration-tier: the module sits under the tests.integration node-id prefix AND declares pytestmark = pytest.mark.integration. It drives the shipped authoring-mode resolvers over real .livespec.jsonc text via parse_config_text, pinning both scenarios in the section \u2014 a contradictory envelope and an incomplete batch envelope each escalate to human attention (hard-floor, requires_input true), and malformed or missing settings resolve to the interactive default. Control-armed: a complete batch envelope through the SAME resolver returns requires_input=false, proving the attention pin is non-vacuous.",
     "work_item": "livespec-6fb1"
   },
   {
     "heading": "## Error path \u2014 doctor disposition requires attention",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "test": "tests.integration.test_doctor_disposition_attention.test_unmapped_invalid_or_failed_disposition_reaches_a_human",
+    "reason": "Integration-tier: the module sits under the tests.integration node-id prefix AND declares pytestmark = pytest.mark.integration. It drives the shipped effective_doctor_disposition resolver over real .livespec.jsonc text, pinning all three scenarios \u2014 an unmapped check, an invalid check id, an invalid verb, and a failed action each require input; absent downstream consent and a failed journal append both escalate; an absent dispositions map arms no action. Control-armed: a mapped, valid, executable disposition through the SAME resolver returns requires_input=false.",
     "work_item": "livespec-6fb1"
   },
   {
     "heading": "## Error path \u2014 ratification review blocks mutation",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "test": "tests.integration.test_ratification_review_floor.test_blocking_or_invalid_evidence_prevents_ratification",
+    "reason": "Integration-tier: the module sits under the tests.integration node-id prefix AND declares pytestmark = pytest.mark.integration. It drives the shipped effective_ratification_review resolver and the awaits_ratification_review predicate over real .livespec.jsonc text, pinning both scenarios \u2014 a blocking verdict, an unavailable reviewer, and an unconfigured reviewer model each keep the review awaiting maintainer input; with the block absent the review still awaits evidence and a configured model resolves to the manual-spawn default. Control-armed: matching NO BLOCKERS evidence passes the floor (awaits false).",
     "work_item": "livespec-6fb1"
   },
   {
     "heading": "## Error path \u2014 spec pull request cannot auto-merge",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Increment 1 ratifies behavior that requires a dedicated integration-tier scenario test; epic livespec-jvdvx4 owns the executable coverage follow-up, and this TODO must be replaced by that integration test id when it lands.",
+    "test": "tests.integration.test_spec_pr_merge_manual_fallback.test_one_manual_proposal_drives_the_whole_fold_to_manual",
+    "reason": "Integration-tier: the module sits under the tests.integration node-id prefix AND declares pytestmark = pytest.mark.integration. It drives the shipped effective_spec_pr_merge resolver and awaits_manual_spec_pr_merge predicate over a real on-disk SPECIFICATION/history/vNNN/proposed_changes tree, so the resolver's own file glob, front-matter parse, and conservative fold run: an invalid override folds to manual without raising, one manual proposal drives the whole set to manual, and a computed empty stem set resolves safely to manual. Control-armed: a clean auto-on-green proposal folds to auto-on-green and does not await manual merge.",
     "work_item": "livespec-6fb1"
   },
   {
@@ -678,16 +678,16 @@
     "heading": "## Spec-tree path closure",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "TODO",
-    "reason": "Ratified ahead of its executable check; work-item livespec-hipozh lands doctor-spec-tree-manifested together with its negative control (an undeclared path under a v2-manifest spec root produces a fail naming that path) and MUST replace this TODO with that test id.",
+    "test": "tests.livespec.doctor.static.test_spec_tree_manifested_conformance.test_this_repo_spec_tree_is_not_undeclared",
+    "reason": "Unit-tier (permitted for spec.md) CONFORMANCE test: doctor-spec-tree-manifested is shipped by doctor/static/spec_tree_manifested.py and the clause names it as its implementation-side settler. The mapped test runs the shipped check-runner against THIS repository's real spec tree and asserts the finding is never `fail` (skipped here, since the active template is template_format_version 1; genuine closure if it migrates to v2), and its sibling control drives an undeclared file under a v2 manifest to the `fail` that names the offending path — so the conformance pin is non-vacuous.",
     "work_item": "livespec-6fb1"
   },
   {
     "heading": "## Drift acceptance under each mode",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Increment 3 ratifies the drift-acceptance mode contract and its five behavioral scenarios; a dedicated integration-tier scenario test is required, and this TODO must be replaced by that test id. Re-owned 2026-08-06 from livespec-jvdvx4.5 to its open parent epic livespec-jvdvx4: the child was a SPEC-RATIFYING slice, so it closed (2026-08-05) once ratification was done, while the debt it created is a follow-up integration test that was never in its scope. The parent epic is the owner the three sibling TODO entries already name for executable-coverage follow-up.",
+    "test": "tests.integration.test_drift_acceptance_modes.test_armed_consensus_accepts_only_on_conforming_evidence",
+    "reason": "Integration-tier: the module sits under the tests.integration node-id prefix AND declares pytestmark = pytest.mark.integration. It drives the shipped effective_drift_acceptance_mode resolver, the effective_revise_decision_mode router, and the apply_action control surface over a real .livespec.jsonc, pinning all five scenarios — an undeclared mode defaults to human input; armed consensus owns acceptance only on conforming, journalled evidence and escalates on absent/stale evidence or journal failure; the control surface refuses delegated with the allowed-value diagnostic and leaves the value unchanged; and a consensus revise_decision_mode cannot route a drift-origin decision away from human. Control-armed by the consensus-accepts case returning requires_input=false.",
     "work_item": "livespec-6fb1"
   },
   {
