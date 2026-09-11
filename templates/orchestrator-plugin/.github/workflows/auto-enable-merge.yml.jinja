@@ -115,7 +115,7 @@ jobs:
       actions: read
       contents: read
       pull-requests: read
-    uses: thewoolleyman/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@v0.38.5
+    uses: thewoolleyman/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@v0.39.0
     with:
       repository: ${{ '{{' }} github.repository {{ '}}' }}
       pull-request: ${{ '{{' }} github.event.pull_request.number {{ '}}' }}
