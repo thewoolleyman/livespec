@@ -116,7 +116,7 @@ jobs:
     # "green in CI" and "green in sandbox" mean the same environment.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -235,7 +235,7 @@ jobs:
     name: check-per-file-coverage
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -305,7 +305,7 @@ jobs:
     needs: [check-per-file-coverage]
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -366,7 +366,7 @@ jobs:
     name: check-python-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -429,7 +429,7 @@ jobs:
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
@@ -638,7 +638,7 @@ jobs:
     name: check-metadata-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.69.4
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.89.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -676,10 +676,13 @@ jobs:
           just check-claude-md-coverage || failed="$failed check-claude-md-coverage"
           just check-handoff-dispatch-routing || failed="$failed check-handoff-dispatch-routing"
           just check-heading-coverage || failed="$failed check-heading-coverage"
+          just check-heading-coverage-debt-register || failed="$failed check-heading-coverage-debt-register"
           just check-hook-trees-not-io-exempt || failed="$failed check-hook-trees-not-io-exempt"
           just check-local-memory-drift-audit || failed="$failed check-local-memory-drift-audit"
+          just check-marketplace-ref-release-only || failed="$failed check-marketplace-ref-release-only"
           just check-no-shadow-ledger-body-typechecks || failed="$failed check-no-shadow-ledger-body-typechecks"
           just check-plan-anchor-declared || failed="$failed check-plan-anchor-declared"
+          just check-plan-no-live-handoff-file || failed="$failed check-plan-no-live-handoff-file"
           just check-plan-no-tombstone || failed="$failed check-plan-no-tombstone"
           just check-required-role-keys-declared || failed="$failed check-required-role-keys-declared"
           just check-self-hosted-routing || failed="$failed check-self-hosted-routing"
