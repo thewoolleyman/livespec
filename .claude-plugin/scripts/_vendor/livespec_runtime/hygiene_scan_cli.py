@@ -14,10 +14,14 @@ from typing import TextIO
 from livespec_runtime.hygiene_scan_context import DEFAULT_STALE_DAYS, run_command
 from livespec_runtime.hygiene_scan_types import CommandRunner
 
-__all__: list[str] = [
-    "main",
-    "run",
-]
+# DECLARED INTERNAL by `SPECIFICATION/contracts.md` section "Module-level
+# public surface": a size-decomposition split-out of
+# `livespec_runtime.hygiene_scan`, the family's SINGLE ratified import path.
+# `main` and `run` are narrowed here, NOT deleted — `hygiene_scan.py` imports
+# them and re-exports them under its own ratified `__all__`, and the
+# `livespec-hygiene-scan` console script keeps pointing at the same callables.
+# What narrows is the second, undocumented import path.
+__all__: list[str] = []
 
 
 def main(
