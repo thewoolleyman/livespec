@@ -20,6 +20,7 @@ from livespec_runtime.hygiene_scan_types import (
     CommandRunner,
     CommandUnavailable,
     GitWorktree,
+    ScanContext,
 )
 from livespec_runtime.hygiene_scan_worktrees import (
     detect_stale_worktrees,
@@ -27,10 +28,19 @@ from livespec_runtime.hygiene_scan_worktrees import (
 )
 from livespec_runtime.needs_attention import compose_needs_attention
 
+# Exactly the ten names `SPECIFICATION/contracts.md` section "Module-level
+# public surface" ratifies for this module. This is the family's SINGLE
+# ratified import path, so the two injectable types the ratified signatures
+# NAME are re-exported here: `CommandRunner` types the `runner=` parameter of
+# both `scan_hygiene` and `detect_stale_worktrees`, and `ScanContext` is the
+# argument type of `stale_worktree_findings`. Without them a consumer could
+# not name what it passes without reaching into a split-out.
 __all__: list[str] = [
     "CommandResult",
+    "CommandRunner",
     "CommandUnavailable",
     "GitWorktree",
+    "ScanContext",
     "detect_stale_worktrees",
     "main",
     "run",

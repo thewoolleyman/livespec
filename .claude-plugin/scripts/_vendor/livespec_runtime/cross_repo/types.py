@@ -1,6 +1,6 @@
 """Typed `DependsOnEntry` union + `CrossRepoManifest` + `RefStatus`.
 
-Per livespec/SPECIFICATION/contracts.md v072.
+Per livespec/SPECIFICATION/contracts.md.
 
 The four variant dataclasses (`LocalDependency`,
 `SiblingWorkItemDependency`, `PullRequestDependency`,
