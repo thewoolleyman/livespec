@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 __all__: list[str] = []
 
 
@@ -73,6 +75,45 @@ def test_cleanup_commands_shell_quote_every_path_and_branch(*, tmp_path: Path) -
 
     assert f"git -C '{dest}' status --short --branch" == commands[0]
     assert f"git -C '{dest}' rebase 'origin/release branch'" in commands
+
+
+@pytest.mark.parametrize(
+    ("marker", "verbs"),
+    [
+        ("BISECT_LOG", ["bisect reset"]),
+        ("CHERRY_PICK_HEAD", ["cherry-pick --continue", "cherry-pick --abort"]),
+        ("MERGE_HEAD", ["merge --continue", "merge --abort"]),
+        ("REVERT_HEAD", ["revert --continue", "revert --abort"]),
+        ("rebase-apply", ["rebase --continue", "rebase --abort"]),
+        ("rebase-merge", ["rebase --continue", "rebase --abort"]),
+    ],
+)
+def test_an_interrupted_operation_is_offered_both_its_continue_and_its_abort(
+    *, tmp_path: Path, marker: str, verbs: list[str]
+) -> None:
+    """Which way out of a half-finished operation is the MAINTAINER's choice.
+
+    Finishing it keeps the conflict resolution already done; abandoning it
+    throws that away. A tool that picked one would be wrong half the time,
+    so both are printed — continue first — and the refresher runs neither.
+    The commands are specific to the operation the marker names: a
+    `merge --abort` does nothing for an interrupted cherry-pick. `bisect`
+    is the one operation with no continue at all, so its single way out is
+    the only command it is offered.
+    """
+    module = _load_module()
+    dest = tmp_path / "my repos" / "widget"
+
+    assert "markers" in module.RepoProblem.__dataclass_fields__
+
+    commands = module.cleanup_commands(
+        dest=dest, default_branch="master", state=module.INTERRUPTED, markers=(marker,)
+    )
+
+    assert commands == [
+        f"git -C '{dest}' status --short --branch",
+        *(f"git -C '{dest}' {verb}" for verb in verbs),
+    ]
 
 
 def test_cleanup_commands_show_what_a_repo_is_when_nothing_local_can_clear_it(
