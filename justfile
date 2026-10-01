@@ -1154,6 +1154,24 @@ vendor-update lib:
 reap-stale-worktrees repo="." *args="":
     uv run python3 dev-tooling/reap_stale_worktrees.py --repo "$@"
 
+# Clone or refresh every REGISTERED fleet + adopter repo as a peer of
+# this primary checkout. The repo set is the union of `.livespec.jsonc`'s
+# `cross_repo_targets` + `cross_repo_conformance_targets` and
+# `.livespec-fleet-manifest.jsonc`'s `fleet[]` + `adopters[]`; each lands
+# at `<peer-root>/<repo>`, where the peer root is the directory
+# CONTAINING the primary checkout (so this works from a linked worktree
+# too). Deterministic, no LLM. NOT part of `just check` — it is an
+# action, not a check.
+# Preserve-by-default: it refuses the whole run (exit 2) on a missing or
+# unauthenticated `gh` and on registries that disagree with themselves,
+# and it leaves ANY repo untouched (exit 1, with the manual cleanup
+# commands) unless that repo proves to be its own primary checkout of
+# the declared origin, with a clean tree, nothing unpushed, and a local
+# default branch merely BEHIND origin. Only untracked `.DS_Store`
+# droppings are ever deleted.
+refresh-tenant-repos:
+    uv run python3 dev-tooling/refresh_tenant_repos.py
+
 check-partition-completeness:
     uv run python -m livespec_dev_tooling.checks.partition_completeness
 
