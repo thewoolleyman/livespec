@@ -46,6 +46,7 @@ from pathlib import Path, PurePosixPath
 from refresh_tenant_repos_identity import GITHUB_HOST, github_slug
 
 __all__: list[str] = [
+    "GH_CREDENTIAL_ARGS",
     "CountFacts",
     "SweepOutcome",
     "TextFacts",
@@ -79,7 +80,12 @@ _IN_PROGRESS_MARKERS = (
 # PRIVATE fleet repo authenticates with the same credential gh itself
 # holds. The empty first value clears any inherited helper for the host,
 # so gh's is the only one consulted.
-_GH_CREDENTIAL_ARGS = (
+#
+# PUBLIC because the only way to prove these options do anything is to
+# hand them to git directly — `git credential fill` for this host, with a
+# `gh` that records being asked — and every clone and fetch this module
+# issues resolves to a repository that never requests a credential.
+GH_CREDENTIAL_ARGS = (
     "-c",
     f"credential.https://{GITHUB_HOST}.helper=",
     "-c",
@@ -312,7 +318,7 @@ def fetch_https(*, repo: Path, url: str) -> str | None:
     is multi-valued, so a `-c` value is APPENDED behind the configured
     one and the configured URL still wins.
     """
-    args = [*_GH_CREDENTIAL_ARGS, "fetch", "--prune", url, _FETCH_REFSPEC]
+    args = [*GH_CREDENTIAL_ARGS, "fetch", "--prune", url, _FETCH_REFSPEC]
     result = run_git(repo=repo, args=args)
     if result.returncode != 0:
         return f"`git fetch --prune {url}` failed: {result.stderr.strip()}"
@@ -336,7 +342,7 @@ def clone_https(*, url: str, dest: Path) -> str | None:
     persisted in a governed checkout; `git -c <key>=<value> clone` applies
     it to this invocation only and writes nothing.
     """
-    args = [*_GH_CREDENTIAL_ARGS, "clone", url, str(dest)]
+    args = [*GH_CREDENTIAL_ARGS, "clone", url, str(dest)]
     result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         return f"`git clone {url}` failed: {(result.stderr or result.stdout).strip()}"
