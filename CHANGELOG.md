@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.42.0](https://github.com/thewoolleyman/livespec/compare/v0.41.0...v0.42.0) (2026-10-01)
+
+
+### Features
+
+* **dev-tooling:** carry the in-progress markers into the preserved report ([80d6041](https://github.com/thewoolleyman/livespec/commit/80d604195e2f1a8d2fe77d92bd7a5fed0b0a41eb))
+* **dev-tooling:** offer both ways out of an interrupted git operation ([885dba4](https://github.com/thewoolleyman/livespec/commit/885dba4635fbe8d81cf66a475f64400d0e41676f))
+
+
+### Bug Fixes
+
+* **dev-tooling:** prove refresh-tenant-repos authenticates through gh ([52ae7bd](https://github.com/thewoolleyman/livespec/commit/52ae7bd346be02d74756316e1dbe87288049337e))
+
 ## [0.41.0](https://github.com/thewoolleyman/livespec/compare/v0.40.0...v0.41.0) (2026-10-01)
 
 
