@@ -124,3 +124,133 @@ def test_a_failed_in_progress_probe_preserves_the_repo_as_an_inspection_failure(
     assert problem is not None
     assert problem.state == "inspection-failed"
     assert "git rev-parse --absolute-git-dir" in problem.detail
+
+
+def _render_to_stderr() -> structlog.stdlib.BoundLogger:
+    """A logger configured exactly as the refresher's own is, JSON onto stderr.
+
+    The point of the case below is the text an operator READS, so the
+    rendering has to be the real one rather than a captured event dict.
+    """
+    structlog.reset_defaults()
+    structlog.configure(
+        processors=[
+            structlog.processors.add_log_level,
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+    )
+    return structlog.get_logger("refresh_tenant_repos")
+
+
+def _governed_clone(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A real `widget` repo in a peer root, with the fake `gh` first on PATH."""
+    peer_root = tmp_path / "peers"
+    peer_root.mkdir()
+    dest = peer_root / "widget"
+    dest.mkdir()
+    _git(cwd=dest, args=["init", "-q", "-b", "master"])
+    _git(cwd=dest, args=["config", "user.email", "t@example.com"])
+    _git(cwd=dest, args=["config", "user.name", "Test"])
+    _git(cwd=dest, args=["remote", "add", "origin", f"{_GITHUB}{_OWNER}/widget"])
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    gh_path = bin_dir / "gh"
+    gh_path.write_text(_FAKE_GH, encoding="utf-8")
+    gh_path.chmod(gh_path.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    return dest
+
+
+def _head(*, repo: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
+
+
+def _conflicted(*, repo: Path, operation: str) -> None:
+    """Leave `repo` GENUINELY mid-`operation`, stopped on a real conflict.
+
+    Writing a marker file proves the probe reads it, but not that git would
+    ever have left it there. Here git itself does: two branches rewrite the
+    same line, and `git merge` / `git cherry-pick` stops with the operation
+    open and the conflict unresolved.
+    """
+    (repo / "f.txt").write_text("base\n", encoding="utf-8")
+    _git(cwd=repo, args=["add", "f.txt"])
+    _git(cwd=repo, args=["commit", "-q", "-m", "base"])
+    _git(cwd=repo, args=["switch", "-q", "-c", "side"])
+    (repo / "f.txt").write_text("side\n", encoding="utf-8")
+    _git(cwd=repo, args=["add", "f.txt"])
+    _git(cwd=repo, args=["commit", "-q", "-m", "side"])
+    _git(cwd=repo, args=["switch", "-q", "master"])
+    (repo / "f.txt").write_text("main\n", encoding="utf-8")
+    _git(cwd=repo, args=["add", "f.txt"])
+    _git(cwd=repo, args=["commit", "-q", "-m", "main"])
+    stopped = subprocess.run(
+        ["git", "-C", str(repo), operation, "side"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert stopped.returncode != 0, f"`git {operation} side` did not conflict: {stopped.stdout}"
+
+
+@pytest.mark.parametrize(
+    ("operation", "marker"),
+    [("cherry-pick", "CHERRY_PICK_HEAD"), ("merge", "MERGE_HEAD")],
+)
+def test_a_repo_left_mid_operation_is_told_in_words_to_choose_one_command(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    operation: str,
+    marker: str,
+) -> None:
+    """A real mid-operation repo's EMITTED report presents the two as a choice.
+
+    Git itself leaves this repository mid-operation, and what is asserted is
+    the rendered line an operator reads: the continue, the abort, and the
+    words that make them alternatives rather than a sequence. That labelling
+    is the difference between a maintainer finishing the operation and a
+    maintainer running `--continue` followed by `--abort` and discarding the
+    resolution they had just completed — docstrings do not reach them, so it
+    has to be in the output. Afterwards the operation is STILL open, which is
+    how this case proves the refresher ran neither command itself.
+    """
+    module = _load_module()
+    dest = _governed_clone(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    _conflicted(repo=dest, operation=operation)
+    assert (dest / ".git" / marker).exists()
+    before = _head(repo=dest)
+
+    problem = module.process_target(
+        target=module.RepoTarget(
+            repo="widget",
+            owner=_OWNER,
+            github_url=f"{_GITHUB}{_OWNER}/widget",
+            default_branch="master",
+        ),
+        peer_root=dest.parent,
+        log=_render_to_stderr(),
+    )
+
+    assert problem is not None
+    assert problem.state == "interrupted-operation"
+    assert problem.markers == (marker,)
+
+    stderr = capsys.readouterr().err
+    assert f"CHOOSE ONE of the next two commands for the interrupted {operation}." in stderr
+    assert "Do NOT run both:" in stderr
+    assert "(1) finish it, keeping the conflict resolution already done:" in stderr
+    assert "(2) OR abandon it, discarding that work:" in stderr
+    assert f"git -C {dest} {operation} --continue" in stderr
+    assert f"git -C {dest} {operation} --abort" in stderr
+    assert (dest / ".git" / marker).exists()
+    assert _head(repo=dest) == before

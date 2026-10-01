@@ -41,8 +41,10 @@ __all__: list[str] = [
 ]
 
 # The states a refusal is classified by. The three LANDING states below
-# each get their own cleanup commands; the rest describe a repo nothing
-# local can clear, so they get an inspection pair instead.
+# each get their own cleanup commands, and INTERRUPTED gets the labelled
+# choice between finishing and abandoning the operation it was found in;
+# the rest describe a repo nothing local can clear, so they get an
+# inspection pair instead.
 CLONE_FAILED = "clone-failed"
 DIVERGED = "diverged-default-branch"
 FETCH_FAILED = "fetch-failed"
@@ -54,20 +56,34 @@ UNPUSHED = "unpushed-commits"
 UNRESOLVED_BRANCH = "default-branch-unresolved"
 _LANDING_STATES = (UNCOMMITTED, UNPUSHED, DIVERGED)
 
-# The way out of each interrupted operation, CONTINUE before ABORT: the
-# command that keeps the work already done comes before the one that
-# discards it. `bisect` is the one operation with no continue — `bisect
-# reset` is the only way out of it — so its entry carries a single
-# command rather than a pair. The two rebase backends leave different
-# markers and take the same commands.
-_RECOVERY_VERBS: dict[str, tuple[str, ...]] = {
-    "BISECT_LOG": ("bisect reset",),
-    "CHERRY_PICK_HEAD": ("cherry-pick --continue", "cherry-pick --abort"),
-    "MERGE_HEAD": ("merge --continue", "merge --abort"),
-    "REVERT_HEAD": ("revert --continue", "revert --abort"),
-    "rebase-apply": ("rebase --continue", "rebase --abort"),
-    "rebase-merge": ("rebase --continue", "rebase --abort"),
+# The git operation each in-progress marker belongs to. The two rebase
+# backends leave different markers and are the same operation, and the
+# operation NAME is what every recovery command and every line of the
+# accompanying instructions is built from.
+_OPERATIONS: dict[str, str] = {
+    "BISECT_LOG": "bisect",
+    "CHERRY_PICK_HEAD": "cherry-pick",
+    "MERGE_HEAD": "merge",
+    "REVERT_HEAD": "revert",
+    "rebase-apply": "rebase",
+    "rebase-merge": "rebase",
 }
+# The one interrupted operation with no `--continue`: a bisect cannot be
+# finished, so `bisect reset` is its only way out and the report offers it
+# as a single command rather than as a choice between two.
+_NO_CONTINUE = "bisect"
+# The instructions are emitted as `#`-prefixed lines so the whole list
+# stays pasteable into a shell — a label a reader skips is a comment, not
+# a command that runs. They are part of the OUTPUT and not merely of this
+# module's docstrings, because a docstring never reaches the operator:
+# two adjacent commands with nothing between them read as a sequence to
+# run in order, and running `--continue` then `--abort` destroys exactly
+# the work `--continue` just preserved.
+_CHOOSE = "# CHOOSE ONE of the next two commands for the interrupted {operation}."
+_NOT_BOTH = " Do NOT run both:"
+_FINISH = "#   (1) finish it, keeping the conflict resolution already done:"
+_ABANDON = "#   (2) OR abandon it, discarding that work:"
+_ONLY_WAY_OUT = "# the interrupted {operation} cannot be finished. Ending it is the only way out:"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -91,15 +107,37 @@ class RepoProblem:
 
 
 def _recovery_commands(*, at: str, markers: tuple[str, ...]) -> list[str]:
-    """The continue-and-abort commands for every operation `markers` names.
+    """Both ways out of every operation `markers` names, LABELLED as a choice.
 
     BOTH are offered, and the refresher runs NEITHER. Continuing keeps the
     conflict resolution already done; aborting throws it away — a tool
     that picked one for the operator would be wrong half the time, and a
     tool that ran it would be wrong irrecoverably. So the decision is
-    handed over as two pasteable lines.
+    handed over, and handing it over means SAYING it is a decision: an
+    unlabelled pair reads as a sequence, and running the second after the
+    first discards the very work the first preserved.
+
+    A marker this module does not recognize contributes nothing rather
+    than raising. The markers come from one fixed set the git helper owns,
+    so an unknown one means those two sets have drifted apart — which is a
+    reason to report the repo with fewer instructions, never a reason to
+    crash the report that was explaining why the repo was preserved.
     """
-    return [f"git -C {at} {verb}" for marker in markers for verb in _RECOVERY_VERBS.get(marker, ())]
+    lines: list[str] = []
+    for marker in markers:
+        operation = _OPERATIONS.get(marker)
+        if operation is None:
+            continue
+        if operation == _NO_CONTINUE:
+            lines.append(_ONLY_WAY_OUT.format(operation=operation))
+            lines.append(f"git -C {at} {operation} reset")
+            continue
+        lines.append(_CHOOSE.format(operation=operation) + _NOT_BOTH)
+        lines.append(_FINISH)
+        lines.append(f"git -C {at} {operation} --continue")
+        lines.append(_ABANDON)
+        lines.append(f"git -C {at} {operation} --abort")
+    return lines
 
 
 def cleanup_commands(

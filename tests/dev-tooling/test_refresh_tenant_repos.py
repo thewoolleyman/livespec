@@ -39,6 +39,20 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = _REPO_ROOT / "dev-tooling" / "refresh_tenant_repos.py"
 _OWNER = "acme"
 _GITHUB = "https://github.com/"
+# The commands an operator is owed for each interrupted operation, spelled
+# out here rather than read back from the report module: a test that
+# derived them from the same table it is checking would pass whatever that
+# table said. `rebase-apply` and `rebase-merge` are the two rebase
+# backends, and are DIRECTORIES in a real repository rather than files.
+_RECOVERY_VERBS: dict[str, tuple[str, ...]] = {
+    "BISECT_LOG": ("bisect reset",),
+    "CHERRY_PICK_HEAD": ("cherry-pick --continue", "cherry-pick --abort"),
+    "MERGE_HEAD": ("merge --continue", "merge --abort"),
+    "REVERT_HEAD": ("revert --continue", "revert --abort"),
+    "rebase-apply": ("rebase --continue", "rebase --abort"),
+    "rebase-merge": ("rebase --continue", "rebase --abort"),
+}
+_DIRECTORY_MARKERS = frozenset({"rebase-apply", "rebase-merge"})
 
 _FAKE_GH = """#!/usr/bin/env bash
 set -uo pipefail
@@ -423,20 +437,45 @@ def test_a_clone_of_a_different_origin_is_left_unmodified_and_exits_1(
     assert _git_out(cwd=dest, args=["rev-parse", "HEAD"]) == before
 
 
-def test_an_interrupted_git_operation_leaves_the_repo_unmodified_and_exits_1(
-    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("marker", sorted(_RECOVERY_VERBS))
+def test_an_interrupted_git_operation_is_preserved_still_in_progress_and_exits_1(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    marker: str,
 ) -> None:
+    """Every interrupted operation survives the run, and is handed BOTH ways out.
+
+    The marker is still there afterwards, which is the assertion that the
+    refresher ran no continue, no abort and no reset of its own: finishing
+    the operation would have consumed it and abandoning it would have
+    deleted it. What the maintainer gets instead is the pair of commands
+    for THAT operation — a `merge --abort` is no use to a half-finished
+    cherry-pick — so the choice between keeping the work and discarding it
+    is theirs to make.
+    """
     module = _load_module()
     origin = _origin(tmp_path=tmp_path, repo="widget")
     project = _project(tmp_path=tmp_path, repos={"widget": "master"})
     _ = _install_fake_gh(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(into=_peer_root(tmp_path=tmp_path), origin=origin, name="widget")
-    (dest / ".git" / "MERGE_HEAD").write_text("", encoding="utf-8")
+    if marker in _DIRECTORY_MARKERS:
+        (dest / ".git" / marker).mkdir()
+    else:
+        (dest / ".git" / marker).write_text("", encoding="utf-8")
     _advance_origin(tmp_path=tmp_path, origin=origin, name="upstream")
     before = _git_out(cwd=dest, args=["rev-parse", "HEAD"])
 
     assert module.refresh_tenant_repos(project_root=project) == 1
+
+    stderr = capsys.readouterr().err
     assert _git_out(cwd=dest, args=["rev-parse", "HEAD"]) == before
+    assert (dest / ".git" / marker).exists()
+    assert not (dest / "upstream").exists()
+    assert "interrupted-operation" in stderr
+    for verb in _RECOVERY_VERBS[marker]:
+        assert f"git -C {dest} {verb}" in stderr
 
 
 def test_an_unreachable_canonical_remote_leaves_the_repo_unmodified_and_exits_1(

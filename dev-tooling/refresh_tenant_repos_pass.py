@@ -15,6 +15,15 @@ the preflight, and the loop; this module owns what happens to ONE repo,
 and `process_target` is the single entry point between them.
 """
 
+# livespec-lloc-soft-band-owner: livespec-gnyqqn
+# This file sat at EXACTLY the 200-LLOC soft ceiling before the
+# in-progress markers were threaded through it, so carrying them crossed
+# the band by one line rather than by any growth worth that warning. The
+# refactor the band is asking for is a cohesion split of this module's
+# three concerns — identity resolution, the blocking-state order, and the
+# post-fetch landing verdicts — which is a structural change the narrow
+# follow-up that crossed the line deliberately did not take on.
+
 from __future__ import annotations
 
 import sys
@@ -73,7 +82,7 @@ def _preserved(
         state=problem.state,
         issue=problem.detail,
         manual_cleanup=cleanup_commands(
-            dest=dest, default_branch=default_branch, state=problem.state
+            dest=dest, default_branch=default_branch, state=problem.state, markers=problem.markers
         ),
     )
     return problem
@@ -124,9 +133,14 @@ def _blocking_state(
     if progress.problem is not None:
         return RepoProblem(state=INSPECTION_FAILED, detail=progress.problem)
     if progress.values:
+        # The MARKERS travel with the problem, not just the sentence: they
+        # are what lets the report name the operation to finish or abandon,
+        # and the state alone cannot — a `merge --abort` is no use to a
+        # half-finished cherry-pick.
         return RepoProblem(
             state=INTERRUPTED,
             detail=f"an interrupted git operation is in progress ({', '.join(progress.values)})",
+            markers=progress.values,
         )
     return _cleanliness_problem(dest=dest, target=target, log=log)
 
