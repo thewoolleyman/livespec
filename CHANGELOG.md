@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/thewoolleyman/livespec/compare/v0.39.0...v0.40.0) (2026-10-01)
+
+
+### Features
+
+* **dev-tooling:** resolve the fleet+adopter registry union for refresh-tenant-repos ([e690094](https://github.com/thewoolleyman/livespec/commit/e6900949967b06694836ca3fe9228630d29a1982))
+
 ## [0.39.0](https://github.com/thewoolleyman/livespec/compare/v0.38.5...v0.39.0) (2026-09-10)
 
 
