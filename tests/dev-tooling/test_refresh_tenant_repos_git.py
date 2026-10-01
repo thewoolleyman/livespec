@@ -10,11 +10,21 @@ carries a `url.<remotes>/.insteadOf = https://github.com/` rewrite so
 that URL resolves to the local bare repo. That is what lets the suite
 exercise the real host check — which rejects a filesystem `origin`
 outright — without reaching GitHub.
+
+Two cases need to see what git was ASKED, not only what it produced, so
+they put a recording stand-in first on `PATH`: a fake `gh` that answers
+`auth git-credential` with a known username and password, and a `git`
+shim that logs its argv and then `exec`s the real git. Both are
+deliberately installed AFTER the fixtures are built, so the only
+invocations they record are the module's own.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -31,6 +41,42 @@ _OWNER = "acme"
 _REPO = "widget"
 _URL = f"https://github.com/{_OWNER}/{_REPO}"
 _ACCEPTED = (_URL,)
+# Every marker an interrupted git operation leaves in the git directory.
+# `rebase-apply` and `rebase-merge` are DIRECTORIES in a real repository
+# — the two rebase backends — while the other four are files, so each
+# fixture below is created in the shape git itself would leave.
+_IN_PROGRESS_MARKERS = (
+    "BISECT_LOG",
+    "CHERRY_PICK_HEAD",
+    "MERGE_HEAD",
+    "REVERT_HEAD",
+    "rebase-apply",
+    "rebase-merge",
+)
+_DIRECTORY_MARKERS = frozenset({"rebase-apply", "rebase-merge"})
+
+# A `gh` that answers the one credential request git makes of it, and
+# records every argv it was handed so a test can prove it WAS consulted.
+_FAKE_GH = """#!/usr/bin/env bash
+set -uo pipefail
+printf '%s\\n' "$*" >> "$FAKE_GH_LOG"
+if [[ "${1:-} ${2:-}" == "auth git-credential" ]]; then
+    cat >/dev/null
+    printf 'username=fake-user\\npassword=fake-token\\n'
+    exit 0
+fi
+exit 99
+"""
+
+# A `git` that logs its argv and then becomes the real git, so a test
+# can assert the SHAPE of an invocation while the invocation still
+# really runs. Arguments are separated by US (0x1f) rather than spaces,
+# so an argument containing a space is still one field.
+_RECORDING_GIT = """#!/usr/bin/env bash
+printf '%s\\x1f' "$@" >> "$GIT_ARGV_LOG"
+printf '\\n' >> "$GIT_ARGV_LOG"
+exec "$REAL_GIT" "$@"
+"""
 
 
 def _load_module() -> ModuleType:
@@ -105,6 +151,49 @@ def _commit(*, repo: Path, name: str) -> None:
     (repo / name).write_text(name, encoding="utf-8")
     _git(cwd=repo, args=["add", name])
     _git(cwd=repo, args=["commit", "-q", "-m", f"add {name}"])
+
+
+def _executable(*, path: Path, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+
+
+def _install_fake_gh(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Put the recording fake `gh` first on PATH; return its argv log path."""
+    _executable(path=tmp_path / "bin" / "gh", body=_FAKE_GH)
+    log = tmp_path / "gh-argv.log"
+    log.write_text("", encoding="utf-8")
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_GH_LOG", str(log))
+    return log
+
+
+def _install_recording_git(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Put the argv-logging `git` shim first on PATH; return its log path.
+
+    The real git is resolved BEFORE the shim is installed, so the shim
+    execs git rather than itself.
+    """
+    real_git = shutil.which("git")
+    assert real_git is not None
+    log = tmp_path / "git-argv.log"
+    log.write_text("", encoding="utf-8")
+    _executable(path=tmp_path / "bin" / "git", body=_RECORDING_GIT)
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("REAL_GIT", real_git)
+    monkeypatch.setenv("GIT_ARGV_LOG", str(log))
+    return log
+
+
+def _recorded_argvs(*, log: Path) -> list[list[str]]:
+    """Every invocation the `git` shim recorded, as its argument list.
+
+    `$0` is not part of `"$@"`, so each list starts at the first argument
+    after the program name — which is where the credential options sit.
+    """
+    lines = log.read_text(encoding="utf-8").splitlines()
+    return [line.split("\x1f")[:-1] for line in lines if line]
 
 
 def test_primary_checkout_resolves_the_same_path_from_a_linked_worktree(
@@ -352,17 +441,26 @@ def test_porcelain_status_reports_an_inspection_failure_rather_than_a_clean_tree
     assert status.problem.startswith("git inspection `git status --porcelain")
 
 
-@pytest.mark.parametrize("marker", ["MERGE_HEAD", "rebase-merge"])
+@pytest.mark.parametrize("marker", _IN_PROGRESS_MARKERS)
 def test_in_progress_operation_reports_an_interrupted_operation(
     *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, marker: str
 ) -> None:
+    """All six markers, each in a real clone and in the shape git leaves it.
+
+    Covering only some of them would leave the rest free to be dropped
+    from the probe without a single case going red, and every one of them
+    means the repository holds operator state a refresh would strand.
+    """
     module = _load_module()
     origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
     assert module.in_progress_operation(repo=dest).values == ()
 
-    (dest / ".git" / marker).write_text("", encoding="utf-8")
+    if marker in _DIRECTORY_MARKERS:
+        (dest / ".git" / marker).mkdir()
+    else:
+        (dest / ".git" / marker).write_text("", encoding="utf-8")
 
     assert module.in_progress_operation(repo=dest).values == (marker,)
 
@@ -465,6 +563,78 @@ def test_default_branch_ahead_reports_a_failed_walk_as_an_inspection_failure(
     assert facts.count == 0
     assert facts.problem is not None
     assert facts.problem.startswith("git inspection `git rev-list --count --left-right")
+
+
+def test_the_credential_options_make_git_authenticate_through_gh(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Asking git itself to fill a github.com credential really does reach `gh`.
+
+    Every other case in this file resolves to a LOCAL bare repo, which
+    never asks for a credential — so the credential options could be
+    deleted outright and the whole suite would stay green. This is the one
+    case that proves what they are FOR: `git credential fill` is run with
+    the module's own options for protocol https and host github.com, the
+    fake `gh` records that `auth git-credential` was the subcommand it was
+    asked for, and the username and password git reports are the ones that
+    fake answered with.
+    """
+    module = _load_module()
+
+    assert "GH_CREDENTIAL_ARGS" in module.__all__
+
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
+    (tmp_path / "gitconfig").write_text("", encoding="utf-8")
+    # No helper may fall back to a terminal: an unanswered prompt would
+    # make this case hang rather than fail.
+    monkeypatch.setenv("GIT_TERMINAL_PROMPT", "0")
+    log = _install_fake_gh(tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    filled = subprocess.run(
+        ["git", *module.GH_CREDENTIAL_ARGS, "credential", "fill"],
+        input=f"protocol=https\nhost={module.GITHUB_HOST}\n\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert filled.returncode == 0, filled.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == ["auth git-credential get"]
+    assert "username=fake-user" in filled.stdout
+    assert "password=fake-token" in filled.stdout
+
+
+def test_the_clone_and_the_fetch_pass_the_credential_options_before_the_subcommand(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Placement is the contract, and only the argv shows it.
+
+    `git clone -c <key>=<value>` writes the setting into the NEW
+    repository's config; `git -c <key>=<value> clone` applies it to the
+    one invocation and writes nothing. Both operations therefore have to
+    hand the options to GIT ITSELF — immediately before the subcommand —
+    and both really run here, against the local bare repo, through a
+    `git` that logs what it was asked before becoming the real one.
+    """
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
+    log = _install_recording_git(tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    assert module.clone_https(url=_URL, dest=tmp_path / "fresh") is None
+    assert module.fetch_https(repo=dest, url=_URL) is None
+
+    options = list(module.GH_CREDENTIAL_ARGS)
+    recorded = {
+        subcommand: argv
+        for argv in _recorded_argvs(log=log)
+        for subcommand in ("clone", "fetch")
+        if subcommand in argv
+    }
+    assert sorted(recorded) == ["clone", "fetch"]
+    for subcommand, argv in recorded.items():
+        at = argv.index(subcommand)
+        assert argv[at - len(options) : at] == options
 
 
 def test_clone_https_clones_over_https_and_persists_no_credential_helper(
