@@ -78,28 +78,31 @@ def test_cleanup_commands_shell_quote_every_path_and_branch(*, tmp_path: Path) -
 
 
 @pytest.mark.parametrize(
-    ("marker", "verbs"),
+    ("marker", "operation"),
     [
-        ("BISECT_LOG", ["bisect reset"]),
-        ("CHERRY_PICK_HEAD", ["cherry-pick --continue", "cherry-pick --abort"]),
-        ("MERGE_HEAD", ["merge --continue", "merge --abort"]),
-        ("REVERT_HEAD", ["revert --continue", "revert --abort"]),
-        ("rebase-apply", ["rebase --continue", "rebase --abort"]),
-        ("rebase-merge", ["rebase --continue", "rebase --abort"]),
+        ("CHERRY_PICK_HEAD", "cherry-pick"),
+        ("MERGE_HEAD", "merge"),
+        ("REVERT_HEAD", "revert"),
+        ("rebase-apply", "rebase"),
+        ("rebase-merge", "rebase"),
     ],
 )
-def test_an_interrupted_operation_is_offered_both_its_continue_and_its_abort(
-    *, tmp_path: Path, marker: str, verbs: list[str]
+def test_an_interrupted_operation_is_offered_a_labelled_choice_of_both_ways_out(
+    *, tmp_path: Path, marker: str, operation: str
 ) -> None:
     """Which way out of a half-finished operation is the MAINTAINER's choice.
 
     Finishing it keeps the conflict resolution already done; abandoning it
     throws that away. A tool that picked one would be wrong half the time,
-    so both are printed — continue first — and the refresher runs neither.
+    so both are printed and the refresher runs neither — and the OUTPUT
+    says in words that they are alternatives, because two adjacent commands
+    with nothing between them read as a sequence, and running the abort
+    after the continue destroys exactly the work the continue preserved.
     The commands are specific to the operation the marker names: a
-    `merge --abort` does nothing for an interrupted cherry-pick. `bisect`
-    is the one operation with no continue at all, so its single way out is
-    the only command it is offered.
+    `merge --abort` does nothing for an interrupted cherry-pick.
+
+    Each label is a `#` comment, so the list a maintainer pastes into a
+    shell still runs only the command they chose.
     """
     module = _load_module()
     dest = tmp_path / "my repos" / "widget"
@@ -112,8 +115,52 @@ def test_an_interrupted_operation_is_offered_both_its_continue_and_its_abort(
 
     assert commands == [
         f"git -C '{dest}' status --short --branch",
-        *(f"git -C '{dest}' {verb}" for verb in verbs),
+        f"# CHOOSE ONE of the next two commands for the interrupted {operation}."
+        " Do NOT run both:",
+        "#   (1) finish it, keeping the conflict resolution already done:",
+        f"git -C '{dest}' {operation} --continue",
+        "#   (2) OR abandon it, discarding that work:",
+        f"git -C '{dest}' {operation} --abort",
     ]
+
+
+def test_an_interrupted_bisect_is_offered_its_one_way_out_rather_than_a_choice(
+    *, tmp_path: Path
+) -> None:
+    """A bisect cannot be finished, so presenting a choice would be a lie."""
+    module = _load_module()
+    dest = tmp_path / "my repos" / "widget"
+
+    commands = module.cleanup_commands(
+        dest=dest, default_branch="master", state=module.INTERRUPTED, markers=("BISECT_LOG",)
+    )
+
+    assert commands == [
+        f"git -C '{dest}' status --short --branch",
+        "# the interrupted bisect cannot be finished. Ending it is the only way out:",
+        f"git -C '{dest}' bisect reset",
+    ]
+
+
+def test_an_unrecognized_marker_is_reported_with_fewer_instructions_not_a_crash(
+    *, tmp_path: Path
+) -> None:
+    """The markers come from one fixed set; drift must not break the report.
+
+    This module and the git helper would have to disagree about that set
+    for an unknown marker to arrive at all. If they ever do, the repo is
+    still preserved and still reported — with the inspection line and
+    nothing it cannot stand behind — rather than crashing the explanation
+    of why it was preserved.
+    """
+    module = _load_module()
+    dest = tmp_path / "widget"
+
+    commands = module.cleanup_commands(
+        dest=dest, default_branch="master", state=module.INTERRUPTED, markers=("UNHEARD_OF",)
+    )
+
+    assert commands == [f"git -C {dest} status --short --branch"]
 
 
 def test_cleanup_commands_show_what_a_repo_is_when_nothing_local_can_clear_it(
