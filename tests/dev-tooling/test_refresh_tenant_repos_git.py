@@ -1,11 +1,15 @@
 """Tests for `dev-tooling/refresh_tenant_repos_git.py` — git identity/cleanliness/currency.
 
 Every case runs against REAL temporary git repositories: a bare repo
-standing in for `origin` (so fetch and push resolve with no network) plus
-real clones, linked worktrees, and nested directories. The bare repos are
-laid out as `<remotes>/<owner>/<repo>.git` so a clone's `origin` URL
-carries the same `owner/repo` tail the registry's GitHub URL does, which
-is exactly what the identity check compares.
+standing in for `origin` (so clone, fetch, and push resolve with no
+network) plus real clones, linked worktrees, and nested directories.
+
+Each clone's `origin` is set to the `https://github.com/<owner>/<repo>`
+URL the identity check demands, and a per-test `GIT_CONFIG_GLOBAL`
+carries a `url.<remotes>/.insteadOf = https://github.com/` rewrite so
+that URL resolves to the local bare repo. That is what lets the suite
+exercise the real host check — which rejects a filesystem `origin`
+outright — without reaching GitHub.
 """
 
 from __future__ import annotations
@@ -26,10 +30,12 @@ _SCRIPT = _REPO_ROOT / "dev-tooling" / "refresh_tenant_repos_git.py"
 _OWNER = "acme"
 _REPO = "widget"
 _URL = f"https://github.com/{_OWNER}/{_REPO}"
+_ACCEPTED = (_URL,)
 
 
 def _load_module() -> ModuleType:
     """Import the git helper by file path (`dev-tooling/` is not a package)."""
+    sys.path.insert(0, str(_REPO_ROOT / "dev-tooling"))
     spec = importlib.util.spec_from_file_location("refresh_tenant_repos_git", _SCRIPT)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -45,26 +51,53 @@ def _git(*, cwd: Path, args: list[str]) -> None:
     assert result.returncode == 0, f"git {' '.join(args)} failed: {result.stderr}"
 
 
-def _origin(*, tmp_path: Path) -> Path:
-    """A bare `origin` at `<tmp>/remotes/<owner>/<repo>.git` holding one commit."""
-    origin = tmp_path / "remotes" / _OWNER / f"{_REPO}.git"
+def _route_github_locally(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every `https://github.com/` URL resolve to `<tmp>/remotes/`."""
+    config = tmp_path / "gitconfig"
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(config))
+    remotes = tmp_path / "remotes"
+    remotes.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        [
+            "git",
+            "config",
+            "--file",
+            str(config),
+            f"url.{remotes}/.insteadOf",
+            "https://github.com/",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def _origin(*, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, repo: str = _REPO) -> Path:
+    """A bare `origin` at `<tmp>/remotes/<owner>/<repo>` holding one commit."""
+    _route_github_locally(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    origin = tmp_path / "remotes" / _OWNER / repo
     origin.parent.mkdir(parents=True, exist_ok=True)
     _git(cwd=tmp_path, args=["init", "--bare", "-q", "-b", "master", str(origin)])
-    seed = tmp_path / "seed"
+    seed = tmp_path / f"seed-{repo}"
     _git(cwd=tmp_path, args=["clone", "-q", str(origin), str(seed)])
-    _git(cwd=seed, args=["config", "user.email", "t@example.com"])
-    _git(cwd=seed, args=["config", "user.name", "Test"])
+    _identify(repo=seed)
     _git(cwd=seed, args=["commit", "-q", "--allow-empty", "-m", "init"])
     _git(cwd=seed, args=["push", "-q", "origin", "master"])
     return origin
 
 
-def _clone(*, tmp_path: Path, origin: Path, name: str) -> Path:
-    """A real clone of `origin` at `<tmp>/<name>`, with a commit identity set."""
+def _identify(*, repo: Path) -> None:
+    _git(cwd=repo, args=["config", "user.email", "t@example.com"])
+    _git(cwd=repo, args=["config", "user.name", "Test"])
+
+
+def _clone(*, tmp_path: Path, origin: Path, name: str, slug: str = f"{_OWNER}/{_REPO}") -> Path:
+    """A clone of `origin` at `<tmp>/<name>` whose `origin` is the github.com URL."""
     dest = tmp_path / name
     _git(cwd=tmp_path, args=["clone", "-q", str(origin), str(dest)])
-    _git(cwd=dest, args=["config", "user.email", "t@example.com"])
-    _git(cwd=dest, args=["config", "user.name", "Test"])
+    _git(cwd=dest, args=["remote", "set-url", "origin", f"https://github.com/{slug}"])
+    _identify(repo=dest)
     return dest
 
 
@@ -74,9 +107,11 @@ def _commit(*, repo: Path, name: str) -> None:
     _git(cwd=repo, args=["commit", "-q", "-m", f"add {name}"])
 
 
-def test_primary_checkout_resolves_the_same_path_from_a_linked_worktree(*, tmp_path: Path) -> None:
+def test_primary_checkout_resolves_the_same_path_from_a_linked_worktree(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     primary = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
     worktree = tmp_path / "linked"
     _git(cwd=primary, args=["worktree", "add", "-q", str(worktree), "-b", "side"])
@@ -93,24 +128,46 @@ def test_primary_checkout_is_none_outside_a_git_repository(*, tmp_path: Path) ->
     assert module.primary_checkout(project_root=plain) is None
 
 
-def test_a_clean_clone_of_the_declared_repo_has_no_identity_problem(*, tmp_path: Path) -> None:
+def test_a_clean_clone_of_an_accepted_repo_has_no_identity_problem(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
-    assert module.identity_problem(dest=dest, github_url=_URL) is None
+    assert module.identity_problem(dest=dest, accepted_urls=_ACCEPTED) is None
     # The same repository named with a `.git` suffix is the same repository.
-    assert module.identity_problem(dest=dest, github_url=f"{_URL}.git") is None
+    assert module.identity_problem(dest=dest, accepted_urls=(f"{_URL}.git",)) is None
 
 
-def test_a_symlink_destination_is_an_identity_problem(*, tmp_path: Path) -> None:
+def test_a_clone_carrying_the_canonical_post_transfer_url_is_accepted(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A transferred repo's clone names the CANONICAL pair, not the registered one.
+
+    Accepting only the registered URL is what made every host preserve
+    `homelab` after it moved to `mi-homelab`.
+    """
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO, slug="mi-homelab/homelab")
+    accepted = (_URL, "https://github.com/mi-homelab/homelab")
+
+    assert module.identity_problem(dest=dest, accepted_urls=accepted) is None
+
+
+def test_a_symlink_destination_is_an_identity_problem(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     real = _clone(tmp_path=tmp_path, origin=origin, name="real")
     link = tmp_path / _REPO
     link.symlink_to(real, target_is_directory=True)
 
-    assert module.identity_problem(dest=link, github_url=_URL) == "destination is a symlink"
+    problem = module.identity_problem(dest=link, accepted_urls=_ACCEPTED)
+
+    assert problem == "destination is a symlink"
 
 
 def test_a_non_directory_destination_is_an_identity_problem(*, tmp_path: Path) -> None:
@@ -118,7 +175,7 @@ def test_a_non_directory_destination_is_an_identity_problem(*, tmp_path: Path) -
     plain_file = tmp_path / _REPO
     plain_file.write_text("not a repo", encoding="utf-8")
 
-    problem = module.identity_problem(dest=plain_file, github_url=_URL)
+    problem = module.identity_problem(dest=plain_file, accepted_urls=_ACCEPTED)
 
     assert problem == "destination exists but is not a directory"
 
@@ -128,34 +185,36 @@ def test_a_non_repository_destination_is_an_identity_problem(*, tmp_path: Path) 
     plain_dir = tmp_path / _REPO
     plain_dir.mkdir()
 
-    problem = module.identity_problem(dest=plain_dir, github_url=_URL)
+    problem = module.identity_problem(dest=plain_dir, accepted_urls=_ACCEPTED)
 
     assert problem == "destination is not a git repository"
 
 
 def test_a_directory_nested_inside_another_repository_is_an_identity_problem(
-    *, tmp_path: Path
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     outer = _clone(tmp_path=tmp_path, origin=origin, name="outer")
     nested = outer / _REPO
     nested.mkdir()
 
-    problem = module.identity_problem(dest=nested, github_url=_URL)
+    problem = module.identity_problem(dest=nested, accepted_urls=_ACCEPTED)
 
     assert problem is not None
     assert problem.startswith("destination is nested inside the repository at")
 
 
-def test_a_linked_worktree_destination_is_an_identity_problem(*, tmp_path: Path) -> None:
+def test_a_linked_worktree_destination_is_an_identity_problem(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     primary = _clone(tmp_path=tmp_path, origin=origin, name="primary")
     worktree = tmp_path / _REPO
     _git(cwd=primary, args=["worktree", "add", "-q", str(worktree), "-b", "side"])
 
-    problem = module.identity_problem(dest=worktree, github_url=_URL)
+    problem = module.identity_problem(dest=worktree, accepted_urls=_ACCEPTED)
 
     assert problem == "destination is a linked worktree, not a primary checkout"
 
@@ -166,25 +225,65 @@ def test_a_destination_without_an_origin_remote_is_an_identity_problem(*, tmp_pa
     standalone.mkdir()
     _git(cwd=standalone, args=["init", "-q", "-b", "master"])
 
-    problem = module.identity_problem(dest=standalone, github_url=_URL)
+    problem = module.identity_problem(dest=standalone, accepted_urls=_ACCEPTED)
 
     assert problem == "destination has no `origin` remote"
 
 
-def test_a_clone_of_a_different_origin_is_an_identity_problem(*, tmp_path: Path) -> None:
+def test_a_clone_of_a_different_github_repo_is_an_identity_problem(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
-    problem = module.identity_problem(dest=dest, github_url="https://github.com/acme/other")
+    problem = module.identity_problem(dest=dest, accepted_urls=("https://github.com/acme/other",))
 
     assert problem is not None
-    assert problem.endswith("which is not https://github.com/acme/other")
+    assert problem.endswith("which names none of: https://github.com/acme/other")
 
 
-def test_sweep_ds_store_deletes_only_untracked_regular_droppings(*, tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "origin_url",
+    [
+        # A filesystem remote whose tail matches the declared repo exactly.
+        "/srv/mirrors/acme/widget",
+        # Another forge.
+        "https://gitlab.com/acme/widget",
+        "git@gitlab.com:acme/widget.git",
+        # github.com reached over a different SCHEME.
+        "file://github.com/acme/widget",
+        # An EXTRA path segment — the last two still read `acme/widget`.
+        "https://github.com/extra/acme/widget",
+        # Userinfo and a port are not forms git writes for a GitHub remote.
+        "https://token@github.com/acme/widget",
+        "ssh://git@github.com:22/acme/widget.git",
+    ],
+)
+def test_an_origin_that_is_not_an_exact_github_remote_is_an_identity_problem(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, origin_url: str
+) -> None:
+    """Recognition is an allowlist, so each of these preserves the repository.
+
+    Every URL here carries the `acme/widget` tail a tail-only comparison
+    accepts, and every one of them names something else.
+    """
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
+    _git(cwd=dest, args=["remote", "set-url", "origin", origin_url])
+
+    problem = module.identity_problem(dest=dest, accepted_urls=_ACCEPTED)
+
+    assert problem is not None
+    assert problem.endswith("which is not a https://github.com/<owner>/<repo> remote")
+
+
+def test_sweep_ds_store_deletes_only_untracked_regular_droppings(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
     # A TRACKED .DS_Store, modified — never a candidate, because a
     # tracked file never appears in the untracked set.
@@ -205,9 +304,11 @@ def test_sweep_ds_store_deletes_only_untracked_regular_droppings(*, tmp_path: Pa
     (dest / "sub").mkdir()
     (dest / "sub" / ".DS_Store").write_text("finder", encoding="utf-8")
 
-    removed = module.sweep_ds_store(repo=dest)
+    status = module.porcelain_status(repo=dest)
+    swept = module.sweep_ds_store(repo=dest, status_lines=status.values)
 
-    assert sorted(removed) == [".DS_Store", "sub/.DS_Store"]
+    assert sorted(swept.removed) == [".DS_Store", "sub/.DS_Store"]
+    assert len(swept.remaining) == 3
     assert not (dest / ".DS_Store").exists()
     assert not (dest / "sub" / ".DS_Store").exists()
     assert (linked / ".DS_Store").is_symlink()
@@ -215,94 +316,238 @@ def test_sweep_ds_store_deletes_only_untracked_regular_droppings(*, tmp_path: Pa
     assert (dest / "notes.txt").exists()
 
 
-def test_porcelain_status_is_empty_for_a_clean_clone(*, tmp_path: Path) -> None:
+def test_porcelain_status_is_empty_for_a_clean_clone(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
-    assert module.porcelain_status(repo=dest) == []
-    assert module.sweep_ds_store(repo=dest) == []
+    status = module.porcelain_status(repo=dest)
+
+    assert status.problem is None
+    assert status.values == ()
+    assert module.sweep_ds_store(repo=dest, status_lines=status.values).removed == ()
+
+
+def test_porcelain_status_reports_an_inspection_failure_rather_than_a_clean_tree(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unreadable index must never answer "clean" — that answer refreshes it.
+
+    Replacing `.git/index` with a DIRECTORY is a state `git status`
+    cannot read while `rev-parse` still succeeds, so the repo passes the
+    placement checks and the status probe is the one that fails.
+    """
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
+    (dest / ".git" / "index").unlink()
+    (dest / ".git" / "index").mkdir()
+
+    status = module.porcelain_status(repo=dest)
+
+    assert status.values == ()
+    assert status.problem is not None
+    assert status.problem.startswith("git inspection `git status --porcelain")
 
 
 @pytest.mark.parametrize("marker", ["MERGE_HEAD", "rebase-merge"])
 def test_in_progress_operation_reports_an_interrupted_operation(
-    *, tmp_path: Path, marker: str
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, marker: str
 ) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
-    assert module.in_progress_operation(repo=dest) is None
+    assert module.in_progress_operation(repo=dest).values == ()
 
     (dest / ".git" / marker).write_text("", encoding="utf-8")
 
-    assert module.in_progress_operation(repo=dest) == marker
+    assert module.in_progress_operation(repo=dest).values == (marker,)
 
 
-def test_unpushed_count_counts_commits_absent_from_every_origin_ref(*, tmp_path: Path) -> None:
+def test_in_progress_operation_reports_an_inspection_failure_not_an_all_clear(
+    *, tmp_path: Path
+) -> None:
+    """Without a git directory the markers cannot be looked for at all."""
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    plain = tmp_path / "plain"
+    plain.mkdir()
+
+    facts = module.in_progress_operation(repo=plain)
+
+    assert facts.values == ()
+    assert facts.problem is not None
+    assert facts.problem.startswith("git inspection `git rev-parse --absolute-git-dir` failed")
+
+
+def test_unpushed_count_counts_commits_absent_from_every_origin_ref(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
-    assert module.unpushed_count(repo=dest) == 0
+    assert module.unpushed_count(repo=dest).count == 0
 
     _git(cwd=dest, args=["switch", "-q", "-c", "feature"])
     _commit(repo=dest, name="local-only")
 
-    assert module.unpushed_count(repo=dest) == 1
+    facts = module.unpushed_count(repo=dest)
+
+    assert facts.problem is None
+    assert facts.count == 1
 
 
-def test_default_branch_ahead_distinguishes_behind_from_ahead(*, tmp_path: Path) -> None:
+def test_unpushed_count_reports_an_inspection_failure_rather_than_zero(*, tmp_path: Path) -> None:
+    """An unborn HEAD cannot be walked, and zero would read as "nothing unpushed"."""
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    _git(cwd=empty, args=["init", "-q", "-b", "master"])
+
+    facts = module.unpushed_count(repo=empty)
+
+    assert facts.count == 0
+    assert facts.problem is not None
+    assert facts.problem.startswith("git inspection `git rev-list --count HEAD")
+
+
+def test_default_branch_ahead_distinguishes_behind_from_ahead(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
     # A local branch that does not exist is ahead of nothing.
-    assert module.default_branch_ahead(repo=dest, default_branch="absent") == 0
-    assert module.default_branch_ahead(repo=dest, default_branch="master") == 0
+    absent = module.default_branch_ahead(repo=dest, default_branch="absent")
+    assert absent.problem is None
+    assert absent.count == 0
+    assert module.default_branch_ahead(repo=dest, default_branch="master").count == 0
 
     _commit(repo=dest, name="local-ahead")
 
-    assert module.default_branch_ahead(repo=dest, default_branch="master") == 1
+    assert module.default_branch_ahead(repo=dest, default_branch="master").count == 1
 
 
-def test_fetch_origin_succeeds_against_a_reachable_origin(*, tmp_path: Path) -> None:
+def test_default_branch_ahead_reports_a_failed_ref_probe_as_an_inspection_failure(
+    *, tmp_path: Path
+) -> None:
+    """Only exit 1 means "the ref is absent"; 128 means the probe could not look.
+
+    Reading every non-zero exit as absence answers "ahead of nothing",
+    which refreshes a repository the probe never managed to inspect.
+    """
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    plain = tmp_path / "plain"
+    plain.mkdir()
+
+    facts = module.default_branch_ahead(repo=plain, default_branch="master")
+
+    assert facts.count == 0
+    assert facts.problem is not None
+    assert facts.problem.startswith("git inspection `git rev-parse --verify --quiet")
+
+
+def test_default_branch_ahead_reports_a_failed_walk_as_an_inspection_failure(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A local branch with no `origin/<branch>` counterpart cannot be compared."""
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
+    _git(cwd=dest, args=["switch", "-q", "-c", "trunk"])
+
+    facts = module.default_branch_ahead(repo=dest, default_branch="trunk")
+
+    assert facts.count == 0
+    assert facts.problem is not None
+    assert facts.problem.startswith("git inspection `git rev-list --count --left-right")
+
+
+def test_clone_https_clones_over_https_and_persists_no_credential_helper(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The clone addresses the canonical HTTPS URL, so `origin` is already HTTPS.
+
+    `gh repo clone <owner>/<repo>` would pick its protocol from gh's own
+    `git_protocol` setting — `ssh` on the maintainer's Mac — which both
+    needs separate SSH auth and leaves `origin` as an SSH URL the next
+    fetch has to work around. And because the credential options are
+    passed to git rather than to `clone`, the new repository's config
+    carries no helper.
+    """
+    module = _load_module()
+    _ = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = tmp_path / "fresh"
+
+    assert module.clone_https(url=_URL, dest=dest) is None
+
+    config = (dest / ".git" / "config").read_text(encoding="utf-8")
+    assert f"url = {_URL}" in config
+    assert "credential" not in config
+
+
+def test_clone_https_reports_an_unreachable_url(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module()
+    _route_github_locally(tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    problem = module.clone_https(url=f"{_URL}-absent", dest=tmp_path / "nope")
+
+    assert problem is not None
+    assert problem.startswith(f"`git clone {_URL}-absent` failed:")
+
+
+def test_fetch_https_updates_remote_tracking_refs_and_leaves_config_unchanged(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An SSH `origin` still fetches over HTTPS, and nothing is written to config."""
+    module = _load_module()
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
+    _git(cwd=dest, args=["remote", "set-url", "origin", f"git@github.com:{_OWNER}/{_REPO}.git"])
+    before = (dest / ".git" / "config").read_text(encoding="utf-8")
     other = _clone(tmp_path=tmp_path, origin=origin, name="other")
     _commit(repo=other, name="pushed")
     _git(cwd=other, args=["push", "-q", "origin", "master"])
 
-    assert module.fetch_origin(repo=dest) is None
-    assert module.default_branch_ahead(repo=dest, default_branch="master") == 0
+    assert module.fetch_https(repo=dest, url=_URL) is None
+
     behind = module.run_git(
         repo=dest, args=["rev-list", "--count", "master..refs/remotes/origin/master"]
     )
     assert behind.stdout.strip() == "1"
+    assert (dest / ".git" / "config").read_text(encoding="utf-8") == before
 
 
-def test_fetch_origin_reports_an_unreachable_origin(*, tmp_path: Path) -> None:
+def test_fetch_https_reports_an_unreachable_url(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
-    _git(cwd=dest, args=["remote", "set-url", "origin", str(tmp_path / "gone" / "widget.git")])
 
-    problem = module.fetch_origin(repo=dest)
+    problem = module.fetch_https(repo=dest, url=f"{_URL}-absent")
 
     assert problem is not None
-    assert problem.startswith("`git fetch --prune origin` failed:")
+    assert problem.startswith(f"`git fetch --prune {_URL}-absent` failed:")
 
 
-def test_fast_forward_switches_to_the_default_branch_and_advances_it(*, tmp_path: Path) -> None:
+def test_fast_forward_switches_to_the_default_branch_and_advances_it(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
     other = _clone(tmp_path=tmp_path, origin=origin, name="other")
     _commit(repo=other, name="pushed")
     _git(cwd=other, args=["push", "-q", "origin", "master"])
     _git(cwd=dest, args=["switch", "-q", "-c", "parked"])
-    assert module.fetch_origin(repo=dest) is None
+    assert module.fetch_https(repo=dest, url=_URL) is None
 
     assert module.fast_forward(repo=dest, default_branch="master") is None
 
@@ -311,9 +556,11 @@ def test_fast_forward_switches_to_the_default_branch_and_advances_it(*, tmp_path
     assert (dest / "pushed").is_file()
 
 
-def test_fast_forward_reports_a_branch_it_cannot_switch_to(*, tmp_path: Path) -> None:
+def test_fast_forward_reports_a_branch_it_cannot_switch_to(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
 
     problem = module.fast_forward(repo=dest, default_branch="no-such-branch")
@@ -322,15 +569,17 @@ def test_fast_forward_reports_a_branch_it_cannot_switch_to(*, tmp_path: Path) ->
     assert problem.startswith("`git switch no-such-branch` failed:")
 
 
-def test_fast_forward_refuses_a_non_fast_forward(*, tmp_path: Path) -> None:
+def test_fast_forward_refuses_a_non_fast_forward(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = _load_module()
-    origin = _origin(tmp_path=tmp_path)
+    origin = _origin(tmp_path=tmp_path, monkeypatch=monkeypatch)
     dest = _clone(tmp_path=tmp_path, origin=origin, name=_REPO)
     other = _clone(tmp_path=tmp_path, origin=origin, name="other")
     _commit(repo=other, name="pushed")
     _git(cwd=other, args=["push", "-q", "origin", "master"])
     _commit(repo=dest, name="diverged")
-    assert module.fetch_origin(repo=dest) is None
+    assert module.fetch_https(repo=dest, url=_URL) is None
 
     problem = module.fast_forward(repo=dest, default_branch="master")
 

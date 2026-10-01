@@ -457,9 +457,9 @@ ban-relative-imports = "all"
 # argv lists only; the command is hermetic and never contacts GitHub.
 "dev-tooling/gh_feature_surfaces.py" = ["S603", "S607", "S404"]
 # refresh_tenant_repos.py is the fleet-repo refresher action tool; it
-# shells out to `gh` with fixed argv lists (`auth status`, `repo clone`,
-# `repo view`) built from registry-declared owner/repo names that are
-# validated as single safe path segments before any call is made.
+# shells out to `gh` with fixed argv lists (`auth status`, `repo view`)
+# built from registry-declared owner/repo names that are validated as
+# single safe path segments before any call is made.
 # Nothing reaches a shell. Same S603/S607 carve-out shape as the peer
 # action tools above.
 "dev-tooling/refresh_tenant_repos.py" = ["S603", "S607", "S404"]
@@ -467,6 +467,11 @@ ban-relative-imports = "all"
 # out of the file above; it carries the identical fixed-argv `git -C`
 # runner, so it inherits the identical carve-out.
 "dev-tooling/refresh_tenant_repos_git.py" = ["S603", "S607", "S404"]
+# refresh_tenant_repos_identity.py is that same refresher's identity side:
+# fixed-argv `gh repo view` / `gh auth status` calls built from
+# registry-declared owner/repo names already validated as single safe path
+# segments. Nothing reaches a shell. Identical carve-out shape.
+"dev-tooling/refresh_tenant_repos_identity.py" = ["S603", "S607", "S404"]
 # same rationale as the `tests/**.py` carveout above for S101,
 # PLR2004, PT018, S105, S108, and TRY003 — see that entry for the
 # per-category reasoning; it is not repeated here. Three additions are
