@@ -18,6 +18,47 @@ its inputs, so it is exhaustively testable without a process. (This
 library ships no ``io/`` tree, so a pure module MUST NOT ``import os`` /
 ``import sys`` and MUST NOT raise domain errors.)
 
+Loop guard — why the marker rides in ``argv``, not the environment
+------------------------------------------------------------------
+
+The re-exec must be bounded to ONE hop: if the wrapper runs but still
+does not inject the secrets, the second entry into this decision must
+``Fail`` rather than re-exec again. The original guard was the env
+sentinel ``CREDENTIAL_REEXEC_SENTINEL``, on the assumption that a
+conforming wrapper preserves it. Measured 2026-08-10, that assumption is
+false for EVERY wrapper tested, including the reference fleet wrapper:
+rebuilding the ambient environment is precisely what a credential
+wrapper is for, and an arbitrary canary variable is dropped alongside
+the sentinel. The guard could therefore never fire, and a repo whose
+wrapper cannot supply a required secret re-execed unboundedly and
+silently. (Evidence with controls:
+``plan/archive/credential-reexec-loop-guard/research/findings.md``.)
+
+``CREDENTIAL_REEXEC_ARGV_MARKER`` fixes that by carrying the marker
+where a wrapper cannot scrub it. A wrapper's contract is to exec the
+argv it was handed, so an argv token survives by construction. The env
+sentinel is still honored, so the guard is the OR of the two: whichever
+survives terminates the recursion.
+
+Contract for performers (the callers' ``_bootstrap.py``, which build and
+run the ``Reexec`` argv):
+
+1. APPEND ``CREDENTIAL_REEXEC_ARGV_MARKER`` to the ``Reexec.argv`` vector
+   before handing it to ``os.execvp``, so the re-execed child sees it in
+   its own ``sys.argv``. This module deliberately does NOT append it: the
+   marker's placement is the performer's concern (it must land after the
+   wrapper's own argv-prefix and after the program's arguments), and
+   ``Reexec.argv`` stays the exact wrapper-prefixed vector its callers
+   already assert on.
+2. STRIP every occurrence of the marker from ``sys.argv`` before handing
+   argv to the real argument parser, so the token never reaches the CLI's
+   own option handling. Pass the UNSTRIPPED argv to
+   ``decide_credentials`` — the detection happens first, at process
+   entry, before any parsing.
+3. Setting ``CREDENTIAL_REEXEC_SENTINEL`` remains correct and is still
+   honored, but a performer MUST NOT rely on it alone; it is best-effort
+   belt-and-braces, and the argv marker is the load-bearing guard.
+
 The three-variant ``CredentialDecision`` union is discriminated on a
 ``Literal[...]``-typed ``kind`` field — mirroring the
 ``livespec_runtime.cross_repo.types.DependsOnEntry`` union — so pyright
@@ -32,6 +73,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 __all__: list[str] = [
+    "CREDENTIAL_REEXEC_ARGV_MARKER",
     "CREDENTIAL_REEXEC_SENTINEL",
     "CredentialDecision",
     "Fail",
@@ -43,12 +85,23 @@ __all__: list[str] = [
 
 # The livespec-namespaced marker the caller sets on ``os.environ`` before
 # it re-execs through the wrapper, so a second entry into this decision
-# (now under the wrapper) recognizes that a re-exec already happened. A
-# conforming credential wrapper preserves it across the re-exec (the
-# reference wrapper strips only ``OP_SERVICE_ACCOUNT_TOKEN`` +
-# ``WRAPPER_STAGE``), so its presence at value ``"1"`` means "already
-# re-execed and the secrets are STILL missing" — an unrecoverable state.
+# (now under the wrapper) recognizes that a re-exec already happened. Its
+# presence at value ``"1"`` means "already re-execed and the secrets are
+# STILL missing" — an unrecoverable state. BEST-EFFORT ONLY: a credential
+# wrapper rebuilds the ambient environment, and no measured wrapper
+# preserves this variable, so it can be absent in a genuine second entry.
+# ``CREDENTIAL_REEXEC_ARGV_MARKER`` is the load-bearing guard; this one is
+# retained because it costs nothing and is correct when it does survive.
 CREDENTIAL_REEXEC_SENTINEL = "LIVESPEC_CREDENTIAL_REEXEC"
+
+# The argv token a performer appends to the re-exec command line, and the
+# guard this module actually relies on. A wrapper execs the argv vector it
+# was handed, so the token survives a hop that scrubs the environment. Its
+# presence anywhere in ``argv`` means "already re-execed", bounding the
+# recursion at one hop regardless of wrapper cooperation. Dash-prefixed and
+# livespec-namespaced so it cannot collide with a positional argument;
+# performers strip it before the real parser sees argv.
+CREDENTIAL_REEXEC_ARGV_MARKER = "--livespec-credential-reexec"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -137,9 +190,12 @@ def decide_credentials(
     1. A ``required`` name is "missing" when it is absent from
        ``environ`` OR maps to an empty string. With none missing, the
        secrets are present -> ``Proceed``.
-    2. Otherwise, if the re-exec sentinel is already set to ``"1"``, a
-       re-exec has already happened and the wrapper did not inject the
-       secrets -> ``Fail`` naming the still-missing vars and the wrapper.
+    2. Otherwise, if a re-exec has ALREADY happened — the argv marker is
+       present in ``argv``, or the env sentinel is set to ``"1"`` — the
+       wrapper ran and did not inject the secrets -> ``Fail`` naming the
+       still-missing vars and the wrapper. Either marker alone suffices,
+       which is what bounds the recursion at one hop when the wrapper
+       scrubs the environment.
     3. Otherwise, if no ``credential_wrapper`` is configured, there is
        nothing to re-exec through -> ``Fail`` naming the missing vars.
     4. Otherwise -> ``Reexec`` with the wrapper-prefixed argv.
@@ -150,7 +206,10 @@ def decide_credentials(
     missing = [name for name in required if not environ.get(name)]
     if not missing:
         return Proceed()
-    if environ.get(CREDENTIAL_REEXEC_SENTINEL) == "1":
+    already_reexeced = (
+        CREDENTIAL_REEXEC_ARGV_MARKER in argv or environ.get(CREDENTIAL_REEXEC_SENTINEL) == "1"
+    )
+    if already_reexeced:
         return Fail(
             message=(
                 f"required secret env var(s) {missing} absent even after re-exec "

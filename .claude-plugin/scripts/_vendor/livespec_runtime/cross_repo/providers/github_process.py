@@ -1,26 +1,46 @@
-"""Subprocess execution and budget measurement for the GitHub provider."""
+"""Budgeted `gh` execution for the GitHub provider.
+
+Every query this provider issues goes through ONE process-wide
+`GithubBudgetedClient`, which is what makes its conditional-read cache
+worth having: the branch-existence and compare reads poll state that is
+usually unchanged, and a read the server answers `304 Not Modified`
+costs no primary budget at all. A per-call client would carry a cache
+that is empty on every call, which is the same as having none.
+
+⚠️ THE CLIENT IS BUILT WITH `max_attempts=1` ON PURPOSE. Retry policy
+for this provider belongs to `cross_repo.retry`, one layer up — that is
+the layer that knows a retry-exhausted query degrades to
+`RefStatus.UNKNOWN`. A second retry loop inside the transport would
+multiply the attempt count the resolver chose and sleep on a schedule it
+never asked for.
+"""
 
 import os
 import shlex
 import subprocess
-from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from dataclasses import dataclass, replace
+from typing import TypeAlias
 
 from returns.io import IOFailure, IOResult, IOSuccess
+from returns.unsafe import unsafe_perform_io
 
 from livespec_runtime.github_budget import (
+    GhInvocation,
+    GithubBudgetedClient,
+    GithubBudgetFailure,
     GithubBudgetUnmeasurable,
-    GithubRateLimitClassification,
-    append_rate_limit_snapshot,
-    classify_github_failure,
-    extract_rate_limit_headers,
-    parse_rate_limit_snapshot,
+    gh_invocation,
+    gh_transport,
 )
+from livespec_runtime.github_budget_measurement import gh_argv
 
 __all__: list[str] = [
     "GithubFailure",
     "GithubQueryFailed",
-    "completed_gh",
+    "budget_failure",
+    "budgeted_gh",
+    "spawn_gh",
+    "stderr_indicates_http_404",
 ]
 
 
@@ -46,18 +66,15 @@ class GithubQueryFailed:
 
 
 GithubFailure: TypeAlias = GithubQueryFailed | GithubBudgetUnmeasurable
-RateLimitOutcome: TypeAlias = Literal["primary_exhaustion", "secondary_limit"]
-
-_RATE_LIMIT_OUTCOMES: dict[GithubRateLimitClassification, RateLimitOutcome | None] = {
-    GithubRateLimitClassification.PRIMARY_EXHAUSTION: "primary_exhaustion",
-    GithubRateLimitClassification.SECONDARY_LIMIT: "secondary_limit",
-    GithubRateLimitClassification.AUTH_FAILURE: None,
-    GithubRateLimitClassification.OTHER: None,
-}
 
 
-def completed_gh(*, argv: list[str]) -> IOResult[subprocess.CompletedProcess[str], GithubFailure]:
-    """Run a `gh` command, or name the invocation that did not answer."""
+def spawn_gh(*, argv: list[str]) -> GhInvocation:
+    """Spawn one `gh` argv, reporting what it printed or why it never ran.
+
+    `GH_DEBUG=api` is what makes the response headers observable: `gh`
+    echoes them on stderr, and that stream is where both the budget
+    snapshot and the conditional-read `etag` are read from.
+    """
     try:
         completed = subprocess.run(
             argv,
@@ -67,101 +84,69 @@ def completed_gh(*, argv: list[str]) -> IOResult[subprocess.CompletedProcess[str
             text=True,
         )
     except subprocess.CalledProcessError as failed:
-        return _failed_completed_gh(argv=argv, failed=failed)
-    except OSError as unusable:
-        return IOFailure(GithubQueryFailed(argv=shlex.join(argv), detail=str(unusable)))
-    _record_budget_snapshot(
-        argv=argv,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
-        status_code=0,
-        classification=None,
-    )
-    return IOSuccess(completed)
-
-
-def _failed_completed_gh(
-    *,
-    argv: list[str],
-    failed: subprocess.CalledProcessError,
-) -> IOResult[subprocess.CompletedProcess[str], GithubFailure]:
-    argv_display = shlex.join(argv)
-    detail = (failed.stderr or "").strip() or f"exit {failed.returncode}"
-    headers = extract_rate_limit_headers(text=failed.stderr)
-    if headers:
-        return _failed_github_response(
-            argv=argv,
-            detail=detail,
-            failed=failed,
-            headers=headers,
+        return GhInvocation(
+            argv=shlex.join(argv),
+            stdout=failed.stdout or "",
+            stderr=failed.stderr or "",
+            returncode=failed.returncode,
         )
+    except OSError as unusable:
+        return GhInvocation(argv=shlex.join(argv), unspawnable=str(unusable))
+    return GhInvocation(argv=shlex.join(argv), stdout=completed.stdout, stderr=completed.stderr)
+
+
+_CLIENT = GithubBudgetedClient(transport=gh_transport(execute=spawn_gh), max_attempts=1)
+
+
+def budgeted_gh(*, resource: str) -> IOResult[GhInvocation, GithubFailure]:
+    """Issue one budgeted `gh` read, or name the query that did not answer.
+
+    `resource` is the shlex-joined `gh` argument tail; it doubles as the
+    client's cache key, which is why it is passed instead of an argv the
+    caller has already spelled out.
+    """
+    outcome = _CLIENT.request(method="GET", resource=resource)
+    if isinstance(outcome, IOFailure):
+        argv = shlex.join(gh_argv(resource=resource, headers={}))
+        return IOFailure(budget_failure(failure=unsafe_perform_io(outcome.failure()), argv=argv))
+    return _answered(invocation=gh_invocation(value=outcome.unwrap().value))
+
+
+def budget_failure(*, failure: GithubBudgetFailure, argv: str) -> GithubFailure:
+    """Restate a budget refusal in this provider's failure vocabulary.
+
+    The rate-limited case passes through — `GithubFailure` names
+    `GithubBudgetUnmeasurable` — carrying the `gh` argv rather than the
+    client's method-and-resource wording, so the failure an operator sees
+    is still a command they can rerun.
+
+    A DEFERRAL cannot reach this provider: none of its reads is declared
+    deferrable, because a resolution the walker asked for is not
+    postponable work. The client's failure type admits one all the same,
+    so it is mapped here rather than widening the ratified
+    `GithubQueryFailed | GithubBudgetUnmeasurable` union to a third
+    variant no caller of this provider could ever observe.
+    """
+    if isinstance(failure, GithubBudgetUnmeasurable):
+        return replace(failure, argv=argv)
+    return GithubQueryFailed(
+        argv=argv,
+        detail=f"deferred with {failure.remaining} left of a {failure.floor} floor",
+    )
+
+
+def _answered(*, invocation: GhInvocation) -> IOResult[GhInvocation, GithubFailure]:
+    """The outcome as an answer, or as the failure it reports."""
+    if invocation.unspawnable is not None:
+        return IOFailure(GithubQueryFailed(argv=invocation.argv, detail=invocation.unspawnable))
+    if invocation.returncode == 0:
+        return IOSuccess(invocation)
     return IOFailure(
         GithubQueryFailed(
-            argv=argv_display,
-            detail=detail,
-            http_404=stderr_indicates_http_404(stderr=failed.stderr),
+            argv=invocation.argv,
+            detail=invocation.stderr.strip() or f"exit {invocation.returncode}",
+            http_404=stderr_indicates_http_404(stderr=invocation.stderr),
         )
-    )
-
-
-def _failed_github_response(
-    *,
-    argv: list[str],
-    detail: str,
-    failed: subprocess.CalledProcessError,
-    headers: dict[str, str],
-) -> IOResult[subprocess.CompletedProcess[str], GithubFailure]:
-    status_code = _http_status_code(stderr=failed.stderr)
-    snapshot = parse_rate_limit_snapshot(headers=headers)
-    classification = classify_github_failure(status_code=status_code, snapshot=snapshot)
-    _record_budget_snapshot(
-        argv=argv,
-        stdout=None,
-        stderr=failed.stderr,
-        status_code=status_code,
-        classification=classification,
-    )
-    rate_limit_outcome = _RATE_LIMIT_OUTCOMES[classification]
-    failures: dict[RateLimitOutcome | None, GithubFailure] = {
-        None: GithubQueryFailed(
-            argv=shlex.join(argv),
-            detail=detail,
-            http_404=stderr_indicates_http_404(stderr=failed.stderr),
-        ),
-        "primary_exhaustion": GithubBudgetUnmeasurable(
-            argv=shlex.join(argv),
-            detail=detail,
-            classification="primary_exhaustion",
-            snapshot=snapshot,
-        ),
-        "secondary_limit": GithubBudgetUnmeasurable(
-            argv=shlex.join(argv),
-            detail=detail,
-            classification="secondary_limit",
-            snapshot=snapshot,
-        ),
-    }
-    return IOFailure(failures[rate_limit_outcome])
-
-
-def _record_budget_snapshot(
-    *,
-    argv: list[str],
-    stdout: str | None,
-    stderr: str | None,
-    status_code: int | None,
-    classification: GithubRateLimitClassification | None,
-) -> None:
-    headers = extract_rate_limit_headers(text=stderr)
-    headers.update(extract_rate_limit_headers(text=stdout))
-    if not headers:
-        return
-    snapshot = parse_rate_limit_snapshot(headers=headers)
-    _ = append_rate_limit_snapshot(
-        snapshot=snapshot,
-        argv=shlex.join(argv),
-        status_code=status_code,
-        classification=classification,
     )
 
 
@@ -178,17 +163,6 @@ def stderr_indicates_http_404(*, stderr: str | None) -> bool:
         return False
     marker = "(HTTP 404)"
     return any(line.rstrip().endswith(marker) for line in stderr.splitlines())
-
-
-def _http_status_code(*, stderr: str) -> int:
-    marker = "(HTTP "
-    return int(
-        next(
-            line.rpartition(marker)[2].removesuffix(")")
-            for line in stderr.splitlines()
-            if marker in line
-        )
-    )
 
 
 def _gh_env_with_headers() -> dict[str, str]:
