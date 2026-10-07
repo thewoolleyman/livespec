@@ -15,7 +15,7 @@ the preflight, and the loop; this module owns what happens to ONE repo,
 and `process_target` is the single entry point between them.
 """
 
-# livespec-lloc-soft-band-owner: livespec-gnyqqn
+# livespec-lloc-soft-band-owner: livespec-odb6me
 # This file sat at EXACTLY the 200-LLOC soft ceiling before the
 # in-progress markers were threaded through it, so carrying them crossed
 # the band by one line rather than by any growth worth that warning. The
@@ -23,6 +23,8 @@ and `process_target` is the single entry point between them.
 # three concerns — identity resolution, the blocking-state order, and the
 # post-fetch landing verdicts — which is a structural change the narrow
 # follow-up that crossed the line deliberately did not take on.
+# The named backlog item owns that remaining refactor, not the completed
+# marker-reporting follow-up; its extraction boundaries still need grooming.
 
 from __future__ import annotations
 
