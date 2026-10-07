@@ -23,6 +23,14 @@ __all__: list[str] = []
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BIN_DIR = _REPO_ROOT / ".claude-plugin" / "scripts" / "bin"
 
+# The operator identity this fixture declares in its own tmp_path
+# repository. `bin/revise.py` resolves the author it records from the
+# repository its working directory resolves to, so this pair is what the
+# revision front-matter MUST carry — never the surrounding host's.
+_FIXTURE_AUTHOR_NAME = "E2E Test"
+_FIXTURE_AUTHOR_EMAIL = "e2e-test@example.com"
+_FIXTURE_AUTHOR = f"{_FIXTURE_AUTHOR_NAME} <{_FIXTURE_AUTHOR_EMAIL}>"
+
 _BAD_SPEC_CONTENT = """\
 # `Doctor fail-then-fix test`
 
@@ -66,15 +74,29 @@ def _git(*, cwd: Path, args: list[str]) -> None:
 
 
 @pytest.mark.e2e_golden
-def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
+def test_doctor_fail_then_fix(  # noqa: PLR0915
+    *,
+    tmp_path: Path,
+    host_without_git_author_identity: None,
+) -> None:
     """Pre-seed bad spec → doctor fails → propose-change + revise fix → doctor passes.
+
+    The `host_without_git_author_identity` fixture runs the whole
+    scenario on a host carrying NO Git author configuration — the
+    bare-CI-runner condition — so the only identity any step can
+    resolve is the explicit pair this test writes into its own
+    `tmp_path` repository. The revise step asserts that pair is what
+    the revision front-matter records, which is what makes the
+    scenario host-independent rather than merely green on a
+    developer machine.
 
     PLR0915 noqa: multi-step integration test — sequential steps share state via
     tmp_path filesystem; extracting into helpers obscures the fix-then-verify flow.
     """
+    _ = host_without_git_author_identity
     _git(cwd=tmp_path, args=["init"])
-    _git(cwd=tmp_path, args=["config", "user.email", "e2e-test@example.com"])
-    _git(cwd=tmp_path, args=["config", "user.name", "E2E Test"])
+    _git(cwd=tmp_path, args=["config", "user.email", _FIXTURE_AUTHOR_EMAIL])
+    _git(cwd=tmp_path, args=["config", "user.name", _FIXTURE_AUTHOR_NAME])
     # Post-v095: normal working-tree clone; the bare-flag mechanism
     # has been retired in favor of the commit-refuse-hook
     # invariant, which fires only against the configured primary
@@ -129,7 +151,13 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
             str(tmp_path),
             "fix-shall-case",
         ],
-        cwd=str(_REPO_ROOT),
+        # Invoked from the fixture's own project root, as an operator
+        # would — see the `_invoke_with_json` docstring in
+        # tests/e2e/fake_claude.py. The wrapper chain resolves the
+        # operator identity from its working directory, so launching
+        # from the livespec checkout made this scenario depend on the
+        # host's git configuration.
+        cwd=str(tmp_path),
         capture_output=True,
         text=True,
         check=False,
@@ -172,12 +200,28 @@ def test_doctor_fail_then_fix(*, tmp_path: Path) -> None:  # noqa: PLR0915
             "--project-root",
             str(tmp_path),
         ],
-        cwd=str(_REPO_ROOT),
+        # Same working-directory scoping as the propose-change step
+        # above: `bin/revise.py` records the operator identity its
+        # working directory resolves to as `author_human`.
+        cwd=str(tmp_path),
         capture_output=True,
         text=True,
         check=False,
     )
     assert revise_result.returncode == 0, f"revise failed: {revise_result.stderr!r}"
+
+    # Globbed rather than pinned to a version directory: this scenario's
+    # out-of-band spec edit consumes a version of its own, so the accepted
+    # proposal's revision lands one further along than the happy path's.
+    revisions = sorted(
+        (spec_target / "history").glob("v*/proposed_changes/fix-shall-case-revision.md")
+    )
+    assert len(revisions) == 1, f"expected exactly one fix-shall-case revision; got {revisions}"
+    revision_md = revisions[0]
+    assert f"author_human: {_FIXTURE_AUTHOR}\n" in revision_md.read_text(encoding="utf-8"), (
+        f"revision front-matter MUST record the fixture's explicit operator identity "
+        f"({_FIXTURE_AUTHOR}); got {revision_md.read_text(encoding='utf-8')!r}"
+    )
 
     _git(cwd=tmp_path, args=["add", "-A"])
     _git(cwd=tmp_path, args=["commit", "-m", "fix bcp14 Shall -> SHALL"])

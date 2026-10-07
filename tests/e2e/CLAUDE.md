@@ -31,7 +31,8 @@ default for cost control (override with `JUST_E2E_PYTEST_ARGS='-m ""'`).
 - `harness.py` — selector. Re-exports the matching tier's surface based on
   `LIVESPEC_E2E_HARNESS`.
 - `conftest.py` — adds `tests/e2e/` to sys.path; scrubs inherited `GIT_*`
-  env vars; auto-skips `mock_only` tests when `LIVESPEC_E2E_HARNESS=real`.
+  env vars; auto-skips `mock_only` tests when `LIVESPEC_E2E_HARNESS=real`;
+  offers the opt-in `host_without_git_author_identity` fixture.
 - `test_happy_path.py` — seed → propose-change → critique → revise →
   doctor → prune. Marked `e2e_golden`.
 - `test_retry_on_exit_4.py` — schema-invalid payload → exit 4 → retry
@@ -43,6 +44,16 @@ default for cost control (override with `JUST_E2E_PYTEST_ARGS='-m ""'`).
 ## Conventions
 
 - Each test initializes a fresh `tmp_path` git repo via `_git(["init"])`.
+- Wrappers are invoked with the fixture's `project_root` as their WORKING
+  DIRECTORY, as an operator would invoke a `/livespec:*` command. This is
+  load-bearing, not cosmetic: `bin/revise.py` resolves the operator identity
+  it records as `author_human` from the repository its working directory
+  resolves to, not from `--project-root`. A scenario launched from the
+  livespec checkout inherits the host's git configuration instead — green on
+  a configured developer machine, and a hard author-resolution failure on a
+  bare CI runner. The two `e2e_golden` scenarios pin this by taking
+  `host_without_git_author_identity` and asserting the revision front-matter
+  records their own declared identity.
 - Steps that change committed spec state MUST be followed by `git add &&
   git commit` so the `out-of-band-edits` doctor check sees HEAD-committed
   state.

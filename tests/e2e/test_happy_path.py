@@ -17,6 +17,15 @@ import pytest
 __all__: list[str] = []
 
 
+# The operator identity this fixture declares in its own tmp_path
+# repository. `bin/revise.py` resolves the author it records from the
+# repository its working directory resolves to, so this pair is what the
+# revision front-matter MUST carry — never the surrounding host's.
+_FIXTURE_AUTHOR_NAME = "E2E Test"
+_FIXTURE_AUTHOR_EMAIL = "e2e-test@example.com"
+_FIXTURE_AUTHOR = f"{_FIXTURE_AUTHOR_NAME} <{_FIXTURE_AUTHOR_EMAIL}>"
+
+
 def _git(*, cwd: Path, args: list[str]) -> None:
     subprocess.run(
         ["git", *args],
@@ -28,8 +37,8 @@ def _git(*, cwd: Path, args: list[str]) -> None:
 
 def _git_init_and_configure(*, project_root: Path) -> None:
     _git(cwd=project_root, args=["init"])
-    _git(cwd=project_root, args=["config", "user.email", "e2e-test@example.com"])
-    _git(cwd=project_root, args=["config", "user.name", "E2E Test"])
+    _git(cwd=project_root, args=["config", "user.email", _FIXTURE_AUTHOR_EMAIL])
+    _git(cwd=project_root, args=["config", "user.name", _FIXTURE_AUTHOR_NAME])
     # Per the copier-template-workflow-coverage doctor invariant,
     # the e2e fixture also models the post-`copier copy` state.
     harness.seed_required_workflow_files(project_root=project_root)
@@ -48,14 +57,28 @@ def _git_add_all_and_commit(*, project_root: Path, message: str) -> None:
     condition=False,
     reason="Runs in both mock and real tiers; flagship golden-flow test per li-949 Q2.",
 )
-def test_happy_path_minimal(*, tmp_path: Path) -> None:
+def test_happy_path_minimal(
+    *,
+    tmp_path: Path,
+    host_without_git_author_identity: None,
+) -> None:
     """Full happy-path round-trip: seed → propose-change → critique → revise → doctor → prune.
+
+    The `host_without_git_author_identity` fixture runs the whole
+    round-trip on a host carrying NO Git author configuration — the
+    bare-CI-runner condition — so the only identity any step can
+    resolve is the explicit pair this test writes into its own
+    `tmp_path` repository. The revise step asserts that pair is what
+    the revision front-matter records, which is what makes the
+    scenario host-independent rather than merely green on a
+    developer machine.
 
     PLR0915 noqa: same multi-step integration test rationale as
     tests/bin/test_phase3_round_trip.py — sequential steps share state
     via the tmp_path filesystem; extracting each step into a helper
     would obscure the round-trip reading order.
     """
+    _ = host_without_git_author_identity
     _git_init_and_configure(project_root=tmp_path)
 
     # Step 1: seed
@@ -102,6 +125,19 @@ def test_happy_path_minimal(*, tmp_path: Path) -> None:
     )
     assert (tmp_path / "SPECIFICATION" / "history" / "v002").is_dir()
     assert not (tmp_path / "SPECIFICATION" / "proposed_changes" / "review-constraint.md").exists()
+    revision_md = (
+        tmp_path
+        / "SPECIFICATION"
+        / "history"
+        / "v002"
+        / "proposed_changes"
+        / "review-constraint-revision.md"
+    )
+    assert revision_md.is_file(), f"expected revise to write {revision_md}"
+    assert f"author_human: {_FIXTURE_AUTHOR}\n" in revision_md.read_text(encoding="utf-8"), (
+        f"revision front-matter MUST record the fixture's explicit operator identity "
+        f"({_FIXTURE_AUTHOR}); got {revision_md.read_text(encoding='utf-8')!r}"
+    )
     _git_add_all_and_commit(project_root=tmp_path, message="revise")
 
     # Step 5: doctor (static phase only; minimal template has no LLM-driven checks)

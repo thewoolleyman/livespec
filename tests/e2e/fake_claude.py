@@ -129,6 +129,7 @@ def seed(*, project_root: Path, intent: str) -> subprocess.CompletedProcess[str]
         wrapper="seed.py",
         flag="--seed-json",
         payload=payload,
+        project_root=project_root,
         extra_args=["--project-root", str(project_root)],
     )
 
@@ -162,6 +163,7 @@ def propose_change(
         wrapper="propose_change.py",
         flag="--findings-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(project_root / "SPECIFICATION"),
@@ -195,6 +197,7 @@ def propose_change_invalid(
         wrapper="propose_change.py",
         flag="--findings-json",
         payload=invalid_payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(project_root / "SPECIFICATION"),
@@ -229,6 +232,7 @@ def critique(
         wrapper="critique.py",
         flag="--findings-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(project_root / "SPECIFICATION"),
@@ -275,6 +279,7 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
         wrapper="revise.py",
         flag="--revise-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(spec_target),
@@ -359,9 +364,23 @@ def _invoke_with_json(
     wrapper: str,
     flag: str,
     payload: dict[str, object],
+    project_root: Path,
     extra_args: list[str],
 ) -> subprocess.CompletedProcess[str]:
-    """Write payload to a temp file and invoke the wrapper with flag pointing at it."""
+    """Write payload to a temp file and invoke the wrapper with flag pointing at it.
+
+    The wrapper runs with `project_root` as its working directory,
+    matching how an operator invokes a `/livespec:*` command — from
+    inside the governed project. That is not cosmetic: `bin/revise.py`
+    resolves the operator identity it records as `author_human` from
+    the repository its WORKING DIRECTORY resolves to, not from
+    `--project-root`. Launching wrappers from the livespec checkout
+    instead made every scenario inherit the host's git configuration —
+    recording a developer's own identity locally, and failing outright
+    on a bare CI runner that configures none. `doctor_static` and
+    `prune_history` already invoke from `project_root`; this is the
+    same scoping for the payload-driven wrappers.
+    """
     with tempfile.NamedTemporaryFile(
         mode="w",
         suffix=".json",
@@ -372,7 +391,7 @@ def _invoke_with_json(
         tmp_path = tmp.name
     return _run_wrapper(
         argv=[sys.executable, str(_BIN_DIR / wrapper), flag, tmp_path, *extra_args],
-        cwd=_REPO_ROOT,
+        cwd=project_root,
     )
 
 
