@@ -140,6 +140,7 @@ def seed(*, project_root: Path, intent: str) -> subprocess.CompletedProcess[str]
         wrapper="seed.py",
         flag="--seed-json",
         payload=payload,
+        project_root=project_root,
         extra_args=["--project-root", str(project_root)],
     )
 
@@ -175,6 +176,7 @@ def propose_change(
         wrapper="propose_change.py",
         flag="--findings-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(project_root / "SPECIFICATION"),
@@ -211,6 +213,7 @@ def critique(
         wrapper="critique.py",
         flag="--findings-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(project_root / "SPECIFICATION"),
@@ -274,6 +277,7 @@ def revise(*, project_root: Path) -> subprocess.CompletedProcess[str]:
         wrapper="revise.py",
         flag="--revise-json",
         payload=payload,
+        project_root=project_root,
         extra_args=[
             "--spec-target",
             str(spec_target),
@@ -460,9 +464,19 @@ def _invoke_with_json(
     wrapper: str,
     flag: str,
     payload: dict[str, object],
+    project_root: Path,
     extra_args: list[str],
 ) -> subprocess.CompletedProcess[str]:
-    """Write payload to a temp file and invoke the wrapper with flag pointing at it."""
+    """Write payload to a temp file and invoke the wrapper with flag pointing at it.
+
+    The wrapper runs with `project_root` as its working directory, for
+    the reason the mock tier's `_invoke_with_json` docstring gives: the
+    operator identity `bin/revise.py` records as `author_human` comes
+    from the repository its WORKING DIRECTORY resolves to, not from
+    `--project-root`. Both tiers run the same `e2e_golden` test bodies,
+    which assert the fixture's own declared identity, so the two
+    harnesses must scope this identically.
+    """
     with tempfile.NamedTemporaryFile(
         mode="w",
         suffix=".json",
@@ -473,7 +487,7 @@ def _invoke_with_json(
         tmp_path = tmp.name
     return _run_wrapper(
         argv=[sys.executable, str(_BIN_DIR / wrapper), flag, tmp_path, *extra_args],
-        cwd=_REPO_ROOT,
+        cwd=project_root,
     )
 
 

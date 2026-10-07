@@ -40,6 +40,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from livespec.errors import LivespecError
 from livespec.io import git as io_git
 from livespec.parse.git_author import GitIdentity
 from livespec.spec_governance.pr_merge_derivation import LOCAL_DIFF_ARGS
@@ -1291,5 +1292,45 @@ def test_get_git_user_fails_when_the_effective_author_disagrees_with_config(
     match unwrapped:
         case Failure(_):
             return
+        case _:
+            raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_get_git_user_fails_closed_when_no_identity_is_configured_anywhere(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A host carrying NO author configuration MUST NOT resolve an identity.
+
+    This is the bare-CI-runner condition: no `GIT_AUTHOR_*`
+    override, no reachable global or system config, and a
+    repository whose local config declares neither `user.name`
+    nor `user.email`. Whatever git would otherwise invent from
+    the login name and hostname is NOT an operator identity, so
+    the production author-resolution path revision metadata
+    composes against stays on the failure track and surfaces a
+    `LivespecError` diagnostic rather than attributing the work
+    to a host-invented pair.
+
+    The guard matters because the fix for the e2e harness's
+    host-identity leak (tests/e2e/fake_claude.py and
+    tests/e2e/test_doctor_fail_then_fix.py now launch wrappers
+    from the fixture's own project root) deliberately gives
+    those scenarios a resolvable identity. That must not be
+    confused with relaxing the production refusal, which this
+    test pins independently.
+    """
+    _ = subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(tmp_path / "empty-home"))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "absent-global-config"))
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", str(tmp_path / "absent-system-config"))
+
+    result = io_git.get_git_user()
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(error):
+            assert isinstance(error, LivespecError)
         case _:
             raise AssertionError(f"expected IOFailure(...), got {result!r}")
