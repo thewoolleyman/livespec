@@ -197,6 +197,7 @@ def _ratification_evidence(
     }
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_returns_zero_when_revise_file_readable(
     *,
     tmp_path: Path,
@@ -352,6 +353,7 @@ def test_revise_parser_documents_only_topic_and_partial_decision_payloads() -> N
     assert "need not cover every pending proposal" in help_text
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_allows_matching_only_topic_guard(
     *,
     tmp_path: Path,
@@ -682,6 +684,7 @@ def test_revise_bind_resulting_files_skips_non_dict_entry(
     assert result == initial
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_writes_paired_revision_for_reject_decision(
     *,
     tmp_path: Path,
@@ -742,6 +745,7 @@ def test_revise_main_writes_paired_revision_for_reject_decision(
     assert "Not aligned with current direction." in text
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_moves_proposed_change_into_history_for_reject_decision(
     *,
     tmp_path: Path,
@@ -1460,6 +1464,7 @@ def test_revise_main_emits_rejection_notes_section_for_reject_decision(
     assert "## Rejection Notes" in text
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_snapshots_working_spec_files_into_history_vnnn(
     *,
     tmp_path: Path,
@@ -2031,6 +2036,7 @@ def test_revise_module_declares_hkt_erosion_pragma() -> None:
     ), "commands/revise.py must declare the HKT-erosion pragma as its first line"
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
     *,
     tmp_path: Path,
@@ -2126,6 +2132,7 @@ def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
     )
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_exits_0_when_post_step_doctor_passes(
     *,
     tmp_path: Path,
@@ -2185,6 +2192,7 @@ def test_revise_main_exits_0_when_post_step_doctor_passes(
     assert exit_code == 0, f"expected exit 0 on green post-step, got {exit_code}"
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_snapshots_subdirectory_asset_into_history_vnnn(
     *,
     tmp_path: Path,
@@ -2243,6 +2251,7 @@ def test_revise_main_snapshots_subdirectory_asset_into_history_vnnn(
     assert snapshot_spec.is_file()
 
 
+@pytest.mark.usefixtures("deterministic_git_identity")
 def test_revise_main_snapshot_excludes_history_proposed_changes_and_templates(
     *,
     tmp_path: Path,
