@@ -1,0 +1,51 @@
+[
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## A fleet CI host is rebuilt from bare metal by the committed procedure",
+    "work_item": "livespec-sab5gn",
+    "first_seen": "2026-09-06"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Drift acceptance under each mode",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-04"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Error path — authoring batch input requires attention",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-03"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Error path — doctor disposition requires attention",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-03"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Error path — ratification review blocks mutation",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-03"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Error path — spec pull request cannot auto-merge",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-10"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "spec.md",
+    "heading": "## Spec-tree path closure",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-08-23"
+  }
+]

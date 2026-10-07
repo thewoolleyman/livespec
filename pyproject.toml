@@ -70,7 +70,7 @@ dev = [
 # SPECIFICATION/contracts.md §"`livespec_runtime.cross_repo` contract
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
-livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v1.69.4" }
+livespec-dev-tooling = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git", tag = "v1.92.2" }
 livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.git", tag = "v0.22.1" }
 
 # ---------------------------------------------------------------------------
@@ -109,6 +109,9 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 file_lloc_hard_gate = true
 plan_lifecycle_anchor = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
+repo_local_ci_skips = [
+    { slug = "check-no-workflow-edits", reason = "Local and janitor authorship control; the canonical guard explicitly exits without evaluation under GITHUB_ACTIONS because CI has no local author to control." },
+]
 
 # e9j slice 1a — arm `newtype_domain_primitives`.
 #
@@ -639,6 +642,11 @@ omit = [
     "*/.venv/*",
     "*/site-packages/*",
     "*/__pycache__/*",
+    # Host-installed Python utilities are not first-party repository code.
+    # Keep subprocess tracing for repo-owned scripts even when their cwd is
+    # a temporary directory; exclude the external host trees instead.
+    "/usr/*",
+    "/opt/*",
     # E2E and prompt-QA test infrastructure is excluded from coverage
     # per SPECIFICATION/contracts.md §"E2E harness contract" and
     # §"Prompt-QA harness contract §"Python-rule compliance". (The
