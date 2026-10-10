@@ -9,6 +9,13 @@
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
+    "heading": "## A hand change to a fleet host is refused outside the committed apply",
+    "work_item": "livespec-qurhq2",
+    "first_seen": "2026-10-10"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "heading": "## Drift acceptance under each mode",
     "work_item": "livespec-6fb1",
     "first_seen": "2026-08-04"
