@@ -1,6 +1,6 @@
 """livespec_runtime.cross_repo.providers — external state provider modules.
 
-Per livespec/SPECIFICATION/contracts.md v072: cross-repo state queries
+Per livespec/SPECIFICATION/contracts.md: cross-repo state queries
 live behind provider modules so
 the resolve-ref walker stays agnostic of the underlying transport.
 
