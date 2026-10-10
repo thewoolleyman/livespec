@@ -1,6 +1,6 @@
 """Retry policy for cross-repo subprocess queries.
 
-Per livespec/SPECIFICATION/contracts.md v072: 3 attempts with 1s / 2s /
+Per livespec/SPECIFICATION/contracts.md: 3 attempts with 1s / 2s /
 4s exponential backoff. After every attempt fails the caller surfaces
 `RefStatus.UNKNOWN` rather than raising; this module returns a
 `RetryExhausted` on the failure track and lets the caller translate.
