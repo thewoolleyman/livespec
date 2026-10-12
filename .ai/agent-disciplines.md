@@ -414,6 +414,57 @@ factory outages and breakages. STOP THE ASSEMBLY LINE FOR BREAKAGES."* The green
 run was real, but it validated only the pinned path, not the rollout every other
 session depends on.
 
+## Never re-attempt a failed dispatch without naming what changed
+
+Never re-attempt a failed dispatch without naming what changed. Before any
+retry, state in one sentence the specific difference that addresses the recorded
+failure: a code change in the failing check you can point to, a changed item
+text, or a recovered external condition. 'A newer build exists' is not a reason.
+Build drift is permanent in this continuous-deployment fleet, and the drift
+warning is ambient, not a diagnosis. If you cannot name the difference, read the
+refusal, find the code that produced it, and diff that code across builds before
+launching anything. If there is still no difference, stop and report it as a
+defect rather than retrying.
+
+**What counts as a reason, and what does not.** Exactly three differences
+qualify: a **code change in the failing check** you can point to, a **changed
+item text**, or a **recovered external condition**. The existence of a newer
+build is NOT one of them. A build number that moved is not evidence that the
+code behind the refusal moved with it, and the two are independent: a release
+can carry nothing that touches the check that refused you.
+
+**Build drift is the fleet's steady state, not a finding.** Releases land
+continuously here, so the build a session is bound to is routinely behind the
+newest registered one. The drift warning that reports that gap is **ambient** —
+it is true of nearly every session, including every session whose dispatch
+succeeded — so it is never a **diagnosis** of the failure in front of you.
+Reading it as the explanation is how a session talks itself into a retry it
+cannot justify.
+
+**When you cannot name the difference.** Read the refusal itself, find the code
+that produced that exact message, and diff that code across the two builds —
+all of this **before** launching anything. That diff either hands you the
+sentence this rule demands or proves there is nothing to say. If it proves there
+is nothing to say, **stop and report it as a defect** rather than retrying: a
+deterministic failure re-run unchanged fails the same way, and the attempt burns
+the quota, the factory slot, and the review attention that the real fix needs.
+
+**Recorded incident (maintainer correction, 2026-10-11/12).** A session driving
+plan `herdr-overseer` dispatched `overseer-fatiq3`, and the Fabro currency
+admission refused it — "reported no server build commit". The bound build
+0.182.0 parsed TEXT `fabro version` output with a regex the hp factory's
+separate-line output never matched, which was a parser defect. The agent
+re-launched on the newer registered build 0.187.0 because the build-drift
+warning invited it, without first checking whether 0.187.0 changed the failing
+check. It happened to — via commit 6a8e35c1, first released in v0.182.1 — but
+that was luck, not a named reason, and the agent could not have cited it because
+it never looked. The maintainer stopped the re-dispatch as thrashing. Earlier in
+that same session, another dispatch had already been re-attempted after a
+deterministic failure with no named change. Full evidence lives in the
+`livespec-orchestrator-beads-fabro` repository at
+`plan/dispatch-retry-discipline/research/001-unnamed-change-redispatch-evidence-2026-10-12.md`,
+under orchestrator plan epic `bd-ib-jjb4mt`.
+
 ## Cross-cutting disciplines index
 
 Each entry names the discipline and points at its authoritative detail — read the
@@ -487,6 +538,16 @@ named section before acting; do not rely on this summary alone.
   path; a permanent limitation is designed within — neither is a bypass. Detail:
   this file §"A factory or tooling BREAKAGE stops the line — fix the root cause,
   never route around it".
+- **Never re-attempt a failed dispatch without naming what changed** — before
+  any retry, state in one sentence the specific difference that addresses the
+  recorded failure: a code change in the failing check, a changed item text, or
+  a recovered external condition. A newer build merely existing is not a reason,
+  because build drift is permanent in this continuous-deployment fleet and the
+  drift warning is ambient rather than a diagnosis. If you cannot name the
+  difference, read the refusal, find the code that produced it, and diff that
+  code across builds before launching anything; if there is still no difference,
+  stop and report a defect instead of retrying. Detail: this file §"Never
+  re-attempt a failed dispatch without naming what changed".
 - **Declare `blocked:` immediately; never manufacture busywork** — when the real
   work is gated on a human and nothing can legitimately advance, say so at once
   rather than producing filler to look productive. A cleared blocked-marker is a
