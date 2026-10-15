@@ -28,14 +28,57 @@ env var to having NO effect).
 
 1. Identify the landed change that turned master red (or otherwise
    deadlocked the gates).
-2. **Revert it** — when local commits are themselves blocked by the red
-   master, create the revert SERVER-SIDE (a GitHub revert PR via the web
-   UI or API), which no local hook mediates. Merging the revert restores
-   green without any gate being weakened.
+2. **Revert it** — through the master-health reconciler's revert, not a
+   hand-made one. The reconciler (shipped from livespec-dev-tooling,
+   installed in every fleet repo by `wire-fleet-member`) reverts the
+   culprit by default and needs no session at all; see "Two sanctioned
+   paths past a red master" below. When a revert must be made by hand,
+   use the same mechanism: describe the revert (the culprit's parent
+   bytes at every path it changed, plus a `This reverts commit <sha>.`
+   line) and have the forge commit it through `createCommitOnBranch`
+   under the fleet GitHub App installation token. Do NOT make a revert
+   PR through the web UI's Revert button or `revertPullRequest`: GitHub
+   leaves those commits UNSIGNED (measured 2026-10-14), so whenever the
+   culprit touched product impl `.py`, the Red-Green-Replay range gate
+   convicts them and they never go green. Merging a green revert restores
+   master without any gate being weakened.
 3. Re-land the reverted work **in the right order** (dependencies,
    consumer wiring, and rollout adoption BEFORE the enforcement that
    assumes them), each step through the normal green gates.
 4. File a re-land work-item so the reverted work is never silently lost.
+   When the reconciler made the revert, the culprit PR's owning session
+   files it. When no live session owns the culprit, the episode's
+   needs-attention issue names the obligation so the maintainer files it.
+
+## Two sanctioned paths past a red master
+
+Ratified in livespec `SPECIFICATION/non-functional-requirements.md`
+§"CI as a merge gate (branch protection)" (v224, plan
+`red-master-self-healing`). Only these two get past a red `master`.
+Every other lever, flag, severity knob or carve-out stays forbidden by
+the rule above.
+
+- **The reconciler's automatic revert (the default).** A red episode
+  starts only when the all-green gate job fails. The reconciler re-runs
+  the failed jobs once and classifies the failure. A flake or an
+  infrastructure failure raises a needs-attention issue and is never
+  reverted. For a genuine regression, it opens the revert described
+  above and merges it once the revert's own CI is green. It refuses a
+  revert that would overwrite later work on the same paths, and never
+  reverts its own revert.
+- **A progress-bounded fix-forward claim.** A comment on the
+  reconciler's revert PR naming the fix PR holds the revert while the
+  fix keeps making progress. The comment must come from the maintainer's
+  forge login, or from the culprit PR's opener with a `Claimed-By:` line
+  naming the owning session. The hold is released when the fix thrashes,
+  or stalls past its step's stall duration (the measured p90 × 1.5, in
+  committed config). At the 2 h hard cap the revert lands regardless,
+  but only if its own CI is green. A revert that is merely "likely" to
+  fix the failure is never merged; it raises needs-attention instead.
+
+The claim is a sanctioned PATH, not a lever: it never lets anything
+proceed while the green-master gate reports red. It only decides which
+of two fixes restores green.
 
 **Corollaries:**
 
