@@ -76,7 +76,8 @@ dolt.server-host: 127.0.0.1
 dolt.server-port: 3307
 dolt.server-user: livespec
 dolt.database: livespec
-dolt.prefix: livespec# Client-side auto-backup lane OFF. This tenant is backed up SERVER-SIDE every
+dolt.prefix: livespec
+# Client-side auto-backup lane OFF. This tenant is backed up SERVER-SIDE every
 # hour by dolt-backup.service, which calls DOLT_BACKUP('sync','s3') for every
 # database on the shared dolt-server, so the client lane would duplicate a
 # backup that already runs. Without this explicit key bd auto-enables the lane
