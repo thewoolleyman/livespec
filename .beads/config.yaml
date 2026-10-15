@@ -76,4 +76,14 @@ dolt.server-host: 127.0.0.1
 dolt.server-port: 3307
 dolt.server-user: livespec
 dolt.database: livespec
-dolt.prefix: livespec
+dolt.prefix: livespec# Client-side auto-backup lane OFF. This tenant is backed up SERVER-SIDE every
+# hour by dolt-backup.service, which calls DOLT_BACKUP('sync','s3') for every
+# database on the shared dolt-server, so the client lane would duplicate a
+# backup that already runs. Without this explicit key bd auto-enables the lane
+# whenever the repository has a git remote (isBackupAutoEnabled in
+# cmd/bd/backup_auto.go) and tries to register a `backup_export` remote, which
+# the server denies to the DB-scoped tenant user (Error 1105) BY DESIGN —
+# tenant accounts do not get the global DOLT_BACKUP privilege that
+# registration needs. The lane is therefore disabled here rather than granted
+# privileges; do not "fix" the denial with a grant.
+backup.enabled: false
