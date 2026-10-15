@@ -649,3 +649,67 @@ Scenario: A hazard-hinted reach through a shell expansion is denied
   Then the Driver denies the call
   And the denial reason names the unresolvable target as the cause
 ```
+
+## A red master heals by revert by default, or through a progressing fix-forward
+
+```gherkin
+Feature: A red master returns to green without a session acting
+
+Scenario: A genuine regression with no fix-forward claim heals by revert
+  Given a fleet repository whose all-green gate job fails on `master` after a merged pull request
+  And the failure fails again on re-run and names no outage
+  When the master-health reconciler runs
+  Then it opens a revert pull request of the culprit merge without any session acting
+  And it merges that revert once the revert's own CI is green
+  And `master` returns to green
+
+Scenario: A progressing fix-forward holds the revert
+  Given a red `master` with an open reconciler revert pull request
+  And a valid fix-forward claim naming a fix pull request
+  When the fix pull request advances through a forward transition within each step's stall duration
+  Then the revert stays held
+  And `master` turns green through the fix with the culprit's work kept on `master`
+
+Scenario: A thrashing or stalled fix-forward releases the revert
+  Given a red `master` with a held revert and a valid fix-forward claim
+  When the fix stalls past its current step's stall duration or a new commit does not shrink its failing set
+  Then the reconciler releases the revert
+  And the revert merges once its own CI is green
+
+Scenario: At the hard cap only a proven revert lands
+  Given a genuine regression that has kept `master` red for the hard cap
+  When the revert's own CI is green
+  Then the reconciler lands the revert regardless of fix-forward progress
+  But when the revert's own CI is not green
+  Then the reconciler does not merge it and raises one needs-attention issue for the episode
+
+Scenario: A flake or an infrastructure failure never produces a revert
+  Given a failure of the all-green gate job that passes on re-run, names an outage, or also fails on an unrelated `master` commit
+  When the master-health reconciler runs
+  Then no revert is merged
+  And one needs-attention issue is raised for the episode
+
+Scenario: A non-gating workflow never starts an episode
+  Given a failure of a workflow that the all-green gate job does not gate
+  And the all-green gate job is green on the same `master` commit
+  When the master-health reconciler runs
+  Then no red-master episode starts and no culprit is selected
+
+Scenario: A revert that would clobber later work is refused
+  Given a genuine regression whose culprit changed a path that a later `master` commit also changed
+  When the master-health reconciler would open the revert
+  Then it does not create the revert
+  And it raises a needs-attention issue naming the obstructing commit
+```
+
+## A green pull request stays green after rebase-merge
+
+```gherkin
+Feature: Fleet CI checks are invariant under rebase-merge metadata
+
+Scenario: A rebase-merge replay receives the same verdict
+  Given a fleet pull request whose CI is green
+  And whose commits carry a committer timezone that differs from UTC
+  When it is rebase-merged and `master` CI runs on the newly minted commits
+  Then every check returns the same verdict it returned on the pull request
+```

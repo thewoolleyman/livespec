@@ -54,5 +54,19 @@
     "heading": "## Spec-tree path closure",
     "work_item": "livespec-6fb1",
     "first_seen": "2026-08-23"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## A red master heals by revert by default, or through a progressing fix-forward",
+    "work_item": "livespec-dev-tooling-dw7dzd",
+    "first_seen": "2026-10-15"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## A green pull request stays green after rebase-merge",
+    "work_item": "livespec-dev-tooling-yfqvqm",
+    "first_seen": "2026-10-15"
   }
 ]
