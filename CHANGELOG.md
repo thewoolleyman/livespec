@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1](https://github.com/thewoolleyman/livespec/compare/v0.42.0...v0.42.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **beads:** restore the dolt.prefix line the backup-lane comment joined ([5b18f38](https://github.com/thewoolleyman/livespec/commit/5b18f38f452638462dde503ba6a7fdded90690e1))
+
 ## [0.42.0](https://github.com/thewoolleyman/livespec/compare/v0.41.0...v0.42.0) (2026-10-01)
 
 
