@@ -1,7 +1,7 @@
 """livespec_runtime.cross_repo — cross-repo work-item dependency resolution.
 
 Implements the cross-repo dependency awareness contract from
-livespec/SPECIFICATION/contracts.md v072 (landed by work-item li-e7h6ki
+livespec/SPECIFICATION/contracts.md (landed by work-item li-e7h6ki
 under parent epic li-6d2wpj;
 impl landed by li-aclzfe at v0.2.0).
 
