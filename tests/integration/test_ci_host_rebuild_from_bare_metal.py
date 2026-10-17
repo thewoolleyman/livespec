@@ -10,14 +10,27 @@ runtime, never in this specification, so this module rehearses THAT
 repository's committed procedure as a consumer reads a producer.
 
 HOW THE PRODUCER IS REACHED, AND WHY NOTHING HERE KNOWS ITS LAYOUT.
-The provisioning repository is resolved through this project's own
-committed seam — the `.livespec.jsonc` `cross_repo_targets` entry plus
-`resolve_effective_local_clone`, which honors the
-`LIVESPEC_SIBLING_CLONES_ROOT` override — so the clone path is never
-spelled here. The procedure's location inside that clone is then
-DERIVED from the producer's own ratified obligation section: the one
-`## ` section of its `non-functional-requirements.md` that quotes this
-repository's clause title, read out of its git database at `HEAD`. The
+What is rehearsed is the producer AT THE RELEASE THIS REPOSITORY
+PINS — the `pyproject.toml` `[tool.uv.sources]` tag, which is the
+version this consumer actually runs — so the rehearsal is the same
+procedure in a factory sandbox, on a laptop and in CI rather than
+whatever a nearby working tree happens to be on. That pinned release
+is reached from either of two sources, and NEITHER is allowed to
+decide whether the rehearsal happens: the sibling clone resolved
+through this project's own committed seam (the `.livespec.jsonc`
+`cross_repo_targets` entry plus `resolve_effective_local_clone`, which
+honors the `LIVESPEC_SIBLING_CLONES_ROOT` override) when that clone
+carries the pinned tag, and otherwise a shallow fetch of exactly that
+tag from the `github_url` the pin itself names. So no clone path and
+no release is spelled here, and a tree with no sibling checkout — a
+GitHub Actions runner, say — rehearses identically instead of skipping
+into an unexecuted body. Only a tree that can reach the release
+through neither source skips, and it names both sources it tried.
+
+The procedure's location inside the producer is then DERIVED from the
+producer's own ratified obligation section: the one `## ` section of
+its `non-functional-requirements.md` that quotes this repository's
+clause title, read out of its git database at the pinned tag. The
 bare-metal stage directory is the backticked path that section names;
 the profiles are the one directory of `.env` data beside it; the stages
 are the scripts in it whose own `--help` advertises `--dry-run` and a
@@ -34,10 +47,10 @@ every stage of the committed procedure is an executable artifact
 carrying a `--dry-run` mode in which each mutating command is PRINTED
 and none is run, and every state it reads comes from read-only probes.
 So this module materializes the procedure from the producer's git
-database — committed state, never a working tree that may lag or carry
-edits — and RUNS the real stages, unmodified, against the real
-committed per-host profiles, on a scratch `PATH` whose probes answer
-nothing. "Probes answer nothing" IS the scenario's empty storage, and
+database at the pinned release — committed state, never a working tree
+that may lag or carry edits — and RUNS the real stages, unmodified,
+against the real committed per-host profiles, on a scratch `PATH` whose
+probes answer nothing. "Probes answer nothing" IS the scenario's empty storage, and
 it is what makes the plan independent of the block devices of whatever
 machine runs the suite. Every destructive command the stages can reach
 is a tripwire on that same `PATH` that records being called, so "the
@@ -81,6 +94,7 @@ pytestmark = pytest.mark.integration
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROVISIONING_SLUG = "livespec-dev-tooling"
 _PRODUCER_SPEC = "SPECIFICATION/non-functional-requirements.md"
+_PRODUCER_FORGE = "https://github.com/thewoolleyman/livespec-dev-tooling.git"
 _CLAUSE_TITLE = (
     "A host carrying fleet CI MUST be rebuildable from bare metal by a committed procedure"
 )
@@ -88,6 +102,9 @@ _STAGE_DIR_MARK = "phase0-bare-metal/"
 _BACKTICKED = re.compile(r"`([^`\s]+)`")
 _DATA_LINE = re.compile(r"^[A-Z][A-Z0-9_]*=")
 _TIMEOUT_S = 300.0
+# The branch the harness's stand-in producer repositories are initialized on.
+# Named explicitly so a git default-branch setting cannot change what they are.
+_STANDIN_BRANCH = "main"
 
 # The read-only probes a plan is derived from. A stub that answers nothing is
 # read as "absent", which is the scenario's empty storage, deterministically —
@@ -129,6 +146,23 @@ _MUTATORS = (
     "vgcreate",
     "wipefs",
 )
+
+
+@dataclass(frozen=True, kw_only=True)
+class _Pin:
+    """The producer release this repository declares it consumes."""
+
+    url: str
+    tag: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class _Producer:
+    """A git database holding the pinned release, and the ref naming it there."""
+
+    clone: Path
+    ref: str
+    source: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -179,38 +213,135 @@ def _run(
     )
 
 
-def _provisioning_clone(*, config_text: str, slug: str) -> Path:
-    """Resolve the provisioning repository through this project's own seam.
+def _pinned_release(*, pyproject_text: str, slug: str) -> _Pin:
+    """Read the producer release this repository pins out of its own manifest.
 
-    Every outcome that is NOT a usable clone skips rather than fails,
-    because a tree with no clone of the provisioning repository cannot
-    rehearse its procedure and must not report that it did. Each skip
-    names what was missing, so a skipped run is distinguishable from a
-    run that had the procedure and exercised it.
+    The pin is the single fact that makes the rehearsal reproducible:
+    it names both the release to rehearse and the forge to fetch it
+    from, so no environment contributes either. A manifest declaring
+    the producer twice is a failure rather than a first-wins guess.
+    """
+    pattern = re.compile(
+        rf'^{re.escape(slug)}\s*=\s*\{{\s*git\s*=\s*"(?P<url>[^"]+)"\s*,'
+        rf'\s*tag\s*=\s*"(?P<tag>[^"]+)"\s*\}}\s*$',
+        re.MULTILINE,
+    )
+    found = list(pattern.finditer(pyproject_text))
+    assert len(found) == 1, (
+        f"this repository's manifest must pin {slug} to exactly one git tag for the "
+        f"rehearsal to name a release; found {len(found)} such pins"
+    )
+    return _Pin(url=found[0].group("url"), tag=found[0].group("tag"))
+
+
+def _local_clone_at_pin(*, config_text: str, slug: str, tag: str) -> Path | None:
+    """The sibling clone resolved through this project's seam, if it holds `tag`.
+
+    Returns `None` — never a skip — for every outcome that is not a
+    clone carrying the pinned release, because a missing sibling
+    checkout is a fact about the machine rather than about the
+    procedure, and the caller reaches the same release from the forge
+    instead. A clone that exists but has not fetched the pinned tag
+    counts as not having it: rehearsing its `HEAD` would rehearse
+    whatever that checkout happens to be on.
     """
     parsed_result = jsonc.loads(text=config_text)
     if not isinstance(parsed_result, Success):
-        pytest.skip("this project's .livespec.jsonc did not parse")
+        return None
     parsed: Any = parsed_result.unwrap()
     targets: Any = parsed.get("cross_repo_targets") if isinstance(parsed, dict) else None
     target: Any = targets.get(slug) if isinstance(targets, dict) else None
     if not isinstance(target, dict):
-        pytest.skip(f"{slug} is not a registered cross-repo target")
+        return None
     resolved = resolve_effective_local_clone(sibling_slug=slug, target=target)
     if resolved is None or not (Path(resolved) / ".git").exists():
-        pytest.skip(
-            f"no clone of {slug} is resolvable "
-            f"(resolved {resolved!r}); the committed procedure cannot be rehearsed"
-        )
+        return None
+    carries = _run(
+        args=["git", "rev-parse", "--verify", "--quiet", f"{tag}^{{commit}}"], cwd=Path(resolved)
+    )
+    if carries.returncode != 0:
+        return None
     return Path(resolved)
 
 
-def _derive_stage_dir(*, clone: Path) -> str:
+def _fetched_clone_at_pin(*, url: str, tag: str, dest: Path) -> Path | None:
+    """Shallow-fetch exactly the pinned release from the producer's forge.
+
+    One commit and one tag, so the fetch costs about what reading a
+    local clone would. Returns `None` when the forge cannot be reached
+    or does not carry the tag; terminal prompting is disabled so an
+    unreachable forge fails rather than waiting for a credential
+    nobody is there to type.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    into = dest / "forge"
+    cloned = _run(
+        args=["git", "clone", "--depth", "1", "--branch", tag, url, str(into)],
+        cwd=dest,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "", "LC_ALL": "C"},
+    )
+    if cloned.returncode != 0:
+        return None
+    return into
+
+
+def _producer_at_pin(
+    *,
+    config_text: str,
+    pyproject_text: str,
+    slug: str,
+    dest: Path,
+) -> _Producer:
+    """Reach the pinned producer release from a local clone or from the forge.
+
+    Whether a sibling checkout happens to exist decides only WHICH
+    source is read, never whether the rehearsal runs — that is what
+    makes this module behave the same in a factory sandbox, on a
+    laptop and on a CI runner that checks out no sibling repository.
+    The one remaining skip is a tree that can reach the release
+    through neither source, which names both it tried.
+    """
+    pin = _pinned_release(pyproject_text=pyproject_text, slug=slug)
+    local = _local_clone_at_pin(config_text=config_text, slug=slug, tag=pin.tag)
+    if local is not None:
+        return _Producer(clone=local, ref=pin.tag, source=f"local clone {local}")
+    fetched = _fetched_clone_at_pin(url=pin.url, tag=pin.tag, dest=dest)
+    if fetched is None:
+        pytest.skip(
+            f"{slug} at the pinned release {pin.tag} is reachable neither as a local "
+            f"clone carrying that tag nor by fetching it from {pin.url}; the committed "
+            "procedure cannot be rehearsed"
+        )
+    return _Producer(clone=fetched, ref=pin.tag, source=f"shallow fetch of {pin.tag}")
+
+
+def _synthetic_pin(*, url: str, tag: str) -> str:
+    """A manifest fragment pinning the producer, for exercising the harness itself."""
+    return f'{_PROVISIONING_SLUG} = {{ git = "{url}", tag = "{tag}" }}\n'
+
+
+def _synthetic_producer(*, root: Path, tag: str | None) -> Path:
+    """A throwaway git repository standing in for the producer's forge copy."""
+    root.mkdir(parents=True)
+    for args in (
+        ["git", "init", "--quiet", f"--initial-branch={_STANDIN_BRANCH}"],
+        ["git", "config", "user.email", "rehearsal@example.invalid"],
+        ["git", "config", "user.name", "Rehearsal"],
+        ["git", "commit", "--quiet", "--allow-empty", "-m", "stand-in for the producer"],
+        *([["git", "tag", tag]] if tag is not None else []),
+    ):
+        done = _run(args=args, cwd=root)
+        assert done.returncode == 0, f"{' '.join(args)} failed: {done.stderr}"
+    return root
+
+
+def _derive_stage_dir(*, producer: _Producer) -> str:
     """Read the bare-metal stage's path out of the producer's own clause."""
-    shown = _run(args=["git", "show", f"HEAD:{_PRODUCER_SPEC}"], cwd=clone)
-    assert (
-        shown.returncode == 0
-    ), f"{_PROVISIONING_SLUG} committed no {_PRODUCER_SPEC} at HEAD: {shown.stderr}"
+    shown = _run(args=["git", "show", f"{producer.ref}:{_PRODUCER_SPEC}"], cwd=producer.clone)
+    assert shown.returncode == 0, (
+        f"{_PROVISIONING_SLUG} committed no {_PRODUCER_SPEC} at {producer.ref} "
+        f"({producer.source}): {shown.stderr}"
+    )
     owning = [
         section
         for section in re.split(r"^## ", shown.stdout, flags=re.MULTILINE)
@@ -228,10 +359,13 @@ def _derive_stage_dir(*, clone: Path) -> str:
     return named.pop()
 
 
-def _materialize(*, clone: Path, dest: Path) -> Path:
-    """Extract the producer's committed tree at `HEAD` into `dest`."""
+def _materialize(*, producer: _Producer, dest: Path) -> Path:
+    """Extract the producer's committed tree at the pinned release into `dest`."""
     archive = dest / "tree.tar"
-    written = _run(args=["git", "archive", "--format=tar", "-o", str(archive), "HEAD"], cwd=clone)
+    written = _run(
+        args=["git", "archive", "--format=tar", "-o", str(archive), producer.ref],
+        cwd=producer.clone,
+    )
     assert written.returncode == 0, f"git archive failed: {written.stderr}"
     tree = dest / "tree"
     tree.mkdir()
@@ -328,16 +462,18 @@ def _rehearse(
 @pytest.fixture(scope="module", name="procedure")
 def procedure_fixture(*, tmp_path_factory: pytest.TempPathFactory) -> _Procedure:
     """Materialize the committed procedure and the world it is rehearsed in."""
-    clone = _provisioning_clone(
-        config_text=(_REPO_ROOT / ".livespec.jsonc").read_text(encoding="utf-8"),
-        slug=_PROVISIONING_SLUG,
-    )
     dest = tmp_path_factory.mktemp("provisioning")
-    stage_relative = _derive_stage_dir(clone=clone)
-    stage_dir = _materialize(clone=clone, dest=dest) / stage_relative
+    producer = _producer_at_pin(
+        config_text=(_REPO_ROOT / ".livespec.jsonc").read_text(encoding="utf-8"),
+        pyproject_text=(_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+        slug=_PROVISIONING_SLUG,
+        dest=dest,
+    )
+    stage_relative = _derive_stage_dir(producer=producer)
+    stage_dir = _materialize(producer=producer, dest=dest) / stage_relative
     assert stage_dir.is_dir(), (
         f"{_PROVISIONING_SLUG}'s clause names {stage_relative!r} as the bare-metal "
-        "stage, but HEAD commits no such directory"
+        f"stage, but {producer.ref} commits no such directory"
     )
     tripwire = dest / "executed.txt"
     _ = tripwire.write_text("", encoding="utf-8")
@@ -516,32 +652,103 @@ def test_the_rehearsal_is_repeatable_and_names_no_volume_the_profile_preserves(
     )
 
 
-def test_a_tree_that_cannot_reach_the_procedure_skips_rather_than_reporting_a_rehearsal(
+def test_the_release_rehearsed_is_the_one_this_repository_pins(*, tmp_path: Path) -> None:
+    """The rehearsed release comes from the pin, not from any nearby checkout.
+
+    What makes the rehearsal mean the same thing everywhere is that
+    the release is read out of this repository's own manifest. So the
+    pin is asserted to be a single entry naming the producer's forge
+    and a release tag, and the module's `_PRODUCER_FORGE` is asserted
+    to still be the forge the pin names — the one place this file
+    repeats a fact the manifest owns.
+    """
+    pin = _pinned_release(
+        pyproject_text=(_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+        slug=_PROVISIONING_SLUG,
+    )
+    assert pin.url == _PRODUCER_FORGE, (
+        f"this repository now pins {_PROVISIONING_SLUG} from {pin.url}, so the forge "
+        f"this module names ({_PRODUCER_FORGE}) is stale"
+    )
+    assert re.fullmatch(r"v\d+\.\d+\.\d+", pin.tag), (
+        f"the rehearsal needs a release tag to materialize; the pin reads {pin.tag!r}, "
+        "which is not one"
+    )
+
+    doubled = _synthetic_pin(url="https://example.invalid/x.git", tag="v1.0.0") * 2
+    with pytest.raises(AssertionError, match="exactly one git tag"):
+        _ = _pinned_release(pyproject_text=doubled, slug=_PROVISIONING_SLUG)
+
+    assert _fetched_clone_at_pin(url=str(tmp_path / "absent"), tag="v1.0.0", dest=tmp_path) is None
+
+
+def test_a_local_clone_is_used_only_when_it_carries_the_pin_and_never_gates_the_rehearsal(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Each way of not having the procedure skips, and says which way it was.
+    """A sibling checkout chooses the SOURCE; it never decides whether this runs.
 
-    The rehearsal reads another repository, so a tree without a clone
-    of it has nothing to rehearse. The only safe outcome there is a
-    SKIP that names what was missing: a pass would be a rehearsal
-    reported by a run that never ran one, and a failure would redden
-    every tree that legitimately carries no sibling clone. All three
-    ways of arriving there are exercised, because a resolution that
-    skipped for the wrong reason reads identically to one that skipped
-    for the right one.
+    This is the harness's own guard, and it is the assertion that
+    keeps this module honest on a machine with no sibling checkout —
+    a GitHub Actions runner, which checks out no sibling repository
+    and would otherwise skip into a body nothing ever executes. So
+    every way of not having a usable local clone is exercised against
+    a stand-in producer whose own forge is a path on disk: each one
+    must FALL BACK to the fetch and still yield the pinned release,
+    and only a release reachable through neither source may skip.
     """
-    monkeypatch.setenv("LIVESPEC_SIBLING_CLONES_ROOT", str(tmp_path))
+    monkeypatch.setenv("LIVESPEC_SIBLING_CLONES_ROOT", str(tmp_path / "clones"))
+    tag = "v9.99.99"
+    forge = _synthetic_producer(root=tmp_path / "forge", tag=tag)
+    pyproject = _synthetic_pin(url=f"file://{forge}", tag=tag)
+    registered = '{"cross_repo_targets": {"' + _PROVISIONING_SLUG + '": {}}}'
 
-    with pytest.raises(pytest.skip.Exception, match="did not parse"):
-        _ = _provisioning_clone(config_text="{not json", slug=_PROVISIONING_SLUG)
-
-    with pytest.raises(pytest.skip.Exception, match="not a registered cross-repo target"):
-        _ = _provisioning_clone(config_text='{"cross_repo_targets": {}}', slug=_PROVISIONING_SLUG)
-
-    with pytest.raises(pytest.skip.Exception, match="no clone of"):
-        _ = _provisioning_clone(
-            config_text='{"cross_repo_targets": {"' + _PROVISIONING_SLUG + '": {}}}',
+    def resolve(*, config_text: str, dest: Path) -> _Producer:
+        return _producer_at_pin(
+            config_text=config_text,
+            pyproject_text=pyproject,
             slug=_PROVISIONING_SLUG,
+            dest=dest,
+        )
+
+    unusable = {
+        "a manifest that does not parse": "{not json",
+        "an unregistered cross-repo target": '{"cross_repo_targets": {}}',
+        "no clone at the resolved path": registered,
+    }
+    for why, config_text in unusable.items():
+        assert (
+            _local_clone_at_pin(config_text=config_text, slug=_PROVISIONING_SLUG, tag=tag) is None
+        )
+        fell_back = resolve(config_text=config_text, dest=tmp_path / f"fetch-{len(why)}")
+        assert fell_back.ref == tag and "fetch" in fell_back.source, (
+            f"{why} must fall back to fetching the pinned release, not decide whether "
+            f"the rehearsal happens; got {fell_back.source}"
+        )
+
+    present = _synthetic_producer(root=tmp_path / "clones" / _PROVISIONING_SLUG, tag=None)
+    assert _local_clone_at_pin(config_text=registered, slug=_PROVISIONING_SLUG, tag=tag) is None
+    fell_back = resolve(config_text=registered, dest=tmp_path / "fetch-untagged")
+    assert "fetch" in fell_back.source, (
+        "a clone that has not fetched the pinned tag must not be rehearsed at its own "
+        f"HEAD; got {fell_back.source}"
+    )
+
+    tagged = _run(args=["git", "tag", tag], cwd=present)
+    assert tagged.returncode == 0, f"tagging the stand-in clone failed: {tagged.stderr}"
+    assert _local_clone_at_pin(config_text=registered, slug=_PROVISIONING_SLUG, tag=tag) == present
+    from_local = resolve(config_text=registered, dest=tmp_path / "unused")
+    assert from_local.clone == present and from_local.ref == tag, (
+        "a local clone carrying the pinned tag is the cheaper source and must be "
+        f"preferred; got {from_local.source}"
+    )
+
+    unreachable = _synthetic_pin(url=str(tmp_path / "no-such-forge"), tag=tag)
+    with pytest.raises(pytest.skip.Exception, match="reachable neither as a local clone"):
+        _ = _producer_at_pin(
+            config_text='{"cross_repo_targets": {}}',
+            pyproject_text=unreachable,
+            slug=_PROVISIONING_SLUG,
+            dest=tmp_path / "fetch-unreachable",
         )
