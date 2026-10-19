@@ -1882,6 +1882,35 @@ directly, or use `PIPESTATUS`. More generally, a measurement apparatus that
 silently substitutes one program's answer for another's is the same class as
 every entry above.
 
+### 45. The EDITED tree is not the APPLIED tree
+
+Seen 2026-09-11/12 (livespec
+`plan/archive/gitops-deployment-discipline/research/000-failures-root-causes-and-binding-fixes-2026-09-12.md`
+§1, failure 2). A change to a host's runtime artifacts landed in the legacy
+shell installer tree. Its tests passed, the diff read correctly, and the review
+passed it. All three looked at the edited files. None of them could have
+shown that no host would ever receive the change, because nothing deploys
+those files: the Ansible role that replaced that installer is what deploys
+them. The renamed placeholders also turned the real role's substitution into a
+silent no-op, so the one layer that DID apply got worse.
+
+The source that could have shown it is the apply layer: the role or playbook
+that deploys each changed file, found from the provisioning model
+(`livespec-dev-tooling` `ansible/README.md`, plus the roles' `# Replaces
+<path>` declarations), and the drift report (`just ansible-drift <playbook>`),
+which reads the host itself. A green suite over the edited tree answers "is
+this file right?" The question was "will this reach a host?"
+
+The same trap has a host-side form: a host covered by no playbook. Every drift
+report comes back clean for that host, because no report ever reads it. The
+k3s pool's two nodes sat on 2026-09-08 code behind exactly that clean signal.
+
+**Counter-move:** before calling a deploy change verified, name the role or
+playbook that applies each changed file, and read that layer's drift report
+afterwards. The discipline this applies is `.ai/gitops-deployment-discipline.md`
+§"3. A mechanism change lands in the layer the automation APPLIES" and §"5.
+Run and read the drift report before every apply".
+
 ## Why this file exists in livespec CORE
 
 These instances span the repositories `livespec`,

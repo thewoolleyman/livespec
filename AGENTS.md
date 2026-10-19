@@ -719,6 +719,17 @@ existing file):
   document that makes it, and that independent review cannot catch because the
   reviewers are exactly the population sharing the vocabulary. Each is drawn from
   a defect that actually shipped.
+- **`.ai/gitops-deployment-discipline.md`** — read BEFORE any deployment,
+  Ansible, GitOps, host-provisioning, `kubectl`, or ssh-to-a-fleet-host action,
+  in this or any fleet repository. The fleet-canonical statement of the six
+  GitOps deployment rules: read the provisioning model first, and use ssh only
+  for read-only checks; never change a live host by hand ("it has to be done by
+  hand" is a gap in the automation to fix); land a mechanism change in the
+  layer the automation APPLIES; retire a replaced layer rather than keep it
+  beside its successor; read the drift report before every apply; and keep a
+  review-gated change a DRAFT pull request until NO-BLOCKERS, because
+  auto-merge repositories merge on green. Also points at the repository that
+  owns each part of the fleet's provisioning model.
 - **`.ai/no-circular-dependency.md`** — read BEFORE adding any cross-repo
   check, tool, or read to a fleet repo. The No-Circular-Dependency Directive:
   a foundational/upstream repo (e.g. `livespec-dev-tooling`) must NEVER read
@@ -855,7 +866,12 @@ existing file):
   exit code printed `exit=0` for the cannot-measure case because `$?` reported
   `tail`'s status, one step from a bug report filed against correct code — when
   the thing under test IS an exit code, capture it directly or use
-  `PIPESTATUS`, never through a pipe.
+  `PIPESTATUS`, never through a pipe, and — the one entry about DEPLOYMENT — the
+  EDITED tree read as the APPLIED tree, where a host-artifact change passed its
+  tests and its review in a legacy installer tree that nothing deploys, while
+  the Ansible role that does deploy those files was left broken; name the role
+  or playbook that applies each changed file and read its drift report before
+  calling a deploy change verified.
 
 ## Working with the maintainer
 
