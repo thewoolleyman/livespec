@@ -484,6 +484,19 @@ named section before acting; do not rely on this summary alone.
   the lefthook/commit-refuse hooks fire; on a hook failure, fix the cause or halt
   and surface it — never bypass. Detail: `AGENTS.md` §"Repository mutation
   protocol".
+- **GitOps deployment** — read the provisioning model before any host or
+  infrastructure action; ssh to a fleet host is read-only; no live host is
+  changed by hand; a mechanism change lands in the role or playbook that
+  deploys the file; read the drift report before every apply. Detail:
+  `.ai/gitops-deployment-discipline.md`.
+- **A review-gated change is a DRAFT pull request until NO-BLOCKERS** — any
+  change that needs an independent review before merge (a spec proposal's
+  Fable review, a reviewed deploy change) is opened with `gh pr create
+  --draft` and marked ready only once the review returns NO-BLOCKERS. A
+  repository with auto-merge enabled merges on green without waiting for
+  anyone, so an open non-draft pull request is a merge already scheduled, not
+  a pause point. Detail: `.ai/gitops-deployment-discipline.md` §"6. A
+  review-gated change is a DRAFT pull request until NO-BLOCKERS".
 - **1Password secret-wrapper** — beads/Dolt/tenant-`mysql` access runs only under
   a recognized `with-<id>-env.sh` wrapper (fleet tenants: `with-livespec-env.sh`);
   secrets are probe-only (`printenv NAME | wc -c`, never echo a value) and never

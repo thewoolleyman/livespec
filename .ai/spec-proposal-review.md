@@ -226,6 +226,34 @@ from review feedback should treat every term they did not read in the document a
 suspect: the fluency that makes a brief useful is the same fluency that smuggles
 its vocabulary into the work product.
 
+### The same class over a DEPLOY mechanism: the edited tree is not the applied tree
+
+When a proposal or pull request changes how something is deployed or run on a
+host — a unit file, an installer, a converge script, a rendered config — the
+instrument that matters is *which layer the automation applies*. A reviewer
+who reads the changed files and checks them for correctness is using the
+author's instrument. If the author edited a layer nothing deploys, the
+reviewer reads the same dead layer and finds it correct.
+
+Seen live on 2026-09-11/12 (livespec
+`plan/archive/gitops-deployment-discipline/research/000-failures-root-causes-and-binding-fixes-2026-09-12.md`
+§1, failure 2): a change updated the legacy shell installer, not the Ansible
+role that had replaced it. By renaming placeholders, it also turned the real
+installer's substitution into a silent no-op. The review brief framed the shell
+tree as the target, and the reviewer inherited that framing and passed it.
+
+**The review move this adds.** For any mechanism change, the reviewer asks,
+independently of the brief: *which committed role or playbook deploys each
+changed file, and does this change land there?* Answer it from the
+provisioning model (for the legacy fleet, `livespec-dev-tooling`
+`ansible/README.md` and the roles' `# Replaces <path>` declarations), not from
+the diff. A changed file that no role deploys, or one that a role marks as
+replaced, is a finding even when every line in it is right. The brief should
+name the apply layer explicitly. If it names only the edited tree, treat that
+framing itself as suspect. The rule this enforces is
+`.ai/gitops-deployment-discipline.md` §"3. A mechanism change lands in the
+layer the automation APPLIES".
+
 ## Why these sit together
 
 The unifying property is that **no gate fires**. Every class here survives the
