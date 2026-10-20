@@ -152,6 +152,13 @@
     // that surface round-trips the file through json.dumps and silently strips
     // every comment here while reporting green — tracked as bd-ib-lmi5.
     "dispatcher": {
+      // Committed mirror of the sandbox image's published capability set, read by
+      // the Definition-of-Done gate and by the host-side judgements when
+      // /etc/livespec/sandbox-capabilities is not reachable. MEASURED 2026-10-20 by
+      // `docker run --rm --entrypoint cat ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-agent-v1.118.7
+      // /etc/livespec/sandbox-capabilities`, the image this repository's committed run
+      // config resolves. Edit it by hand, in the same change that moves the image.
+      "sandbox_capabilities": ["terminal", "tmux", "headless_browser", "herdr"],
       // The five dispatch-time premises (2026-09-06). Since livespec-orchestrator-
       // beads-fabro 39526e5c (2026-08-31) every sandbox prepare step is a
       // projection of THIS file's declaration, and the fleet default for each is
