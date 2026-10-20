@@ -9,13 +9,14 @@ from pathlib import Path
 
 from returns.io import IOResult
 
-__all__: list[str] = [
-    "CommandResult",
-    "CommandRunner",
-    "CommandUnavailable",
-    "GitWorktree",
-    "ScanContext",
-]
+# DECLARED INTERNAL by `SPECIFICATION/contracts.md` section "Module-level
+# public surface": a size-decomposition split-out of
+# `livespec_runtime.hygiene_scan`, the family's SINGLE ratified import path.
+# The five types stay module-level and importable, and all five are ratified
+# THERE — `hygiene_scan.py` re-exports them, including the `CommandRunner`
+# and `ScanContext` its documented signatures name. What narrows is the
+# second, undocumented import path.
+__all__: list[str] = []
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
