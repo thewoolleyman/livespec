@@ -1,6 +1,6 @@
 # Non-functional requirements — `livespec`
 
-This document MUST be read alongside `spec.md`, `contracts.md`, `constraints.md`, and `scenarios.md`. It enumerates the project's non-functional requirements: invariants on the development environment, repository tooling, build and test discipline, contributor workflow, and any other internal-facing concerns that are NOT visible at the user-facing CLI/API surface. The five top-level `##` sections below mirror the same four-file boundary the user-facing spec uses (`Spec` / `Contracts` / `Constraints` / `Scenarios`) plus a `Boundary` preamble, so contributors and agents apply the same categorization rule when landing new content.
+This document MUST be read alongside `spec.md`, `contracts.md`, `constraints.md`, and `scenarios.md`. It enumerates the project's non-functional requirements: invariants on the development environment, repository tooling, build and test discipline, contributor workflow, and any other internal-facing concerns that are NOT visible at the user-facing CLI/API surface. The five top-level `##` sections below mirror the same four-file boundary the user-facing spec uses (`Spec` / `Contracts` / `Constraints` / `Scenarios`) plus a `Boundary` preamble, so contributors and agents apply the same categorization rule when landing new content. One further top-level section, `## Factory routing`, follows them; it states a rule for this repository's own committed `.livespec.jsonc` only, and no project governed by `livespec` and no other fleet repository inherits it.
 
 ## Boundary
 
@@ -14,6 +14,7 @@ The top-level sections below mirror the user-facing spec files. The decision rul
 - `## Contracts` — *external interfaces and contributor-facing toolchain*: the specific tools the project depends on, the contributor-facing invocation surface (`just check`), and any wire-level test/coverage data file shapes. Mirrors `contracts.md`'s role.
 - `## Constraints` — *architectural invariants on the implementation*: code patterns, layout rules, thresholds, style rules. Mirrors `constraints.md`'s role.
 - `## Scenarios` — *Gherkin-style scenarios for contributor-facing workflows*. Mirrors `scenarios.md`'s role. Empty initially; populated when specific contributor flows need to be pinned.
+- `## Factory routing` — *this repository's own dispatch routing*: the rule its committed `.livespec.jsonc` factory table MUST satisfy. It has no counterpart in the user-facing spec files.
 
 The boundary against the user-facing spec files:
 
@@ -1578,3 +1579,7 @@ When ShellCheck analyzes the file using the dialect selected by its shebang
 Then the canonical check includes that template file
 
 And a newly introduced finding outside the acceptance policy owned by `livespec-dev-tooling` fails per §"Shell and Justfile discipline"
+
+## Factory routing
+
+Every entry this repository commits in `.livespec.jsonc` under `dispatcher.factories` MUST be registry-backed: it declares `"registry": true` and carries no `server` and no `docker_host` value, so no committed factory entry names a machine. Which Fabro server answers to a factory name is bound only in the fleet gitops inventory's factory registry (livespec-dev-tooling `non-functional-requirements.md` §"Fabro factory registry"), which each dispatching host renders as `/etc/livespec/fabro-factories.json`; a dispatch resolves a registry-backed entry from that file by name. `dispatcher.default_factory` MUST name `legacy`.

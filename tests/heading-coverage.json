@@ -763,5 +763,13 @@
     "test": "TODO",
     "reason": "Ratifies rebase-merge metadata invariance of fleet CI checks (plan red-master-self-healing, livespec-dev-tooling epic livespec-dev-tooling-zcp5vb). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is an integration-tier replay test owned by livespec-dev-tooling-yfqvqm that runs every shared check on a commit and on its rebase-merge replay differing only in SHA, committer date and committer timezone; this TODO is replaced by that test id when it lands.",
     "work_item": "livespec-dev-tooling-yfqvqm"
+  },
+  {
+    "heading": "## Factory routing",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "test": "TODO",
+    "reason": "Ratifies factory-routing (coordinator rulings R318/R320, plan petri-factory-on-gmktec, epic bd-ib-fyozyd, filed in the livespec-orchestrator-beads-fabro tenant): this repository's committed dispatcher.factories table is registry-backed and names no machine. No test exercises this heading yet; a separate registry-switch work-item filed in this repository's own livespec tenant changes .livespec.jsonc, and its proof is a host-captured dispatch.",
+    "work_item": "livespec-6fb1"
   }
 ]

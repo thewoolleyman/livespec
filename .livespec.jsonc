@@ -242,7 +242,8 @@
       "SPECIFICATION/contracts.md §\"Sibling discovery\"",
       "SPECIFICATION/contracts.md §\"Semver discipline\"",
       "SPECIFICATION/contracts.md §\"Bump-pin policy\"",
-      "SPECIFICATION/contracts.md §\"`reusable-release-dispatch.yml`\""
+      "SPECIFICATION/contracts.md §\"`reusable-release-dispatch.yml`\"",
+      "SPECIFICATION/non-functional-requirements.md §\"Fabro factory registry\""
     ],
     "openbrain": [
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""

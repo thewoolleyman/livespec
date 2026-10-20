@@ -61,5 +61,12 @@
     "heading": "## A green pull request stays green after rebase-merge",
     "work_item": "livespec-dev-tooling-yfqvqm",
     "first_seen": "2026-10-15"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "non-functional-requirements.md",
+    "heading": "## Factory routing",
+    "work_item": "livespec-6fb1",
+    "first_seen": "2026-10-20"
   }
 ]
