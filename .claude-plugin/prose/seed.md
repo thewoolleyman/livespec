@@ -19,6 +19,18 @@ Seed is **exempt from pre-step** doctor static (the green-field repo
 has no spec for pre-step to inspect); post-step doctor static runs
 after the CLI exits, followed by the LLM-driven post-step phase.
 
+## Goal
+
+Seed is finished when a governed spec tree EXISTS and has passed its
+own post-step validation. The operation MUST leave all of the
+following true: `.livespec.jsonc` is on disk naming the chosen
+template and spec root; the main spec tree and every sub-spec tree the
+user requested are materialized; the auto-captured seed
+proposed-change / revision pair exists under the first history
+version; the post-step doctor static run over that tree reported no
+`fail` finding; and the post-step LLM-driven phase has run with its
+findings surfaced to the user.
+
 ## When to run
 
 - The user invokes the seed operation, says "seed a livespec spec",

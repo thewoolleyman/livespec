@@ -29,6 +29,23 @@ of another thread's in-flight proposal would exceed what the
 user asked for, which is the common case when several threads
 have proposals pending at once.
 
+## Goal
+
+Revise is finished when the spec has ADVANCED to a new ratified
+version. The operation MUST leave all of the following true: every
+proposal the pass covers carries a confirmed `accept` / `modify` /
+`reject` decision with its rationale; the required independent
+ratification review has been consumed against the exact bytes each
+decision assembled, with no blocker outstanding; a new
+`<spec-target>/history/vNNN/` snapshot exists carrying those decisions
+and their revision records; the active spec files reflect every
+accepted and modified proposal; the post-step doctor static run
+reported no `fail` finding; and the post-step LLM-driven phase has run
+with its findings surfaced to the user.
+
+Proposals the pass deliberately left out of `decisions[]` remain
+pending, which is a narrowed pass completing — not an unfinished one.
+
 ## When to run
 
 - The user invokes the revise operation, says "revise the spec",

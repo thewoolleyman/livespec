@@ -17,6 +17,18 @@ resulting file. Pre-step doctor static runs before the CLI;
 post-step doctor static runs after the CLI exits, followed by
 the LLM-driven post-step phase.
 
+## Goal
+
+Propose-change is finished when the user's intent EXISTS on disk as a
+reviewable proposal. The operation MUST leave all of the following
+true: a proposed-change file exists at
+`<spec-target>/proposed_changes/<canonical-topic>.md`; it carries one
+`## Proposal: <name>` section per finding the authoring dialogue
+produced; the in-flight survey and the alignment-intent capture have
+been performed (or surfaced as a degraded survey); the post-step
+doctor static run reported no `fail` finding; and the post-step
+LLM-driven phase has run with its findings surfaced to the user.
+
 ## When to run
 
 - The user invokes the propose-change operation, says "propose a
