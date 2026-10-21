@@ -98,17 +98,25 @@
     // `.livespec.jsonc`, no work-items tenant — so the manifest entry is
     // each one's ONLY profile declaration and a manifest change alone
     // registers it (non-functional-requirements.md §"Fleet membership
-    // contract" → "Adopters"). Each lands on `posture` none, which excludes
-    // it from the fleet-conformance sweep without failing until its wiring
-    // passes the adopter plugin-currency row; the posture flips to
-    // `released` only in a later manifest change (scenarios.md §"A released
-    // adopter is registered only after its wiring satisfies the sweep").
-    { "repo": "vps-info", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "poweredge-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "gmktec-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "hp-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "fabro-hosts", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "otel-collector", "profile": ["instruction-only"], "posture": "none" },
-    { "repo": "local-llm", "profile": ["instruction-only"], "posture": "none" }
+    // contract" → "Adopters"). Each was registered on `posture` none, which
+    // excluded it from the fleet-conformance sweep without failing until its
+    // wiring passed the adopter plugin-currency row; each now carries
+    // `posture` released, set in this later manifest change after all seven
+    // committed a `.claude/settings.json` that enables livespec core and the
+    // livespec Driver at the `release` ref and declares
+    // `livespecPluginCurrencySuccessor` with a non-empty `mechanism` and
+    // `documentedIn` (scenarios.md §"A released adopter is registered only
+    // after its wiring satisfies the sweep"). On `released` an
+    // `instruction-only` adopter is held to Plugin-currency and to no other
+    // `baseline` concern — no Shell-and-Justfile-discipline, no
+    // Request-budget-discipline (scenarios.md §"An instruction-only adopter
+    // is held to plugin currency and to no other baseline concern").
+    { "repo": "vps-info", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "poweredge-xubuntu-info", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "gmktec-xubuntu-info", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "hp-xubuntu-info", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "fabro-hosts", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "otel-collector", "profile": ["instruction-only"], "posture": "released" },
+    { "repo": "local-llm", "profile": ["instruction-only"], "posture": "released" }
   ]
 }
