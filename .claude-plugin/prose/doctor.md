@@ -33,6 +33,22 @@ There is no separate `bin/doctor.py` wrapper; the user invokes the
 doctor operation (or expresses intent in dialogue) and the LLM
 follows this prose end-to-end.
 
+## Goal
+
+Doctor is finished when the user KNOWS the state of every spec tree in
+the project and every failure carries a disposition. The operation MUST
+leave all of the following true: the static phase has run over every
+enumerated spec tree (the main spec plus each sub-spec); every finding
+has been surfaced to the user grouped by its `spec_root`; both
+LLM-driven phases (objective and subjective) have either run or been
+explicitly skipped by the caller's flags; and every `fail` or `warn`
+finding has been carried through the per-finding disposition dialogue
+so none is left unaddressed.
+
+Doctor is a reporting operation, so a run that surfaces failures and
+disposes of each one IS finished — it is the undisposed finding, not
+the failing one, that leaves work owed.
+
 ## When to run
 
 - **Direct user request.** The user invokes the doctor operation,

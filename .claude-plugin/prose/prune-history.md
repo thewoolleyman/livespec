@@ -18,6 +18,22 @@ contiguity is preserved by the doctor `version-contiguity`
 check, which treats the marker's `pruned_range` as intentional
 missing history.
 
+## Goal
+
+Prune-history is finished when the history tree has SHRUNK and remains
+readable as a contiguous record. The operation MUST leave all of the
+following true: the user has explicitly confirmed the destruction
+against a concrete list of the `vNNN/` snapshots that will be removed;
+those snapshots are gone; a single `PRUNED_HISTORY.json` marker exists
+at `v(N-1)/` recording their `pruned_range`; the current head `vN/` is
+untouched; the post-step doctor static run reported no `fail` finding
+(the `version-contiguity` check reading the marker as intentional
+missing history); and the deletion summary has been surfaced to the
+user.
+
+A run the CLI resolves to a no-op — nothing old enough to prune — is
+finished once that no-op has been narrated.
+
 ## When to run
 
 - The user explicitly invokes the prune-history operation, says

@@ -11,6 +11,15 @@ runtime's tools or command namespace.
 Explain what livespec does at a high level and route the user to
 the right operation for their intent.
 
+## Goal
+
+Help is finished when the user KNOWS which operation to invoke next.
+The operation MUST leave both of the following true: the user has a
+brief account of what livespec is and what the spec-side operations
+do; and, when they described a goal rather than asking for an
+overview, they have been routed to ONE named operation with the reason
+it fits.
+
 ## When to run
 
 - The user invokes the help operation, says "what can livespec do",

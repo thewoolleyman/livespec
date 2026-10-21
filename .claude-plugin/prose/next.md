@@ -25,6 +25,18 @@ post-step doctor static lifecycle and has no LLM-driven
 post-step phase per `SPECIFICATION/spec.md` §"Sub-command
 lifecycle".
 
+## Goal
+
+Next is finished when the caller HOLDS the CLI's ranking. The
+operation MUST leave both of the following true: the next CLI has been
+invoked against the requested `--spec-target` with the caller's
+paging flags; and its stdout JSON has been presented verbatim, with no
+re-ranking, re-wording, summarizing, or thresholding applied by this
+prose.
+
+A ranking whose top entry is `none` — no spec-side action is ripe — is
+a complete answer, so presenting it IS finishing.
+
 ## When to run
 
 - The user invokes the next operation, says "what should I

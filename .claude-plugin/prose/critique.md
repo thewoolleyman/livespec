@@ -17,6 +17,18 @@ doctor static runs before critique; post-step doctor static
 runs after the CLI exits, followed by the LLM-driven
 post-step phase.
 
+## Goal
+
+Critique is finished when the issues it surfaced EXIST on disk as a
+reviewable proposal rather than only in narration. The operation MUST
+leave all of the following true: a critique-style proposed-change file
+exists at `<spec-target>/proposed_changes/<canonical-author>-critique.md`
+(or its collision-suffixed sibling); it carries one `## Proposal:`
+section per surfaced issue, each one actionable by the revise
+operation; the post-step doctor static run reported no `fail` finding;
+and the post-step LLM-driven phase has run with its findings surfaced
+to the user.
+
 ## When to run
 
 - The user invokes the critique operation, says "critique the
