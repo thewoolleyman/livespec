@@ -226,11 +226,21 @@
         "pr": "npx -y @agentclientprotocol/claude-agent-acp"
       },
       "wip_cap": 10,
+      // Registry-backed factory table, per SPECIFICATION/non-functional-requirements.md
+      // §"Factory routing": every committed entry declares `"registry": true` and
+      // carries no `server` and no `docker_host`, so no committed entry names a
+      // machine. Which Fabro server answers to `legacy` is bound only in the fleet
+      // gitops inventory's factory registry (livespec-dev-tooling
+      // non-functional-requirements.md §"Fabro factory registry"), which each
+      // dispatching host renders as /etc/livespec/fabro-factories.json and resolves
+      // by name at dispatch time. `legacy` is the registry name for the instance the
+      // retired hostname-bearing `hp` and `vps` entries both pointed at, so routing
+      // is unchanged by this switch; a recorded item pin still naming `hp` or `vps`
+      // falls back to `default_factory` under the ratified recorded-pin fallback.
       "factories": {
-        "hp": { "server": "https://hp-xubuntu.perch-rudd.ts.net:32276" },
-        "vps": { "server": "https://vps.perch-rudd.ts.net:32276" }
+        "legacy": { "registry": true }
       },
-      "default_factory": "hp"
+      "default_factory": "legacy"
     }
   },
   // Allowlist for cross-repo spec-heading references per
