@@ -41,10 +41,14 @@
 // `adopters` entries are { repo, profile, posture } — governed repos
 // (or families) that adopted the workflow but are NOT the livespec
 // fleet (e.g. Open Brain). `profile` is the `baseline` floor plus any
-// additive layers (fleet-infra / orchestrator-plugin / app); `posture`
-// is one of released / pinned / none (how the adopter tracks upstream
-// livespec releases). A fleet member's profile is DERIVED from its
-// `class`; an adopter has no class, so it declares `profile` explicitly.
+// additive layers (fleet-infra / orchestrator-plugin / app), or the
+// adopter-only `instruction-only` profile, which REPLACES that floor
+// for a repo whose only livespec surface is committed agent
+// configuration and which is therefore not a governed repo at all;
+// `posture` is one of released / pinned / none (how the adopter tracks
+// upstream livespec releases). A fleet member's profile is DERIVED
+// from its `class`; an adopter has no class, so it declares `profile`
+// explicitly.
 // `adopters` is empty until the first adopter registers. See
 // non-functional-requirements.md §"Fleet membership contract" → "Adopters".
 {
@@ -87,6 +91,24 @@
     // App, beads tenant, per-tenant Fabro server) is DEFERRED to the post-seed
     // onboarding pass (the repo itself existed first, per the
     // registration-last birth rule).
-    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" }
+    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
+    // The seven host/deploy repos (registered 2026-10-21) are
+    // `instruction-only` adopters: committed agent configuration is their
+    // only livespec surface — no justfile, no mise configuration, no
+    // `.livespec.jsonc`, no work-items tenant — so the manifest entry is
+    // each one's ONLY profile declaration and a manifest change alone
+    // registers it (non-functional-requirements.md §"Fleet membership
+    // contract" → "Adopters"). Each lands on `posture` none, which excludes
+    // it from the fleet-conformance sweep without failing until its wiring
+    // passes the adopter plugin-currency row; the posture flips to
+    // `released` only in a later manifest change (scenarios.md §"A released
+    // adopter is registered only after its wiring satisfies the sweep").
+    { "repo": "vps-info", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "poweredge-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "gmktec-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "hp-xubuntu-info", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "fabro-hosts", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "otel-collector", "profile": ["instruction-only"], "posture": "none" },
+    { "repo": "local-llm", "profile": ["instruction-only"], "posture": "none" }
   ]
 }
