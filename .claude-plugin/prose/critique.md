@@ -29,6 +29,13 @@ operation; the post-step doctor static run reported no `fail` finding;
 and the post-step LLM-driven phase has run with its findings surfaced
 to the user.
 
+A refused or rejected critique is INCOMPLETE WORK, not a finish. A
+pre-step or post-step doctor-static `fail`, a usage rejection, and a
+schema-validation rejection of the emitted findings JSON each leave
+the issues unfiled; report what is still owed. Surfacing issues in
+narration alone is unfinished for the same reason — the critique's
+product is the file, not the conversation.
+
 ## When to run
 
 - The user invokes the critique operation, says "critique the

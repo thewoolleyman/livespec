@@ -31,6 +31,14 @@ version; the post-step doctor static run over that tree reported no
 `fail` finding; and the post-step LLM-driven phase has run with its
 findings surfaced to the user.
 
+A refused or rejected seed is INCOMPLETE WORK, not a finish. The CLI
+declining to re-seed a tree that already exists, a usage rejection, a
+precondition refusal, and a post-step doctor-static `fail` each leave
+the goal above unmet; report what is still owed and the concrete
+recovery path from `## Failure handling` below, never a completed
+seed. The post-step `fail` case is the one most easily misread: files
+ARE on disk, and the operation is still unfinished.
+
 ## When to run
 
 - The user invokes the seed operation, says "seed a livespec spec",

@@ -29,6 +29,15 @@ been performed (or surfaced as a degraded survey); the post-step
 doctor static run reported no `fail` finding; and the post-step
 LLM-driven phase has run with its findings surfaced to the user.
 
+A refused or rejected propose-change is INCOMPLETE WORK, not a finish.
+A pre-step or post-step doctor-static `fail`, a usage rejection, and a
+schema-validation rejection of the emitted findings JSON each leave
+the proposal unfiled or unvalidated; report what is still owed, never
+a filed proposal. The documented seed-recovery path is the one case
+where an expected exit 3 accompanies a proposed-change file that IS on
+disk — say that explicitly rather than letting the exit code stand
+alone.
+
 ## When to run
 
 - The user invokes the propose-change operation, says "propose a
