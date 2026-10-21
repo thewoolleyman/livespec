@@ -45,9 +45,15 @@ explicitly skipped by the caller's flags; and every `fail` or `warn`
 finding has been carried through the per-finding disposition dialogue
 so none is left unaddressed.
 
+A refused or rejected doctor run is INCOMPLETE WORK, not a finish. A
+usage rejection, an internal error, and an exit 3 that aborts before
+the LLM-driven phases each leave trees unexamined or findings
+undisposed; report which trees and which findings are still owed.
+
 Doctor is a reporting operation, so a run that surfaces failures and
 disposes of each one IS finished — it is the undisposed finding, not
-the failing one, that leaves work owed.
+the failing one, that leaves work owed. `fail` findings are doctor's
+PRODUCT; they are not its refusal.
 
 ## When to run
 

@@ -20,6 +20,13 @@ do; and, when they described a goal rather than asking for an
 overview, they have been routed to ONE named operation with the reason
 it fits.
 
+Help has no CLI to refuse it, but a request this prose cannot route is
+INCOMPLETE WORK, not a finish. When the user's intent maps to no
+operation the installed version carries, say so directly and name the
+nearest available behavior; routing them to an operation that will not
+serve them, or ending on an overview they did not ask for, leaves the
+goal above unmet.
+
 ## When to run
 
 - The user invokes the help operation, says "what can livespec do",

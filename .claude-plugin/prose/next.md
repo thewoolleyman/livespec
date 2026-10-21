@@ -34,6 +34,13 @@ paging flags; and its stdout JSON has been presented verbatim, with no
 re-ranking, re-wording, summarizing, or thresholding applied by this
 prose.
 
+A refused or rejected next is INCOMPLETE WORK, not a finish. A usage
+rejection and a precondition rejection — a `--spec-target` that is
+absent or not a directory, malformed proposed-change front matter —
+each leave the caller without a ranking; report the corrective action,
+and never substitute this prose's own guess at what is ripe for the
+ranking the CLI did not produce.
+
 A ranking whose top entry is `none` — no spec-side action is ripe — is
 a complete answer, so presenting it IS finishing.
 

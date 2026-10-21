@@ -31,6 +31,13 @@ untouched; the post-step doctor static run reported no `fail` finding
 missing history); and the deletion summary has been surfaced to the
 user.
 
+A refused or rejected prune is INCOMPLETE WORK, not a finish. A
+pre-step doctor-static `fail`, a usage rejection, and a user declining
+the destructive confirmation each leave the history unpruned; report
+the decline as work not done, never as a successful prune. Nothing is
+deleted on that path, which is the correct outcome and still not a
+finish.
+
 A run the CLI resolves to a no-op — nothing old enough to prune — is
 finished once that no-op has been narrated.
 

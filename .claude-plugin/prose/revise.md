@@ -43,6 +43,15 @@ accepted and modified proposal; the post-step doctor static run
 reported no `fail` finding; and the post-step LLM-driven phase has run
 with its findings surfaced to the user.
 
+A refused or rejected revise is INCOMPLETE WORK, not a finish. A
+pre-step or post-step doctor-static `fail`, an outstanding
+ratification-review blocker, a schema-validation rejection of the
+revise payload, and a user declining to confirm a decision each leave
+the spec at its old version; report what is still owed, never a cut
+version. Note the asymmetry the shared word hides: a `reject`
+DECISION recorded for a proposal is part of a FINISHED pass, while a
+REFUSED revise invocation is not.
+
 Proposals the pass deliberately left out of `decisions[]` remain
 pending, which is a narrowed pass completing — not an unfinished one.
 
