@@ -87,48 +87,6 @@
     // App, beads tenant, per-tenant Fabro server) is DEFERRED to the post-seed
     // onboarding pass (the repo itself existed first, per the
     // registration-last birth rule).
-    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
-    // The seven entries below are the repositories that own a piece of the
-    // fleet's provisioning model (`.ai/gitops-deployment-discipline.md`
-    // §"Where the fleet's provisioning model lives"). Each owes its own
-    // `.ai/gitops-deployment*.md` layer map under `contracts.md` §"Fleet
-    // agent-instruction core", and that obligation binds only a repository
-    // this manifest declares — hence the registration. They share the
-    // `orchestrator-plugin` profile so the factory can carry each one's
-    // per-repo topic work, and the `released` posture of the homelab
-    // precedent. Per the registration-last birth rule every one of them
-    // already existed and was clonable when these entries landed.
-    //
-    // vps-info: host repository for the vps host — per-host config and the
-    // systemd services it runs. Registered 2026-10-19; its onboarding wiring
-    // is deferred to the adopter-side installation prompt
-    // (`docs/livespec-installation-prompt.md`), run from inside the repo.
-    { "repo": "vps-info", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // poweredge-xubuntu-info: host repository for the poweredge-xubuntu CI
-    // host — its hardware, firmware, disk, network and remote-access facts.
-    // Registered 2026-10-19; its onboarding wiring is deferred to the
-    // adopter-side installation prompt.
-    { "repo": "poweredge-xubuntu-info", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // gmktec-xubuntu-info: host repository for the gmktec-xubuntu host.
-    // Registered 2026-10-19; its onboarding wiring is deferred to the
-    // adopter-side installation prompt.
-    { "repo": "gmktec-xubuntu-info", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // hp-xubuntu-info: host repository for the hp-xubuntu host. Registered
-    // 2026-10-19; its onboarding wiring is deferred to the adopter-side
-    // installation prompt.
-    { "repo": "hp-xubuntu-info", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // fabro-hosts: deploy repository for the Fabro dark-factory host fleet —
-    // one systemd unit template plus per-host values. Registered 2026-10-19;
-    // its onboarding wiring is deferred to the adopter-side installation
-    // prompt.
-    { "repo": "fabro-hosts", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // otel-collector: deploy repository for the OpenTelemetry Collector
-    // config that shapes agent telemetry. Registered 2026-10-19; its
-    // onboarding wiring is deferred to the adopter-side installation prompt.
-    { "repo": "otel-collector", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" },
-    // local-llm: deploy repository for the locally-served model stack.
-    // Registered 2026-10-19; its onboarding wiring is deferred to the
-    // adopter-side installation prompt.
-    { "repo": "local-llm", "profile": ["baseline", "orchestrator-plugin"], "posture": "released" }
+    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" }
   ]
 }
