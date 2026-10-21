@@ -771,5 +771,21 @@
     "test": "TODO",
     "reason": "Ratifies factory-routing (coordinator rulings R318/R320, plan petri-factory-on-gmktec, epic bd-ib-fyozyd, filed in the livespec-orchestrator-beads-fabro tenant): this repository's committed dispatcher.factories table is registry-backed and names no machine. No test exercises this heading yet; a separate registry-switch work-item filed in this repository's own livespec tenant changes .livespec.jsonc, and its proof is a host-captured dispatch.",
     "work_item": "livespec-6fb1"
+  },
+  {
+    "heading": "## A released adopter is registered only after its wiring satisfies the sweep",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-zyh7uo",
+    "reason": "Ratifies register-after-wiring for released adopters (proposal adopter-registration-posture-for-toolchain-less-repos). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling fleet-conformance sweep test over a fixture manifest; this TODO is replaced by that test id when the follow-up work-item in livespec-dev-tooling lands (livespec epic livespec-zyh7uo)."
+  },
+  {
+    "heading": "## An instruction-only adopter is held to plugin currency and to no other baseline concern",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-zyh7uo",
+    "reason": "Ratifies the adopter-only instruction-only profile (proposal adopter-registration-posture-for-toolchain-less-repos). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling fleet-conformance sweep test over a fixture manifest; this TODO is replaced by that test id when the follow-up work-item in livespec-dev-tooling lands (livespec epic livespec-zyh7uo)."
   }
 ]

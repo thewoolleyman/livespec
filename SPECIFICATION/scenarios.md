@@ -713,3 +713,34 @@ Scenario: A rebase-merge replay receives the same verdict
   When it is rebase-merged and `master` CI runs on the newly minted commits
   Then every check returns the same verdict it returned on the pull request
 ```
+
+## A released adopter is registered only after its wiring satisfies the sweep
+
+```gherkin
+Feature: Adopter registration follows wiring
+
+Scenario: An unwired adopter is registered with posture none
+  Given an adopter repository whose committed configuration does not yet satisfy the adopter plugin-currency row
+  When the fleet maintainer registers it in the manifest
+  Then the entry carries posture none
+  And the fleet-conformance sweep reports it as posture-excluded without failing
+
+Scenario: The posture changes to released only after the wiring passes
+  Given an adopter registered with posture none
+  When its repository commits configuration that the adopter plugin-currency row passes
+  Then a later manifest change sets the entry's posture to released
+```
+
+## An instruction-only adopter is held to plugin currency and to no other baseline concern
+
+```gherkin
+Feature: The instruction-only adopter profile
+
+Scenario: A released instruction-only adopter is held to plugin currency only
+  Given an adopter registered with profile instruction-only and posture released
+  And its repository carries no justfile, mise configuration or .livespec.jsonc
+  And its committed .claude/settings.json declares livespecPluginCurrencySuccessor with a non-empty mechanism and documentedIn
+  When the fleet-conformance sweep evaluates the adopter
+  Then the adopter plugin-currency row passes
+  And no Shell-and-Justfile-discipline or Request-budget-discipline obligation is evaluated for it
+```
