@@ -68,5 +68,19 @@
     "heading": "## Factory routing",
     "work_item": "livespec-6fb1",
     "first_seen": "2026-10-20"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## A released adopter is registered only after its wiring satisfies the sweep",
+    "work_item": "livespec-zyh7uo",
+    "first_seen": "2026-10-21"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## An instruction-only adopter is held to plugin currency and to no other baseline concern",
+    "work_item": "livespec-zyh7uo",
+    "first_seen": "2026-10-21"
   }
 ]
