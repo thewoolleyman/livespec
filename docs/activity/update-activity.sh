@@ -29,6 +29,11 @@ UTC = dt.timezone.utc
 DEFAULT_SINCE = "2026-06-01"
 REPORT_NAME = "livespec-governed-repo-activity.md"
 
+# One chart colour per governed repository, in manifest order. The generator
+# refuses outright rather than reuse a colour, so this tuple is a hard ceiling
+# on fleet-plus-adopter membership that the manifest itself cannot announce:
+# registering a repository without widening the palette would stop the report.
+# Colour-blind-safe hues throughout (Paul Tol's qualitative schemes).
 COLORS = (
     "#332288",
     "#88CCEE",
@@ -44,6 +49,13 @@ COLORS = (
     "#AA4466",
     "#4477AA",
     "#228833",
+    "#EE7733",
+    "#0077BB",
+    "#CC3311",
+    "#EE3377",
+    "#DDAA33",
+    "#225555",
+    "#BBBBBB",
 )
 
 DOC_EXTENSIONS = {
