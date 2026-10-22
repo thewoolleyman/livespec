@@ -287,10 +287,26 @@
       // retired hostname-bearing `hp` and `vps` entries both pointed at, so routing
       // is unchanged by this switch; a recorded item pin still naming `hp` or `vps`
       // falls back to `default_factory` under the ratified recorded-pin fallback.
+      //
+      // `petri` is the registry name for the gmktec-xubuntu :32276 Petri-era
+      // instance, and the cutover (coordinator ruling R668, bd-ib-iud52v) made it
+      // the default. `legacy` stays declared so an item whose recorded pin names
+      // it keeps reaching the instance it was dispatched to, while new dispatches
+      // and pins naming an undeclared factory (`hp`, `vps`) resolve to `petri`. `bin` names the Petri-era client, because the 0.254 client cannot
+      // speak to that server. `secret_channel: native_secrets` is required on
+      // Petri-era engines. `environment: livespec-ci` is the server-side
+      // environment catalog id; without it a run lands in a bare default image,
+      // and with it the sandbox image comes from that environment.
       "factories": {
-        "legacy": { "registry": true }
+        "legacy": { "registry": true },
+        "petri": {
+          "registry": true,
+          "bin": "/home/ubuntu/.local/state/fabro-currency/carrier-petri-v0.382-adeefec4c/fabro",
+          "secret_channel": "native_secrets",
+          "environment": "livespec-ci"
+        }
       },
-      "default_factory": "legacy"
+      "default_factory": "petri"
     }
   },
   // Allowlist for cross-repo spec-heading references per
