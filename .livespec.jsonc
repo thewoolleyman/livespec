@@ -298,7 +298,9 @@
       // environment catalog id; without it a run lands in a bare default image,
       // and with it the sandbox image comes from that environment.
       "factories": {
-        "legacy": { "registry": true },
+        // legacy submits through the pinned 0.254 8869e88 client whose bytes match hp's
+        // declared engine, staged by the livespec-dev-tooling dev-host play (bd-ib-zb2hso).
+        "legacy": { "registry": true, "bin": "/home/ubuntu/.local/state/fabro-currency/carrier-legacy-v0.254-8869e88/fabro" },
         "petri": {
           "registry": true,
           "bin": "/home/ubuntu/.local/state/fabro-currency/carrier-petri-v0.382-adeefec4c/fabro",
