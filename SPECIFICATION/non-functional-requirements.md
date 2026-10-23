@@ -370,9 +370,23 @@ The canonical target inventory is maintained as tracked static data. The `just c
 
 **Invocation surfaces:**
 
-- **Pre-commit and pre-push (local):** `lefthook.yml` runs `just check`.
+- **Pre-commit and pre-push (hook):** `lefthook.yml` runs the repository's gate recipe, which runs `just check` on the pushing host unless that repository has delegated its pre-push gate per **Delegated gate execution** below.
 - **CI (GitHub Actions):** one job per check via a matrix strategy with `fail-fast: false`, each calling `just <target>`. The `jdx/mise-action@v2` step installs pinned tools.
 - **Manual (developer at the shell):** `just <target>` — same targets hooks and CI use.
+
+**Delegated gate execution.** A repository MAY delegate its pre-push gate to a remote executor. Delegation MUST be opt-in, and the gate MUST remain runnable on the pushing host by an explicit act whether or not delegation is opted in, so that an executor is never a single point of failure for pushing. Delegation changes WHERE the gate runs and MUST NOT change WHAT it verifies. The requirements below are properties of the delegation — the verdict, the executor, and the pushing host's handling of both — and of the OUTCOME a delegated gate reports. They prescribe no check's internals; where satisfying them requires a check running under delegation to distinguish having VERIFIED from having been UNABLE to verify, that follows from the outcome property rather than from any rule about how a check is written.
+
+*The host.* A repository's version-controlled configuration opts it in to delegation; within an opted-in repository, a push delegates only from a pushing host that holds the credential which authorizes it to submit to the executor. A host that holds no such credential — a factory sandbox, for example — is not a delegating host: its pushes run the repository's gate recipe on that host without delegation, and it MUST report that it gated locally. Which hosts hold that credential is decided by provisioning, never by a push's own outcome: a delegating host whose executor returns no verdict MUST NOT become a non-delegating host for that push, and *The verdict* governs it.
+
+*The tree.* A delegated gate MUST run against the exact tree being pushed, and the pushing host MUST verify that identity before honouring the verdict. A verdict for any other content is an absent verdict.
+
+*The set.* A delegated gate MUST perform every verification the repository's gate recipe, as version-controlled, selects for its pre-push run of that tree. Within that set, a check that exits without failing but did not perform its verification — for any cause, credential causes included — has NOT performed it, and MUST fail the delegated gate rather than report success. A check the recipe selects but does not arm — one whose run is conditioned on a switch that the repository's version-controlled configuration never sets, so that under that configuration it performs no verification on any host — is outside that set and is not made a delegated-gate failure by this rule. A condition a HOST supplies — a credential, a tool on its path, a service it can reach, a reference in its clone — never leaves a check unarmed; a check whose run waits only on such a condition is in the set, and its exit without verifying MUST fail the delegated gate. The set is a function of the repository's tree and version-controlled configuration, and MUST NOT vary with what any particular host happens to hold; the executor MUST run the gate under that configuration in full, save the checks *The authority* places on the pushing host, so that both sides compute the same set. Where a check fails the delegated gate under this rule, relocating that verification to the pushing host is NOT a conforming response — the one exception being a check *The authority* governs — and a narrowing that applies only on the delegated path is not conforming however it is expressed and whether or not it is version-controlled; the conforming responses are to provision the executor so that the verification can be performed, or to remove the verification from the repository's gate recipe, which narrows the delegated and non-delegated paths alike.
+
+*The authority.* A check whose verification reads an AUTHORIZATION held outside the tree — an approval recorded in the work-items ledger, or the forge's repository administration settings — and which carries a declaration saying so, MUST NOT run in the executor. The pushing host MUST run it, with its own credentials, against the same tree the executor gates. Such a check remains in the set: the pushing host performs it instead of the executor, so the verification is relocated and not narrowed. The declaration MUST travel with the check, so every host computes the same split, and a check that carries no such declaration runs in the executor. A failure of such a check refuses the push and MUST be reported as that check's failure on the pushing host. A pushing host that cannot evaluate such a check MUST refuse the push as that check's failure, and MUST NOT treat an authorization it could not read as granted. This exception provisions the executor with nothing: the authority stays with the host that already holds it.
+
+*The credential.* A credential is AVAILABLE to an executor when the executor holds it, carries it in its environment, has it mounted, or can obtain it from any service it can reach. No credential stronger than the verifications the executor performs require may be available to it, and no credential from which such a stronger one can be obtained may be available to it. A credential a verification requires MUST be provisioned to the executor deliberately, designated for the verifications it is provisioned for and no stronger than those verifications need, and MUST NOT reach the executor incidentally as a consequence of where it runs or what else that environment holds. This binds every credential class a verification may need — a forge token, a datastore password, any other — and not forge credentials alone. Where a verification's credential is not provisioned, the conforming responses are those *The set* names; a repository MUST NOT require the pushing host to hold a credential A VERIFICATION REQUIRES in order for a delegated gate to be conforming, except the authority a check *The authority* governs reads.
+
+*The verdict.* A verdict EXISTS only when the delegated gate itself reported its own OUTCOME for this push. An executor that could not be reached or authenticated, a transport that reported its own success without carrying the gate's outcome, a process terminated by signal, and any result stored or cached from any other run are each an ABSENT verdict; the pushing host's own gate-skip marker is read to decide whether a gate runs at all and is never a verdict. A push is authorized only by a present passing verdict together with a pass of every check *The authority* moves to the pushing host, or — where no verdict is present — by a run on the pushing host of the entire gate recipe without delegation, invoked as an explicit act rather than reached by automatic fallback. A pushing host that *The host* makes non-delegating is not falling back: delegation never applied to its push. A present FAILING verdict refuses that push, and a non-delegated run MUST NOT override it; the repository's remedies are those *The set* names, or the withdrawal of delegation, after which the repository is no longer delegating and this clause no longer governs its pushes. Withdrawal of delegation is a change to the repository's version-controlled configuration, never a per-push or per-host act. An absent verdict MUST NOT be treated as a pass, MUST be reported as absent rather than as a failing check, and MUST refuse the push where no such non-delegated run has authorized it. A marker recording a tree as having passed the gate MUST NOT be written on anything less.
 
 **Fleet CI execution posture.** Every fleet repository's merge-gating CI MUST execute on GitHub-hosted runners, EXCEPT where it executes on a self-hosted host satisfying §"Self-hosted CI runner host requirements" in full. Routing a repository's gating jobs to a conforming host MUST NOT require a further specification revision. The shared factory host MUST NOT carry a resident CI listener pool, runner-liveness timer, runner-cache timer, or any CI supervisor other than the single deliberately-privileged operator-triggered gate supervisor named in the next paragraph; that constraint holds UNCONDITIONALLY and independently of the execution posture in the preceding sentence, because co-residency with the Fabro, Dolt, and Dispatcher machinery — not self-hosted execution as such — is what made the earlier resident pool untenable, and a later change to the execution posture MUST NOT be read as relaxing it. All other self-hosted CI capacity MUST therefore be separately provisioned on a host dedicated to carrying it. This rule does not disable the shared factory host's Fabro, Dolt, Dispatcher, or other factory machinery. A repository whose gating jobs name a self-hosted label while no conforming host is registered to serve them MUST route those jobs to hosted capacity rather than allow them to accumulate in a queue. This decision supersedes the local-hot-runner rollout recorded by `livespec-3lev` and its Phase 0/2/3 children.
 
@@ -1425,6 +1439,76 @@ And each runner registration serves one job and then deregisters
 And no fleet secret beyond a least-privilege read-scoped run token is present in the job environment
 
 And the shared factory host carries no CI listener pool, runner-liveness timer, runner-cache timer, or CI worker process other than a single ephemeral gate runner during one verified operator-triggered run
+
+### Scenario: A delegated gate verdict does not authorize a tree it was not produced against
+
+Given a repository has delegated its pre-push gate to a remote executor
+
+When the executor returns a passing verdict produced against content other than the tree being pushed
+
+Then that verdict does not authorize the push
+
+And the verdict is treated as absent rather than as a pass
+
+And no marker recording the pushed tree as having passed the gate is written on the strength of it
+
+### Scenario: A delegated pre-push gate refuses the push when no verdict arrives
+
+Given a repository has delegated its pre-push gate to a remote executor
+
+When the transport reports success without carrying the gate's outcome
+
+And the entire gate recipe has not been run on the pushing host without delegation
+
+Then the push is refused
+
+And no marker recording the tree as having passed the gate is written
+
+And the refusal names the absent verdict rather than reporting a failing check
+
+### Scenario: A check that cannot perform its verification fails the delegated gate
+
+Given a check target reports success without performing its verification when it lacks a sufficiently scoped credential
+
+And that check carries no declaration that it reads an authorization held outside the tree
+
+And a repository has delegated its pre-push gate to a remote executor to which that credential is not available
+
+When the delegated gate runs for a push
+
+Then the delegated gate fails, because reporting success without verifying is not performing the verification
+
+And that verification is not relocated to the pushing host
+
+And the push is authorized only once the executor is provisioned with the credential that verification requires, or the verification is removed from the repository's gate recipe, or delegation is withdrawn in the repository's version-controlled configuration
+
+### Scenario: A check that reads an authorization held outside the tree runs on the pushing host and joins the delegated verdict
+
+Given a repository has delegated its pre-push gate to a remote executor
+
+And a check in its gate recipe declares that it reads the forge's repository administration settings
+
+When a delegating host pushes a tree
+
+Then that check does not run in the executor
+
+And the pushing host runs it with its own credentials against the same tree
+
+And the push completes only when the executor's verdict passes and that check passes on the pushing host
+
+And a pushing host that cannot read those settings refuses the push as that check's failure
+
+### Scenario: A host that holds no executor credential gates locally in a delegating repository
+
+Given a repository has opted in to delegating its pre-push gate
+
+And a pushing host holds no credential authorizing it to submit to the executor
+
+When that host pushes a tree
+
+Then the push runs the repository's gate recipe on that host without delegation
+
+And the push reports that it gated locally
 
 ### Scenario: An unavailable self-hosted host does not deadlock the merge gate
 
