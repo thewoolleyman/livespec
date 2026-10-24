@@ -622,42 +622,14 @@ check-pre-commit-doc-only:
 # subset: it exits early only when the working tree is byte-identical to the
 # last tree that already passed `just check`, in which case re-running it
 # would be redundant (CI remains authoritative). Any real diff runs the full
-# aggregate — HERE, or, where this push delegates, on the executor.
-#
-# THE DELEGATED-GATE BRANCH (work-item livespec-bwzu5t; the contract is
-# `SPECIFICATION/non-functional-requirements.md` §"Contracts" → **Delegated
-# gate execution**, realized in `contracts.md` §"Pre-commit step ordering").
-# This repository HAS opted in — `delegated_gate = true` in its own
-# `[tool.livespec_dev_tooling]` block — so which branch a push takes is decided
-# by the HOST, not by this file: the probe's exit status answers for THIS push,
-# the switch AND whether the pushing user can read the gates kubeconfig here.
-# From the VPS that is 0 and the gate runs on the cluster; from a Fabro sandbox
-# or a laptop it is non-zero, the probe itself prints that this push gated
-# locally, and the `just check` below runs on this host. Every doubt the probe
-# can have — an absent key, a `false`, an unparseable pyproject, a traceback,
-# no credential — exits non-zero and lands on that strict local path, which is
-# the only direction in which a mistake is merely expensive.
-#
-# Only the FALL-THROUGH is replaced; the green-token skip above is untouched,
-# because a delegated pass writes the SAME token through the SAME CLI a local
-# aggregate does, so a byte-identical tree is skippable whichever path gated
-# it. And once delegation IS selected this is the last local branch: the `exec`
-# is load-bearing, not an optimization — a delegated run that reaches no
-# verdict must REFUSE the push, never fall through to the aggregate below,
-# because "we could not gate this" must not quietly become "we gated it some
-# other way" (*The verdict*).
-#
-# No-errexit deviation: the green-token and delegation probes' exit statuses are handled explicitly.
+# aggregate.
+# No-errexit deviation: the green-token probe's exit status is handled explicitly.
 check-pre-push:
     #!/usr/bin/env bash
     set -uo pipefail
     if uv run python -m livespec_dev_tooling.green_token check 2>&1; then
         echo ":: pre-push: green token matched — tree byte-identical to last green check; skipping full aggregate (CI is authoritative)"
         exit 0
-    fi
-    if uv run python -m livespec_dev_tooling.gate_remote_delegate enabled; then
-        echo ":: pre-push: delegated gate selected for this push; gating on the cluster"
-        exec uv run python -m livespec_dev_tooling.gate_remote_delegate run
     fi
     just check
 
