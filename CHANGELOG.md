@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/thewoolleyman/livespec/compare/v0.42.1...v0.43.0) (2026-10-24)
+
+
+### Features
+
+* opt livespec in to the delegated pre-push gate ([f4a5e42](https://github.com/thewoolleyman/livespec/commit/f4a5e4273c2c161bf1db394b0720500febec7c9a))
+
 ## [0.42.1](https://github.com/thewoolleyman/livespec/compare/v0.42.0...v0.42.1) (2026-10-15)
 
 
