@@ -108,6 +108,30 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # Requires livespec-dev-tooling >= v0.39.0 (the flip lever; pinned).
 file_lloc_hard_gate = true
 plan_lifecycle_anchor = true
+# Delegate this repository's pre-push aggregate to the `gates` namespace of the
+# self-hosted k3s pool (work-item livespec-bwzu5t, a child of the
+# livespec-dev-tooling plan `delegated-gate-fleet-rollout`). The contract is
+# `SPECIFICATION/non-functional-requirements.md` §"Contracts" → **Delegated gate
+# execution**, realized in `SPECIFICATION/contracts.md` §"Pre-commit step
+# ordering"; the client is `livespec_dev_tooling.gate_remote_delegate`.
+#
+# THIS KEY IS NOT HOST-BLIND, which is what makes opting in safe. It travels
+# with the code and names no host, so at push time it is ANDed with whether the
+# pushing user can read the gates kubeconfig on THIS host. From the VPS, which
+# holds the credential, a push gates on the cluster; from a Fabro sandbox or a
+# laptop, which do not, the push runs the full local `just check` fall-through
+# and SAYS SO, per *The host*. Nothing about fail-closed moves: once a push has
+# delegated, a verdict that never arrives refuses it rather than quietly
+# becoming a local run, which is why `check-pre-push` `exec`s the client.
+#
+# NO `gate_check_suite` IS DECLARED, deliberately. The client's documented
+# fall-through suite — `install-worktree-pack`, `install-commit-refuse-hooks`,
+# `check-pre-push` — is exactly this repository's own pre-push sequence, and
+# the `check-pre-push` it runs inside the gate pod cannot re-delegate, because
+# the pod holds no gates kubeconfig; it therefore runs `just check` there, over
+# the pushed tree. Declaring a suite would restate that sequence in a second
+# place for it to drift from `lefthook.yml`.
+delegated_gate = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
 repo_local_ci_skips = [
     { slug = "check-no-workflow-edits", reason = "Local and janitor authorship control; the canonical guard explicitly exits without evaluation under GITHUB_ACTIONS because CI has no local author to control." },
