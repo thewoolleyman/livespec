@@ -305,7 +305,12 @@
           "registry": true,
           "bin": "/home/ubuntu/.local/state/fabro-currency/carrier-petri-v0.382-adeefec4c/fabro",
           "secret_channel": "native_secrets",
-          "environment": "livespec-ci"
+          // livespec-ci -> livespec-ci-k8s: the fleet Kubernetes cutover (coordinator
+          // gitops-fleet-capacity-monitoring, maintainer direction 2026-10-24), the same
+          // per-repo key livespec-dev-tooling PR #2792 switched. livespec-ci-k8s is
+          // livespec-ci's twin on gmktec, run as a pod by the kubernetes sandbox driver;
+          // the one-step rollback to Docker is setting it back to livespec-ci.
+          "environment": "livespec-ci-k8s"
         }
       },
       "default_factory": "petri"
