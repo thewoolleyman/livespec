@@ -92,3 +92,5 @@ Temporary Items
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
+
+# gate-proof: mex6ga host verify 20261024T183100Z (vmi3006760)
