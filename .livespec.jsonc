@@ -305,12 +305,10 @@
           "registry": true,
           "bin": "/home/ubuntu/.local/state/fabro-currency/carrier-petri-v0.382-adeefec4c/fabro",
           "secret_channel": "native_secrets",
-          // livespec-ci -> livespec-ci-k8s: the fleet Kubernetes cutover (coordinator
-          // gitops-fleet-capacity-monitoring, maintainer direction 2026-10-24), the same
-          // per-repo key livespec-dev-tooling PR #2792 switched. livespec-ci-k8s is
-          // livespec-ci's twin on gmktec, run as a pod by the kubernetes sandbox driver;
-          // the one-step rollback to Docker is setting it back to livespec-ci.
-          "environment": "livespec-ci-k8s"
+          // factory-python: the toolchain-named catalog id (livespec-dev-tooling
+          // SPECIFICATION, "Factory sandbox environment naming"). Its provider, not
+          // this id, says where the sandbox runs, so a provider move changes nothing here.
+          "environment": "factory-python"
         }
       },
       "default_factory": "petri"
