@@ -1,2 +1,2 @@
-work_item=livespec-c25sxz
-reason=Maintainer explicitly authorized this core integration within factory-test-first-enforcement: adopt released livespec-dev-tooling v1.92.2 workflow pins and wire the three new canonical checks plus four existing repository-local checks into metadata CI. The item carries the per-case approval:workflow-edit marker; the factory dispatch credential remains unchanged.
+work_item=livespec-sfz64o
+reason=Add a top-level concurrency group to release-please.yml so concurrent master pushes queue instead of racing on a stale release base (2026-10-25 PRs 3619/3620).
