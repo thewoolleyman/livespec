@@ -42,6 +42,16 @@ on:
     branches: [master]
   workflow_dispatch:
 
+# Serialize release-please per ref (livespec-dev-tooling plan dfixhe). Two
+# concurrent master pushes once raced: one run cut a release while the other
+# opened a release PR against the stale previous base, which merged untagged
+# and regressed the manifest (livespec-orchestrator-beads-fabro, 2026-10-25,
+# PRs 3619/3620). A queued run, never a cancelled one: each push's commits
+# still need their release-please pass.
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
