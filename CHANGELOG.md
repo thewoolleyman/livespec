@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.1](https://github.com/thewoolleyman/livespec/compare/v0.43.0...v0.43.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **config:** declare claude-sonnet-5-5 in the model catalog for the Codex-first fallbacks ([9df2f51](https://github.com/thewoolleyman/livespec/commit/9df2f517df7af0805f0b346c559642febe41434b))
+
 ## [0.43.0](https://github.com/thewoolleyman/livespec/compare/v0.42.1...v0.43.0) (2026-10-24)
 
 
