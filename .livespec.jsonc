@@ -264,16 +264,22 @@
           }
         }
       },
+      // CODEX-FIRST on every node (maintainer direction 2026-10-25: the factory runs OpenAI
+      // models by default with Anthropic minimized; fleet-wide ruling by coordinator
+      // gitops-fleet-capacity-monitoring). codex-acp is each node's primary and claude-acp
+      // its fallback, used only when Codex hits its limit. Same block as
+      // livespec-orchestrator-beads-fabro a03cbeb0. Only gpt-5.6-terra and gpt-5.6-luna,
+      // the slugs proven reachable on the factory's ChatGPT account.
       "acp_nodes": {
-        "pr": "npx -y @agentclientprotocol/claude-agent-acp",
-        "dod_gate": { "agent": "claude-acp", "model": "claude-opus-4-8", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "implement": { "agent": "claude-acp", "model": "claude-opus-5", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "fix": { "agent": "claude-acp", "model": "claude-opus-5", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "review_fix": { "agent": "claude-acp", "model": "claude-opus-5", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "proof_capture": { "agent": "claude-acp", "model": "claude-opus-5", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "proof_verify": { "agent": "claude-acp", "model": "claude-opus-4-8", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "review": { "agent": "claude-acp", "model": "claude-opus-4-8", "effort": "high", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high" }] },
-        "disposition": { "agent": "claude-acp", "model": "claude-sonnet-4-6", "effort": "medium", "fallbacks": [{ "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "low" }] }
+        "dod_gate": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
+        "implement": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
+        "fix": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
+        "review_fix": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
+        "proof_capture": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "medium", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
+        "proof_verify": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "medium", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
+        "review": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
+        "pr": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "low", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
+        "disposition": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "low", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] }
       },
       "wip_cap": 10,
       // Registry-backed factory table, per SPECIFICATION/non-functional-requirements.md
