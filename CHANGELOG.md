@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/thewoolleyman/livespec/compare/v0.43.1...v0.44.0) (2026-10-26)
+
+
+### Features
+
+* support ratification reviewer model lists ([c8c9836](https://github.com/thewoolleyman/livespec/commit/c8c9836a4b065d0a6eb6e802a4b1d96e1a9a9bb9))
+
 ## [0.43.1](https://github.com/thewoolleyman/livespec/compare/v0.43.0...v0.43.1) (2026-10-25)
 
 
