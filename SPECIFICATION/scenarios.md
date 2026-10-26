@@ -96,6 +96,13 @@ Scenario: Auto-spawn still enforces the independent-review floor
   Then the operation spawns the separate read-only reviewer automatically
   And it does not mutate until matching `NO BLOCKERS` evidence exists
 
+Scenario: A reviewer from the designated list ratifies
+  Given `spec_governance.ratification_reviewer_model` is the ordered list `["opus", "gpt-6-astra"]`
+  And a separate read-only reviewer running on `gpt-6-astra` returns `NO BLOCKERS` for the exact final bytes
+  When the revise payload is applied
+  Then the ratification evidence satisfies the designation
+  And evidence recording a reviewer model that is not in the list is rejected
+
 Scenario: Per-proposal manual review overrides global auto-spawn
   Given global ratification review resolves to `auto-spawn`
   And the proposal front matter sets `ratification_review_policy: manual-spawn`
