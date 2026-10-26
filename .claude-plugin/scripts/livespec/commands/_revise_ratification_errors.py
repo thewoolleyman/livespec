@@ -43,10 +43,10 @@ def _reviewer_error(
     *,
     decision: dict[str, object],
     evidence: dict[Any, Any],
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
 ) -> str | None:
     _ = decision
-    if evidence.get("reviewer_model") != reviewer_model and reviewer_model is not None:
+    if reviewer_model is not None and evidence.get("reviewer_model") not in reviewer_model:
         return "revise: ratification reviewer_model does not match configured reviewer"
     if evidence.get("reviewer_identity") != evidence.get("reviewer_model"):
         return "revise: ratification reviewer identity/model mismatch"
@@ -57,7 +57,7 @@ def _declaration_error(
     *,
     decision: dict[str, object],
     evidence: dict[Any, Any],
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
 ) -> str | None:
     _ = (decision, reviewer_model)
     if evidence.get("separate_reviewer") is not True:
@@ -71,7 +71,7 @@ def _verdict_error(
     *,
     decision: dict[str, object],
     evidence: dict[Any, Any],
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
 ) -> str | None:
     _ = (decision, reviewer_model)
     if evidence.get("verdict") != "NO BLOCKERS":
@@ -83,7 +83,7 @@ def _proposal_stem_error(
     *,
     decision: dict[str, object],
     evidence: dict[Any, Any],
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
 ) -> str | None:
     _ = reviewer_model
     if evidence.get("proposal_stem") != decision.get("proposal_topic"):

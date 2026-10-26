@@ -456,9 +456,10 @@ intentionally produces a one-entry payload.
      safe default (`manual-spawn`) unless the proposed-change
      front matter carries `ratification_review_policy`, in
      which case the proposal override wins. In `auto-spawn`,
-     initiate a separate designated read-only reviewer of
-     whatever model the configured
-     `spec_governance.ratification_reviewer_model` names —
+     initiate a separate designated read-only reviewer using
+     the first entry in configured
+     `spec_governance.ratification_reviewer_model` (with a
+     scalar designation normalized to a one-entry list) —
      the designation is the authority, and this prose MUST
      NOT name a particular model, because a driver that
      reads a hard-coded vendor here will spawn the wrong
