@@ -42,7 +42,7 @@ class SpecGovernanceConfig:
     revise_decision_mode: str = "manual"
     drift_acceptance_mode: str = "human"
     ratification_review: str = "manual-spawn"
-    ratification_reviewer_model: str | None = None
+    ratification_reviewer_model: list[str] | None = None
     ratification_min_review_age_seconds: int = 1
     spec_pr_merge: str = "manual"
 
@@ -173,14 +173,24 @@ def _model_value(
     *,
     block: dict[str, Any],
     diagnostics: list[str],
-) -> str | None:
+) -> list[str] | None:
     value = block.get("ratification_reviewer_model")
     if value is None:
         return None
-    if isinstance(value, str) and MODEL_PATTERN.fullmatch(value):
-        return value
+    if isinstance(value, str):
+        return (
+            [value] if MODEL_PATTERN.fullmatch(value) else _invalid_model(diagnostics=diagnostics)
+        )
+    if not isinstance(value, list) or not value:
+        return _invalid_model(diagnostics=diagnostics)
+    models = cast(list[object], value)
+    if not all(isinstance(model, str) and MODEL_PATTERN.fullmatch(model) for model in models):
+        return _invalid_model(diagnostics=diagnostics)
+    return [cast(str, model) for model in models]
+
+
+def _invalid_model(*, diagnostics: list[str]) -> None:
     diagnostics.append("ratification_reviewer_model: invalid model ignored")
-    return None
 
 
 def _positive_int_value(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from livespec.commands._revise_ratification_errors import _reviewer_error
 from livespec.spec_governance.config import parse_config_text
 
 __all__: list[str] = []
@@ -68,6 +70,23 @@ def test_invalid_entries_are_ignored_without_losing_valid_siblings() -> None:
     assert len(declared.diagnostics) == 9
 
 
+@pytest.mark.parametrize(
+    "designation",
+    [
+        "[]",
+        '["opus", 7]',
+        '["opus", "bad model!"]',
+    ],
+)
+def test_malformed_reviewer_model_lists_are_ignored(*, designation: str) -> None:
+    declared = parse_config_text(
+        text=('{"spec_governance":{"ratification_reviewer_model":' + designation + "}}"),
+    )
+
+    assert declared.effective.ratification_reviewer_model is None
+    assert declared.diagnostics == ["ratification_reviewer_model: invalid model ignored"]
+
+
 def test_wrong_typed_doctor_dispositions_map_resolves_to_empty() -> None:
     declared = parse_config_text(
         text='{"spec_governance": {"doctor_dispositions": "defer"}}',
@@ -104,7 +123,39 @@ def test_all_valid_entries_project_to_effective_config() -> None:
     assert declared.effective.revise_decision_mode == "delegated"
     assert declared.effective.drift_acceptance_mode == "consensus"
     assert declared.effective.ratification_review == "auto-spawn"
-    assert declared.effective.ratification_reviewer_model == "fable/model-1"
+    assert declared.effective.ratification_reviewer_model == ["fable/model-1"]
     assert declared.effective.ratification_min_review_age_seconds == 120
     assert declared.effective.spec_pr_merge == "auto-on-green"
     assert declared.diagnostics == []
+
+
+def test_reviewer_model_list_preserves_order_and_accepts_any_configured_reviewer() -> None:
+    declared = parse_config_text(
+        text=('{"spec_governance":{"ratification_reviewer_model":' '["opus", "gpt-6-astra"]}}'),
+    )
+    fallback_evidence = {
+        "reviewer_identity": "gpt-6-astra",
+        "reviewer_model": "gpt-6-astra",
+    }
+    unexpected_evidence = {
+        "reviewer_identity": "other",
+        "reviewer_model": "other",
+    }
+
+    assert declared.effective.ratification_reviewer_model == ["opus", "gpt-6-astra"]
+    assert (
+        _reviewer_error(
+            decision={},
+            evidence=fallback_evidence,
+            reviewer_model=declared.effective.ratification_reviewer_model,
+        )
+        is None
+    )
+    assert (
+        _reviewer_error(
+            decision={},
+            evidence=unexpected_evidence,
+            reviewer_model=declared.effective.ratification_reviewer_model,
+        )
+        == "revise: ratification reviewer_model does not match configured reviewer"
+    )

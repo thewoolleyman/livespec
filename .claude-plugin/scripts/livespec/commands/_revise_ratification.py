@@ -104,7 +104,7 @@ def _validate_ratification_reviews(
     return IOResult.from_value(revise_input)
 
 
-def _configured_reviewer_model(*, project_root: Path) -> str | None:
+def _configured_reviewer_model(*, project_root: Path) -> list[str] | None:
     config_path = project_root / ".livespec.jsonc"
     if not config_path.is_file():
         return None
@@ -126,7 +126,7 @@ def _validate_decision_review(
     *,
     decision: dict[str, object],
     min_review_age_seconds: int,
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
     revised_at: str | None,
     spec_target: Path,
 ) -> str | None:
@@ -152,7 +152,7 @@ def _validate_evidence(
     decision: dict[str, object],
     evidence: dict[Any, Any],
     min_review_age_seconds: int,
-    reviewer_model: str | None,
+    reviewer_model: list[str] | None,
     revised_at: str | None,
     spec_target: Path,
 ) -> str | None:

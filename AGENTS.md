@@ -1073,10 +1073,11 @@ escalate.
   with `proposal_topic` = the file stem (front-matter topic), never a
   `## Proposal:` section name (mismatch → silent exit 3); for selective
   disposition, split proposals across separate files.
-- **Independent Fable review before every ratification.** Every proposed
+- **Independent configured-model review before every ratification.** Every proposed
   change — in ANY fleet repo — gets an independent, READ-ONLY adversarial
-  review by a separately-spawned Fable-model agent BEFORE `/livespec:revise`
-  accepts it (maintainer-declared 2026-07-04). The reviewer verifies at
+  review by a separately-spawned configured reviewer model BEFORE `/livespec:revise`
+  accepts it. An ordered designation auto-spawns its first model and accepts
+  evidence from any designated model. The reviewer verifies at
   minimum: replacement-target fidelity (every quoted replace-target exists
   verbatim in the live file), design-record fidelity (the change matches the
   cited design record, never merely the shipped implementation), drift-sweep
