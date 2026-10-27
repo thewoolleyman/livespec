@@ -191,7 +191,7 @@ def _evaluate_manifest(
     sibling_targets = filter_sibling_targets(
         cross_repo_targets=cross_repo_conformance_targets, project_root=ctx.project_root
     )
-    if not sibling_targets:
+    if not sibling_targets and not checks_consumer:
         return IOSuccess(
             make_finding(
                 ctx=ctx,
