@@ -39,6 +39,9 @@ __all__: list[str] = []
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PROJECTION = _REPO_ROOT / "dev-tooling" / "checks" / "canonical_slugs_projection.py"
 _YAML_REL = Path("templates") / "orchestrator-plugin" / "canonical-slugs.yml"
+_BUNDLED_YAML_REL = (
+    Path(".claude-plugin") / "scripts" / "livespec" / "doctor" / "static" / "canonical-slugs.yml"
+)
 
 
 def _load_module() -> object:
@@ -121,6 +124,32 @@ def test_verify_fails_on_drift(*, tmp_path: Path) -> None:
         f"expected 'canonical-slugs-projection-drift' check_id in stderr; "
         f"got stderr={result.stderr!r}"
     )
+
+
+def test_verify_fails_when_bundled_projection_drifts(*, tmp_path: Path) -> None:
+    """The plugin-carried canonical set is a separately checked release artifact."""
+    _ = pytest.importorskip("livespec_dev_tooling.canonical_checks")
+    write_result = subprocess.run(
+        [sys.executable, str(_PROJECTION), "--write"],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert write_result.returncode == 0
+    bundled = tmp_path / _BUNDLED_YAML_REL
+    bundled.parent.mkdir(parents=True)
+    bundled.write_text("- check-stale-slug\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(_PROJECTION)],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "canonical-slugs-projection-drift" in result.stderr
 
 
 def test_write_mode_then_verify_passes(*, tmp_path: Path) -> None:
