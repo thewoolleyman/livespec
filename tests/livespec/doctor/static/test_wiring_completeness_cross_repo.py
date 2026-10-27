@@ -1865,34 +1865,21 @@ def test_path_a_falls_through_when_justfile_not_at_head(
     assert result == IOSuccess(expected)
 
 
-def test_skipped_when_dev_tooling_substrate_unimportable(
+def test_legacy_registry_uses_bundled_projection_without_dev_tooling(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`skipped` (not crash) when `livespec_dev_tooling` is unimportable.
+    """Legacy registries read the bundle projection without dev-tooling imports.
 
-    Regression for li-rvdctr: the check's canonical-slug source,
-    `livespec_dev_tooling.canonical_checks.canonical_check_slugs`, lives in
-    a NON-bundled sibling package — importable under `uv`/CI but absent
-    under bare `python3` (the `python3 bin/doctor_static.py` plugin flow the
-    revise wrapper spawns via `sys.executable`) and in the installed-plugin
-    bundle. A top-level import of it crashed the WHOLE static phase with a
-    `ModuleNotFoundError` in those contexts, so `_revise_doctor` saw empty
-    stdout, reported "malformed JSON", and silently bypassed every static
-    check. The fix makes the import lazy + graceful: when the substrate is
-    unimportable, the cross-repo backstop degrades to a `skipped` finding
-    while the rest of the static phase runs normally.
-
-    The fixture uses a `.livespec.jsonc` with a NON-host sibling so the
-    walk reaches `_evaluate_manifest` (where the slug resolution happens),
-    then patches `builtins.__import__` to raise `ModuleNotFoundError` for
-    `livespec_dev_tooling.canonical_checks`. Both the `status == "skipped"`
-    AND the `livespec_dev_tooling`-naming assertions are made so that a Red
-    that happens to produce a skipped finding for some OTHER reason cannot
-    pass.
+    A legacy ``cross_repo_targets`` entry still has to report an actual
+    sibling omission under bare Python.  Raising on the old optional import
+    makes the prior implementation return ``skipped``; the bundled projection
+    must instead keep the sibling evaluation live and report ``fail``.
     """
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
     _write_livespec_jsonc(
         project_root=project_root,
         cross_repo_targets={
@@ -1920,6 +1907,18 @@ def test_skipped_when_dev_tooling_substrate_unimportable(
         return real_import(name, globals_, locals_, fromlist, level)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
+    _install_gh_fake(
+        monkeypatch=monkeypatch,
+        response_by_owner_name={
+            ("example", "sibling-a"): _completed(
+                stdout=_gh_contents_payload(
+                    justfile_text=_make_justfile_text(
+                        slugs=tuple(slug for slug in canonical if slug != dropped)
+                    )
+                )
+            ),
+        },
+    )
 
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     io_result = wiring_completeness_cross_repo.run(ctx=ctx)
@@ -1930,8 +1929,8 @@ def test_skipped_when_dev_tooling_substrate_unimportable(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "skipped"
-    assert "livespec_dev_tooling" in finding.message
+    assert finding.status == "fail"
+    assert f"sibling-a\N{RIGHTWARDS ARROW}{dropped}" in finding.message
 
 
 def test_path_a_reads_via_git_db_on_bare_flag_clone(
