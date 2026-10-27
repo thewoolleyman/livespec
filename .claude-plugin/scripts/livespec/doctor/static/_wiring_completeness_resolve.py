@@ -15,9 +15,13 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     resolve_effective_local_clone,
 )
 from livespec.errors import LivespecError
-from livespec.io import proc
+from livespec.io import fs, proc
 
-__all__: list[str] = ["ResolvedCheckSource", "_resolve_sibling_check_source"]
+__all__: list[str] = [
+    "ResolvedCheckSource",
+    "_resolve_sibling_check_source",
+    "resolve_project_check_source",
+]
 
 
 _INVENTORY_PATH = "check-targets.txt"
@@ -29,6 +33,30 @@ class ResolvedCheckSource(NamedTuple):
 
     kind: str
     text: str
+
+
+def resolve_project_check_source(
+    *, project_root: Path
+) -> IOResult[ResolvedCheckSource | None, LivespecError]:
+    """Read the consuming project's inventory directly from its root.
+
+    Unlike a sibling, the project under doctor is already the addressed working
+    tree. Its current `just check` inventory must therefore be read from that
+    root, rather than through a sibling clone or a network fallback. The tracked
+    inventory wins when present; older projects without one fall back to their
+    `justfile` recipe.
+    """
+    inventory = project_root / _INVENTORY_PATH
+    if inventory.is_file():
+        return fs.read_text(path=inventory).map(
+            lambda text: ResolvedCheckSource("inventory", text),
+        )
+    justfile = project_root / _JUSTFILE_PATH
+    if justfile.is_file():
+        return fs.read_text(path=justfile).map(
+            lambda text: ResolvedCheckSource("justfile", text),
+        )
+    return IOResult.from_value(None)
 
 
 def _read_file_from_local_clone(

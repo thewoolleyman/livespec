@@ -83,7 +83,11 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     filter_sibling_targets,
     make_finding,
 )
-from livespec.doctor.static._wiring_completeness_resolve import _resolve_sibling_check_source
+from livespec.doctor.static._wiring_completeness_projection import canonical_slugs_from_projection
+from livespec.doctor.static._wiring_completeness_resolve import (
+    _resolve_sibling_check_source,
+    resolve_project_check_source,
+)
 from livespec.doctor.static._wiring_completeness_slug_shape import slugs_from_either_shape
 from livespec.doctor.static._wiring_completeness_source import interpret_check_source
 from livespec.errors import LivespecError
@@ -136,56 +140,51 @@ def _fold_pairs(
     )
 
 
-def _resolve_canonical_slugs() -> tuple[str, ...] | None:
-    """Resolve the canonical-slug set, lazily importing its dev-tooling substrate.
-
-    `livespec_dev_tooling.canonical_checks.canonical_check_slugs` is the
-    single source of truth for the fleet-wide canonical-check set, but
-    `livespec_dev_tooling` is a NON-bundled sibling package: it is
-    importable under `uv` (dev/CI) yet absent under bare `python3` (the
-    `python3 bin/doctor_static.py` plugin flow the revise wrapper spawns
-    via `sys.executable`) and in the installed-plugin bundle. Importing it
-    at module top-level therefore crashed the ENTIRE static phase with a
-    `ModuleNotFoundError` in those contexts, silently bypassing every
-    static check (li-rvdctr).
-
-    This helper imports the slug accessor lazily inside a
-    `try/except ModuleNotFoundError` and returns `None` when the substrate
-    is unimportable — the caller degrades the fleet-wide cross-repo
-    backstop to a `skipped` finding (rather than crashing the whole phase)
-    in exactly those bundle / bare-python3 contexts where it cannot run.
-    When the substrate IS present, it returns the resolved slug tuple and
-    the check proceeds exactly as before.
-    """
+def _resolve_canonical_slugs(*, bundled: bool = False) -> tuple[str, ...] | None:
+    """Read the bundle projection for conformance registries and preserve legacy input."""
+    if bundled:
+        return canonical_slugs_from_projection()
     try:
         from livespec_dev_tooling.canonical_checks import canonical_check_slugs
     except ModuleNotFoundError:
         return None
-    # `canonical_check_slugs` is converting to `IOResult`
-    # (`livespec-dev-tooling-vzwa`). Read BOTH shapes so the pin is free to move in
-    # either direction. A failure track arrives as None and joins the existing
-    # substrate-unavailable path below, which SKIPS with a named finding — never as
-    # `()`, which this check would read as "the fleet has no canonical checks" and
-    # report every sibling fully wired.
     return slugs_from_either_shape(value=canonical_check_slugs())
+
+
+def _evaluate_consumer(
+    *,
+    ctx: DoctorContext,
+    canonical_slugs: tuple[str, ...],
+) -> IOResult[list[tuple[str, str]], LivespecError]:
+    """Compute missing canonical slugs in the consuming project's own inventory."""
+    return resolve_project_check_source(project_root=ctx.project_root).map(
+        lambda source: interpret_check_source(
+            sibling_slug=ctx.project_root.name,
+            source_kind=(source.kind if source is not None else "justfile"),
+            source_text=(source.text if source is not None else None),
+            canonical_slugs=canonical_slugs,
+        ),
+    )
 
 
 def _evaluate_manifest(
     *,
     ctx: DoctorContext,
     cross_repo_conformance_targets: dict[str, Any],
+    checks_consumer: bool,
 ) -> IOResult[Finding, LivespecError]:
     """Walk every non-host conformance sibling and build a Finding."""
-    canonical_slugs = _resolve_canonical_slugs()
+    canonical_slugs = _resolve_canonical_slugs(bundled=checks_consumer)
     if canonical_slugs is None:
+        status = "fail" if checks_consumer else "skipped"
+        source = "bundled canonical-slug projection" if checks_consumer else "livespec_dev_tooling"
         return IOSuccess(
             make_finding(
                 ctx=ctx,
-                status="skipped",
+                status=status,
                 message=(
-                    "wiring-completeness-cross-repo: livespec_dev_tooling is "
-                    "not importable (cross-repo canonical-slug set "
-                    "unavailable); check skipped"
+                    "wiring-completeness-cross-repo: "
+                    f"{source} is unavailable; check cannot evaluate"
                 ),
             ),
         )
@@ -212,21 +211,33 @@ def _evaluate_manifest(
             sibling=sibling,
             canonical_slugs=canonical_slugs,
         )
-    return aggregated.bind(
-        lambda all_pairs: IOSuccess(
-            build_aggregate_finding(ctx=ctx, all_pairs=all_pairs),
+    consumer = (
+        _evaluate_consumer(ctx=ctx, canonical_slugs=canonical_slugs)
+        if checks_consumer
+        else IOResult.from_value([])
+    )
+    return consumer.bind(
+        lambda consumer_pairs: aggregated.bind(
+            lambda sibling_pairs: IOSuccess(
+                build_aggregate_finding(
+                    ctx=ctx,
+                    consumer_pairs=consumer_pairs,
+                    sibling_pairs=sibling_pairs,
+                    sibling_status="warn" if checks_consumer else "fail",
+                ),
+            ),
         ),
     )
 
 
-def _select_conformance_targets(*, parsed: dict[str, Any]) -> dict[str, Any] | None:
-    """Return the conformance registry, with legacy fallback for old configs."""
+def _select_conformance_targets(*, parsed: dict[str, Any]) -> tuple[dict[str, Any], bool] | None:
+    """Return the registry and whether it carries the ratified consumer contract."""
     conformance_targets = parsed.get("cross_repo_conformance_targets")
     if isinstance(conformance_targets, dict):
-        return conformance_targets
+        return conformance_targets, True
     legacy_targets = parsed.get("cross_repo_targets")
     if isinstance(legacy_targets, dict):
-        return legacy_targets
+        return legacy_targets, False
     return None
 
 
@@ -243,8 +254,8 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             ),
         )
-    cross_repo_conformance_targets = _select_conformance_targets(parsed=parsed)
-    if cross_repo_conformance_targets is None:
+    selected = _select_conformance_targets(parsed=parsed)
+    if selected is None:
         return IOSuccess(
             make_finding(
                 ctx=ctx,
@@ -255,8 +266,11 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 ),
             ),
         )
+    cross_repo_conformance_targets, checks_consumer = selected
     return _evaluate_manifest(
-        ctx=ctx, cross_repo_conformance_targets=cross_repo_conformance_targets
+        ctx=ctx,
+        cross_repo_conformance_targets=cross_repo_conformance_targets,
+        checks_consumer=checks_consumer,
     )
 
 
