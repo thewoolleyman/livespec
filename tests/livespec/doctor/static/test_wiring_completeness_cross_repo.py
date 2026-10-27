@@ -64,6 +64,7 @@ import importlib
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,7 @@ from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
 from livespec.io import proc as io_proc
 from livespec.schemas.dataclasses.finding import Finding
 from returns.io import IOResult, IOSuccess
+from returns.unsafe import unsafe_perform_io
 
 __all__: list[str] = []
 
@@ -101,21 +103,29 @@ def _write_livespec_jsonc(
     project_root: Path,
     cross_repo_targets: dict[str, Any] | None,
     cross_repo_conformance_targets: dict[str, Any] | None = None,
+    planning_targets: dict[str, Any] | None = None,
 ) -> None:
-    """Write a `.livespec.jsonc` carrying the given `cross_repo_targets` block.
+    """Write a `.livespec.jsonc` carrying the given conformance registry.
 
-    A `None` value writes a config with NO `cross_repo_targets`
-    key (used by the skipped-on-absence test).
+    `cross_repo_targets` remains the fixtures' historical argument name;
+    it projects to the conformance registry unless the explicit conformance
+    argument overrides it. `planning_targets` is the separate, ignored
+    planning registry for tests that need to prove that distinction.
     """
     config: dict[str, Any] = {
         "template": "livespec",
         "spec_root": "SPECIFICATION",
         "implementation": {"plugin": "livespec-orchestrator-git-jsonl"},
     }
-    if cross_repo_targets is not None:
-        config["cross_repo_targets"] = cross_repo_targets
-    if cross_repo_conformance_targets is not None:
-        config["cross_repo_conformance_targets"] = cross_repo_conformance_targets
+    conformance_targets = (
+        cross_repo_conformance_targets
+        if cross_repo_conformance_targets is not None
+        else cross_repo_targets
+    )
+    if conformance_targets is not None:
+        config["cross_repo_conformance_targets"] = conformance_targets
+    if planning_targets is not None:
+        config["cross_repo_targets"] = planning_targets
     _ = (project_root / ".livespec.jsonc").write_text(
         json.dumps(config, indent=2), encoding="utf-8"
     )
@@ -151,6 +161,9 @@ def _setup_project(*, tmp_path: Path) -> tuple[Path, Path]:
     project_root.mkdir()
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=_get_canonical_slugs()), encoding="utf-8"
+    )
     return project_root, spec_root
 
 
@@ -525,7 +538,7 @@ def test_check_targets_inventory_still_reports_missing_slug(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert f"sibling-a→{dropped}" in finding.message
 
 
@@ -610,9 +623,53 @@ def test_fails_when_one_sibling_missing_one_slug(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert f"sibling-a→{dropped}" in finding.message
     assert "1 (sibling, missing-canonical-slug) drift pair(s)" in finding.message
+
+
+def test_distinguishes_consumer_drift_from_advisory_sibling_drift(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The consumer fails, while a sibling-only omission remains advisory."""
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    sibling_clone = _setup_sibling_clone(
+        tmp_path=tmp_path,
+        slug="sibling-a",
+        slugs=tuple(slug for slug in canonical if slug != dropped),
+    )
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets=None,
+        cross_repo_conformance_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(sibling_clone),
+            },
+        },
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+
+    sibling_only = wiring_completeness_cross_repo.run(ctx=ctx)
+    from returns.unsafe import unsafe_perform_io
+
+    assert unsafe_perform_io(sibling_only).unwrap().status == "warn"
+
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=tuple(slug for slug in canonical if slug != dropped)),
+        encoding="utf-8",
+    )
+    consumer_and_sibling = wiring_completeness_cross_repo.run(ctx=ctx)
+    assert unsafe_perform_io(consumer_and_sibling).unwrap().status == "fail"
+
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=canonical), encoding="utf-8"
+    )
+    full_consumer = wiring_completeness_cross_repo.run(ctx=ctx)
+    assert unsafe_perform_io(full_consumer).unwrap().status == "warn"
 
 
 def test_fails_when_multiple_siblings_missing_slugs(
@@ -651,7 +708,7 @@ def test_fails_when_multiple_siblings_missing_slugs(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert f"sibling-a→{dropped_a}" in finding.message
     assert f"sibling-b→{dropped_b}" in finding.message
     assert "2 (sibling, missing-canonical-slug) drift pair(s)" in finding.message
@@ -773,7 +830,7 @@ def test_fails_with_no_justfile_resolved_when_both_paths_fail(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -807,15 +864,15 @@ def test_fails_with_no_check_recipe_when_justfile_lacks_check(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-check-recipe" in finding.message
 
 
-def test_skipped_when_cross_repo_targets_block_absent(
+def test_skipped_when_conformance_registry_is_absent(
     *,
     tmp_path: Path,
 ) -> None:
-    """`skipped` when .livespec.jsonc carries no cross_repo_targets block."""
+    """`skipped` when .livespec.jsonc carries no conformance registry."""
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     _write_livespec_jsonc(project_root=project_root, cross_repo_targets=None)
 
@@ -826,7 +883,7 @@ def test_skipped_when_cross_repo_targets_block_absent(
         status="skipped",
         message=(
             "wiring-completeness-cross-repo: project carries no "
-            "`cross_repo_targets` block; check skipped"
+            "`cross_repo_conformance_targets` block; check skipped"
         ),
         path=None,
         line=None,
@@ -835,14 +892,108 @@ def test_skipped_when_cross_repo_targets_block_absent(
     assert result == IOSuccess(expected)
 
 
+def test_skipped_when_only_planning_registry_is_declared(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A planning registry is not a conformance registry for this check."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets=None,
+        planning_targets={
+            "host": {
+                "github_url": "https://github.com/example/host",
+                "local_clone": str(project_root),
+            },
+        },
+    )
+
+    result = wiring_completeness_cross_repo.run(
+        ctx=DoctorContext(project_root=project_root, spec_root=spec_root)
+    )
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="skipped",
+        message=(
+            "wiring-completeness-cross-repo: project carries no "
+            "`cross_repo_conformance_targets` block; check skipped"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
+def test_conformance_registry_evaluates_consumer_without_siblings(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A declared conformance registry still checks the consuming root."""
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=tuple(slug for slug in canonical if slug != dropped)),
+        encoding="utf-8",
+    )
+    from returns.unsafe import unsafe_perform_io
+
+    for registry in (
+        {},
+        {
+            "host": {
+                "github_url": "https://github.com/example/host",
+                "local_clone": str(project_root),
+            },
+        },
+    ):
+        _write_livespec_jsonc(
+            project_root=project_root,
+            cross_repo_targets=None,
+            cross_repo_conformance_targets=registry,
+        )
+        finding = wiring_completeness_cross_repo.run(
+            ctx=DoctorContext(project_root=project_root, spec_root=spec_root)
+        )
+        evaluated = unsafe_perform_io(finding).unwrap()
+        assert evaluated.status == "fail"
+        assert f"project→{dropped}" in evaluated.message
+
+
+def test_fails_when_bundled_projection_is_unreadable(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A declared conformance check fails closed on an unreadable projection."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets=None,
+        cross_repo_conformance_targets={},
+    )
+    monkeypatch.setattr(wiring_completeness_cross_repo, "_resolve_canonical_slugs", lambda: None)
+
+    finding = wiring_completeness_cross_repo.run(
+        ctx=DoctorContext(project_root=project_root, spec_root=spec_root)
+    )
+    from returns.unsafe import unsafe_perform_io
+
+    evaluated = unsafe_perform_io(finding).unwrap()
+    assert evaluated.status == "fail"
+    assert "bundled canonical-slug projection is unavailable" in evaluated.message
+
+
 def test_host_repo_self_excluded_from_walk(
     *,
     tmp_path: Path,
 ) -> None:
     """A target whose local_clone resolves to project_root is auto-excluded.
 
-    When the manifest contains ONLY the host repo, the result is
-    `skipped` (no siblings remain to walk).
+    When the manifest contains ONLY the host repo, the consuming
+    project's own inventory is still evaluated.
     """
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     _write_livespec_jsonc(
@@ -859,11 +1010,10 @@ def test_host_repo_self_excluded_from_walk(
     result = wiring_completeness_cross_repo.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-wiring-completeness-cross-repo",
-        status="skipped",
+        status="pass",
         message=(
-            "wiring-completeness-cross-repo: cross_repo_targets "
-            "contains no sibling entries (only the host repo or empty); "
-            "no siblings to walk"
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
         ),
         path=None,
         line=None,
@@ -972,11 +1122,11 @@ def test_skipped_when_livespec_jsonc_root_is_not_object(
     assert ".livespec.jsonc root is not an object" in finding.message
 
 
-def test_skipped_when_cross_repo_targets_is_not_a_dict(
+def test_skipped_when_only_malformed_planning_registry_is_declared(
     *,
     tmp_path: Path,
 ) -> None:
-    """`skipped` when cross_repo_targets exists but is not a dict (e.g., list)."""
+    """A malformed planning registry does not opt the check into conformance."""
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     config = {
         "template": "livespec",
@@ -991,7 +1141,7 @@ def test_skipped_when_cross_repo_targets_is_not_a_dict(
         status="skipped",
         message=(
             "wiring-completeness-cross-repo: project carries no "
-            "`cross_repo_targets` block; check skipped"
+            "`cross_repo_conformance_targets` block; check skipped"
         ),
         path=None,
         line=None,
@@ -1024,7 +1174,7 @@ def test_malformed_github_url_treated_as_unresolvable(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1050,7 +1200,7 @@ def test_target_with_missing_github_url_treated_as_unresolvable(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1060,13 +1210,13 @@ def test_non_dict_target_is_silently_dropped(
 ) -> None:
     """A non-dict target (e.g., string) is skipped, not crashed-on.
 
-    With only the malformed entry and no other siblings, the result
-    is `skipped` (no usable siblings to walk).
+    With only the malformed entry and no other siblings, the consumer
+    inventory still supplies the passing result.
     """
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     config = {
         "template": "livespec",
-        "cross_repo_targets": {
+        "cross_repo_conformance_targets": {
             "sibling-a": "not-a-dict",
         },
     }
@@ -1076,11 +1226,10 @@ def test_non_dict_target_is_silently_dropped(
     result = wiring_completeness_cross_repo.run(ctx=ctx)
     expected = Finding(
         check_id="doctor-wiring-completeness-cross-repo",
-        status="skipped",
+        status="pass",
         message=(
-            "wiring-completeness-cross-repo: cross_repo_targets "
-            "contains no sibling entries (only the host repo or empty); "
-            "no siblings to walk"
+            "wiring-completeness-cross-repo: every registered sibling's "
+            "`check` aggregate wires every canonical slug"
         ),
         path=None,
         line=None,
@@ -1160,7 +1309,7 @@ def test_gh_fallback_with_malformed_json_payload_treated_as_unresolved(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1195,7 +1344,7 @@ def test_gh_fallback_with_non_object_json_payload_treated_as_unresolved(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1232,7 +1381,7 @@ def test_gh_fallback_with_wrong_encoding_treated_as_unresolved(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1269,7 +1418,7 @@ def test_gh_fallback_with_invalid_base64_treated_as_unresolved(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1307,7 +1456,7 @@ def test_gh_fallback_with_invalid_utf8_treated_as_unresolved(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert "sibling-a→:no-justfile-resolved" in finding.message
 
 
@@ -1485,7 +1634,7 @@ def test_non_slug_token_lines_inside_targets_array_are_skipped(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert f"sibling-a→{dropped}" in finding.message
 
 
@@ -1526,7 +1675,7 @@ def test_targets_array_without_closing_paren_returns_partial_slugs(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "fail"
+    assert finding.status == "warn"
     assert f"sibling-a→{canonical[5]}" in finding.message
 
 
@@ -1597,6 +1746,9 @@ def test_host_repo_detected_via_worktree_under_primary(
     project_root.mkdir(parents=True)
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=canonical), encoding="utf-8"
+    )
     # Also stage a non-host sibling with the canonical set wired
     # so the manifest has at least one entry to walk after the
     # host is filtered out.
@@ -1782,46 +1934,26 @@ def test_path_a_falls_through_when_justfile_not_at_head(
     assert result == IOSuccess(expected)
 
 
-def test_skipped_when_dev_tooling_substrate_unimportable(
+def test_conformance_check_does_not_import_dev_tooling(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`skipped` (not crash) when `livespec_dev_tooling` is unimportable.
-
-    Regression for li-rvdctr: the check's canonical-slug source,
-    `livespec_dev_tooling.canonical_checks.canonical_check_slugs`, lives in
-    a NON-bundled sibling package — importable under `uv`/CI but absent
-    under bare `python3` (the `python3 bin/doctor_static.py` plugin flow the
-    revise wrapper spawns via `sys.executable`) and in the installed-plugin
-    bundle. A top-level import of it crashed the WHOLE static phase with a
-    `ModuleNotFoundError` in those contexts, so `_revise_doctor` saw empty
-    stdout, reported "malformed JSON", and silently bypassed every static
-    check. The fix makes the import lazy + graceful: when the substrate is
-    unimportable, the cross-repo backstop degrades to a `skipped` finding
-    while the rest of the static phase runs normally.
-
-    The fixture uses a `.livespec.jsonc` with a NON-host sibling so the
-    walk reaches `_evaluate_manifest` (where the slug resolution happens),
-    then patches `builtins.__import__` to raise `ModuleNotFoundError` for
-    `livespec_dev_tooling.canonical_checks`. Both the `status == "skipped"`
-    AND the `livespec_dev_tooling`-naming assertions are made so that a Red
-    that happens to produce a skipped finding for some OTHER reason cannot
-    pass.
-    """
+    """The bundled projection evaluates without importing dev tooling."""
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
     _write_livespec_jsonc(
         project_root=project_root,
-        cross_repo_targets={
-            "sibling-a": {
-                "github_url": "https://github.com/example/sibling-a",
-                "local_clone": str(tmp_path / "sibling-a"),
-                "default_branch": "master",
+        cross_repo_targets=None,
+        cross_repo_conformance_targets={
+            "host": {
+                "github_url": "https://github.com/example/host",
+                "local_clone": str(project_root),
             },
         },
     )
 
     real_import = builtins.__import__
+    imported_names: list[str] = []
 
     def fake_import(
         name: str,
@@ -1830,10 +1962,8 @@ def test_skipped_when_dev_tooling_substrate_unimportable(
         fromlist: Any = (),
         level: int = 0,
     ) -> Any:
-        if name == "livespec_dev_tooling.canonical_checks" or (
-            name == "livespec_dev_tooling" and fromlist
-        ):
-            raise ModuleNotFoundError(name)
+        _ = (globals_, locals_, fromlist, level)
+        imported_names.append(name)
         return real_import(name, globals_, locals_, fromlist, level)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
@@ -1847,8 +1977,9 @@ def test_skipped_when_dev_tooling_substrate_unimportable(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "skipped"
-    assert "livespec_dev_tooling" in finding.message
+    assert finding.status == "pass"
+    assert "livespec_dev_tooling" not in imported_names
+    assert "livespec_dev_tooling.canonical_checks" not in imported_names
 
 
 def test_path_a_reads_via_git_db_on_bare_flag_clone(
@@ -2039,6 +2170,9 @@ def test_host_repo_detected_by_slug_basename_match_when_manifest_path_mismatches
     project_root.mkdir()
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=canonical), encoding="utf-8"
+    )
     # The manifest declares a local_clone path that does NOT match
     # the project_root (simulating /data/projects/livespec vs
     # /home/runner/work/livespec/livespec in CI).
@@ -2241,3 +2375,73 @@ def test_slugs_from_either_shape_treats_an_unknown_shape_as_unavailable() -> Non
     """Doubt maps to None — the strict direction for a fleet-wide slug set."""
     assert _slugs_from_either_shape("check-a") is None
     assert _slugs_from_either_shape(None) is None
+
+
+def test_bundled_projection_rejects_unreadable_and_malformed_data(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The plugin projection has no empty or partially parsed success state."""
+    module_path = (
+        Path(__file__).resolve().parents[4]
+        / ".claude-plugin/scripts/livespec/doctor/static/_wiring_completeness_projection.py"
+    )
+    assert module_path.is_file()
+    projection = importlib.import_module("livespec.doctor.static._wiring_completeness_projection")
+    missing = tmp_path / "missing.yml"
+    monkeypatch.setattr(projection, "_PROJECTION_PATH", missing)
+    assert projection.canonical_slugs_from_projection() is None
+
+    malformed = tmp_path / "malformed.yml"
+    malformed.write_text("check-not-a-yaml-item\n", encoding="utf-8")
+    monkeypatch.setattr(projection, "_PROJECTION_PATH", malformed)
+    assert projection.canonical_slugs_from_projection() is None
+
+    duplicate = tmp_path / "duplicate.yml"
+    duplicate.write_text("- check-one\n- check-one\n", encoding="utf-8")
+    monkeypatch.setattr(projection, "_PROJECTION_PATH", duplicate)
+    assert projection.canonical_slugs_from_projection() is None
+
+
+def test_project_source_prefers_inventory_then_falls_back_to_justfile(*, tmp_path: Path) -> None:
+    """The consumer's inventory is read at its root without dev tooling."""
+    resolver = importlib.import_module("livespec.doctor.static._wiring_completeness_resolve")
+    assert hasattr(resolver, "resolve_project_check_source")
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    justfile = project_root / "justfile"
+    justfile.write_text("check:\n    targets=(\n    )\n", encoding="utf-8")
+
+    source = unsafe_perform_io(
+        resolver.resolve_project_check_source(project_root=project_root)
+    ).unwrap()
+    assert source is not None
+    assert source.kind == "justfile"
+
+    justfile.unlink()
+    unresolved = unsafe_perform_io(
+        resolver.resolve_project_check_source(project_root=project_root)
+    ).unwrap()
+    assert unresolved is None
+
+
+def test_dev_tooling_rejects_a_drifting_bundled_projection(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The private gate compares the plugin-carried release artifact too."""
+    repository_root = Path(__file__).resolve().parents[4]
+    checker = repository_root / "dev-tooling/checks/canonical_slugs_projection.py"
+    module_spec = importlib.util.spec_from_file_location("canonical_slugs_projection", checker)
+    assert module_spec is not None
+    assert module_spec.loader is not None
+    checker_module: Any = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(checker_module)
+    bundled = tmp_path / ".claude-plugin/scripts/livespec/doctor/static/canonical-slugs.yml"
+    bundled.parent.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", [str(checker), "--write"])
+    assert checker_module.main() == 0
+    assert bundled.is_file()
+    bundled.write_text("- check-stale-slug\n", encoding="utf-8")
+
+    monkeypatch.setattr(sys, "argv", [str(checker)])
+    assert checker_module.main() != 0

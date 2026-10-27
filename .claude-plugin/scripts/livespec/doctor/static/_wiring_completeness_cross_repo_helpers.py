@@ -353,10 +353,12 @@ def make_finding(
 def build_aggregate_finding(
     *,
     ctx: DoctorContext,
-    all_pairs: list[tuple[str, str]],
+    consumer_pairs: list[tuple[str, str]],
+    sibling_pairs: list[tuple[str, str]],
+    sibling_status: str,
 ) -> Finding:
-    """Build the aggregate Finding from the full (sibling, missing-slug) set."""
-    if not all_pairs:
+    """Build the one finding, giving the consumer's own drift precedence."""
+    if not consumer_pairs and not sibling_pairs:
         return make_finding(
             ctx=ctx,
             status="pass",
@@ -365,13 +367,16 @@ def build_aggregate_finding(
                 "`check` aggregate wires every canonical slug"
             ),
         )
+    all_pairs = consumer_pairs + sibling_pairs
     pairs_joined = ", ".join(f"{sibling}→{slug}" for sibling, slug in sorted(all_pairs))
+    status = "fail" if consumer_pairs else sibling_status
+    kind = "consumer" if consumer_pairs else "sibling"
     return make_finding(
         ctx=ctx,
-        status="fail",
+        status=status,
         message=(
             f"wiring-completeness-cross-repo: {len(all_pairs)} "
-            f"(sibling, missing-canonical-slug) drift pair(s): "
+            f"({kind}, missing-canonical-slug) drift pair(s): "
             f"{pairs_joined}. Corrective action: open a bump PR against "
             "each offending sibling that re-wires the missing canonical "
             "slug(s) into the consumer's `just check` aggregate (per "
