@@ -62,9 +62,10 @@
     "in_flight_alignment": "default-align",
     "revise_decision_mode": "delegated",
     "ratification_review": "auto-spawn",
-    // Opus is the primary independent reviewer. A non-empty ordered list may
-    // declare additional valid reviewer models; auto-spawn selects its first entry.
-    "ratification_reviewer_model": "opus",
+    // Opus is the primary independent reviewer and auto-spawn selects it;
+    // gpt-6-astra (Codex) is the fallback, and a review by either listed model
+    // ratifies (an ordered list; core v0.44.0, livespec-6xw7hu).
+    "ratification_reviewer_model": ["opus", "gpt-6-astra"],
     "spec_pr_merge": "auto-on-green"
   },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
