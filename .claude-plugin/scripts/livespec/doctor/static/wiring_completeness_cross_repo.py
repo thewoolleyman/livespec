@@ -14,12 +14,12 @@
 
 Per `SPECIFICATION/contracts.md`:
 
-  A doctor invariant `wiring-completeness-cross-repo` MUST walk
-  every code-conformance sibling repo declared in `.livespec.jsonc`'s
-  `cross_repo_conformance_targets` block, read its
-  `justfile`'s `check` recipe, compute the canonical-set
-  difference, and fire `fail` on any aggregate lacking any
-  canonical slug.
+  A doctor invariant `wiring-completeness-cross-repo` reads the
+  consuming project's own `check` inventory and treats any missing
+  canonical slug as a `fail`. It also walks every code-conformance
+  sibling declared in `.livespec.jsonc`'s
+  `cross_repo_conformance_targets` block; sibling-only drift is a
+  `warn`.
 
   The check MAY use a sibling's `local_clone` path when
   configured or fall back to a GitHub query against the
@@ -53,16 +53,12 @@ Cross-boundary mechanism:
     with base64-decoding of the returned `content` field.
 
 The host repo itself (the entry whose `local_clone` resolves to
-`project_root`) is skipped — the in-repo
-`aggregate_completeness` gate covers that case at every
-`just check` invocation. This check is the FLEET-WIDE backstop
-against the host repo's siblings.
+`project_root`) is skipped when walking siblings; its inventory is
+always evaluated directly from the project root.
 
-Canonical slug set comes from
-`livespec_dev_tooling.canonical_checks.canonical_check_slugs()`
-which is dynamically discovered from the
-`livespec_dev_tooling.checks.<slug>` package directory at every
-call — no second source of truth.
+Canonical slug set comes from the committed projection bundled with
+this plugin. The livespec-private projection check keeps that
+artifact aligned with `livespec_dev_tooling`.
 
 Pure helpers (URL parsing, justfile parsing, slug diffing,
 manifest filtering, finding construction, gh-payload decoding)
@@ -88,7 +84,6 @@ from livespec.doctor.static._wiring_completeness_resolve import (
     _resolve_sibling_check_source,
     resolve_project_check_source,
 )
-from livespec.doctor.static._wiring_completeness_slug_shape import slugs_from_either_shape
 from livespec.doctor.static._wiring_completeness_source import interpret_check_source
 from livespec.errors import LivespecError
 from livespec.io import fs
@@ -140,15 +135,9 @@ def _fold_pairs(
     )
 
 
-def _resolve_canonical_slugs(*, bundled: bool = False) -> tuple[str, ...] | None:
-    """Read the bundle projection for conformance registries and preserve legacy input."""
-    if bundled:
-        return canonical_slugs_from_projection()
-    try:
-        from livespec_dev_tooling.canonical_checks import canonical_check_slugs
-    except ModuleNotFoundError:
-        return None
-    return slugs_from_either_shape(value=canonical_check_slugs())
+def _resolve_canonical_slugs() -> tuple[str, ...] | None:
+    """Read the canonical set from the projection shipped in this plugin."""
+    return canonical_slugs_from_projection()
 
 
 def _evaluate_consumer(
@@ -171,38 +160,24 @@ def _evaluate_manifest(
     *,
     ctx: DoctorContext,
     cross_repo_conformance_targets: dict[str, Any],
-    checks_consumer: bool,
 ) -> IOResult[Finding, LivespecError]:
     """Walk every non-host conformance sibling and build a Finding."""
-    canonical_slugs = _resolve_canonical_slugs(bundled=checks_consumer)
+    canonical_slugs = _resolve_canonical_slugs()
     if canonical_slugs is None:
-        status = "fail" if checks_consumer else "skipped"
-        source = "bundled canonical-slug projection" if checks_consumer else "livespec_dev_tooling"
         return IOSuccess(
             make_finding(
                 ctx=ctx,
-                status=status,
+                status="fail",
                 message=(
                     "wiring-completeness-cross-repo: "
-                    f"{source} is unavailable; check cannot evaluate"
+                    "bundled canonical-slug projection is unavailable; "
+                    "check cannot evaluate"
                 ),
             ),
         )
     sibling_targets = filter_sibling_targets(
         cross_repo_targets=cross_repo_conformance_targets, project_root=ctx.project_root
     )
-    if not sibling_targets and not checks_consumer:
-        return IOSuccess(
-            make_finding(
-                ctx=ctx,
-                status="skipped",
-                message=(
-                    "wiring-completeness-cross-repo: cross_repo_targets "
-                    "contains no sibling entries (only the host repo or empty); "
-                    "no siblings to walk"
-                ),
-            ),
-        )
     initial: IOResult[list[tuple[str, str]], LivespecError] = IOResult.from_value([])
     aggregated = initial
     for sibling in sibling_targets:
@@ -211,11 +186,7 @@ def _evaluate_manifest(
             sibling=sibling,
             canonical_slugs=canonical_slugs,
         )
-    consumer = (
-        _evaluate_consumer(ctx=ctx, canonical_slugs=canonical_slugs)
-        if checks_consumer
-        else IOResult.from_value([])
-    )
+    consumer = _evaluate_consumer(ctx=ctx, canonical_slugs=canonical_slugs)
     return consumer.bind(
         lambda consumer_pairs: aggregated.bind(
             lambda sibling_pairs: IOSuccess(
@@ -223,21 +194,18 @@ def _evaluate_manifest(
                     ctx=ctx,
                     consumer_pairs=consumer_pairs,
                     sibling_pairs=sibling_pairs,
-                    sibling_status="warn" if checks_consumer else "fail",
+                    sibling_status="warn",
                 ),
             ),
         ),
     )
 
 
-def _select_conformance_targets(*, parsed: dict[str, Any]) -> tuple[dict[str, Any], bool] | None:
-    """Return the registry and whether it carries the ratified consumer contract."""
+def _select_conformance_targets(*, parsed: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the sole registry that opts a project into conformance checks."""
     conformance_targets = parsed.get("cross_repo_conformance_targets")
     if isinstance(conformance_targets, dict):
-        return conformance_targets, True
-    legacy_targets = parsed.get("cross_repo_targets")
-    if isinstance(legacy_targets, dict):
-        return legacy_targets, False
+        return conformance_targets
     return None
 
 
@@ -262,15 +230,13 @@ def _evaluate(*, ctx: DoctorContext, parsed: Any) -> IOResult[Finding, LivespecE
                 status="skipped",
                 message=(
                     "wiring-completeness-cross-repo: project carries no "
-                    "`cross_repo_targets` block; check skipped"
+                    "`cross_repo_conformance_targets` block; check skipped"
                 ),
             ),
         )
-    cross_repo_conformance_targets, checks_consumer = selected
     return _evaluate_manifest(
         ctx=ctx,
-        cross_repo_conformance_targets=cross_repo_conformance_targets,
-        checks_consumer=checks_consumer,
+        cross_repo_conformance_targets=selected,
     )
 
 
