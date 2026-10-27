@@ -151,6 +151,9 @@ def _setup_project(*, tmp_path: Path) -> tuple[Path, Path]:
     project_root.mkdir()
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=_get_canonical_slugs()), encoding="utf-8"
+    )
     return project_root, spec_root
 
 
@@ -615,6 +618,50 @@ def test_fails_when_one_sibling_missing_one_slug(
     assert "1 (sibling, missing-canonical-slug) drift pair(s)" in finding.message
 
 
+def test_distinguishes_consumer_drift_from_advisory_sibling_drift(
+    *,
+    tmp_path: Path,
+) -> None:
+    """The consumer fails, while a sibling-only omission remains advisory."""
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    sibling_clone = _setup_sibling_clone(
+        tmp_path=tmp_path,
+        slug="sibling-a",
+        slugs=tuple(slug for slug in canonical if slug != dropped),
+    )
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets=None,
+        cross_repo_conformance_targets={
+            "sibling-a": {
+                "github_url": "https://github.com/example/sibling-a",
+                "local_clone": str(sibling_clone),
+            },
+        },
+    )
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+
+    sibling_only = wiring_completeness_cross_repo.run(ctx=ctx)
+    from returns.unsafe import unsafe_perform_io
+
+    assert unsafe_perform_io(sibling_only).unwrap().status == "warn"
+
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=tuple(slug for slug in canonical if slug != dropped)),
+        encoding="utf-8",
+    )
+    consumer_and_sibling = wiring_completeness_cross_repo.run(ctx=ctx)
+    assert unsafe_perform_io(consumer_and_sibling).unwrap().status == "fail"
+
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=canonical), encoding="utf-8"
+    )
+    full_consumer = wiring_completeness_cross_repo.run(ctx=ctx)
+    assert unsafe_perform_io(full_consumer).unwrap().status == "warn"
+
+
 def test_fails_when_multiple_siblings_missing_slugs(
     *,
     tmp_path: Path,
@@ -833,6 +880,42 @@ def test_skipped_when_cross_repo_targets_block_absent(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+def test_conformance_registry_evaluates_consumer_without_siblings(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A declared conformance registry still checks the consuming root."""
+    canonical = _get_canonical_slugs()
+    dropped = canonical[0]
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _ = (project_root / "check-targets.txt").write_text(
+        _make_check_targets_text(slugs=tuple(slug for slug in canonical if slug != dropped)),
+        encoding="utf-8",
+    )
+    from returns.unsafe import unsafe_perform_io
+
+    for registry in (
+        {},
+        {
+            "host": {
+                "github_url": "https://github.com/example/host",
+                "local_clone": str(project_root),
+            },
+        },
+    ):
+        _write_livespec_jsonc(
+            project_root=project_root,
+            cross_repo_targets=None,
+            cross_repo_conformance_targets=registry,
+        )
+        finding = wiring_completeness_cross_repo.run(
+            ctx=DoctorContext(project_root=project_root, spec_root=spec_root)
+        )
+        evaluated = unsafe_perform_io(finding).unwrap()
+        assert evaluated.status == "fail"
+        assert f"project→{dropped}" in evaluated.message
 
 
 def test_host_repo_self_excluded_from_walk(

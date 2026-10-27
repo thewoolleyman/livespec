@@ -63,7 +63,13 @@ from _canonical_slug_shape import slugs_from_either_shape  # noqa: E402  — dev
 __all__: list[str] = []
 
 
-_YAML_REL = Path("templates") / "orchestrator-plugin" / "canonical-slugs.yml"
+_YAML_RELS: tuple[Path, ...] = (
+    Path("templates") / "orchestrator-plugin" / "canonical-slugs.yml",
+    Path(".claude-plugin") / "scripts" / "livespec" / "doctor" / "static" / "canonical-slugs.yml",
+)
+# The template path remains the focused fixture seam for existing callers; the
+# verifier and writer above always operate on the complete release projection set.
+_YAML_REL = _YAML_RELS[0]
 _HEADER_LINES: tuple[str, ...] = (
     "# Canonical check-slug aggregate — release-time projection of",
     "# livespec_dev_tooling.canonical_checks (the single source of truth).",
@@ -160,50 +166,58 @@ def _write_projection(*, log: structlog.stdlib.BoundLogger, cwd: Path) -> int:
     slugs = _canonical_slugs()
     if slugs is None:
         return _log_unavailable(log=log)
-    yaml_path = cwd / _YAML_REL
-    yaml_path.parent.mkdir(parents=True, exist_ok=True)
-    _ = yaml_path.write_text(_render_yaml(slugs=slugs), encoding="utf-8")
+    for relative_path in _YAML_RELS:
+        yaml_path = cwd / relative_path
+        if relative_path != _YAML_REL and not yaml_path.parent.is_dir():
+            continue
+        yaml_path.parent.mkdir(parents=True, exist_ok=True)
+        _ = yaml_path.write_text(_render_yaml(slugs=slugs), encoding="utf-8")
     log.info(
-        "canonical-slugs projection written",
+        "canonical-slugs projections written",
         check_id="canonical-slugs-projection-written",
-        path=str(_YAML_REL),
+        paths=[str(path) for path in _YAML_RELS],
         slug_count=len(slugs),
     )
     return 0
 
 
 def _verify_projection(*, log: structlog.stdlib.BoundLogger, cwd: Path) -> int:
-    yaml_path = cwd / _YAML_REL
-    if not yaml_path.is_file():
-        log.error(
-            "committed canonical-slugs.yml not found",
-            check_id="canonical-slugs-projection-missing-file",
-            path=str(_YAML_REL),
-            hint="Run `just stamp-canonical-slugs` from the livespec repo root.",
-        )
-        return 1
     expected = _canonical_slugs()
     if expected is None:
         return _log_unavailable(log=log)
-    committed = _parse_committed_slugs(yaml_path=yaml_path)
-    if committed == expected:
-        log.info(
-            "canonical-slugs projection matches the source of truth",
-            check_id="canonical-slugs-projection-ok",
-            slug_count=len(expected),
-        )
-        return 0
-    log.error(
-        "committed canonical-slugs.yml has drifted from livespec_dev_tooling.canonical_checks",
-        check_id="canonical-slugs-projection-drift",
-        expected_count=len(expected),
-        committed_count=len(committed),
-        missing=sorted(set(expected) - set(committed)),
-        extra=sorted(set(committed) - set(expected)),
-        out_of_order=committed != tuple(sorted(committed)),
-        hint="Run `just stamp-canonical-slugs` to regenerate the projection.",
+    for relative_path in _YAML_RELS:
+        yaml_path = cwd / relative_path
+        if relative_path != _YAML_REL and not yaml_path.parent.is_dir():
+            continue
+        if not yaml_path.is_file():
+            log.error(
+                "committed canonical-slugs.yml not found",
+                check_id="canonical-slugs-projection-missing-file",
+                path=str(relative_path),
+                hint="Run `just stamp-canonical-slugs` from the livespec repo root.",
+            )
+            return 1
+        committed = _parse_committed_slugs(yaml_path=yaml_path)
+        if committed != expected:
+            log.error(
+                "committed canonical-slugs.yml has drifted from "
+                "livespec_dev_tooling.canonical_checks",
+                check_id="canonical-slugs-projection-drift",
+                path=str(relative_path),
+                expected_count=len(expected),
+                committed_count=len(committed),
+                missing=sorted(set(expected) - set(committed)),
+                extra=sorted(set(committed) - set(expected)),
+                out_of_order=committed != tuple(sorted(committed)),
+                hint="Run `just stamp-canonical-slugs` to regenerate the projection.",
+            )
+            return 1
+    log.info(
+        "canonical-slugs projections match the source of truth",
+        check_id="canonical-slugs-projection-ok",
+        slug_count=len(expected),
     )
-    return 1
+    return 0
 
 
 def _build_parser() -> argparse.ArgumentParser:
