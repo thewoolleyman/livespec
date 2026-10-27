@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/thewoolleyman/livespec/compare/v0.44.0...v0.44.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* skip incremental coverage in Red mode ([ffd018e](https://github.com/thewoolleyman/livespec/commit/ffd018ec3bdaa72c5c92d2ace1f2a0cb6adbdc17))
+
 ## [0.44.0](https://github.com/thewoolleyman/livespec/compare/v0.43.1...v0.44.0) (2026-10-26)
 
 
