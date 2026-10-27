@@ -9,8 +9,9 @@
 # `SKIP_TARGETS` — space-separated list of `check:` aggregate targets to omit
 # from a single run (epic li-cvaudit, cvredmd). Default empty: the full
 # aggregate runs. The Red-mode pre-commit sets it for the child `just check`
-# process so the coverage gates are not run at the Red commit (coverage is
-# verified at the Green amend). The Green-amend pre-commit sets it to omit the
+# process so the coverage gates and incremental coverage replay are not run at
+# the Red commit (coverage is verified at the Green amend). The Green-amend
+# pre-commit sets it to omit the
 # no-arg aggregate replay variant, which would otherwise reject the
 # in-progress Green amend (the commit-msg hook is the load-bearing per-commit
 # verifier). This is process-local environment state, not body interpolation,
@@ -169,8 +170,8 @@ check:
     # `SKIP_TARGETS` is a process-local env var, default empty: a
     # space-separated list of target names to omit from this run (epic
     # li-cvaudit, cvredmd). The Red-mode pre-commit sets it for `just check`
-    # so coverage is not gated at the Red commit (verified at the Green
-    # amend); the Green-amend pre-commit sets it to omit
+    # so coverage and incremental coverage are not gated at the Red commit
+    # (verified at the Green amend); the Green-amend pre-commit sets it to omit
     # `check-red-green-replay` so the no-arg replay aggregate variant does
     # not reject the in-progress Green amend. Pre-push and CI invoke
     # `just check` with no `SKIP_TARGETS`, so the full aggregate stays the
@@ -524,7 +525,7 @@ check-coverage:
 # (modified test files extending pre-existing mirror-pairs are
 # valid Red commits too, so the diff-filter includes M as well as
 # A). In Red mode, sets `SKIP_TARGETS` for a child `just check` so
-# the coverage gates are omitted
+# the coverage gates and incremental coverage replay are omitted
 # (the commit-msg replay hook is the load-bearing test-verifier in
 # Red mode; coverage is checked at the Green amend). This is a
 # self-contained recipe argument — there is NO ambient env var
@@ -559,8 +560,8 @@ check-pre-commit:
     fi
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: Red-mode shape detected: $test_staged"
-        echo ":: skipping coverage gates (commit-msg replay hook is the verifier; coverage runs at Green amend)"
-        SKIP_TARGETS="check-coverage check-per-file-coverage" just check
+        echo ":: skipping coverage and incremental coverage gates (commit-msg replay hook is the verifier; coverage runs at Green amend)"
+        SKIP_TARGETS="check-coverage check-per-file-coverage check-check-coverage-incremental" just check
         exit $?
     fi
     # Green-amend shape: impl staged while HEAD still carries Red-only
