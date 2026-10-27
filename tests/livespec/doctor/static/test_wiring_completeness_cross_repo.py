@@ -882,6 +882,39 @@ def test_skipped_when_cross_repo_targets_block_absent(
     assert result == IOSuccess(expected)
 
 
+def test_skipped_when_only_planning_registry_is_declared(
+    *,
+    tmp_path: Path,
+) -> None:
+    """A planning registry is not a conformance registry for this check."""
+    project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    _write_livespec_jsonc(
+        project_root=project_root,
+        cross_repo_targets={
+            "host": {
+                "github_url": "https://github.com/example/host",
+                "local_clone": str(project_root),
+            },
+        },
+    )
+
+    result = wiring_completeness_cross_repo.run(
+        ctx=DoctorContext(project_root=project_root, spec_root=spec_root)
+    )
+    expected = Finding(
+        check_id="doctor-wiring-completeness-cross-repo",
+        status="skipped",
+        message=(
+            "wiring-completeness-cross-repo: project carries no "
+            "`cross_repo_conformance_targets` block; check skipped"
+        ),
+        path=None,
+        line=None,
+        spec_root=str(spec_root),
+    )
+    assert result == IOSuccess(expected)
+
+
 def test_conformance_registry_evaluates_consumer_without_siblings(
     *,
     tmp_path: Path,
