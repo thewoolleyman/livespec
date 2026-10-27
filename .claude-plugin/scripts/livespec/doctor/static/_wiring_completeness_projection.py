@@ -31,7 +31,7 @@ def canonical_slugs_from_projection() -> tuple[str, ...] | None:
         if not line.startswith("- check-"):
             return None
         slug = line.removeprefix("- ").strip()
-        if slug == "" or slug in slugs:
+        if slug == "" or any(character.isspace() for character in slug) or slug in slugs:
             return None
         slugs.append(slug)
     return tuple(slugs) if slugs else None

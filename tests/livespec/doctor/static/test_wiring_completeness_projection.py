@@ -33,6 +33,11 @@ def test_projection_reader_rejects_unreadable_and_malformed_data(
     monkeypatch.setattr(projection, "_PROJECTION_PATH", duplicate)
     assert projection.canonical_slugs_from_projection() is None
 
+    trailing_text = tmp_path / "trailing-text.yml"
+    trailing_text.write_text("- check-one unexpected\n", encoding="utf-8")
+    monkeypatch.setattr(projection, "_PROJECTION_PATH", trailing_text)
+    assert projection.canonical_slugs_from_projection() is None
+
 
 def test_project_source_falls_back_to_justfile_then_reports_no_source(*, tmp_path: Path) -> None:
     """The consumer reads its root directly, preferring its target inventory."""
