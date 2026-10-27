@@ -1865,40 +1865,28 @@ def test_path_a_falls_through_when_justfile_not_at_head(
     assert result == IOSuccess(expected)
 
 
-def test_skipped_when_dev_tooling_substrate_unimportable(
+def test_legacy_registry_uses_bundled_projection_when_dev_tooling_is_unimportable(
     *,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`skipped` (not crash) when `livespec_dev_tooling` is unimportable.
+    """A legacy registry reads the bundled projection without dev-tooling.
 
-    Regression for li-rvdctr: the check's canonical-slug source,
-    `livespec_dev_tooling.canonical_checks.canonical_check_slugs`, lives in
-    a NON-bundled sibling package — importable under `uv`/CI but absent
-    under bare `python3` (the `python3 bin/doctor_static.py` plugin flow the
-    revise wrapper spawns via `sys.executable`) and in the installed-plugin
-    bundle. A top-level import of it crashed the WHOLE static phase with a
-    `ModuleNotFoundError` in those contexts, so `_revise_doctor` saw empty
-    stdout, reported "malformed JSON", and silently bypassed every static
-    check. The fix makes the import lazy + graceful: when the substrate is
-    unimportable, the cross-repo backstop degrades to a `skipped` finding
-    while the rest of the static phase runs normally.
-
-    The fixture uses a `.livespec.jsonc` with a NON-host sibling so the
-    walk reaches `_evaluate_manifest` (where the slug resolution happens),
-    then patches `builtins.__import__` to raise `ModuleNotFoundError` for
-    `livespec_dev_tooling.canonical_checks`. Both the `status == "skipped"`
-    AND the `livespec_dev_tooling`-naming assertions are made so that a Red
-    that happens to produce a skipped finding for some OTHER reason cannot
-    pass.
+    The `cross_repo_targets` fallback remains supported for consumers that
+    have not moved their registry.  It therefore must share the installed
+    plugin's projection path with `cross_repo_conformance_targets`: bare
+    Python does not install `livespec_dev_tooling`, and returning `skipped`
+    there would make its host gate falsely green.
     """
     project_root, spec_root = _setup_project(tmp_path=tmp_path)
+    canonical = _get_canonical_slugs()
+    sibling_clone = _setup_sibling_clone(tmp_path=tmp_path, slug="sibling-a", slugs=canonical)
     _write_livespec_jsonc(
         project_root=project_root,
         cross_repo_targets={
             "sibling-a": {
                 "github_url": "https://github.com/example/sibling-a",
-                "local_clone": str(tmp_path / "sibling-a"),
+                "local_clone": str(sibling_clone),
                 "default_branch": "master",
             },
         },
@@ -1930,8 +1918,8 @@ def test_skipped_when_dev_tooling_substrate_unimportable(
 
     assert isinstance(inner, Success)
     finding = inner.unwrap()
-    assert finding.status == "skipped"
-    assert "livespec_dev_tooling" in finding.message
+    assert finding.status == "pass"
+    assert "every registered sibling" in finding.message
 
 
 def test_path_a_reads_via_git_db_on_bare_flag_clone(
