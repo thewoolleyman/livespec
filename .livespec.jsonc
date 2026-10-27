@@ -65,7 +65,7 @@
     // Opus is the primary independent reviewer and auto-spawn selects it;
     // gpt-6-astra (Codex) is the fallback, and a review by either listed model
     // ratifies (an ordered list; core v0.44.0, livespec-6xw7hu).
-    "ratification_reviewer_model": ["opus", "gpt-6-astra"],
+    "ratification_reviewer_model": ["sonnet"],
     "spec_pr_merge": "auto-on-green"
   },
   // Declared agent-runtime harnesses for the Conformance Pattern's cross-harness
@@ -248,15 +248,15 @@
       // livespec-orchestrator-beads-fabro a03cbeb0. Only gpt-5.6-terra and gpt-5.6-luna,
       // the slugs proven reachable on the factory's ChatGPT account.
       "acp_nodes": {
-        "dod_gate": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
-        "implement": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
-        "fix": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
-        "review_fix": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
-        "proof_capture": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "medium", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
-        "proof_verify": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "medium", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
-        "review": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-opus-5", "effort": "high" }] },
-        "pr": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "low", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] },
-        "disposition": { "agent": "codex-acp", "model": "gpt-5.6-luna", "effort": "low", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }] }
+        "dod_gate": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "implement": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "fix": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "review_fix": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "proof_capture": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
+        "proof_verify": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
+        "review": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "pr": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
+        "disposition": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }
       },
       "wip_cap": 10,
       // Registry-backed factory table, per SPECIFICATION/non-functional-requirements.md
