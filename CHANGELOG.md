@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/thewoolleyman/livespec/compare/v0.44.1...v0.44.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* make cross-repo doctor drift advisory ([f1744c9](https://github.com/thewoolleyman/livespec/commit/f1744c94da368c723ab076e6b921e76922f00f1c))
+
 ## [0.44.1](https://github.com/thewoolleyman/livespec/compare/v0.44.0...v0.44.1) (2026-10-27)
 
 
