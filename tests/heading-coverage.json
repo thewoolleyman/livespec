@@ -787,5 +787,13 @@
     "test": "TODO",
     "work_item": "livespec-zyh7uo",
     "reason": "Ratifies the adopter-only instruction-only profile (proposal adopter-registration-posture-for-toolchain-less-repos). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling fleet-conformance sweep test over a fixture manifest; this TODO is replaced by that test id when the follow-up work-item in livespec-dev-tooling lands (livespec epic livespec-zyh7uo)."
+  },
+  {
+    "heading": "## A fleet member waives a canonical check with a committed reason",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-lul3pk",
+    "reason": "Ratifies reasoned waivers of canonical checks (proposal canonical-check-waivers, v233). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling aggregate-completeness and fleet-conformance test over a fixture member carrying a waiver declaration. This TODO is replaced by that test id when livespec-dev-tooling-cmy3kd lands; livespec-lul3pk owns the replacement."
   }
 ]

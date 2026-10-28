@@ -751,3 +751,45 @@ Scenario: A released instruction-only adopter is held to plugin currency only
   Then the adopter plugin-currency row passes
   And no Shell-and-Justfile-discipline or Request-budget-discipline obligation is evaluated for it
 ```
+
+## A fleet member waives a canonical check with a committed reason
+
+```gherkin
+Feature: Reasoned waivers of canonical checks
+
+Scenario: A waived canonical check is not required in the aggregate
+  Given a fleet member whose committed waiver declaration names a canonical slug with a non-empty reason
+  And its `just check` aggregate does not select that slug
+  When the in-repo gate and the fleet-conformance check evaluate the member
+  Then neither fails on the waived slug
+  And the fleet-conformance check reports the waiver with the member, the slug and the reason
+
+Scenario: An unwaived omission still fails
+  Given a fleet member whose `just check` aggregate omits a canonical slug that no waiver names
+  When the fleet-conformance check evaluates the member
+  Then it fails, naming the member and the slug
+
+Scenario: A stale waiver fails
+  Given a fleet member whose committed waiver names a canonical slug that its `just check` aggregate selects
+  When the in-repo gate or the fleet-conformance check evaluates the member
+  Then it fails, naming the slug as a stale waiver
+
+Scenario: A malformed waiver fails
+  Given a fleet member whose committed waiver carries an empty reason or names a slug outside the canonical set
+  When the in-repo gate or the fleet-conformance check evaluates the member
+  Then it fails, naming the slug as a malformed waiver
+
+Scenario: The doctor invariant does not report a waived sibling slug
+  Given a consuming repository whose registered sibling waives a canonical slug with a non-empty reason
+  And the sibling's inventory omits that slug and lacks no other canonical slug
+  When the `wiring-completeness-cross-repo` doctor invariant runs in the consuming repository
+  Then its finding does not name that slug for the sibling
+  And its status is `pass`
+
+Scenario: The doctor invariant reports a stale waiver with the status of a missing slug
+  Given a consuming repository whose registered sibling declares a waiver for a canonical slug that the sibling's inventory selects
+  When the `wiring-completeness-cross-repo` doctor invariant runs in the consuming repository
+  Then its finding names that slug as a stale waiver of the sibling
+  And its status is `warn`
+  But when the stale waiver is the consuming repository's own, its status is `fail`
+```

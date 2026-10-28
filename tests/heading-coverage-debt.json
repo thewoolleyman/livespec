@@ -82,5 +82,12 @@
     "heading": "## An instruction-only adopter is held to plugin currency and to no other baseline concern",
     "work_item": "livespec-zyh7uo",
     "first_seen": "2026-10-21"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## A fleet member waives a canonical check with a committed reason",
+    "work_item": "livespec-lul3pk",
+    "first_seen": "2026-10-28"
   }
 ]
