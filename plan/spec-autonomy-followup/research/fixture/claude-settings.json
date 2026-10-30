@@ -1,0 +1,22 @@
+{
+  "enabledPlugins": {
+    "livespec@livespec": true,
+    "livespec@livespec-driver-claude": true
+  },
+  "extraKnownMarketplaces": {
+    "livespec": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec",
+        "ref": "release"
+      }
+    },
+    "livespec-driver-claude": {
+      "source": {
+        "source": "github",
+        "repo": "thewoolleyman/livespec-driver-claude",
+        "ref": "release"
+      }
+    }
+  }
+}
