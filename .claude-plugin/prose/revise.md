@@ -414,15 +414,9 @@ intentionally produces a one-entry payload.
      delegates this acknowledgment: a delegated pass reaching
      such a contradiction MUST fall back to the explicit
      per-proposal confirmation for that proposal.
-   - **Prompt the user for confirmation.** Present each
-     per-proposal decision (decision verb, rationale,
-     resulting-files list when applicable) and capture
-     confirm / override. This is the only operation
-     in the suite that runs a per-proposal confirmation
-     dialogue ( Step 4 — "Prompt the user for
-     confirmation (only for `revise`'s per-proposal
-     dialogue)").
-   - **Resolve decision ownership per file.** Resolve
+   - **Resolve decision ownership per file.** Do this BEFORE
+     asking the maintainer anything. Resolve the effective
+     decision mode through `effective_revise_decision_mode`:
      `spec_governance.revise_decision_mode` (`manual` safe
      default) after every design-record, ratification-review,
      and drift-origin floor. A `decision_policy` key in this
@@ -439,9 +433,32 @@ intentionally produces a one-entry payload.
      says `NO BLOCKERS` for those exact bytes. Either signal
      alone, disagreement, unavailable evidence, or any floor
      requires explicit per-proposal human confirmation.
-   - On `modify`, the LLM drafts the modification and
-     iterates with the user in dialogue until the user
-     confirms; the converged content lands in the
+   - **Prompt the user for confirmation — only when the resolved
+     mode or a floor requires it.** When the effective decision
+     mode is `manual` or `consensus`, or a floor requires
+     maintainer input, present the per-proposal decision
+     (decision verb, rationale, resulting-files list when
+     applicable) and capture confirm / override. When the
+     effective mode is `delegated` and neither a floor nor a
+     signal disagreement applies, do NOT stop for the
+     maintainer: the delegated decider's acceptance plus the
+     independent reviewer's `NO BLOCKERS` for the same exact
+     bytes stand in for the confirmation. Whatever decision
+     mode is configured, a design-record contradiction, a
+     missing or unreachable design record, a ratification-review
+     blocker, and a drift-origin proposal each still require
+     explicit maintainer input. This is the only
+     operation in the suite that runs a per-proposal
+     confirmation dialogue ( Step 4 — "Prompt the user for
+     confirmation (only for `revise`'s per-proposal
+     dialogue)").
+   - On `modify`, the LLM drafts the modification and iterates
+     with the effective decider until it converges: with the
+     maintainer in dialogue until the maintainer confirms under
+     `manual` (or `consensus`, or any floor), and with the
+     delegated decider under `delegated`, where both the
+     reviewer verdict and the delegated acceptance bind to the
+     converged final bytes. The converged content lands in the
      decision's `modifications` field and updated
      `resulting_files[]`.
    - For every `accept` or `modify` decision, obtain
@@ -465,7 +482,11 @@ intentionally produces a one-entry payload.
      reads a hard-coded vendor here will spawn the wrong
      reviewer whenever an adopter designates another; in
      `manual-spawn`, prompt the maintainer to provide the
-     same evidence from an independent reviewer. The driver
+     same evidence from an independent reviewer — EXCEPT that a
+     non-drift proposal whose effective decision mode is
+     `delegated` auto-spawns the designated reviewer even when
+     the effective `ratification_review` resolves to
+     `manual-spawn` (the evidence floor is unchanged). The driver
      may spawn or ask; the Python revise CLI MUST only
      validate evidence and MUST NOT spawn an agent.
      Evidence proceeds only when it carries reviewer model,
