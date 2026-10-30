@@ -249,12 +249,15 @@
       // the slugs proven reachable on the factory's ChatGPT account.
       "acp_nodes": {
         "dod_gate": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
-        "implement": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
-        "fix": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        // 2026-10-30: implement, fix and review on Codex Terra with a Sonnet fallback (maintainer
+        // direction via the coordinator, superseding R153 for these three nodes); the Codex
+        // headroom brake skips to the fallback before the weekly window is spent.
+        "implement": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" }] },
+        "fix": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" }] },
         "review_fix": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
         "proof_capture": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
         "proof_verify": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
-        "review": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" },
+        "review": { "agent": "codex-acp", "model": "gpt-5.6-terra", "effort": "high", "fallbacks": [{ "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "high" }] },
         "pr": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" },
         "disposition": { "agent": "claude-acp", "model": "claude-sonnet-5-5", "effort": "medium" }
       },
