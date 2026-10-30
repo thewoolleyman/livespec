@@ -1,0 +1,12 @@
+// Throwaway proof fixture for plan spec-autonomy-followup (thewoolleyman/livespec, epic livespec-7ap2fb).
+// Not a fleet member; never registered in any manifest.
+{
+  "template": "livespec",
+  "spec_root": "SPECIFICATION",
+  "spec_governance": {
+    "revise_decision_mode": "delegated",
+    // Deliberately manual-spawn: delegated mode must auto-spawn the reviewer anyway.
+    "ratification_review": "manual-spawn",
+    "ratification_reviewer_model": ["sonnet"]
+  }
+}
