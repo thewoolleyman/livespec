@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.3](https://github.com/thewoolleyman/livespec/compare/v0.44.2...v0.44.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* **release:** release the delegated-revise wording fix as v0.44.3 ([4117100](https://github.com/thewoolleyman/livespec/commit/4117100c9b141b46bab03c9f32d8212db33863e6))
+
 ## [0.44.2](https://github.com/thewoolleyman/livespec/compare/v0.44.1...v0.44.2) (2026-10-27)
 
 
