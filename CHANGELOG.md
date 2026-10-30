@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/thewoolleyman/livespec/compare/v0.44.3...v0.45.0) (2026-10-30)
+
+
+### Features
+
+* run the staged-file pre-check at the head of check-pre-commit ([4d77394](https://github.com/thewoolleyman/livespec/commit/4d7739420e0de035149c8591997eaf2be319c5c8))
+
 ## [0.44.3](https://github.com/thewoolleyman/livespec/compare/v0.44.2...v0.44.3) (2026-10-30)
 
 
