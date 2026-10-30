@@ -793,3 +793,41 @@ Scenario: The doctor invariant reports a stale waiver with the status of a missi
   And its status is `warn`
   But when the stale waiver is the consuming repository's own, its status is `fail`
 ```
+
+## Delegated commit-time replay test runs
+
+```gherkin
+Feature: Delegated commit-time replay test runs
+
+Scenario: A delegated commit-time test run gates the staged tree
+  Given a repository opted in to delegated commit-time test runs
+  And a committing host that holds the executor credential
+  And a working directory whose unstaged edits differ from the index
+  When the developer commits
+  Then the executor runs the replay gate's tests against the tree `git write-tree` names for the index
+  And the committing host verifies that tree identity before honouring the reported outcome
+
+Scenario: The replay judgement and trailers stay on the committing host
+  Given a repository opted in to delegated commit-time test runs
+  And a committing host that holds the executor credential
+  When the executor reports the Red leg's test as failed, with its output
+  Then the committing host judges the Red expectation from that reported outcome
+  And the committing host writes the TDD-Red trailers from the executor's reported output
+  And those trailers identify the executor run and the staged tree it gated
+
+Scenario: An absent verdict falls back to a local run
+  Given a repository opted in to delegated commit-time test runs
+  And a committing host that holds the executor credential
+  When the developer makes a Red commit and the executor returns no verdict
+  Then the committing host runs the Red leg's test itself
+  And the TDD-Red trailers are recorded from that local run, not from the absent verdict
+  And the hook reports that it gated locally
+  And the commit is not refused because the executor returned no verdict
+
+Scenario: A non-delegating host runs its commit-time test runs locally and says so
+  Given a repository opted in to delegated commit-time test runs
+  And a committing host that holds no executor credential
+  When the developer commits
+  Then the replay gate's test runs execute on the committing host
+  And the hook reports that it gated locally
+```
