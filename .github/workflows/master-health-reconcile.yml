@@ -1,0 +1,51 @@
+# master-health-reconcile.yml — the red-master self-healing reconciler shim.
+#
+# Installed by wire-fleet-member per livespec-dev-tooling
+# SPECIFICATION/contracts.md §"Reusable workflows wire contract"; the mechanism
+# is plan/red-master-self-healing (epic livespec-dev-tooling-zcp5vb), child D.
+#
+# ⛔ NEVER EDITED BY HAND IN A MEMBER REPOSITORY. wire-fleet-member writes this
+# body, and the next wire run REPORTS a repository whose copy differs from it by
+# one byte instead of taking the edit for the canonical shim. The remedy that
+# finding names is to delete the file and re-run the wire.
+#
+# THREE TRIGGER FAMILIES, each covering what the others cannot:
+#
+#   - workflow_run on the CI workflow's COMPLETION is the EDGE that puts the
+#     reconciler on a red branch within one CI cycle rather than within one
+#     tick. It selects the workflow by its `name:` value, which is `CI` across
+#     this fleet. A member that renames its CI workflow loses only the edge —
+#     the schedule below still reaches every episode, one tick later.
+#
+#   - the pull_request family carries BOTH revert-side facts the decision
+#     reads: the revert pull request's own CI verdict, which arrives with its
+#     lifecycle events, and the fix-forward CLAIM, which is a LABEL on that
+#     pull request and so arrives only as labeled / unlabeled. Dropping the
+#     label events would leave a claimed fix-forward invisible, and the
+#     reconciler would release a revert the claim was holding.
+#
+#   - the five-minute schedule is the MISSED-EVENT COVER and the deadline
+#     clock. An event that never fired, a run that crashed mid-step, and the
+#     hard cap on a red episode all need a tick that arrives whatever else
+#     happened. Five minutes is GitHub's finest schedule granularity, so it is
+#     both the floor and the requirement.
+#
+# workflow_dispatch is here for the scheduled end-to-end revert drill, which
+# must be able to run the whole path against a throwaway branch on demand.
+
+name: Master health reconcile
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, closed]
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  reconcile:
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-master-health-reconcile.yml@master
+    secrets: inherit
