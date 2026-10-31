@@ -71,6 +71,11 @@ dec["delegated_decision_evidence"] = {"decider_identity": "probe", "decider_mode
     "content_digest": dig, "selected_decision": "accept", "accepted": True}
 json.dump({"author": "probe", "decisions": [dec]}, open(OUTP, "w"))
 EOF
+# The evidence above is stamped reviewed_at = now, and revise refuses evidence that is not at
+# least one second (DEFAULT_MIN_REVIEW_AGE_SECONDS) older than revised_at, at seconds granularity.
+# Without this pause the probe races: when both stamps land in the same second, revise fails on
+# the timing check before it reaches the floor this probe exists to exercise.
+sleep 2
 set +e
 ( cd "$FC" && python3 "$CORE/scripts/bin/revise.py" --revise-json "$OUT/drift.json" --only-topic latency-matches-implementation \
     --project-root "$FC" --skip-stale-branch-check ) > "$OUT/drift-cli.out" 2>&1
