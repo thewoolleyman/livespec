@@ -39,6 +39,25 @@ only credential is `~/.claude/.credentials.json`, an OAuth login that caam rotat
 Copying that file into a second config directory would duplicate a refresh token. That is secret
 handling the plan owner did not do without maintainer authorization.
 
+## Measured: pinning at project scope does not work while the user scope tracks `release`
+
+At the coordinator's request, the route that needs no new credential was tried on 2026-10-31. It used
+a throwaway project directory and the DEFAULT `CLAUDE_CONFIG_DIR`, so the existing login was used in
+place.
+
+- A project `.claude/settings.json` declared marketplace `livespec` at ref `v0.44.3` and enabled
+  `livespec@livespec`. Then `claude plugin install livespec@livespec -s project` ran there. The
+  installation record showed version `0.45.0`, gitCommitSha `5b7c55a0`: the user-scope marketplace at
+  `release` won silently.
+- `claude plugin marketplace add 'thewoolleyman/livespec#v0.44.3' --scope project` was refused:
+  `Cannot add marketplace "livespec": its source doesn't match its extraKnownMarketplaces entry in
+  user or managed settings; add it from the source that entry lists, or change the entry.`
+
+Afterwards the throwaway install was removed. The installation record was identical to its
+pre-test snapshot, and the shared marketplace still tracked `release` at v0.45.0. So the build can
+be pinned only in a config directory with no user-scope `livespec` entry, which brings back the
+authentication question below.
+
 ## Routes, in recommended order
 
 1. **Recommended: an isolated config directory with its own long-lived token.** The maintainer runs
