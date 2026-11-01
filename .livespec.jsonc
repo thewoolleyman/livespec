@@ -145,6 +145,7 @@
       },
       "auto_approve_ready": true,
       "acceptance_mode": "ai-only",
+      "janitor": { "venue": "cluster_job" },
       // Park the `pr` node on the Claude adapter, OFF Codex.
       //
       // WHY. `dispatcher.codex_models` expands UNCONDITIONALLY -- its `pr` tier
