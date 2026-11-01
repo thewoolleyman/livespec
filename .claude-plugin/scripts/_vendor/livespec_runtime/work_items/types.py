@@ -9,8 +9,8 @@ Python-level realization.
 
 This is the SHARED lift of the model both `livespec-impl-git-jsonl`
 and `livespec-impl-beads` re-implemented identically. The unified
-shape is a 25-field record: 15 required fields (including the `rank`
-ordering key) followed by 10 optional-on-read fields. `rank` is the
+shape is a 26-field record: 15 required fields (including the `rank`
+ordering key) followed by 11 optional-on-read fields. `rank` is the
 sole ordering authority — the prior `priority: int` is REMOVED (two
 order sources are two conflicting truths). The `spec_commitment_hint`
 / `acceptance_criteria` / `notes` / `supersedes` pointers and the
@@ -18,10 +18,11 @@ order sources are two conflicting truths). The `spec_commitment_hint`
 / `blocked_reason` / `factory_safety` / `review_requirement` policy
 fields all follow the blessed `… | None` optional-on-read pattern:
 legacy records lacking them read back as `None`, with no in-place
-migration. `awaits_scope_override: bool = False` is the tenth
-optional-on-read field, a materialized current-state signal backed
-by the `awaits-scope-override` beads label; legacy records lacking it
-read back as `False`.
+migration. `awaits_scope_override: bool = False` and
+`rework_pending: bool = False` are the tenth and eleventh
+optional-on-read fields, both materialized current-state signals
+backed by the `awaits-scope-override` and `rework:pending` beads
+labels; legacy records lacking either read it back as `False`.
 
 Transitive type closure: the only non-primitive type reachable from
 `WorkItem` is `AuditRecord` (via the `audit` field). `AuditRecord`'s
@@ -172,6 +173,14 @@ class WorkItem:
     `awaits_scope_override` is a materialized current-state signal,
     backed by the `awaits-scope-override` beads label in the beads
     substrate. `False` is the legacy/default value.
+
+    `rework_pending` is likewise a materialized current-state signal,
+    backed by the `rework:pending` beads label in the beads substrate:
+    `True` exactly while the item is parked awaiting the fix-forward
+    rework re-dispatch. Materializing it HERE rather than leaving each
+    consumer to read the raw label is the point — the selection,
+    accounting and stranded-state discrimination that key on it then
+    all read one authority. `False` is the legacy/default value.
     """
 
     id: str
@@ -199,3 +208,4 @@ class WorkItem:
     factory_safety: FactorySafety | None = None
     review_requirement: ReviewRequirement | None = None
     awaits_scope_override: bool = False
+    rework_pending: bool = False

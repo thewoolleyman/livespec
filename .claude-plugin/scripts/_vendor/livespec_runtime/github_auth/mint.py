@@ -42,15 +42,18 @@ from livespec_runtime.github_auth.signing import (
     sign_rs256_with_openssl,
 )
 
+# Exactly the names `SPECIFICATION/contracts.md` section "Module-level public
+# surface" ratifies for this module. The production HTTP seams
+# (`http_get_json` / `http_post_json`) and the installation-resolution step
+# (`resolve_installation_id`) stay module-level and importable, but they are
+# NOT declared surface: consumers reach the seams through
+# `DEFAULT_MINT_SEAMS` and the resolution through `mint_installation_token`.
 __all__: list[str] = [
     "DEFAULT_MINT_SEAMS",
     "HttpJson",
     "MintSeams",
     "SignRs256",
-    "http_get_json",
-    "http_post_json",
     "mint_installation_token",
-    "resolve_installation_id",
 ]
 
 _API_VERSION = "2022-11-28"
