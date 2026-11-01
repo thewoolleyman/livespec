@@ -92,6 +92,10 @@
     // onboarding pass (the repo itself existed first, per the
     // registration-last birth rule).
     { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
+    // Host-specific interactive AI workstation. Seed and released plugin
+    // wiring live in the adopter; its dedicated credentials and tenant are
+    // established by its own first bootstrap plan, never by a fleet fallback.
+    { "repo": "hetzner-xubuntu-info", "profile": ["baseline"], "posture": "released" },
     // The seven host/deploy repos (registered 2026-10-21) are
     // `instruction-only` adopters: committed agent configuration is their
     // only livespec surface — no justfile, no mise configuration, no
