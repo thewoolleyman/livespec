@@ -568,10 +568,16 @@ check-pre-commit-local:
     # member starts (contracts.md §"Pre-commit step ordering").
     echo ":: staged-file pre-check: ruff + pyright on the staged Python files"
     uv run python -m livespec_dev_tooling.workflow_checks.staged_precheck || exit $?
+    # Each mode below EXTENDS an inherited `SKIP_TARGETS` rather than
+    # replacing it: a delegated gate Job hands this recipe the members that
+    # read an authorization held outside the tree (branch protection,
+    # workflow-edit authority) through `SKIP_TARGETS`, and the committing
+    # host runs those itself. Overwriting it made every delegated hand
+    # commit run them in the Job, where they refuse by design.
     if [[ "$test_count" -eq 1 ]] && [[ "$impl_count" -eq 0 ]]; then
         echo ":: Red-mode shape detected: $test_staged"
         echo ":: skipping coverage and incremental coverage gates (commit-msg replay hook is the verifier; coverage runs at Green amend)"
-        SKIP_TARGETS="check-coverage check-per-file-coverage check-check-coverage-incremental" just check
+        SKIP_TARGETS="${SKIP_TARGETS:+$SKIP_TARGETS }check-coverage check-per-file-coverage check-check-coverage-incremental" just check
         exit $?
     fi
     # Green-amend shape: impl staged while HEAD still carries Red-only
@@ -591,7 +597,7 @@ check-pre-commit-local:
         && ! grep -q 'TDD-Green-Verified-At:' <<< "$head_msg"; then
         echo ":: Green-amend shape detected (impl staged; HEAD carries Red-only trailers)"
         echo ":: skipping no-arg check-red-green-replay (commit-msg replay hook verifies the Green amend)"
-        SKIP_TARGETS="check-red-green-replay" just check
+        SKIP_TARGETS="${SKIP_TARGETS:+$SKIP_TARGETS }check-red-green-replay" just check
         exit $?
     fi
     just check

@@ -19,9 +19,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PRECHECK_MODULE = "livespec_dev_tooling.workflow_checks.staged_precheck"
 _DELEGATE_MODULE = "livespec_dev_tooling.pre_commit_delegate"
+
+_GATE_CONTEXT_ENV = "LIVESPEC_GATE_CONTEXT"
 
 
 def _run(*, argv: list[str], cwd: Path, environ: dict[str, str] | None = None) -> None:
@@ -99,6 +103,19 @@ def _new_repository(*, tmp_path: Path) -> Path:
     return repository
 
 
+def _fixture_environ(*, bin_directory: Path) -> dict[str, str]:
+    """The fixture's environment: the fakes first on PATH, and NO gate context.
+
+    A cluster gate Job sets `LIVESPEC_GATE_CONTEXT=1`, and the recipe under test
+    correctly skips delegation when it is set. Inherited, that value would make
+    these fixtures exercise the in-Job branch instead of the dev-host one, so
+    the suite would fail inside every gate Job while passing on GitHub runners.
+    """
+    environ = {key: value for key, value in os.environ.items() if key != _GATE_CONTEXT_ENV}
+    environ["PATH"] = str(bin_directory) + os.pathsep + os.environ["PATH"]
+    return environ
+
+
 def _check_pre_commit_calls(
     *, tmp_path: Path, staged_name: str, uv_status: int
 ) -> tuple[int, list[str]]:
@@ -120,7 +137,7 @@ def _check_pre_commit_calls(
         uv_status=uv_status,
         just_program=just,
     )
-    environ = dict(os.environ, PATH=str(bin_directory) + os.pathsep + os.environ["PATH"])
+    environ = _fixture_environ(bin_directory=bin_directory)
     result = subprocess.run(
         [just, "check-pre-commit"],
         cwd=repository,
@@ -159,7 +176,7 @@ def test_red_mode_skips_incremental_coverage_after_an_earlier_impl_change(
     fake_uv = bin_directory / "uv"
     fake_uv.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
     fake_uv.chmod(0o755)
-    environ = dict(os.environ, PATH=str(bin_directory) + os.pathsep + os.environ["PATH"])
+    environ = _fixture_environ(bin_directory=bin_directory)
     _run(argv=[just, "check-pre-commit"], cwd=repository, environ=environ)
 
 
@@ -199,3 +216,13 @@ def test_a_doc_only_commit_never_runs_the_precheck(*, tmp_path: Path) -> None:
         "just check-pre-commit-local",
         "just check-pre-commit-doc-only",
     ]
+
+
+def test_the_recipe_fixtures_ignore_an_inherited_gate_context(
+    *, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Run inside a gate Job, the fixtures still exercise the dev-host branch."""
+    monkeypatch.setenv(_GATE_CONTEXT_ENV, "1")
+    status, calls = _check_pre_commit_calls(tmp_path=tmp_path, staged_name="notes.md", uv_status=4)
+    assert status == 0
+    assert calls[0] == f"uv run python -m {_DELEGATE_MODULE} run"
