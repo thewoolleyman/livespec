@@ -21,7 +21,6 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PRECHECK_MODULE = "livespec_dev_tooling.workflow_checks.staged_precheck"
-_DELEGATE_MODULE = "livespec_dev_tooling.pre_commit_delegate"
 
 
 def _run(*, argv: list[str], cwd: Path, environ: dict[str, str] | None = None) -> None:
@@ -51,32 +50,15 @@ def _write_fake_just(*, directory: Path) -> None:
     fake.chmod(0o755)
 
 
-def _write_recording_fakes(
-    *, directory: Path, log: Path, uv_status: int, just_program: str
-) -> None:
+def _write_recording_fakes(*, directory: Path, log: Path, uv_status: int) -> None:
     """Write `uv` and `just` stand-ins that append their argv to one shared call log."""
-    uv = directory / "uv"
-    uv.write_text(
-        "#!/usr/bin/env bash\n"
-        f'echo "uv $*" >> "{log}"\n'
-        f'if [[ "$*" == "run python -m {_DELEGATE_MODULE} run" ]]; then\n'
-        "    exit 75\n"
-        "fi\n"
-        f"exit {uv_status}\n",
-        encoding="utf-8",
-    )
-    uv.chmod(0o755)
-    just = directory / "just"
-    just.write_text(
-        "#!/usr/bin/env bash\n"
-        f'echo "just $*" >> "{log}"\n'
-        'if [[ "$1" == "check-pre-commit-local" ]]; then\n'
-        f'    exec "{just_program}" "$@"\n'
-        "fi\n"
-        "exit 0\n",
-        encoding="utf-8",
-    )
-    just.chmod(0o755)
+    for name, status in (("uv", uv_status), ("just", 0)):
+        fake = directory / name
+        fake.write_text(
+            "#!/usr/bin/env bash\n" f'echo "{name} $*" >> "{log}"\n' f"exit {status}\n",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
 
 
 def _new_repository(*, tmp_path: Path) -> Path:
@@ -89,10 +71,6 @@ def _new_repository(*, tmp_path: Path) -> Path:
     (repository / "justfile").write_text(
         (_REPO_ROOT / "justfile").read_text(encoding="utf-8"), encoding="utf-8"
     )
-    scripts = repository / "dev-tooling"
-    scripts.mkdir()
-    for name in ("check-pre-commit.sh", "check-pre-commit-gated-tree.sh"):
-        shutil.copy(_REPO_ROOT / "dev-tooling" / name, scripts / name)
     _run(argv=["git", "add", "justfile"], cwd=repository)
     _run(argv=["git", "commit", "-m", "initial"], cwd=repository)
     _run(argv=["git", "update-ref", "refs/remotes/origin/master", "HEAD"], cwd=repository)
@@ -114,12 +92,7 @@ def _check_pre_commit_calls(
     bin_directory.mkdir()
     log = tmp_path / "calls.log"
     log.write_text("", encoding="utf-8")
-    _write_recording_fakes(
-        directory=bin_directory,
-        log=log,
-        uv_status=uv_status,
-        just_program=just,
-    )
+    _write_recording_fakes(directory=bin_directory, log=log, uv_status=uv_status)
     environ = dict(os.environ, PATH=str(bin_directory) + os.pathsep + os.environ["PATH"])
     result = subprocess.run(
         [just, "check-pre-commit"],
@@ -169,12 +142,7 @@ def test_staged_python_runs_the_precheck_before_the_aggregate(*, tmp_path: Path)
         tmp_path=tmp_path, staged_name="tests/test_example.py", uv_status=0
     )
     assert status == 0
-    assert calls == [
-        f"uv run python -m {_DELEGATE_MODULE} run",
-        "just check-pre-commit-local",
-        f"uv run python -m {_PRECHECK_MODULE}",
-        "just check",
-    ]
+    assert calls == [f"uv run python -m {_PRECHECK_MODULE}", "just check"]
 
 
 def test_a_precheck_refusal_stops_the_recipe_before_the_aggregate(*, tmp_path: Path) -> None:
@@ -183,19 +151,11 @@ def test_a_precheck_refusal_stops_the_recipe_before_the_aggregate(*, tmp_path: P
         tmp_path=tmp_path, staged_name="tests/test_example.py", uv_status=4
     )
     assert status == 4
-    assert calls == [
-        f"uv run python -m {_DELEGATE_MODULE} run",
-        "just check-pre-commit-local",
-        f"uv run python -m {_PRECHECK_MODULE}",
-    ]
+    assert calls == [f"uv run python -m {_PRECHECK_MODULE}"]
 
 
 def test_a_doc_only_commit_never_runs_the_precheck(*, tmp_path: Path) -> None:
     """With zero `.py` files staged the recipe skips the pre-check entirely."""
     status, calls = _check_pre_commit_calls(tmp_path=tmp_path, staged_name="notes.md", uv_status=4)
     assert status == 0
-    assert calls == [
-        f"uv run python -m {_DELEGATE_MODULE} run",
-        "just check-pre-commit-local",
-        "just check-pre-commit-doc-only",
-    ]
+    assert calls == ["just check-pre-commit-doc-only"]

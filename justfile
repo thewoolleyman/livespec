@@ -516,12 +516,7 @@ check-coverage:
     env -u COVERAGE_FILE uv run python -m livespec_dev_tooling.checks.per_file_coverage || { rm -f .coverage; exit 2; }
     rm -f .coverage
 
-# Delegate the pre-commit aggregate when this host can submit a gates Job.
-# Credentialless hosts fall through to the local aggregate in the script.
-check-pre-commit:
-    bash dev-tooling/check-pre-commit.sh
-
-# Local Red-mode-aware pre-commit aggregate. Classifies the staged tree
+# Red-mode-aware pre-commit aggregate. Classifies the staged tree
 # shape via `git diff --cached --name-only --diff-filter=AM`. Red
 # mode = exactly one test file added or modified under `tests/`
 # AND zero implementation files added or modified under
@@ -541,7 +536,7 @@ check-pre-commit:
 # Pre-push and CI keep invoking `just check` directly (no Red-mode
 # classifier; full suite always).
 # No-errexit deviation: grep no-match statuses are handled before child gates.
-check-pre-commit-local:
+check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
     staged=$(git diff --cached --name-only --diff-filter=AM)
@@ -626,11 +621,6 @@ check-pre-commit-doc-only:
         exit 1
     fi
     printf '\nAll %d doc-only targets passed.\n' "${#targets[@]}"
-
-# Restore the temporary staged-tree commit's index before running its local
-# aggregate, so the gate validates exactly what the committing host staged.
-check-pre-commit-gated-tree:
-    bash dev-tooling/check-pre-commit-gated-tree.sh
 
 # Pre-push runs the FULL `just check` aggregate — the same gate CI runs,
 # with NO zero-.py subsetting (PR gate ≡ master gate). The green-token
