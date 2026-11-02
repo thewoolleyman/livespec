@@ -132,6 +132,10 @@ plan_lifecycle_anchor = true
 # the pushed tree. Declaring a suite would restate that sequence in a second
 # place for it to drift from `lefthook.yml`.
 delegated_gate = true
+# Delegate a hand commit's aggregate from an operator host that can submit a
+# gates Job. Credentialless hosts retain the local path, and the staged-tree
+# gate recipe restores the index before it invokes that local aggregate.
+delegated_pre_commit = true
 scenario_tiers = ["tests.e2e", "tests.prompts", "tests.integration", "tests.consumer", "tests.bin"]
 repo_local_ci_skips = [
     { slug = "check-no-workflow-edits", reason = "Local and janitor authorship control; the canonical guard explicitly exits without evaluation under GITHUB_ACTIONS because CI has no local author to control." },
