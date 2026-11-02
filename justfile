@@ -371,10 +371,15 @@ check-static:
 # seventh pack member shipped by livespec-dev-tooling and installed
 # byte-identically fleet-wide by `just install-worktree-pack`;
 # livespec-dev-tooling-fy02). Factory branches must not carry
-# `.github/workflows/` edits without HUMAN authorization: the shared body
-# accepts only a tracked, per-change `.livespec-workflow-edit-exemption`
-# declaration whose work item a human has labelled `approval:workflow-edit`
-# in the ledger; no env override exists. It is a repo-LOCAL member of the
+# `.github/workflows/` edits without prior authorization on the ledger: the
+# shared body accepts only a tracked, per-change
+# `.livespec-workflow-edit-exemption` declaration whose work item carries a
+# label for the edit's tier — `approval:workflow-edit-additive` (settable under
+# delegated maintainer authority) for an add-only edit attested
+# `change=additive` + `ci_runtime=no-significant-increase`, and the
+# maintainer-only `approval:workflow-edit` for anything that deletes or
+# modifies workflow lines, reduces coverage or gates, or significantly
+# increases CI runtime; no env override exists. It is a repo-LOCAL member of the
 # `check` aggregate (pre-push), NOT a CI slug — under GITHUB_ACTIONS it is a
 # deliberate no-op, since the bot lanes legitimately rewrite workflows there.
 # The Dispatcher's janitor ALSO invokes this recipe explicitly, ahead of
