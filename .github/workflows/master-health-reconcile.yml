@@ -52,5 +52,5 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-master-health-reconcile.yml@v1.153.2
+    uses: thewoolleyman/livespec-dev-tooling/.github/workflows/reusable-master-health-reconcile.yml@v1.154.0
     secrets: inherit
