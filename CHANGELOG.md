@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.1](https://github.com/thewoolleyman/livespec/compare/v0.45.0...v0.45.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* delegated pre-commit Jobs pass on livespec again (gate context in tests, inherited SKIP_TARGETS) ([23e29ee](https://github.com/thewoolleyman/livespec/commit/23e29eed128891b5505dbb1f71fc4814ed5fbeb6))
+
 ## [0.45.0](https://github.com/thewoolleyman/livespec/compare/v0.44.3...v0.45.0) (2026-10-30)
 
 
