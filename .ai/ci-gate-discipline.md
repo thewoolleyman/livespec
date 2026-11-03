@@ -92,6 +92,27 @@ of two fixes restores green.
   livespec-dev-tooling) is the durable guard — prefer adding one when
   removing any rejected escape mechanism.
 
+### Agent-initiated reruns: the test, never the job
+
+Maintainer ruling, 2026-11-02T18:38Z (livespec-dev-tooling epic
+`livespec-dev-tooling-6tgd2z`, comments `01a19d8e-2c33…` and
+`01a19d8e-38b4…`). It governs AGENTS; the reconciler's own automatic
+single rerun above is unchanged.
+
+- An agent may retry ONLY an identified flake that has a linked root-fix
+  work item — at most 3 times, 60 seconds apart.
+- Rerun ONLY the failing test, never a whole CI job. GitHub's "re-run
+  failed jobs" is a whole-job rerun and is NOT authorized, and stays
+  unauthorized until test-level retry (`livespec-dev-tooling-crxcy4`) is live.
+- Admin-merging over a red check is never the remedy: it reduces a gate,
+  which needs the maintainer directly.
+- The remedy for a recurring flake is its root fix, raised to breakage
+  priority when it blocks other work.
+
+Recorded because on 2026-11-03 three different seats ran whole-job
+reruns (canary PR #4260 among them) without knowing the ruling, which
+then existed only as ledger comments.
+
 ## Restructuring work to get past a gate: the test for evasion vs. a false positive
 
 The rule above forbids adding an escape mechanism. It says nothing about the
