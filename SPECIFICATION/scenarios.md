@@ -832,6 +832,101 @@ Scenario: A non-delegating host runs its commit-time test runs locally and says 
   And the hook reports that it gated locally
 ```
 
+## An authorized incident repair uses the inherited fast path
+
+```gherkin
+Given a governed repository has installed and proven its released incident capability
+And an operator holds a trusted receipt for one incident work item and current repair attempt
+When the operator selects EXPEDITED_INCIDENT_RESPONSE in a secondary worktree
+Then no factory run or green-master precondition blocks the local repair
+And selected fast local checks retain real failures while slow work is recorded as deferred
+And focused related tests, touched-file coverage and one manual reproduction are recorded
+And the legal adjacent incident marker names the same work item
+```
+
+## Incident PR selection cannot weaken normal master validation
+
+```gherkin
+Given a trusted signal and receipt select one incident repair PR and exact head
+When that PR runs its declared retained fast checks
+Then its stable required aggregate discloses omitted coverage and specification work
+And a changed head invalidates its prior verdicts
+When the repair merges and master CI starts with malformed inherited incident flags
+Then the trusted master context disables both flags before parsing them
+And the complete normal master job graph runs
+And partial incident evidence cannot satisfy normal validation
+```
+
+## An incident master failure takes immediate scoped recovery
+
+```gherkin
+Given an incident merge has a durable receipt and an independently running released observer
+And a later unrelated change is present on master
+When the first required master leaf job fails while sibling jobs still run
+Then the recorded incident's complete inverse is applied against the current expected head
+And unrelated later changes are preserved or an owned overlap conflict is recorded
+And the narrowly authorized recovery principal requires no local quality gate, factory run or pre-merge CI wait
+And the original master run is retained through its remaining terminal results
+And stale or duplicate actions cannot mutate a corrected incident attempt
+```
+
+## Incident repayment uses the same item and complete original scope
+
+```gherkin
+Given the incident repair's normal master CI succeeds
+When the selected orchestrator routes its normal factory follow-up
+Then the same incident work item carries a new unexpedited PR removing the marker
+And normal factory and PR validation include the cumulative original change and deferred debt
+And a defect isolated to that deferred proof is repaired in the follow-up without reverting healthy master solely for it
+And the incident cannot close before the normal follow-up merge and subsequent normal master CI succeed
+```
+
+## A related regression resumes incident recovery after closure
+
+```gherkin
+Given incident attribution survives normal completion and process restarts
+When a failing job or test and change evidence attribute a regression on master, another PR or an adopted consumer to the incident
+Then recovery resumes for the same incident identity
+And stale cleanup and queued adoption are fenced
+And pending bad-artifact pin carriers are superseded
+And affected adopted consumers receive owned corrective rollout
+And an unrelated flake alone is not treated as attributable regression evidence
+```
+
+## An ordinary operation does not inherit an incident exemption
+
+```gherkin
+Given an ordinary operation contains a historical incident marker or unrelated incident flag
+When it lacks the authorized receipt for the selected incident operation
+Then it receives no incident exemption
+And ordinary work retains complete gate and authorization obligations
+When a trusted normal factory follow-up inherits malformed incident values
+Then it forces both flags absent before parsing them
+And no expedited cache or partial proof satisfies its normal validation
+```
+
+## Incident enablement requires the repository's complete capability proof
+
+```gherkin
+Given a manifest member lacks proof of an installed incident hook or CI reader, incident label or event subscription, serving observer shim, or scoped recovery authority against all overlapping protection
+When an invocation supplies either incident environment variable
+Then both variables are inert and the normal execution path remains selected
+When every applicable capability is proven on its normally installed released serving version
+Then that repository can enable the authorized incident form
+And every committed manifest member retains its explicit applicability disposition
+```
+
+## Collected incident failures require classified correction before another attempt
+
+```gherkin
+Given a reverted incident's original master run has finished collecting its results
+When the owner prepares another repair attempt
+Then each observed failure is classified as incident-caused, pre-existing, infrastructure or unresolved
+And missing original-tree checks remain owned debt
+And a pre-existing failing base prevents relanding unchanged incident code as a retry
+And an irreversible external-state mutation is ineligible for unattended rollback without an existing recorded safe compensating operation
+```
+
 ## Releases are cut from a release window
 
 ```gherkin
