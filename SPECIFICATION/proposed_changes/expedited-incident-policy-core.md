@@ -1,7 +1,7 @@
 ---
 topic: expedited-incident-policy-core
 author: codex:expedited-incident-response-flag/core-incident-carrier
-created_at: 2026-11-03T19:12:24Z
+created_at: 2026-11-03T19:26:50Z
 ---
 
 ## Proposal: Inherited incident exception
@@ -20,7 +20,7 @@ Priority-1 plan livespec-dev-tooling-bqnzcm requires a local fast repair and imm
 
 ### Proposed Changes
 
-Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision.
+Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision; scenario mappings MUST name the integration tier.
 
 ```diff
 --- SPECIFICATION/contracts.md
@@ -38,26 +38,38 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
  
  Pre-push and CI run the full aggregate rather than the zero-`.py` subset. Pre-push delegates to `just check` (a pre-push short-circuit on a working tree byte-identical to one that already passed the full aggregate is memoization of the identical check set, not subsetting); where the repository has delegated its pre-push gate and the push is from a delegating host, the same aggregate runs on the executor instead, save the members that read an authorization held outside the tree, which the pushing host runs, and this changes WHERE it runs and not WHAT it verifies. CI in `.github/workflows/ci.yml` MUST run every gating check on a `pull_request` exactly as it runs on `push` to `master` and `merge_group`: no gating job (any job the required all-green gate job lists in its `needs:`) and no `just check` target may be conditioned on the triggering event or on a changeset predicate (such as a `.py`-changed gate) so that it runs on a `master` push but is skipped, or runs a smaller check set, on a pull request. This establishes the **PR gate ≡ master gate** invariant codified in `non-functional-requirements.md` §"CI as a merge gate (branch protection)": the set of checks a change must pass before it merges is identical to the set `master` enforces after it merges, so "nothing can break `master`" is a property of the definitions rather than of anyone's diligence. The earlier zero-`.py` subsetting of pre-push and CI is RETIRED: it rested on the false premise that every `just check` target is a deterministic function of the Python source tree, which ceased to hold the moment a check read a non-Python input (the CI workflow file, `plan/`, the ledger) — letting a change whose only skipped check read such an input merge green and redden `master`.
  
-@@ -562,3 +564,19 @@
+@@ -562,3 +564,31 @@
  `[tool.coverage.run]` is anchored at `livespec/`, `bin/`, `dev-tooling/`, so
  the unit-tier per-file 100% coverage gate does not extend to E2E test
  infrastructure.
 +
 +## Expedited incident response policy
 +
++The flags EXPEDITED_INCIDENT_RESPONSE and EXPEDITED_INCIDENT_RESPONSE_REVERT are invocation-scoped environment variables. They MUST NOT be persisted as host, repository or image defaults. The one shared incident execution resolver, including its truth-value parser and named configuration refusals, is owned and documented by `livespec-dev-tooling` in its `contracts.md` §"Expedited incident execution". Hooks, generated recipes, workflow bindings and recovery callers MUST use that public resolver contract rather than independently invent flag semantics. Trusted event and phase context MUST take precedence over ambient values.
++
++An incident is one identified work item whose repair and normal verification remain owed. An attempt is one identified repair submission, revert or normal factory repayment, retained in the incident's history; its phase records which of those roles, master observation or closure it is performing. An incident receipt is durable evidence binding the authorized incident item, attempt, phase, repository, event and exact base/head to the selected operation. A structured PR receipt additionally binds the exact PR/head, retained checks, deferred work and focused verification evidence. A recovery receipt binds the complete landed incident patch and trees, observed master run, independent controller and action ownership, operation identity and generation fence, so a restart or timeout can recover the same action rather than invent another. These records MUST remain inspectable through the incident identity and MUST NOT be mistaken for proof that deferred checks ran.
++
++A required leaf job is a CI job or matrix leg whose result contributes to the protected all-green aggregate, rather than the aggregate job itself. The observer is the independently available controller that watches those recorded jobs and attributable regressions, triggers the scoped incident recovery action, and resumes the same durable operation across restarts. Its released control code MUST be independent of the incident tree being repaired.
++
 +A governed repository MAY provide the explicit incident-only execution path defined here. EXPEDITED_INCIDENT_RESPONSE selects an authorized repair of one identified incident work item; EXPEDITED_INCIDENT_RESPONSE_REVERT selects an emergency inverse of a recorded incident change and takes precedence. Neither flag grants credentials or changes host, workflow-edit or mutation authorization. The implementation MUST resolve trusted event, incident identity, attempt, phase, repository and base/head before selecting gates, reading evidence, delegating work or applying fallbacks. A marker or ambient flag without the required incident receipt MUST NOT confer an exemption. Malformed values in an ordinary invocation MUST produce a named configuration refusal. Trusted normal master and normal factory follow-up MUST force both flags absent before interpreting inherited values, including malformed ones.
 +
-+For that authorized repair only, an operator MAY implement in a local secondary worktree without a factory run or green-master precondition. Applicable local gates that finish in less than sixty seconds MUST run and retain real failures; known slow or unclassified work MUST be explicitly deferred before launch. A selected unknown gate reaching sixty seconds MUST terminate its owned children and report deferred-timeout. No hook, replay, delegation or fallback MAY restore the full normal aggregate for the incident repair. A slow suite MUST NOT be divided into nominally fast wrappers. The local repair MUST record changed or directly related tests, existing coverage thresholds scoped to cumulative touched executable files, and one manual reproduction with expected and actual outcomes. Missing focused evidence MUST remain visible risk with an operator disposition; a failing assertion MUST require correction. Incident evidence MUST NOT satisfy normal green-token, coverage, TDD or factory-proof requirements.
++For that authorized repair only, an operator MAY implement in a local secondary worktree without a factory run or green-master precondition. Applicable local gates that finish in less than sixty seconds MUST run and retain real failures; known slow or unclassified work MUST be explicitly deferred before launch. A selected unknown gate reaching sixty seconds MUST terminate its owned children and report deferred-timeout. No hook, replay, delegation or fallback MAY restore the full normal aggregate for the incident repair. A slow suite MUST NOT be divided into nominally fast wrappers. The local repair MUST record changed or directly related tests, existing coverage thresholds scoped to cumulative touched executable files, and one manual reproduction with expected and actual outcomes. Missing focused evidence MUST remain visible risk with an operator disposition; a failing assertion MUST require correction. Incident evidence MUST NOT satisfy the normal memoizing short-circuit's full-pass evidence, coverage, TDD or factory-proof requirements.
 +
 +The repair MUST carry the exact adjacent legal code or test comment `EXPEDITED_INCIDENT_RESPONSE flag: <incident work-item id>`, including a valid comment carrier for deletion-only or non-commentable changes. Its provenance MUST honestly record deferred replay rather than fabricate normal TDD evidence; historical receipt verification on normal master MUST survive loss of the old environment and PR label. Declared specification amendments MAY be deferred on that same incident, but normal master conformance remains mandatory.
 +
-+A trusted PR-specific signal and structured incident receipt MUST select only that repair PR and current head. Its CI MUST retain declared fast checks, omit coverage and specification-enforcement execution and dependencies, and disclose each intentional deferral in its stable required aggregate. Head or mode changes MUST invalidate earlier verdicts. An intentionally deferred check MUST NOT be represented as executed or passed. Every master push, normal factory follow-up and ordinary operation MUST retain its complete normal policy with both incident flags disabled.
++A trusted PR-specific signal and structured PR receipt MUST select only that repair PR and current head. Its CI MUST retain declared fast checks, omit coverage and specification-enforcement execution and dependencies, and disclose each intentional deferral in its stable required aggregate. Head or mode changes MUST invalidate earlier verdicts. An intentionally deferred check MUST NOT be represented as executed or passed. Every master push, normal factory follow-up and ordinary operation MUST retain its complete normal policy with both incident flags disabled.
 +
-+An incident merge MUST have an independently available, known-good released observer and a durable recovery receipt before merge. The first failing required master leaf job MUST trigger immediate incident recovery without waiting for workflow completion, failure classification, reruns, fix-forward claims, factory work, local quality gates or revert-PR CI. The original master run MUST remain available to completion, including records of failed, skipped, cancelled and never-created required work. Corrected repair attempts MUST retain the same incident identity and require new correction or resolution evidence. An independently provisioned recovery principal MUST merge only the validated complete inverse of the recorded incident change against current master, preserving later unrelated edits, revalidating the expected head, and recording an owned overlap conflict rather than overwriting descendants. The recovery operation MUST remain available through failure of the ledger, credential wrapper, factory or gate runners, reconcile exact receipts afterwards, and fence duplicate or stale actions. This capability MUST be provisioned and proven through the normal rollout; it MUST NOT disable ordinary protection or use a skipped-green CI stub as a substitute for no-check recovery authority.
++An incident merge MUST have an independently available, known-good released observer and a durable recovery receipt before merge. The first failing required master leaf job MUST trigger immediate incident recovery without waiting for workflow completion, failure classification, reruns, fix-forward claims, factory work, local quality gates or revert-PR CI. The original master run MUST remain available to completion, including records of failed, skipped, cancelled and never-created required work. After collecting the original run, the incident owner MUST classify each observed failure as incident-caused, pre-existing, infrastructure or unresolved and retain missing original-tree checks as owned debt. Corrected repair attempts MUST retain the same incident identity and require new correction or measured resolution evidence. A pre-existing base failure MUST NOT be retried by relanding unchanged incident code merely to try the broken base again. An independently provisioned recovery principal MUST merge only the validated complete inverse of the recorded incident change against current master, preserving later unrelated edits, revalidating the expected head, and recording an owned overlap conflict rather than overwriting descendants. The recovery operation MUST remain available through failure of the ledger, credential wrapper, factory or gate runners, reconcile exact receipts afterwards, and fence duplicate or stale actions. This capability MUST be provisioned and proven through the normal rollout; it MUST NOT disable ordinary protection or use a skipped-green CI stub as a substitute for no-check recovery authority.
 +
-+A successful normal master run MUST cause an unexpedited factory follow-up on the same incident work item that removes the marker and verifies the cumulative original change, evidence and deferred specification debt under normal factory and PR policy. A defect isolated to deferred proof MUST be fixed in that follow-up without reverting otherwise healthy master solely for that finding. A related regression observed on master, another PR or an adopted consumer MUST trigger incident recovery and fence stale cleanup; attribution MUST remain recoverable after closure. The incident MUST remain open until the final normal factory PR and subsequent normal master CI succeed, the marker is removed and deferred debt is repaid. The selected orchestrator owns its store, claims, cancellation, attempt identities and same-item lifecycle realization; this policy does not prescribe those mechanisms.
++A successful normal master run MUST cause an unexpedited factory follow-up on the same incident work item that removes the marker and verifies the cumulative original change, evidence and deferred specification debt under normal factory and PR policy. A defect isolated to deferred proof MUST be fixed in that follow-up without reverting otherwise healthy master solely for that finding. A related regression observed on master, another PR or an adopted consumer MUST trigger incident recovery and fence stale cleanup; attribution MUST identify the failing job or test and the change evidence connecting it to the incident, and MUST remain recoverable after closure. An unrelated flake alone MUST NOT count as attributable regression evidence; this attribution requirement MUST NOT delay the unconditional first required master-leaf failure action. The incident MUST remain open until the final normal factory PR and subsequent normal master CI succeed, the marker is removed and deferred debt is repaid. The selected orchestrator owns its store, claims, cancellation, attempt identities and same-item lifecycle realization; this policy does not prescribe those mechanisms.
 +
-+Generated scaffolds and inherited operator/Driver guidance MUST preserve this exception and the complete normal path through the normally released shared execution interfaces. Implementations MUST inventory actual fleet consumers, custom workflows, alternate stores and runtime boundaries, record implemented, deliberately-normal or not-applicable dispositions, and prove the installed serving versions before enabling use. This feature's own development, release and rollout MUST be normal and unexpedited.
++Source commits MUST remain attributable to their released tags, images, pending pin carriers and adopted consumers. Recovery MUST fence queued adoption of a bad artifact, supersede its pending pin carriers, and assign corrective rollout for consumers that already adopted it. An incident change that mutates irreversible external state MUST be ineligible for unattended automatic rollback unless an existing recorded safe compensating operation covers that mutation. Source-master success alone MUST NOT discharge affected-consumer recovery.
++
++A repository's first enablement MUST require recorded proof of its normally installed hook and CI readers, provisioned incident labels and relevant event subscriptions, the observer shim actually serving the known-good released controller, and recovery-principal authorization against every overlapping classic protection or ruleset. Without that repository's capability proof, both variables MUST be inert and execution MUST retain the normal path. Every member of core's committed fleet manifest MUST receive an explicit implemented, deliberately-normal or not-applicable disposition for its applicable surfaces; instruction-only adoption or an unsupported alternate lifecycle MUST NOT be represented as implemented incident recovery.
++
++Workflow-edit authorization MUST remain scoped to the particular incident carrier through an authorization receipt consumed at the authorized host boundary; the flag MUST NOT supply that receipt or a credential. When normal factory repayment requires a workflow correction beyond the sandbox credential's scope, an authorized host publisher MUST apply the normally validated factory tree to the same incident carrier PR with that receipt. The factory dispatch credential MUST retain its existing workflow-write restriction.
++
++Generated scaffolds and inherited operator/Driver guidance MUST preserve this exception and the complete normal path through the normally released shared execution interfaces. Implementations MUST inventory actual fleet consumers, custom workflows, alternate stores and runtime boundaries, record implemented, deliberately-normal or not-applicable dispositions, and prove the installed serving versions before enabling use. A change to this incident policy or its implementing tooling MUST NOT itself be developed, delivered or rolled out under the incident exception.
 ```
 
 ## Proposal: Scoped protection and ordinary-policy precedence
@@ -76,7 +88,7 @@ Priority-1 plan livespec-dev-tooling-bqnzcm requires a local fast repair and imm
 
 ### Proposed Changes
 
-Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision.
+Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision; scenario mappings MUST name the integration tier.
 
 ```diff
 --- SPECIFICATION/non-functional-requirements.md
@@ -85,7 +97,7 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
  
  ### CI as a merge gate (branch protection)
  
-+**Incident-only precedence.** The ordinary protection, all-green aggregate, reconciler and parity obligations below apply except for an authorized incident repair or recorded emergency revert under `contracts.md` §"Expedited incident response policy". That policy MUST govern only those exact incident operations. Recovery-principal authorization MUST be explicit, narrow and proven against every overlapping protection rule before activation; ordinary actors, including administrators, MUST remain subject to their existing required checks. A normal master push and normal factory follow-up MUST always run the complete normal job graph.
++**Incident-only precedence.** The ordinary protection, all-green aggregate, reconciler and parity obligations below apply except for an authorized incident repair or recorded emergency revert under `contracts.md` §"Expedited incident response policy". That policy MUST govern only those exact incident operations. Recovery-principal authorization MUST be explicit, narrow and proven against every overlapping protection rule before activation; ordinary actors, including administrators, MUST remain subject to their existing required checks. A normal master push and normal factory follow-up MUST always run the complete normal job graph. The `ci_gate_parity`, `ci_matrix_completeness` and `branch_protection_alignment` checks MUST recognize only the exact authorized incident shape defined by that policy; their incident treatment MUST NOT admit a general PR-only reduction or weaken ordinary protection.
 +
  **CI as a merge gate.** Every livespec-governed primary repo's `master` branch MUST have GitHub branch protection configured so that a single all-green gate job is the sole REQUIRED status check. A pull request MUST NOT be mergeable while CI is red: the required-check gate MUST block the merge until that gate job reports success, and the gate job reports success only when every CI job it depends on succeeded — so requiring the one gate job gates the merge on the entire CI matrix. The rule is fleet-wide-by-intent: it applies UNIFORMLY to `livespec` itself, every `livespec-orchestrator-*` plugin, `livespec-dev-tooling`, `livespec-runtime`, and every future sibling repo generated from the copier template per §"Shared content sync — copier template". A repo whose `master` lacks required-check branch protection is out-of-contract regardless of which fleet role it plays.
  
@@ -117,17 +129,17 @@ Priority-1 plan livespec-dev-tooling-bqnzcm requires a local fast repair and imm
 
 ### Proposed Changes
 
-Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision.
+Apply the following exact diff through revise. New H2 headings MUST co-edit tests/heading-coverage.json and its generated debt register with implementing owners in that same revision; scenario mappings MUST name the integration tier.
 
 ```diff
 --- SPECIFICATION/scenarios.md
 +++ SPECIFICATION/scenarios.md
-@@ -831,3 +831,74 @@
+@@ -831,3 +831,98 @@
    Then the replay gate's test runs execute on the committing host
    And the hook reports that it gated locally
  ```
 +
-+## Scenario: an authorized incident repair uses the inherited fast path
++## An authorized incident repair uses the inherited fast path
 +
 +```gherkin
 +Given a governed repository has installed and proven its released incident capability
@@ -139,7 +151,7 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
 +And the legal adjacent incident marker names the same work item
 +```
 +
-+## Scenario: incident PR selection cannot weaken normal master validation
++## Incident PR selection cannot weaken normal master validation
 +
 +```gherkin
 +Given a trusted signal and receipt select one incident repair PR and exact head
@@ -152,7 +164,7 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
 +And partial incident evidence cannot satisfy normal validation
 +```
 +
-+## Scenario: an incident master failure takes immediate scoped recovery
++## An incident master failure takes immediate scoped recovery
 +
 +```gherkin
 +Given an incident merge has a durable receipt and an independently running released observer
@@ -165,7 +177,7 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
 +And stale or duplicate actions cannot mutate a corrected incident attempt
 +```
 +
-+## Scenario: incident repayment uses the same item and complete original scope
++## Incident repayment uses the same item and complete original scope
 +
 +```gherkin
 +Given the incident repair's normal master CI succeeds
@@ -176,17 +188,19 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
 +And the incident cannot close before the normal follow-up merge and subsequent normal master CI succeed
 +```
 +
-+## Scenario: a related regression resumes incident recovery after closure
++## A related regression resumes incident recovery after closure
 +
 +```gherkin
 +Given incident attribution survives normal completion and process restarts
-+When a related regression is observed on master, another PR or an adopted consumer
++When a failing job or test and change evidence attribute a regression on master, another PR or an adopted consumer to the incident
 +Then recovery resumes for the same incident identity
 +And stale cleanup and queued adoption are fenced
++And pending bad-artifact pin carriers are superseded
 +And affected adopted consumers receive owned corrective rollout
++And an unrelated flake alone is not treated as attributable regression evidence
 +```
 +
-+## Scenario: an ordinary operation does not inherit an incident exemption
++## An ordinary operation does not inherit an incident exemption
 +
 +```gherkin
 +Given an ordinary operation contains a historical incident marker or unrelated incident flag
@@ -196,5 +210,27 @@ Apply the following exact diff through revise. New H2 headings MUST co-edit test
 +When a trusted normal factory follow-up inherits malformed incident values
 +Then it forces both flags absent before parsing them
 +And no expedited cache or partial proof satisfies its normal validation
++```
++
++## Incident enablement requires the repository's complete capability proof
++
++```gherkin
++Given a manifest member lacks proof of an installed incident hook or CI reader, incident label or event subscription, serving observer shim, or scoped recovery authority against all overlapping protection
++When an invocation supplies either incident environment variable
++Then both variables are inert and the normal execution path remains selected
++When every applicable capability is proven on its normally installed released serving version
++Then that repository can enable the authorized incident form
++And every committed manifest member retains its explicit applicability disposition
++```
++
++## Collected incident failures require classified correction before another attempt
++
++```gherkin
++Given a reverted incident's original master run has finished collecting its results
++When the owner prepares another repair attempt
++Then each observed failure is classified as incident-caused, pre-existing, infrastructure or unresolved
++And missing original-tree checks remain owned debt
++And a pre-existing failing base prevents relanding unchanged incident code as a retry
++And an irreversible external-state mutation is ineligible for unattended rollback without an existing recorded safe compensating operation
 +```
 ```
