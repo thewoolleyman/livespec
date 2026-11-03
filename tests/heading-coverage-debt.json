@@ -96,5 +96,12 @@
     "heading": "## Delegated commit-time replay test runs",
     "work_item": "livespec-3zug5z",
     "first_seen": "2026-10-30"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Releases are cut from a release window",
+    "work_item": "livespec-v2qlmu",
+    "first_seen": "2026-11-03"
   }
 ]
