@@ -831,3 +831,22 @@ Scenario: A non-delegating host runs its commit-time test runs locally and says 
   Then the replay gate's test runs execute on the committing host
   And the hook reports that it gated locally
 ```
+
+## Releases are cut from a release window
+
+```gherkin
+Feature: Coalesced releases in a repository that adopts a release window
+
+Scenario: Merges between windows ship in one release
+  Given a repository that adopts a release window with a four-hour schedule
+  And three feat: commits merge to master between two scheduled runs
+  When the next scheduled run fires
+  Then release-please opens one release PR carrying all three commits
+  And none of the three pushes opened or updated a release PR
+
+Scenario: A merged release PR is tagged at once
+  Given a release PR opened by that repository's scheduled run
+  When the release PR merges to master
+  Then the push of its release commit tags the release and creates its GitHub Release
+  And that push opens no new release PR
+```
