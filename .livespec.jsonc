@@ -318,6 +318,7 @@
   // SPECIFICATION/constraints.md §"Allowlist mechanism".
   "external_references": {
     "livespec-dev-tooling": [
+      "SPECIFICATION/contracts.md §\"Expedited incident execution\"",
       "SPECIFICATION/contracts.md §\"Shared check inventory\"",
       "SPECIFICATION/contracts.md §\"Cross-repo coordination automation surface\"",
       "SPECIFICATION/contracts.md §\"Sibling discovery\"",
