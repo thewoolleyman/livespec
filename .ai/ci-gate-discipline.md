@@ -1,11 +1,21 @@
-# CI-gate discipline — NEVER add escape gates; revert and re-land
+# CI-gate discipline — ordinary protection and scoped incident recovery
 
-**The rule (maintainer directive, 2026-07-04; absolute):** never add a
+**Incident-only precedence.** The receipt-bound operations in core
+`SPECIFICATION/contracts.md` §"Expedited incident response policy" have the
+specific precedence documented in [expedited-incident-response.md](expedited-incident-response.md).
+Read it before selecting an incident operation. Only a repository with proven
+installed readers, independent observer and scoped recovery authority can use
+that path. Ambient flags, markers, urgency or a red master do not establish
+eligibility. Neither changing this policy nor implementing its tooling is
+eligible. Ordinary operations retain every protection below; generic hook
+bypasses and attempts to evade a tool refusal remain forbidden.
+
+**The ordinary rule (maintainer directive, 2026-07-04):** never add a
 lever, env var, flag, carve-out, or any other escape mechanism that lets
 a commit, push, merge, or dispatch proceed while a CI-green gate (e.g.
 `check-master-ci-green`) reports red — and never weaken such a gate's
 severity to "warning". This holds even when the gate blocks the very
-change that would repair the red. No exceptions, no "repair-only"
+change that would repair the red. Outside the explicit incident policy, no "repair-only"
 framings, no "CI never sets it" mitigations: any such mechanism WILL be
 abused by later agents pattern-matching on it, and its mere existence
 defeats the gate's purpose (an unbypassable floor under every
@@ -54,7 +64,8 @@ env var to having NO effect).
 
 Ratified in livespec `SPECIFICATION/non-functional-requirements.md`
 §"CI as a merge gate (branch protection)" (v224, plan
-`red-master-self-healing`). Only these two get past a red `master`.
+`red-master-self-healing`). Outside the receipt-bound incident operations,
+only these two get past a red `master`.
 Every other lever, flag, severity knob or carve-out stays forbidden by
 the rule above.
 
@@ -210,3 +221,9 @@ An earlier revision of this section carried that retired framing.
 - When grooming or briefing a work-item whose acceptance implies
   workflow edits (e.g. wiring an env var into CI), split the workflow
   wiring into an explicitly maintainer-side step up front.
+
+For normal factory repayment of an incident, a necessary workflow correction
+uses the authorized host publisher and a carrier-specific authorization
+receipt: publish the normally validated factory tree to the same incident
+carrier PR. This narrow host operation preserves the same-item obligation and
+does not grant workflow-write authority to the factory dispatch credential.

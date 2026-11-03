@@ -680,14 +680,20 @@ existing file):
   via `docs/installation.md` → `docs/livespec-installation-prompt.md`).
 - **`.ai/ci-gate-discipline.md`** — read BEFORE touching any CI-green or
   merge-blocking gate (e.g. `check-master-ci-green`) and whenever such a gate
-  blocks a repair. NEVER add a lever/env-var/escape mechanism to such a gate
-  or demote it to warning — revert the breaking change (server-side revert PR
+  blocks a repair. Outside the receipt-bound incident policy below, NEVER add
+  a lever/env-var/escape mechanism to such a gate or demote it to warning —
+  revert the breaking change (server-side revert PR
   when local commits are blocked) and re-land in the right order. Also read it
   before RESTRUCTURING work to get past a gate that mis-fires: the test is
   whether the restructured work still performs the behaviour the gate exists to
   prevent — if it does, restructuring is evasion however defective the gate,
   and splitting a loop across separate invocations is the case that does not
   feel like evasion but is.
+- **`.ai/expedited-incident-response.md`** — read BEFORE selecting an incident
+  repair or emergency revert, interpreting either incident flag, recording
+  deferred incident proof, or repaying an incident through the factory. This
+  narrowly scoped policy uses installed shared execution interfaces; it never
+  authorizes bypassing hooks, tool guards or workflow-write restrictions.
 - **`.ai/beads-gaps-workarounds.md`** — read when integrating with, working
   around, or debugging the `bd` (beads) work-items backend, and before filing
   a beads issue upstream: the living catalogue of beads gaps and the

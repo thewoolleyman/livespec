@@ -24,6 +24,12 @@ this home.
 Referenced `.ai/<topic>.md` files (every reference here MUST resolve to an
 existing file):
 
+- **`.ai/expedited-incident-response.md`** — read BEFORE selecting an incident
+  repair or emergency revert, interpreting either incident flag, recording
+  deferred incident proof, or repaying an incident through the factory. Use
+  the installed shared execution interfaces; neither flag authorizes bypassing
+  hooks, tool guards or workflow-write restrictions.
+
 - **`.ai/agent-disciplines.md`** — read when ending a session or applying a
   cross-cutting discipline (TDD red-green-replay, the worktree → PR flow,
   no-local-memory), and for the session-end plan resume rule.
