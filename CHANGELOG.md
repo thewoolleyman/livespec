@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/thewoolleyman/livespec/compare/v0.45.1...v0.46.0) (2026-11-04)
+
+
+### Features
+
+* inherit receipt-bound incident response guidance (livespec-3lwk4n) ([1ef208f](https://github.com/thewoolleyman/livespec/commit/1ef208fc81d2526a2995f4e15349aae5e8ff9820))
+
 ## [0.45.1](https://github.com/thewoolleyman/livespec/compare/v0.45.0...v0.45.1) (2026-11-02)
 
 
