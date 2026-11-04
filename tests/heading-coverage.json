@@ -883,5 +883,13 @@
     "test": "TODO",
     "reason": "A real test at the integration tier or above is owed for this expedited incident policy heading; livespec-3lwk4n owns the implementation and verification.",
     "work_item": "livespec-3lwk4n"
+  },
+  {
+    "heading": "## A capacity value change passes on schema validation alone",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-dev-tooling-mbmqvy",
+    "reason": "A real test at the integration tier or above is owed for this heading: a livespec-dev-tooling integration test over a fixture repository proving that a value-only change of a listed key runs schema and parse validation and no test suite at pre-push and in CI identically on the pull request and the master push, that an invalid value fails naming the file and key, and that any other changed line takes the full aggregate (proposal config-value-fast-path). livespec-dev-tooling-mbmqvy owns it."
   }
 ]

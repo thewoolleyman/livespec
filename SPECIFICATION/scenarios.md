@@ -945,3 +945,25 @@ Scenario: A merged release PR is tagged at once
   Then the push of its release commit tags the release and creates its GitHub Release
   And that push opens no new release PR
 ```
+
+## A capacity value change passes on schema validation alone
+
+```gherkin
+Feature: Config-value fast path under PR gate ≡ master gate
+
+Scenario: A value-only capacity change runs schema validation and no test suite
+  Given a governed repository whose committed config-value fast-path list names `.livespec.jsonc` `dispatcher.wip_cap`
+  When a pull request changes only the value of `dispatcher.wip_cap` from 4 to 6
+  Then its pre-push gate and its CI gate job run schema and parse validation of `.livespec.jsonc` and no test suite
+  And the push to master of the same change runs the same reduced set
+
+Scenario: An invalid capacity value fails the reduced gate
+  Given the same repository
+  When a pull request changes `dispatcher.wip_cap` to a value the schema rejects
+  Then the gate fails, naming `.livespec.jsonc` and `dispatcher.wip_cap`
+
+Scenario: Any other changed line takes the full aggregate
+  Given the same repository
+  When a pull request changes the value of `dispatcher.wip_cap` and also changes any other line
+  Then its pre-push gate and its CI gate job run the full aggregate
+```
