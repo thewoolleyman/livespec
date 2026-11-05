@@ -292,6 +292,18 @@ ensure-codex-plugins:
 check:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Resolve incident mode before any gate work. The presence test is the
+    # installed hook's prefilter and decides nothing: unset, the body below runs
+    # unchanged; present, the released shared boundary
+    # (the livespec-dev-tooling gate-entry module, pinned in pyproject.toml)
+    # parses and decides, and only its 75 continues. Every other status, including an
+    # unavailable boundary, refuses. Static wiring onto the released interface;
+    # this template carries no flag parser of its own.
+    if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then
+        incident_status=0
+        uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry check || incident_status=$?
+        [ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))
+    fi
     # Sync the environment ONCE per aggregate pass, then run every
     # target with UV_NO_SYNC=1 so the per-target `uv run`
     # invocations skip their redundant per-invocation re-sync
@@ -361,6 +373,18 @@ check-types:
 check-coverage:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Resolve incident mode before any gate work. The presence test is the
+    # installed hook's prefilter and decides nothing: unset, the body below runs
+    # unchanged; present, the released shared boundary
+    # (the livespec-dev-tooling gate-entry module, pinned in pyproject.toml)
+    # parses and decides, and only its 75 continues. Every other status, including an
+    # unavailable boundary, refuses. Static wiring onto the released interface;
+    # this template carries no flag parser of its own.
+    if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then
+        incident_status=0
+        uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry check-coverage || incident_status=$?
+        [ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))
+    fi
     if [[ -n "${LIVESPEC_PRECOMMIT_RED_MODE:-}" ]]; then
         echo ":: check-coverage skipped (Red-mode pre-commit; verified at Green amend)"
         exit 0
@@ -377,6 +401,18 @@ check-coverage:
 check-pre-commit:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Resolve incident mode before any gate work. The presence test is the
+    # installed hook's prefilter and decides nothing: unset, the body below runs
+    # unchanged; present, the released shared boundary
+    # (the livespec-dev-tooling gate-entry module, pinned in pyproject.toml)
+    # parses and decides, and only its 75 continues. Every other status, including an
+    # unavailable boundary, refuses. Static wiring onto the released interface;
+    # this template carries no flag parser of its own.
+    if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then
+        incident_status=0
+        uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry check-pre-commit || incident_status=$?
+        [ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))
+    fi
     staged=$(git diff --cached --name-only --diff-filter=AM)
     py_staged=$(echo "$staged" | grep -E '\.py$' || true)
     test_staged=$(echo "$staged" | grep -E '^tests/.*\.py$' || true)
@@ -419,6 +455,18 @@ check-pre-commit-doc-only:
 check-pre-push:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Resolve incident mode before any gate work. The presence test is the
+    # installed hook's prefilter and decides nothing: unset, the body below runs
+    # unchanged; present, the released shared boundary
+    # (the livespec-dev-tooling gate-entry module, pinned in pyproject.toml)
+    # parses and decides, and only its 75 continues. Every other status, including an
+    # unavailable boundary, refuses. Static wiring onto the released interface;
+    # this template carries no flag parser of its own.
+    if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then
+        incident_status=0
+        uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry check-pre-push || incident_status=$?
+        [ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))
+    fi
     if uv run python -m livespec_dev_tooling.green_token check 2>&1; then
         echo ":: pre-push: green token matched — tree byte-identical to last green check; skipping full aggregate (CI is authoritative)"
         exit 0
@@ -447,6 +495,18 @@ check-red-green-replay msg_path:
 lint-autofix-staged:
     #!/usr/bin/env bash
     set -uo pipefail
+    # Resolve incident mode before any gate work. The presence test is the
+    # installed hook's prefilter and decides nothing: unset, the body below runs
+    # unchanged; present, the released shared boundary
+    # (the livespec-dev-tooling gate-entry module, pinned in pyproject.toml)
+    # parses and decides, and only its 75 continues. Every other status, including an
+    # unavailable boundary, refuses. Static wiring onto the released interface;
+    # this template carries no flag parser of its own.
+    if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then
+        incident_status=0
+        uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry lint-autofix-staged || incident_status=$?
+        [ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))
+    fi
     staged=$(git diff --cached --name-only --diff-filter=AM | grep -E '\.py$' || true)
     if [[ -z "$staged" ]]; then
         exit 0
