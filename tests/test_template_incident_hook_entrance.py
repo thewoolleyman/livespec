@@ -163,3 +163,105 @@ def test_released_entrance_runs_ordinary_work_normally_and_refuses_malformed_fla
     monkeypatch.setenv(EXPEDITED_INCIDENT_RESPONSE, "maybe")
     assert incident_hook_main(argv=["pre-commit"]) == _REFUSED
     assert "malformed incident flag" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------
+# Direct recipe entrances. A generated `just` recipe can be invoked
+# DIRECTLY, not through the installed hook, so the hook entrance above
+# never sees it. livespec-dev-tooling v1.178.0 is the first release whose
+# `incident_gate_entry` boundary accepts every generated recipe entrance
+# (`check`, `check-pre-commit`, `check-pre-push`, `check-coverage`,
+# `lint-autofix-staged`) and whose `commit_pairs_source_and_test.main`
+# and `red_green_replay.main` carry `IncidentEntrance` themselves. The
+# shell recipes mirror the released prelude byte for byte: a presence
+# prefilter that decides nothing, then the released boundary, continuing
+# only on its 75 and refusing on every other status.
+# ---------------------------------------------------------------
+
+_FIRST_RECIPE_ENTRANCE_RELEASE = (1, 178, 0)
+
+_PREFILTER = (
+    'if [ -n "${EXPEDITED_INCIDENT_RESPONSE:-}${EXPEDITED_INCIDENT_RESPONSE_REVERT:-}'
+    '${LIVESPEC_INCIDENT_CONTEXT:-}${LIVESPEC_INCIDENT_AUTHORITY_QUERY:-}" ]; then'
+)
+_CONTINUE_ONLY_ON_ORDINARY = (
+    '[ "$incident_status" -eq 75 ] || exit $((incident_status == 0 ? 78 : incident_status))'
+)
+
+# recipe -> (entrance name the released boundary accepts, first line of real work)
+_SHELL_RECIPE_ENTRANCES: dict[str, tuple[str, str]] = {
+    "check": ("check", "uv sync --all-groups"),
+    "check-pre-commit": ("check-pre-commit", "staged=$(git diff --cached"),
+    "check-pre-push": ("check-pre-push", "livespec_dev_tooling.green_token check"),
+    "check-coverage": ("check-coverage", "uv run pytest"),
+    "lint-autofix-staged": ("lint-autofix-staged", "staged=$(git diff --cached"),
+}
+
+# recipe -> the released module whose `main` carries `IncidentEntrance`
+_MODULE_RECIPE_ENTRANCES: dict[str, str] = {
+    "check-commit-pairs-source-and-test": "livespec_dev_tooling.checks.commit_pairs_source_and_test",
+    "check-red-green-replay": "livespec_dev_tooling.checks.red_green_replay",
+}
+
+
+def _recipe_body(*, justfile: str, name: str) -> str:
+    """The indented body of recipe `name` (any parameters) in a rendered justfile."""
+    pattern = rf"^{re.escape(name)}(?:[ \t]+[^:\n]*)?:\n((?:[ \t]+.*\n)+)"
+    recipe = re.search(pattern, justfile, re.MULTILINE)
+    assert recipe is not None, f"rendered justfile lacks the {name} recipe"
+    return recipe.group(1)
+
+
+def test_rendered_template_pins_a_release_carrying_the_recipe_entrances(*, rendered: Path) -> None:
+    """The pin names the first release whose boundary accepts every recipe entrance."""
+    tag = _rendered_dev_tooling_tag(tree=rendered)
+    match = _TAG.match(tag)
+    assert match is not None, f"rendered livespec-dev-tooling tag {tag!r} is not vMAJOR.MINOR.PATCH"
+    version = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    assert version >= _FIRST_RECIPE_ENTRANCE_RELEASE, (
+        f"the template pins livespec-dev-tooling {tag}, below the first release "
+        "(v1.178.0) whose incident_gate_entry accepts every generated recipe entrance"
+    )
+
+
+@pytest.mark.parametrize(
+    ("recipe", "entrance", "first_work"),
+    [
+        (recipe, entrance, first_work)
+        for recipe, (entrance, first_work) in _SHELL_RECIPE_ENTRANCES.items()
+    ],
+)
+def test_rendered_shell_recipes_resolve_incident_mode_before_their_first_work(
+    *, rendered: Path, recipe: str, entrance: str, first_work: str
+) -> None:
+    """Each direct shell entrance calls the released boundary first, continuing only on 75."""
+    body = _recipe_body(justfile=(rendered / "justfile").read_text(encoding="utf-8"), name=recipe)
+    boundary = f"uv run --no-sync python -m livespec_dev_tooling.incident_gate_entry {entrance} || incident_status=$?"
+    prefilter_at = body.find(_PREFILTER)
+    boundary_at = body.find(boundary)
+    continue_at = body.find(_CONTINUE_ONLY_ON_ORDINARY)
+    work_at = body.find(first_work)
+    assert prefilter_at != -1, f"{recipe}: no incident presence prefilter"
+    assert boundary_at != -1, f"{recipe}: does not call the released boundary as {entrance!r}"
+    assert continue_at != -1, f"{recipe}: does not continue only on the boundary's 75"
+    assert work_at != -1, f"{recipe}: expected first real work {first_work!r} not found"
+    assert (
+        prefilter_at < boundary_at < continue_at < work_at
+    ), f"{recipe}: incident resolution must precede the recipe's first real work"
+    assert body.count("incident_gate_entry") == 1, f"{recipe}: the boundary must run exactly once"
+
+
+@pytest.mark.parametrize(("recipe", "module"), sorted(_MODULE_RECIPE_ENTRANCES.items()))
+def test_rendered_module_recipes_delegate_to_the_released_guarded_main(
+    *, rendered: Path, recipe: str, module: str
+) -> None:
+    """Module-backed recipes reach the boundary through the released `IncidentEntrance` main."""
+    body = _recipe_body(justfile=(rendered / "justfile").read_text(encoding="utf-8"), name=recipe)
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    assert len(lines) == 1, f"{recipe}: expected a single delegation line, got {lines!r}"
+    assert lines[0].startswith(
+        f"uv run python -m {module}"
+    ), f"{recipe}: must delegate to the released {module} main, which carries IncidentEntrance"
+    assert (
+        "incident_gate_entry" not in body
+    ), f"{recipe}: the released main already resolves; a shell prelude would resolve twice"
