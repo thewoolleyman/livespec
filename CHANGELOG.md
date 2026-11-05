@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/thewoolleyman/livespec/compare/v0.46.0...v0.47.0) (2026-11-05)
+
+
+### Features
+
+* scaffold orchestrator plugins with the released incident hook entrance (livespec-3lwk4n) ([07b9672](https://github.com/thewoolleyman/livespec/commit/07b9672826ef1657411b7cbae5a83ff9215b378d))
+
 ## [0.46.0](https://github.com/thewoolleyman/livespec/compare/v0.45.1...v0.46.0) (2026-11-04)
 
 
