@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.1](https://github.com/thewoolleyman/livespec/compare/v0.47.0...v0.47.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **doctor:** resolve latest committed version without per-version recursion ([dec3bac](https://github.com/thewoolleyman/livespec/commit/dec3bace9e17647f7f94aa1b4016ab90d841f293))
+
 ## [0.47.0](https://github.com/thewoolleyman/livespec/compare/v0.46.0...v0.47.0) (2026-11-05)
 
 
