@@ -119,6 +119,12 @@
     // that surface round-trips the file through json.dumps and silently strips
     // every comment here while reporting green — tracked as bd-ib-lmi5.
     "dispatcher": {
+      // Detection-coverage anchor: the standing backlog ledger item every
+      // capture-impl-gaps / capture-spec-drift run records its ATTEMPT on.
+      // Provisioned 2026-11-08 (plan spec-implementation-lockstep). It MUST NOT
+      // be closed, regroomed, dispatched or parented; only record_detection_run
+      // may append comments to it.
+      "detection_coverage_anchor": "livespec-askqgz",
       // INTERIM (2026-11-04, legacy-coordinator-agent ruling under R493; plan
       // stall-watchdog-false-kills, bd-ib-laf735): petri `fabro events` reads of long
       // runs exceed the watchdog probe timeout, and a failed read is counted as quiet
