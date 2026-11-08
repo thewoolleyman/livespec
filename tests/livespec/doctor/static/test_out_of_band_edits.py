@@ -92,6 +92,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -787,6 +788,58 @@ def test_run_returns_fail_against_latest_version_when_multiple_versions_exist(
         spec_root=str(spec_root),
     )
     assert result == IOSuccess(expected)
+
+
+_DEEP_HISTORY_VERSION_COUNT: int = 1500
+_PYTHON_DEFAULT_RECURSION_LIMIT: int = 1000
+
+
+def test_run_resolves_latest_version_within_default_recursion_limit_on_deep_history(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) completes at the default recursion limit over 1500 contiguous version dirs.
+
+    Fixture: HEAD carries `history/v001` through `history/v1500`,
+    each holding a `spec.md`, and the active `spec.md` matches
+    the highest one byte-for-byte. A latest-version probe that
+    recurses once per version directory exhausts Python's
+    default 1000-frame limit long before v1500; the probe MUST
+    be depth-independent. The check resolves v1500 as the
+    comparison target and so reports a clean pass.
+    """
+    monkeypatch.chdir(tmp_path)
+    _git_init(repo_root=tmp_path)
+    spec_root = tmp_path / "SPECIFICATION"
+    spec_root.mkdir()
+    body = b"# Spec DEEP\n"
+    active = spec_root / "spec.md"
+    _ = active.write_bytes(body)
+    for number in range(1, _DEEP_HISTORY_VERSION_COUNT + 1):
+        version_dir = spec_root / "history" / f"v{number:03d}"
+        version_dir.mkdir(parents=True)
+        _ = (version_dir / "spec.md").write_bytes(body)
+    _ = subprocess.run(
+        ["git", "add", "-A"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    _ = subprocess.run(
+        ["git", "commit", "--quiet", "-m", "deep history fixture"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    ctx = DoctorContext(project_root=tmp_path, spec_root=spec_root)
+    prior_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(_PYTHON_DEFAULT_RECURSION_LIMIT)
+    try:
+        result = out_of_band_edits.run(ctx=ctx)
+    finally:
+        sys.setrecursionlimit(prior_limit)
+    assert result == IOSuccess(_expected_pass_clean(spec_root=spec_root))
 
 
 def test_run_returns_pass_when_history_has_only_non_version_children(

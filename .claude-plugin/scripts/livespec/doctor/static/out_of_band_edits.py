@@ -61,13 +61,11 @@ walked via `livespec.io.git.list_at_head`. Subdirs
 by ls-tree's blob-only filter, so the enumeration matches
 the top-level *.md files the seed materializes.
 
-Latest-vNNN-at-HEAD is resolved by probing `show_at_head` on
-each candidate `<spec_root>/history/vNNN` path: `git show`
-exits 0 for both blobs and trees that exist at HEAD, so the
-IOResult success/fail signal cleanly tracks "this v-dir
-exists at HEAD". The probe walks v001 forward and stops at
-the first absent candidate; the highest successful N is the
-comparison target.
+Latest-vNNN-at-HEAD is resolved from one `list_subtrees_at_head`
+call over `<spec_root>/history/`: the walk goes v001 forward
+over the committed subdirectory names and stops at the first
+absent candidate; the highest present N is the comparison
+target.
 
 Edge case decisions (codified here):
 
@@ -103,7 +101,7 @@ from livespec.doctor.static._out_of_band_edits_writes import (
     route_drift_outcome,
 )
 from livespec.errors import LivespecError
-from livespec.io.git import is_git_repo, list_at_head, show_at_head
+from livespec.io.git import is_git_repo, list_at_head, list_subtrees_at_head, show_at_head
 from livespec.schemas.dataclasses.finding import Finding
 
 __all__: list[str] = ["SLUG", "run"]
@@ -176,46 +174,44 @@ def _show_or_none(*, ctx: DoctorContext, path: Path) -> IOResult[bytes | None, L
     )
 
 
-def _probe_v_dirs(
-    *,
-    ctx: DoctorContext,
-    history_repo_rel: Path,
-    n: int,
-    acc: tuple[str, ...],
-) -> IOResult[tuple[str, ...], LivespecError]:
-    """Probe v001, v002, ... at HEAD; halt at first absent; return accumulator.
+def _highest_contiguous_version(*, subtree_names: tuple[str, ...]) -> str | None:
+    """Return the highest `vNNN` name forming an unbroken run from v001, or None.
 
-    `git show HEAD:<path>` exits 0 for both blobs and trees that
-    exist at HEAD, so the IOSuccess/IOFailure signal cleanly
-    tracks "this v-dir exists at HEAD". The .lash combinator
-    bottoms the recursion out at the first absent candidate.
+    Walks v001, v002, ... against the committed subdirectory names
+    and halts at the first absent candidate, so a gap in the
+    sequence bounds the result exactly as a per-candidate probe
+    would.
     """
-    name = f"{_VERSION_DIR_PREFIX}{n:0{_VERSION_DIR_PADDING}d}"
-    return (
-        show_at_head(
-            project_root=ctx.project_root,
-            repo_relative_path=history_repo_rel / name,
-        )
-        .bind(
-            lambda _b: _probe_v_dirs(
-                ctx=ctx,
-                history_repo_rel=history_repo_rel,
-                n=n + 1,
-                acc=(*acc, name),
-            ),
-        )
-        .lash(lambda _err: IOSuccess(acc))
-    )
+    committed = frozenset(subtree_names)
+    latest: str | None = None
+    number = 1
+    while True:
+        candidate = f"{_VERSION_DIR_PREFIX}{number:0{_VERSION_DIR_PADDING}d}"
+        if candidate not in committed:
+            return latest
+        latest = candidate
+        number += 1
 
 
 def _latest_committed_version_at_head(
     *,
     ctx: DoctorContext,
 ) -> IOResult[str | None, LivespecError]:
-    """Latest `vNNN` dir at HEAD under `<spec_root>/history/`, or None when no v-dir exists."""
+    """Latest `vNNN` dir at HEAD under `<spec_root>/history/`, or None when no v-dir exists.
+
+    A single `git ls-tree` enumerates the committed subdirectories,
+    keeping the cost and the stack depth independent of how many
+    versions the history holds. A repo with no HEAD yet has no
+    committed v-dir, so that failure folds into None.
+    """
     history_repo_rel = _spec_root_repo_relative(ctx=ctx) / _HISTORY_SUBDIR_NAME
-    return _probe_v_dirs(ctx=ctx, history_repo_rel=history_repo_rel, n=1, acc=()).map(
-        lambda v_names: max(v_names, default=None),
+    return (
+        list_subtrees_at_head(
+            project_root=ctx.project_root,
+            repo_relative_dir=history_repo_rel,
+        )
+        .map(lambda names: _highest_contiguous_version(subtree_names=names))
+        .lash(lambda _err: IOSuccess(None))  # pyright: ignore[reportArgumentType]
     )
 
 

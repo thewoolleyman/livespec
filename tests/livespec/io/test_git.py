@@ -1334,3 +1334,65 @@ def test_get_git_user_fails_closed_when_no_identity_is_configured_anywhere(
             assert isinstance(error, LivespecError)
         case _:
             raise AssertionError(f"expected IOFailure(...), got {result!r}")
+
+
+def test_list_subtrees_at_head_returns_only_immediate_subdirectories(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_subtrees_at_head` returns the immediate subdirectory basenames, not files.
+
+    The fixture commits a file directly under `history/` plus two
+    version subdirectories, one holding a nested directory; only
+    the two immediate subdirectory names come back.
+    """
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+    history = tmp_path / "history"
+    history.mkdir()
+    _git_commit_file(cwd=tmp_path, path=history / "README.md", content=b"# readme\n")
+    (history / "v001").mkdir()
+    _git_commit_file(cwd=tmp_path, path=history / "v001" / "a.md", content=b"# a\n")
+    (history / "v002" / "nested").mkdir(parents=True)
+    _git_commit_file(cwd=tmp_path, path=history / "v002" / "nested" / "b.md", content=b"# b\n")
+
+    result = io_git.list_subtrees_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("history"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Success(value):
+            assert sorted(value) == ["v001", "v002"]
+        case _:
+            raise AssertionError(f"expected IOSuccess(<names>), got {result!r}")
+
+
+def test_list_subtrees_at_head_returns_failure_when_no_head(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`list_subtrees_at_head` returns IOFailure when the repo has no commits yet."""
+    _git_init_with_user(
+        cwd=tmp_path,
+        name="Test User",
+        email="test@example.com",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = io_git.list_subtrees_at_head(
+        project_root=tmp_path,
+        repo_relative_dir=Path("history"),
+    )
+    unwrapped = unsafe_perform_io(result)
+    match unwrapped:
+        case Failure(_):
+            return
+        case _:
+            raise AssertionError(f"expected IOFailure, got {result!r}")

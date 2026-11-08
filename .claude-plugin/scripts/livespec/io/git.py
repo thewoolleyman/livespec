@@ -92,6 +92,7 @@ __all__: list[str] = [
     "list_merged_branches",
     "list_remote_branches",
     "list_status_porcelain",
+    "list_subtrees_at_head",
     "list_worktrees",
     "merge_base",
     "show_at_head",
@@ -177,6 +178,7 @@ def _raw_list_at_head(
     *,
     project_root: Path,
     repo_relative_dir: Path,
+    entry_type: str,
 ) -> tuple[str, ...]:
     """Decorator-lifted call into `git -C <project_root> ls-tree HEAD <dir>/`.
 
@@ -184,9 +186,8 @@ def _raw_list_at_head(
     object-id + name on each line, all ASCII; text-mode is the
     appropriate decode here even though `show_at_head` uses
     binary mode for blob bodies). Filters lines whose type
-    column is `blob` and returns only the basename column.
-    Subtrees (type=tree) are excluded — the doctor's HEAD-active
-    enumeration is files-only.
+    column equals `entry_type` (`blob` for files, `tree` for
+    subdirectories) and returns only the basename column.
 
     Non-zero exit codes (repo has no HEAD yet) raise
     `subprocess.CalledProcessError` via `check=True`; the
@@ -227,14 +228,14 @@ def _raw_list_at_head(
         # where <type> is one of `blob` / `tree` / `commit`. Split
         # on TAB once to isolate the name column; split the
         # prefix on whitespace to recover the type column. Filter
-        # to blobs so subtrees are excluded. Git's output format
+        # to `entry_type` so the other kind is excluded. Git's output format
         # is stable across versions — a well-formed `ls-tree`
         # invocation always produces this shape — so the parse
         # is straight-line (no defensive empty-line / short-prefix
         # branches; a malformed line would surface as an
         # IndexError bug rather than a domain error).
         prefix, _sep, raw_name = line.partition("\t")
-        if prefix.split()[_LS_TREE_TYPE_COLUMN_INDEX] != "blob":
+        if prefix.split()[_LS_TREE_TYPE_COLUMN_INDEX] != entry_type:
             continue
         # `git ls-tree HEAD <dir>/` returns the path-from-repo-
         # root in the name column (e.g. `SPECIFICATION/alpha.md`);
@@ -279,8 +280,35 @@ def list_at_head(
     return _raw_list_at_head(
         project_root=project_root,
         repo_relative_dir=repo_relative_dir,
+        entry_type="blob",
     ).alt(
         lambda exc: PreconditionError(f"git.list_at_head: {exc}"),
+    )
+
+
+def list_subtrees_at_head(
+    *,
+    project_root: Path,
+    repo_relative_dir: Path,
+) -> IOResult[tuple[str, ...], LivespecError]:
+    """Return the immediate subdirectory basenames at HEAD under `repo_relative_dir`.
+
+    The mirror of `list_at_head` for `tree` entries: one
+    `git ls-tree HEAD <dir>/` call enumerates every committed
+    subdirectory, so a caller resolving "which `vNNN/` dirs exist
+    at HEAD" needs no per-candidate probe. Files are excluded.
+
+    Failure modes and empty-result cases are identical to
+    `list_at_head`: no HEAD yet or a missing `git` binary lift to
+    IOFailure(PreconditionError); a directory with no subtrees
+    or absent at HEAD yields IOSuccess(()).
+    """
+    return _raw_list_at_head(
+        project_root=project_root,
+        repo_relative_dir=repo_relative_dir,
+        entry_type="tree",
+    ).alt(
+        lambda exc: PreconditionError(f"git.list_subtrees_at_head: {exc}"),
     )
 
 
