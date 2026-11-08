@@ -254,6 +254,7 @@ check:
         check-red-green-replay
         check-required-role-keys-declared
         check-rop-pipeline-shape
+        check-rule-26-keep-out
         check-self-hosted-routing
         check-self-hosted-uv-lane
         check-shell-quality
@@ -1309,3 +1310,6 @@ check-codex-hook-reconcilable:
 
 check-delegated-gate-check-suite:
     uv run python -m livespec_dev_tooling.checks.delegated_gate_check_suite
+
+check-rule-26-keep-out:
+    uv run python -m livespec_dev_tooling.checks.rule_26_keep_out
