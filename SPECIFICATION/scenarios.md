@@ -967,3 +967,26 @@ Scenario: Any other changed line takes the full aggregate
   When a pull request changes the value of `dispatcher.wip_cap` and also changes any other line
   Then its pre-push gate and its CI gate job run the full aggregate
 ```
+
+## A hung self-hosted gating job is cancelled at its measured time limit
+
+```gherkin
+Feature: Bounding a self-hosted gating job's run time
+
+Scenario: A hung job releases its runner at its declared limit
+  Given a fleet repository whose merge-gating job resolves to self-hosted capacity and declares a time limit derived from its own 7-day maximum
+  When a run of that job stops making progress
+  Then the forge cancels the job once it has run for its declared limit
+  And the runner and any scheduler slot it held are released for the next job
+
+Scenario: A slowed but healthy run finishes inside its limit
+  Given a self-hosted gating job whose declared limit is at least 1.25 times its longest run in the most recent 7 days
+  When host contention slows a run of it to that longest recorded duration
+  Then the run completes with the conclusion it would have reached without the limit
+
+Scenario: A job with no measured run records an absence, not a guessed limit
+  Given a self-hosted gating job that recorded no run in the most recent 7 days
+  When the repository's job time limits are derived
+  Then that job declares no derived limit
+  And the absence and its reason are recorded beside the job
+```
