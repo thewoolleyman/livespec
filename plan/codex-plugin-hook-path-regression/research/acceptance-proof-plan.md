@@ -15,12 +15,12 @@ The plan Definition of Done has eight assertions (on the epic, `livespec-3rfjga`
 
 | Assertion | What must be observed | Leg | Who runs it |
 |---|---|---|---|
-| 1 | A dev-host session started before a marketplace upgrade of every fleet Codex plugin completes a turn after it with no "Hook failed", and every captured hook resolves | A | This seat |
+| 1 | After a dev-host marketplace upgrade of every fleet Codex plugin, a session started after it runs every hook with no "Hook failed"; a session already open before it reports each hook it cannot run as a visible "Hook failed" rather than skipping it silently; and every hook the open session captured resolves | A | This seat |
 | 2 | Each superseded version name resolves in one hop to a payload whose entrypoints exist | A (cache inspection) | This seat |
 | 3 | Coverage is derived from the installed cache, so a newly hook-declaring plugin is covered | Factory proof of `livespec-driver-codex-esytmj`, re-read here | Factory, then this seat |
 | 4 | The dev-host observer is running after a host reboot with no session having started it | D (service-manager verification, no reboot) | This seat |
 | 5 | A release-gating check fails on an uncoverable Codex hook | Factory proof of `livespec-dev-tooling-yhacv6` | Factory |
-| 6 | On the MacBook Pro, an already-open session survives a normal upgrade of every fleet plugin, runs every captured hook, and shows no "Hook failed" | E | This seat over ssh, with the maintainer for the TUI if needed |
+| 6 | On the MacBook Pro, after a normal upgrade of every fleet plugin, a session started after it runs every hook with no "Hook failed", and a session already open before it reports each hook it cannot run as a visible "Hook failed" | E | This seat over ssh, with the maintainer for the TUI if needed |
 | 7 | On the MacBook Pro, the observer is started by launchd at login and restarted after it exits | F (restart), G (LaunchAgent verification plus kill-and-restart, no logout) | This seat for F; human for G (runs it by hand on the Pro) |
 | 8 | On the dev host, the observer is restarted by its supervisor after its process exits | C | This seat |
 
@@ -37,13 +37,16 @@ The plan Definition of Done has eight assertions (on the epic, `livespec-3rfjga`
 
 ## The legs
 
+CORRECTED 2026-11-08. Plan assertions 1 and 6 were reworded at 2026-11-08T01:34:53Z (epic scope event), and livespec-driver-codex SPECIFICATION v021 (PR #1022) revised the scenario they rest on. Leg A of 2026-11-07 (`leg-a-keep-original-bytes-result.md`) measured that an already-open session cannot run a covered plugin's hooks after any content change on codex-cli 0.166.0. So legs A and E now prove the split instead: a fresh session runs every hook, and an already-open session's failures stay visible. Step A.4's pass condition and the new step A.4a below carry it.
+
 Each leg records start and end times from `date -u` taken at the moment of each step, not reused from earlier. It also records the exact plugin versions read from the Codex cache before and after, and the captured output.
 
 **Leg A — dev-host already-open session across a normal upgrade (assertions 1, 2).**
 1. In a scoped tmux server (`tmux -L hookcache-accept`, never the default socket), start an interactive Codex TUI in a scratch git directory, and record the plugin versions it captured. Start it BEFORE the release under test is published. A Codex session started while a newer release is pending upgrades the plugin itself within seconds of starting, so it was never a pre-upgrade session and step 3 has nothing left to trigger. Observed once on 2026-11-07: a `codex exec` session started at 18:03:47Z, Codex refreshed the marketplace clone at 18:03:48Z, the session named orchestrator 0.300.0 at 18:03:53Z, and 0.301.0 landed in the cache at 18:04:12Z. That session's turn-end report showed one failed Stop hook out of four. `codex exec` does not print a failed hook's reason, so a leg recording that outcome needs the TUI's text.
 2. Baseline turn: run a harmless command, then ask the session to run `git commit --allow-empty --no-verify -m guard-probe-pre`. The Driver's PreToolUse guard must BLOCK it; the blocked commit is the positive signal that hooks run, because Codex 0.166 does not log successful hook runs.
 3. Trigger a normal upgrade of every fleet Codex plugin through the normal path, with no manual alias, trust or cache step. If no new release of a plugin is available when the leg runs, the leg waits for one rather than fabricating one; a same-version re-materialization is the secondary case (v015).
-4. In the SAME session, run a harmless turn, then the guard probe again (`guard-probe-post`). Pass: zero "Hook failed" lines across both turns, the guard blocks, and no trust prompt appears.
+4. In the SAME session, run a harmless turn, then the guard probe again (`guard-probe-post`). Pass: every hook this session cannot run appears on the TUI as a visible "Hook failed" line rather than being skipped silently. Capture the screen text, because Codex does not write the failure text to the rollout file. Record whether the guard blocked; on codex-cli 0.166.0 it does not (the fail-open is `livespec-driver-codex-sjwyha`, not this leg's pass condition).
+4a. After the upgrade, start a FRESH session in the same scratch directory, and run a harmless turn and the guard probe (`guard-probe-fresh`). Pass: zero "Hook failed" lines, the guard blocks, and no trust prompt appears, with no manual trust step.
 5. Cache inspection: each superseded version name of each plugin that declares hooks resolves through `latest` to the current version, and every declared entrypoint exists there (assertion 2).
 
 **Leg B — re-materialization at an unchanged version (assertion 1, v015 case).** If Codex re-materializes a plugin at the same version during the window, the same session check as A.4 applies. This leg is opportunistic. It is recorded when it happens and is not forced.
@@ -52,7 +55,7 @@ Each leg records start and end times from `date -u` taken at the moment of each 
 
 **Leg D — dev-host reboot survival (assertion 4), by service-manager verification.** CORRECTED 2026-11-04. The maintainer ruled on 2026-11-03 (recorded verbatim in the epic's scope event of 2026-11-03T23:15:01Z): "This ain't gonna happen, if it's set up in launchd or init script, then verifying and running those is proof enough". So no reboot is performed. Instead this seat verifies on the dev host that the observer unit is enabled (`systemctl --user is-enabled livespec-codex-hook-cache-observer.service` reports `enabled`), that it is wanted by `default.target`, that the operator account lingers (`loginctl show-user ubuntu` reports `Linger=yes`), and that the unit is active. Together those mean systemd starts the observer at boot with no session. This leg PASSED on 2026-11-03 at 23:12:41Z; the evidence is in the epic's handoff of 2026-11-03T23:15:21Z.
 
-**Leg E — Pro already-open session across a normal upgrade (assertion 6).** This is the same procedure as leg A, run on `chads-macbook-pro` over the recorded OpenSSH route. The TUI runs in a tmux server scoped on the Pro. If the code-mode host cannot be negotiated from a non-GUI ssh context, the maintainer starts the TUI in a GUI terminal. This seat then drives the turns and reads the transcript. A GUI start does not change what the leg proves.
+**Leg E — Pro already-open and fresh sessions across a normal upgrade (assertion 6).** This is the same procedure as leg A, including step 4a, run on `chads-macbook-pro` over the recorded OpenSSH route. The TUI runs in a tmux server scoped on the Pro. If the code-mode host cannot be negotiated from a non-GUI ssh context, the maintainer starts the TUI in a GUI terminal. This seat then drives the turns and reads the transcript. A GUI start does not change what the leg proves.
 
 **Leg F — launchd restart on the Pro (assertion 7, restart half).** This is the same procedure as leg C, with launchd. Pass: a new pid, a fresh heartbeat, and no session started it.
 
@@ -64,4 +67,4 @@ The capturing session posts one plan record with verdict `captured` through `dis
 
 ## Failure handling
 
-A failed leg is a finding, not a retry target. The failing release, plugin, hook, and captured output go on the owning work item. A "Hook failed" line in leg A or leg E reopens the question of which half of hook continuity broke: path continuity (aliases) or trust continuity (v015). Each half has its own owner, `esytmj`/`p3oixg` and `v52m6a` respectively.
+A failed leg is a finding, not a retry target. The failing release, plugin, hook, and captured output go on the owning work item. A "Hook failed" line in the FRESH session of leg A or leg E reopens the question of which half of hook continuity broke: path continuity (aliases) or trust continuity (v015). Each half has its own owner, `esytmj`/`p3oixg` and `b5rhjf` (the regroom of `v52m6a`) respectively. A "Hook failed" line in the already-open session is the expected, visible outcome, not a failure. A hook that the already-open session skips with no visible report IS a failure, and it goes on `livespec-driver-codex-sjwyha`.
