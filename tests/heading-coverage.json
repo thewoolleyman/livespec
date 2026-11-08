@@ -891,5 +891,13 @@
     "test": "TODO",
     "work_item": "livespec-dev-tooling-mbmqvy",
     "reason": "A real test at the integration tier or above is owed for this heading: a livespec-dev-tooling integration test over a fixture repository proving that a value-only change of a listed key runs schema and parse validation and no test suite at pre-push and in CI identically on the pull request and the master push, that an invalid value fails naming the file and key, and that any other changed line takes the full aggregate (proposal config-value-fast-path). livespec-dev-tooling-mbmqvy owns it."
+  },
+  {
+    "heading": "## A hung self-hosted gating job is cancelled at its measured time limit",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-d7lb5v",
+    "reason": "A real test at the integration tier or above is owed for this heading: a test that reads this repository's committed .github/workflows/ci.yml and proves that every merge-gating job whose runs-on can resolve to self-hosted capacity declares a job-level timeout-minutes from the ladder 30/45/60/90/120/180/240/360, and that a job with no measured run carries the recorded absence instead (proposal every-self-hosted-gating-job-carries-a-measured-timeout-minutes). livespec-d7lb5v owns it."
   }
 ]
