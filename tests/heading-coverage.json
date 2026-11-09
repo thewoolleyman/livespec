@@ -899,5 +899,13 @@
     "test": "TODO",
     "work_item": "livespec-d7lb5v",
     "reason": "A real test at the integration tier or above is owed for this heading: a test that reads this repository's committed .github/workflows/ci.yml and proves that every merge-gating job whose runs-on can resolve to self-hosted capacity declares a job-level timeout-minutes from the ladder 30/45/60/90/120/180/240/360, and that a job with no measured run carries the recorded absence instead (proposal every-self-hosted-gating-job-carries-a-measured-timeout-minutes). livespec-d7lb5v owns it."
+  },
+  {
+    "heading": "## A pipefail shell script reports a match in a large input as a match",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "work_item": "livespec-4kn5lx",
+    "reason": "A real test at the integration tier or above is owed for this heading: a test that reads every tracked governed shell file whose option policy enables pipefail and fails naming each pipeline whose status the file uses that ends in an early-exiting reader, plus a test that runs the approved reader forms under bash -o pipefail and proves each keeps its match verdict on an input larger than 64 KiB (proposal shell-pipeline-verdicts, v239). livespec-4kn5lx owns it."
   }
 ]

@@ -990,3 +990,25 @@ Scenario: A job with no measured run records an absence, not a guessed limit
   Then that job declares no derived limit
   And the absence and its reason are recorded beside the job
 ```
+
+## A pipefail shell script reports a match in a large input as a match
+
+```gherkin
+Feature: Pipeline verdicts under pipefail
+  As a fleet maintainer
+  I want a pipefail script's verdict to be independent of how much its writer prints
+  So that a match is never reported as a failure under load
+
+Scenario: A pipefail script reports a match in a large input as a match
+  Given a governed shell file whose option policy enables pipefail and that tests whether its input contains a pattern
+  When the input contains the pattern near its start and is larger than 64 KiB
+  Then the script reports the pattern as present
+  And its verdict is the same as for a 200-byte input that contains the pattern
+
+Scenario: An errexit script that takes the first line of a large output keeps running
+  Given a governed shell file whose option policy enables errexit and pipefail
+  And it assigns the first line of a command's output with a grouping whose status excludes the writer's
+  When the command prints more than 64 KiB
+  Then the assignment holds the first line
+  And the script continues past the assignment
+```
