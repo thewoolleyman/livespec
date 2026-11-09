@@ -279,6 +279,10 @@ jobs:
           [ -n "$node_bin" ] && export PATH="$node_bin:$PATH"
           just check-per-file-coverage
 
+      - name: Publish the flake-retry records for the host-side reader
+        if: ${{ !cancelled() }}
+        uses: thewoolleyman/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.189.0
+
       # include-hidden-files is REQUIRED: upload-artifact@v4 excludes dotfiles
       # by default and `.coverage` is one; without it the upload silently ships
       # nothing and the consumer falls back to a full duplicate suite run.
