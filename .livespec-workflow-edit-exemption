@@ -1,2 +1,14 @@
-work_item=livespec-sfz64o
-reason=Add a top-level concurrency group to release-please.yml so concurrent master pushes queue instead of racing on a stale release base (2026-10-25 PRs 3619/3620).
+# Workflow-edit exemption — one exemption binds to one reviewed change.
+#
+# The change: .github/workflows/ci.yml gains one step per pytest-running job (check-per-file-coverage), each
+# placed after the job's pytest step with if: ${{ !cancelled() }} and calling
+# thewoolleyman/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.189.0.
+# ADDITIVE ONLY: no workflow line is deleted or modified and no job is added.
+# The step uploads tmp/flake-retries/ when the livespec_flake_retry plugin
+# re-ran a test, and ships nothing otherwise (if-no-files-found: ignore), so CI
+# runtime grows by one artifact-upload step per job. Consumer leg of
+# livespec-dev-tooling-ljea46 under plan fleet-flaky-tests.
+work_item=livespec-qj3ef3
+reason=Deliver each CI job's flake-retry records to the dev-host reader so every retried test files one root-fix item; the shared action owns the artifact contract.
+change=additive
+ci_runtime=no-significant-increase
