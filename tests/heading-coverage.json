@@ -10,7 +10,7 @@
     "heading": "## Runtime and packaging",
     "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
-    "test": "tests.bin.test_bootstrap.test_bootstrap_passes_on_current_version",
+    "test": "tests.bin.test_bootstrap.test_bootstrap_exits_on_old_python",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
@@ -254,7 +254,7 @@
     "heading": "## Pre-commit step ordering",
     "spec_root": "SPECIFICATION",
     "spec_file": "contracts.md",
-    "test": "tests.dev-tooling.checks.test_commit_pairs_source_and_test",
+    "test": "tests.test_delegated_pre_commit_wiring.test_pre_commit_delegates_before_its_local_aggregate",
     "reason": "Phase 7 sub-step 2 mini-track item M1.b new contracts.md sub-section. Real test for the lefthook step-ordering contract pending; covered transitively today by every commit going through the three pre-commit steps successfully."
   },
   {
@@ -281,7 +281,7 @@
     "heading": "## Python runtime constraint",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "tests.bin.test_bootstrap.test_bootstrap_fails_on_old_version",
+    "test": "tests.bin.test_bootstrap.test_bootstrap_exits_on_old_python",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
@@ -301,14 +301,14 @@
     "heading": "## Vendored-library discipline",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_vendor_manifest",
+    "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism."
   },
   {
     "heading": "## Heading taxonomy",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_heading_coverage",
+    "test": "tests.dev-tooling.checks.test_behavior_scenario_link",
     "reason": "Phase 6 imperative population per v021 Q3. Phase 7-8 work replaces this TODO with the real test ID via the governed propose-change/revise loop's resulting_files[] mechanism.",
     "clauses": [
       {
@@ -464,7 +464,7 @@
     "heading": "## File naming and invocation",
     "spec_root": "SPECIFICATION",
     "spec_file": "constraints.md",
-    "test": "tests.dev-tooling.checks.test_wrapper_shape",
+    "test": "tests.bin.test_phase3_round_trip.test_phase_3_exit_criterion_round_trip",
     "reason": "Phase 8 item 2 cycles 17+19 combined: §\"File naming and invocation\" migrated via SPECIFICATION/v034."
   },
   {
