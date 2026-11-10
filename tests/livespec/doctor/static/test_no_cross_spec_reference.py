@@ -288,6 +288,7 @@ def test_run_keeps_allowlist_entry_when_cited_clone_file_is_absent(
 def test_run_fails_when_repo_qualified_citation_heading_is_absent_in_cited_repo(
     *,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """run(ctx) resolves a repo-qualified citation against that repo's headings.
 
@@ -328,6 +329,7 @@ def test_run_fails_when_repo_qualified_citation_heading_is_absent_in_cited_repo(
             + "}}}"
         ),
     )
+    monkeypatch.delenv("LIVESPEC_SIBLING_CLONES_ROOT", raising=False)
     ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
     expected = Finding(
         check_id="doctor-no-cross-spec-reference",

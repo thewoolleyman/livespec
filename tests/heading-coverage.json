@@ -904,8 +904,8 @@
     "heading": "## A pipefail shell script reports a match in a large input as a match",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
+    "test": "tests.integration.test_pipefail_shell_pipeline_verdicts.test_a_sanctioned_reader_reports_a_match_in_a_large_input_as_a_match",
     "work_item": "livespec-4kn5lx",
-    "reason": "A real test at the integration tier or above is owed for this heading: a test that reads every tracked governed shell file whose option policy enables pipefail and fails naming each pipeline whose status the file uses that ends in an early-exiting reader, plus a test that runs the approved reader forms under bash -o pipefail and proves each keeps its match verdict on an input larger than 64 KiB (proposal shell-pipeline-verdicts, v239). livespec-4kn5lx owns it."
+    "reason": "Integration-tier: the module sits under the `tests.integration` node-id prefix AND declares `pytestmark = pytest.mark.integration`. The mapped test runs each sanctioned reader form (a here-string membership test, a reader that drains its input, and a grouping whose status excludes the writer's) under a real `bash -o pipefail` and asserts that it reports the same verdict, match or no match, for an input larger than 64 KiB with the pattern on its first line as for a 200-byte input; a control in the same module runs the early-exiting form and shows it flips to exit 141 only on the large input. A sibling test in the module reads every tracked governed shell file outside frozen archive paths, template sources included, and fails naming the file and line of each pipeline whose status the file uses that ends in an early-exiting reader while pipefail is on, without reading a `||` list as a pipe; the scanner is itself exercised against each reader form and each safe form (proposal shell-pipeline-verdicts, v239). Resolves the TODO owned by livespec-4kn5lx."
   }
 ]
