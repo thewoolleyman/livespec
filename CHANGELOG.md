@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.2](https://github.com/thewoolleyman/livespec/compare/v0.47.1...v0.47.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* **doctor:** an unreadable cross-repo clone keeps its external_references allowlist (livespec-bpzy) ([30c6708](https://github.com/thewoolleyman/livespec/commit/30c67081e8516cd3641ad6903c8274030c366c68))
+
 ## [0.47.1](https://github.com/thewoolleyman/livespec/compare/v0.47.0...v0.47.1) (2026-11-08)
 
 
