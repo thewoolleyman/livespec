@@ -907,5 +907,12 @@
     "test": "tests.integration.test_pipefail_shell_pipeline_verdicts.test_a_sanctioned_reader_reports_a_match_in_a_large_input_as_a_match",
     "work_item": "livespec-4kn5lx",
     "reason": "Integration-tier: the module sits under the `tests.integration` node-id prefix AND declares `pytestmark = pytest.mark.integration`. The mapped test runs each sanctioned reader form (a here-string membership test, a reader that drains its input, and a grouping whose status excludes the writer's) under a real `bash -o pipefail` and asserts that it reports the same verdict, match or no match, for an input larger than 64 KiB with the pattern on its first line as for a 200-byte input; a control in the same module runs the early-exiting form and shows it flips to exit 141 only on the large input. A sibling test in the module reads every tracked governed shell file outside frozen archive paths, template sources included, and fails naming the file and line of each pipeline whose status the file uses that ends in an early-exiting reader while pipefail is on, without reading a `||` list as a pipe; the scanner is itself exercised against each reader form and each safe form (proposal shell-pipeline-verdicts, v239). Resolves the TODO owned by livespec-4kn5lx."
+  },
+  {
+    "heading": "## Error path — a hold label added after auto-merge was armed disarms it",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "tests.integration.test_hold_label_disarm_template.test_template_born_consumer_receives_a_disarm_only_hold_label_workflow",
+    "reason": "Integration-tier: copier renders the orchestrator-plugin template in-process into a fresh consumer tree, and the test reads back the generated disarm-on-hold-label.yml and auto-enable-merge.yml: labeled-only trigger, do-not-merge with a same-repo head, disarm-only, unlabeled re-arm with no labeled trigger on the arming workflow, and one App-token input key shared by both. tests/test_hold_label_disarm_workflow.py pins the same facts on livespec's own copies. The live GitHub behaviour was host-captured and independently replayed host_verified on livespec#3159 (livespec-jznfgw) and livespec-dev-tooling#4051 (livespec-dev-tooling-t2ezzq)."
   }
 ]
