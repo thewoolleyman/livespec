@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.3](https://github.com/thewoolleyman/livespec/compare/v0.47.2...v0.47.3) (2026-11-10)
+
+
+### Bug Fixes
+
+* the copier-template workflow-coverage invariant requires disarm-on-hold-label.yml, as v240 lists it ([2081b4b](https://github.com/thewoolleyman/livespec/commit/2081b4b88fb9e0c15557d7ccaa50ae80a01859c9))
+
 ## [0.47.2](https://github.com/thewoolleyman/livespec/compare/v0.47.1...v0.47.2) (2026-11-10)
 
 
