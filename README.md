@@ -334,3 +334,5 @@ The livespec fleet dogfoods its own telemetry. CI runs, Red→Green commit-gate 
 - See [AGENTS.md](AGENTS.md) for repo orientation.
 - See [SPECIFICATION/](SPECIFICATION/) for the live livespec specification (dogfooded).
 - See [archive/](archive/) for bootstrap-process history.
+
+<!-- t2ezzq fleet host-proof throwaway (livespec-jznfgw): this PR is closed unmerged -->
