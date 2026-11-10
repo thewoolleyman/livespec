@@ -1,0 +1,86 @@
+# Disarm-on-hold-label workflow — when `do-not-merge` is ADDED to a pull
+# request, turn its auto-merge off (livespec-dev-tooling-t2ezzq).
+#
+# Why this exists: auto-enable-merge.yml arms rebase auto-merge on a
+# pull request within seconds of `opened`, and it already SKIPS a pull
+# request that carries `do-not-merge`. But it has no `labeled` trigger,
+# so a hold label added AFTER the arm left auto-merge on. `gh pr create
+# --label` adds its labels in a second API call after `opened` has
+# fired, so labelling at creation did not stop the arm either. Measured
+# 2026-11-10: livespec-dev-tooling#4019 merged against a coordinator hold,
+# #4031 merged at a head its seat had found failing, and #4033 was armed
+# while its seat reported it unarmed.
+#
+# The hold, end to end:
+#   - add `do-not-merge`     -> this workflow disables auto-merge;
+#   - remove `do-not-merge`  -> auto-enable-merge.yml's existing
+#                               `unlabeled` trigger arms it again.
+#
+# A SEPARATE workflow, not a `labeled` trigger on auto-enable-merge.yml:
+# that workflow's arming job would then fire on EVERY added label and
+# re-arm a pull request a seat had disarmed by hand. This file reacts
+# only to `do-not-merge` and only ever disarms.
+#
+# Auth: the same GitHub App installation token auto-enable-merge.yml uses
+# (repo secrets APP_ID, APP_PRIVATE_KEY), because the GraphQL
+# `disablePullRequestAutoMerge` mutation (called directly below) needs the access the App's
+# install grant carries. A fork pull request has no secrets and is never
+# armed by auto-enable-merge.yml, so it is skipped here.
+
+name: Disarm on hold label
+
+on:
+  pull_request:
+    types:
+      - labeled
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: disarm-on-hold-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  disarm-auto-merge:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.label.name == 'do-not-merge'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Mint App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: "Disable auto-merge on PR #${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          state=$(gh pr view "$PR" --repo "$REPO" --json id,autoMergeRequest --jq '[.id, (.autoMergeRequest != null)] | @tsv') || {
+            echo "::error::could not read the auto-merge state of PR #$PR"
+            exit 1
+          }
+          node_id=${state%%$'\t'*}
+          armed=${state##*$'\t'}
+          if [ "$armed" != "true" ]; then
+            echo "PR #$PR carries do-not-merge and auto-merge is already off"
+            exit 0
+          fi
+          # The GraphQL mutation directly, not `gh pr merge --disable-auto`:
+          # this turns auto-merge OFF and merges nothing, and the repository's
+          # merge-discipline test reads every `gh pr merge` line as a merge.
+          # $id is a GraphQL variable, not a shell one, so it stays single-quoted.
+          # shellcheck disable=SC2016
+          if gh api graphql -f query='mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }' -f id="$node_id" >/dev/null; then
+            echo "Auto-merge disabled on PR #$PR (do-not-merge added)"
+          else
+            echo "::error::failed to disable auto-merge on PR #$PR"
+            exit 1
+          fi

@@ -1,14 +1,15 @@
 # Workflow-edit exemption — one exemption binds to one reviewed change.
 #
-# The change: .github/workflows/ci.yml gains one step per pytest-running job (check-per-file-coverage), each
-# placed after the job's pytest step with if: ${{ !cancelled() }} and calling
-# thewoolleyman/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.189.0.
-# ADDITIVE ONLY: no workflow line is deleted or modified and no job is added.
-# The step uploads tmp/flake-retries/ when the livespec_flake_retry plugin
-# re-ran a test, and ships nothing otherwise (if-no-files-found: ignore), so CI
-# runtime grows by one artifact-upload step per job. Consumer leg of
-# livespec-dev-tooling-ljea46 under plan fleet-flaky-tests.
-work_item=livespec-qj3ef3
-reason=Deliver each CI job's flake-retry records to the dev-host reader so every retried test files one root-fix item; the shared action owns the artifact contract.
+# The change: adds .github/workflows/disarm-on-hold-label.yml, byte-identical to
+# livespec-dev-tooling master (livespec-dev-tooling#4051, d66e18a8, v1.193.0;
+# livespec-dev-tooling-t2ezzq, CLOSED host_verified). On a pull_request
+# `labeled` event whose label is do-not-merge, for a same-repo head, it turns the
+# pull request's auto-merge OFF through disablePullRequestAutoMerge under the
+# existing App token. Removing the label re-arms through auto-enable-merge.yml's
+# existing unlabeled path. A NEW FILE ONLY: no existing workflow line is deleted
+# or modified. It arms less and gates nothing out. Fleet carrier of t2ezzq,
+# executed by ci-runtime-and-cost (plan livespec-dev-tooling-ib3oe3).
+work_item=livespec-jznfgw
+reason=Let a seat hold a hand-landed pull request that the factory bot already armed, by adding do-not-merge; additive tier under legacy-coordinator-agent's delegation, actionlint output recorded on the item.
 change=additive
 ci_runtime=no-significant-increase
