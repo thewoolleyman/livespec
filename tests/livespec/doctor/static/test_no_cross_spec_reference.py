@@ -243,6 +243,48 @@ def test_run_uses_sibling_clones_root_for_cross_repo_heading_validation(
     )
 
 
+def test_run_keeps_allowlist_entry_when_cited_clone_file_is_absent(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """An unreadable cited clone keeps its allowlist entries.
+
+    `local_clone` is conventionally a host-absolute path, so on a CI
+    runner the cited file is simply absent. An absent file says nothing
+    about the cited heading, so the allowlisted citation must pass rather
+    than being reported as "not allowlisted" (livespec-bpzy).
+    """
+    project_root, spec_root = _project(tmp_path=tmp_path)
+    citation = _cite(
+        heading="Shared heading",
+        file_prefix="repo-a/SPECIFICATION/contracts.md",
+    )
+    _seed_spec_root(
+        spec_root=spec_root,
+        files={"spec.md": f"# Spec\n\nPer {citation} upstream.\n"},
+    )
+    allow = _cite(
+        heading="Shared heading",
+        file_prefix="SPECIFICATION/contracts.md",
+    )
+    _write_config(
+        project_root=project_root,
+        body=(
+            '{"external_references": {"repo-a": ['
+            + _json(allow)
+            + ']}, "cross_repo_targets": {"repo-a": {"local_clone": '
+            + _json(str(tmp_path / "absent-clone"))
+            + "}}}"
+        ),
+    )
+    monkeypatch.delenv("LIVESPEC_SIBLING_CLONES_ROOT", raising=False)
+    ctx = DoctorContext(project_root=project_root, spec_root=spec_root)
+    assert no_cross_spec_reference.run(ctx=ctx) == IOSuccess(
+        _pass_finding(spec_root=spec_root),
+    )
+
+
 def test_run_fails_when_repo_qualified_citation_heading_is_absent_in_cited_repo(
     *,
     tmp_path: Path,
