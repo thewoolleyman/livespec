@@ -199,10 +199,11 @@ def _read_cross_repo_headings(
     """Read configured cited-repo files and collect their headings."""
     accumulator: IOResult[dict[str, frozenset[str]], LivespecError] = IOSuccess({})
     for citation_prefix, file_path in sorted(heading_files.items()):
-        if not file_path.is_file():  # pragma: no cover
-            accumulator = accumulator.map(
-                lambda acc, prefix=citation_prefix: {**acc, prefix: frozenset()},
-            )
+        if not file_path.is_file():
+            # An absent cited file (a host-absolute `local_clone` on a CI
+            # runner) says nothing about its headings. Leaving the prefix
+            # out keeps it unknown, so its allowlist entries are kept rather
+            # than all dropped as "not allowlisted" (livespec-bpzy).
             continue
         accumulator = accumulator.bind(
             lambda acc, prefix=citation_prefix, path=file_path: fs.read_text(path=path).map(
