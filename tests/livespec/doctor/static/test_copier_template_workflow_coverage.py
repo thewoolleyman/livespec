@@ -84,10 +84,10 @@ def _seed_workflows(*, project_root: Path, names: tuple[str, ...]) -> None:
         _ = (workflows_dir / name).write_text("# fixture workflow\n", encoding="utf-8")
 
 
-def test_required_workflow_files_enumerates_six_canonical_entries() -> None:
+def test_required_workflow_files_enumerates_the_canonical_entries() -> None:
     """REQUIRED_WORKFLOW_FILES matches the canonical contracts.md list.
 
-    The six enumerated files are pinned here as a contract regression guard. If
+    The enumerated files are pinned here as a contract regression guard. If
     the contract list ever drifts the test fails loudly so the
     drift is caught at PR review.
     """
@@ -96,6 +96,7 @@ def test_required_workflow_files_enumerates_six_canonical_entries() -> None:
         "bump-pin-from-dispatch.yml",
         "ci.yml",
         "copier-update-drift.yml",
+        "disarm-on-hold-label.yml",
         "pin-freshness.yml",
         "release-dispatch.yml",
     )
@@ -369,7 +370,7 @@ def test_copier_template_workflow_coverage_skips_when_no_copier_answers_marker(
     non-failing `skipped` finding and MUST NOT inspect
     `.github/workflows/`. This fixture deliberately seeds NEITHER
     the marker NOR any workflow directory: the absence of all
-    six required workflow files would otherwise fire `fail`, so
+    required workflow files would otherwise fire `fail`, so
     asserting `skipped` here proves the check short-circuits on
     the missing marker before touching the workflow set.
     """
