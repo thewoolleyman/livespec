@@ -116,7 +116,7 @@ jobs:
     # "green in CI" and "green in sandbox" mean the same environment.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -235,7 +235,7 @@ jobs:
     name: check-per-file-coverage
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -281,7 +281,7 @@ jobs:
 
       - name: Publish the flake-retry records for the host-side reader
         if: ${{ !cancelled() }}
-        uses: thewoolleyman/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.189.1
+        uses: thewoolleyman/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.192.2
 
       # include-hidden-files is REQUIRED: upload-artifact@v4 excludes dotfiles
       # by default and `.coverage` is one; without it the upload silently ships
@@ -309,7 +309,7 @@ jobs:
     needs: [check-per-file-coverage]
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -370,7 +370,7 @@ jobs:
     name: check-python-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -433,7 +433,7 @@ jobs:
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
@@ -642,7 +642,7 @@ jobs:
     name: check-metadata-batch
     runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
-      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.189.1
+      image: ghcr.io/thewoolleyman/livespec-fabro-sandbox:python-v1.192.2
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -681,6 +681,7 @@ jobs:
           just check-gh-feature-surfaces || failed="$failed check-gh-feature-surfaces"
           just check-codex-hook-reconcilable || failed="$failed check-codex-hook-reconcilable"
           just check-delegated-gate-check-suite || failed="$failed check-delegated-gate-check-suite"
+          just check-delegated-job-authority-skip || failed="$failed check-delegated-job-authority-skip"
           just check-handoff-dispatch-routing || failed="$failed check-handoff-dispatch-routing"
           just check-heading-coverage || failed="$failed check-heading-coverage"
           just check-heading-coverage-debt-register || failed="$failed check-heading-coverage-debt-register"
