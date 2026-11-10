@@ -1012,3 +1012,28 @@ Scenario: An errexit script that takes the first line of a large output keeps ru
   Then the assignment holds the first line
   And the script continues past the assignment
 ```
+
+## Error path — a hold label added after auto-merge was armed disarms it
+
+```gherkin
+Feature: Holding a pull request the fleet bot already armed
+  As a fleet seat placing a merge hold
+  I want adding the hold label to turn auto-merge off
+  So that a held pull request cannot merge on green
+
+Scenario: Adding do-not-merge to an armed pull request disarms it
+  Given a same-repository pull request whose rebase auto-merge is armed
+  When the do-not-merge label is added to it
+  Then its auto-merge is turned off
+  And the pull request stays open and unmerged
+
+Scenario: Removing do-not-merge re-arms auto-merge
+  Given a same-repository pull request held by the do-not-merge label with auto-merge off
+  When the do-not-merge label is removed
+  Then its rebase auto-merge is armed again
+
+Scenario: Adding any other label leaves the auto-merge state unchanged
+  Given a same-repository pull request whose rebase auto-merge is armed
+  When a label other than do-not-merge is added to it
+  Then its auto-merge remains armed
+```

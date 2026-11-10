@@ -44,6 +44,7 @@ _REQUIRED_WORKFLOW_FILES: tuple[str, ...] = (
     "bump-pin-from-dispatch.yml",
     "ci.yml",
     "copier-update-drift.yml",
+    "disarm-on-hold-label.yml",
     "pin-freshness.yml",
     "release-dispatch.yml",
 )
