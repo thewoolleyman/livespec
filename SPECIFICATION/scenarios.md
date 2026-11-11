@@ -1037,3 +1037,31 @@ Scenario: Adding any other label leaves the auto-merge state unchanged
   When a label other than do-not-merge is added to it
   Then its auto-merge remains armed
 ```
+
+## An automated non-Driver Codex hook-trust writer leaves release-verifiable plugins to the Driver
+
+```gherkin
+Feature: Codex hook trust written automatically by something other than the Driver
+  As a fleet operator
+  I want an automated host-level trust fallback to stay out of the plugins the Codex Driver release-verifies
+  So that no automated writer substitutes for the Driver's release verification of those plugins' hooks
+
+Scenario: An automatic-trust fallback skips release-verifiable plugins and trusts the rest
+  Given a host with the Codex Driver installed
+  And a plugin whose marketplace the installed Driver can release-verify
+  And a third-party plugin whose marketplace the installed Driver cannot release-verify
+  And an operator user-level hook
+  And Codex reports every one of those hooks as needing trust
+  And an automated host-level hook-trust writer other than the Driver, configured to trust automatically every hook it is permitted to trust
+  When that writer reconciles Codex hook trust
+  Then it writes no trust record for any hook of the release-verifiable plugin
+  And it writes trust records for the third-party plugin's hooks and the user-level hook
+
+Scenario: An automatic-trust fallback that cannot consult the Driver trusts only user-level hooks
+  Given a host with the Codex Driver installed
+  And the installed Codex Driver's release verification cannot be consulted, because the writer cannot load it
+  And an automated host-level hook-trust writer other than the Driver, configured to trust automatically every hook it is permitted to trust
+  When that writer reconciles Codex hook trust
+  Then it writes no trust record for any plugin's hook
+  And it writes trust records for the operator's user-level hooks
+```
