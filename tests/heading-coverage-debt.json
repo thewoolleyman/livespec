@@ -183,6 +183,13 @@
   },
   {
     "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## Scenario — a hand commit's passing delegated pre-commit verdict stands in at the pre-push gate",
+    "work_item": "livespec-4qm36l",
+    "first_seen": "2026-11-11"
+  },
+  {
+    "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "heading": "## Spec-tree path closure",
     "work_item": "livespec-6fb1",

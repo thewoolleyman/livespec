@@ -338,7 +338,8 @@
       "SPECIFICATION/contracts.md §\"Semver discipline\"",
       "SPECIFICATION/contracts.md §\"Bump-pin policy\"",
       "SPECIFICATION/contracts.md §\"`reusable-release-dispatch.yml`\"",
-      "SPECIFICATION/non-functional-requirements.md §\"Fabro factory registry\""
+      "SPECIFICATION/non-functional-requirements.md §\"Fabro factory registry\"",
+      "SPECIFICATION/contracts.md §\"Delegated pre-push gate\""
     ],
     "openbrain": [
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
