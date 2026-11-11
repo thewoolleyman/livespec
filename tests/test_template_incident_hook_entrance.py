@@ -153,9 +153,26 @@ def test_rendered_hooks_resolve_incident_mode_before_any_generated_recipe(
 
 
 def test_released_entrance_runs_ordinary_work_normally_and_refuses_malformed_flags(
-    *, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    *, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """Flags absent keeps the complete normal path; a malformed flag is refused."""
+    # The released entrance names its origin from ambient state BEFORE it parses
+    # a flag: a master-push CI job (`GITHUB_ACTIONS=true` with
+    # `GITHUB_EVENT_NAME=push`) and a factory sandbox checkout
+    # (`livespec.sandboxExempt=true`) are trusted normal origins whose inherited
+    # flags are inert, so from either of them the malformed flag below is forced
+    # absent instead of refused. The refusal is observable only from an ORDINARY
+    # origin, which this test must be whatever process runs it: it drops the
+    # runner's event variables and calls the entrance from a fresh, unmarked
+    # checkout. (Master CI measured 75 where 78 was expected, 2026-11-11.)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
+    ordinary_checkout = tmp_path / "ordinary"
+    init = subprocess.run(
+        ["git", "init", "-q", str(ordinary_checkout)], capture_output=True, text=True, check=False
+    )
+    assert init.returncode == 0, f"git init failed: {init.stderr!r}"
+    monkeypatch.chdir(ordinary_checkout)
     monkeypatch.delenv(EXPEDITED_INCIDENT_RESPONSE, raising=False)
     monkeypatch.delenv(EXPEDITED_INCIDENT_RESPONSE_REVERT, raising=False)
     assert incident_hook_main(argv=["pre-commit"]) == _ORDINARY
