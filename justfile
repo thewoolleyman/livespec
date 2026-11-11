@@ -306,9 +306,13 @@ check:
         check-spec-governance-manifest
         check-spec-governance-template
         check-types
-        e2e-test-claude-code-mock
+        check-e2e-test-claude-code-mock
     )
     failed=()
+    if ! uv run python -m livespec_dev_tooling.green_token undeclared "${targets[@]}"; then
+        echo "ERROR: check aggregate has undeclared purity members; refusing before dispatch" >&2
+        exit 1
+    fi
     ran=0
     for t in "${targets[@]}"; do
         skip_this=0
@@ -864,6 +868,12 @@ check-master-ci-green:
 
 e2e-test-claude-code-mock:
     LIVESPEC_E2E_HARNESS=mock uv run pytest tests/e2e/
+
+# The aggregate member is check-prefixed so the shared inventory reader can
+# carry its purity declaration; the established direct e2e target remains the
+# actual harness entry point for docs and callers.
+check-e2e-test-claude-code-mock:
+    just e2e-test-claude-code-mock
 
 # The CLI end-to-end harness consumer (former tests/e2e-cli/ +
 # e2e-cli-test-claude-code-mock target) relocated to the

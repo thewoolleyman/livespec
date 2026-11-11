@@ -1,0 +1,108 @@
+# Canonical inventory for the literal `just check` aggregate.
+#
+# Shared members declare `CHECK_PURITY` in livespec-dev-tooling. Repository-private
+# members carry their declaration here: a matching green token may memoize only
+# `tree-pure` members. The world-reading entries below either read host tooling,
+# Git/ledger state, or execute a test suite whose verdict includes host state.
+check-agents-ai-references-resolve
+check-aggregate-completeness
+check-all-declared
+check-assert-never-exhaustiveness
+check-branch-protection-alignment
+check-canonical-recipe-fidelity
+check-check-coverage-incremental
+check-check-mutation
+check-check-tools
+check-ci-gate-parity
+check-ci-matrix-completeness
+check-claude-md-coverage
+check-codex-hook-reconcilable
+check-comment-line-anchors
+check-commit-pairs-source-and-test
+check-delegated-gate-check-suite
+check-delegated-job-authority-skip
+check-file-lloc
+check-fleet-marketplace-relative-sources
+check-global-writes
+check-handoff-dispatch-routing
+check-heading-coverage
+check-heading-coverage-debt-register
+check-hook-trees-not-io-exempt
+check-keyword-only-args
+check-local-memory-drift-audit
+check-main-guard
+check-marketplace-ref-release-only
+check-master-ci-green
+check-match-keyword-only
+check-newtype-domain-primitives
+check-no-direct-destructive-cli
+check-no-direct-tool-invocation
+check-no-except-outside-io
+check-no-fmt-directives
+check-no-inheritance
+check-no-lloc-soft-warnings
+check-no-raise-outside-io
+check-no-shadow-ledger-body-identical
+check-no-shadow-ledger-body-typechecks
+check-no-todo-registry
+check-no-write-direct
+check-partition-completeness
+check-pbt-coverage-pure-modules
+check-per-file-coverage
+check-plan-anchor-declared
+check-plan-epic-parity
+check-plan-no-live-handoff-file
+check-plan-no-tombstone
+check-plan-record-conformance
+check-plugin-resolution
+check-primary-checkout-commit-refuse-hook-installed
+check-private-calls
+check-public-api-result-typed
+check-red-green-replay
+check-required-role-keys-declared
+check-rop-pipeline-shape
+check-rule-26-keep-out
+check-self-hosted-routing
+check-self-hosted-uv-lane
+check-shell-quality
+check-skill-invocation-paths
+check-source-trees-scoped-to-consumer
+check-supervisor-discipline
+check-tests-mirror-pairing
+check-tests-no-subprocess-spawn
+check-tool-backed-check-completeness
+check-vendor-manifest
+check-work-item-interpolation-delimiters
+check-work-item-status-vocabulary
+check-wrapper-shape
+
+# Livespec-private members. Static repository scans and deterministic local
+# tools are tree-pure; checks that inspect a host executable, worktree/ledger,
+# or execute the host-sensitive pytest harness are world-reading.
+check-behavior-scenario-link  # purity: tree-pure
+check-canonical-slugs-projection  # purity: tree-pure
+check-cli-explicit-project-root  # purity: tree-pure
+check-codex-no-repo-local-adapters  # purity: tree-pure
+check-comment-no-historical-refs  # purity: tree-pure
+check-copier-template-smoke  # purity: tree-pure
+# Runs the complete pytest suite. Its result includes environment-sensitive
+# harness tests (including delegated-gate host probes), so a tree hash alone
+# cannot safely vouch for it.
+check-coverage  # purity: world-reading
+check-doctor-static  # purity: tree-pure
+check-format  # purity: tree-pure
+# Reads the `gh` executable's installed command surface, outside the tree.
+check-gh-feature-surfaces  # purity: world-reading
+check-imports-architecture  # purity: tree-pure
+check-lint  # purity: tree-pure
+check-no-renderer-vendoring  # purity: tree-pure
+# Reads commit/worktree state and ledger authorization through `bd`.
+check-no-workflow-edits  # purity: world-reading
+check-prompts  # purity: tree-pure
+check-schema-dataclass-pairing  # purity: tree-pure
+check-spec-governance-manifest  # purity: tree-pure
+check-spec-governance-template  # purity: tree-pure
+check-types  # purity: tree-pure
+# Executes the harness mock suite, whose installed harness and environment are
+# host state rather than content addressed by the committed tree.
+check-e2e-test-claude-code-mock  # purity: world-reading
