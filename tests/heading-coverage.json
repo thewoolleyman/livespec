@@ -920,8 +920,8 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
-    "reason": "Integration-tier: a real test at the integration tier or above is owed for this heading. The behaviour is exercised end-to-end on the dev host against the live Codex app-server by thewoolleyman/vps-info services/codex-config/ (vps-info#77); no livespec-core integration test drives a third-party Codex trust writer yet (proposal vps-info-hook-trust-stopgap). livespec-75ttpw owns it.",
-    "work_item": "livespec-75ttpw"
+    "reason": "Integration-tier: a real test at the integration tier or above is owed for this heading. The behaviour is exercised end-to-end on the dev host against the live Codex app-server by thewoolleyman/vps-info services/codex-config/ (vps-info#77); no livespec-core integration test drives a third-party Codex trust writer yet (proposal vps-info-hook-trust-stopgap). livespec-thg7b3 owns it.",
+    "work_item": "livespec-thg7b3"
   },
   {
     "heading": "## Scenario — a hand commit's passing delegated pre-commit verdict stands in at the pre-push gate",
