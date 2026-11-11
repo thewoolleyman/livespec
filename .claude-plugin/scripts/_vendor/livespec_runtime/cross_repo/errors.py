@@ -9,8 +9,8 @@ as raised built-ins to the outermost supervisor.
 `CrossRepoSchemaError` is the single domain error raised by the
 parser helpers in `livespec_runtime.cross_repo.types` when a dict
 representation of a `DependsOnEntry` or `cross_repo_targets` block
-deviates from the schema codified in livespec/SPECIFICATION/
-contracts.md v072.
+deviates from the schema codified in
+livespec/SPECIFICATION/contracts.md.
 """
 
 __all__: list[str] = ["CrossRepoSchemaError"]
