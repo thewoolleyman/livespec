@@ -914,5 +914,13 @@
     "spec_file": "scenarios.md",
     "test": "tests.integration.test_hold_label_disarm_template.test_template_born_consumer_receives_a_disarm_only_hold_label_workflow",
     "reason": "Integration-tier: copier renders the orchestrator-plugin template in-process into a fresh consumer tree, and the test reads back the generated disarm-on-hold-label.yml and auto-enable-merge.yml: labeled-only trigger, do-not-merge with a same-repo head, disarm-only, unlabeled re-arm with no labeled trigger on the arming workflow, and one App-token input key shared by both. tests/test_hold_label_disarm_workflow.py pins the same facts on livespec's own copies. The live GitHub behaviour was host-captured and independently replayed host_verified on livespec#3159 (livespec-jznfgw) and livespec-dev-tooling#4051 (livespec-dev-tooling-t2ezzq)."
+  },
+  {
+    "heading": "## An automated non-Driver Codex hook-trust writer leaves release-verifiable plugins to the Driver",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "Integration-tier: a real test at the integration tier or above is owed for this heading. The behaviour is exercised end-to-end on the dev host against the live Codex app-server by thewoolleyman/vps-info services/codex-config/ (vps-info#77); no livespec-core integration test drives a third-party Codex trust writer yet (proposal vps-info-hook-trust-stopgap). livespec-75ttpw owns it.",
+    "work_item": "livespec-75ttpw"
   }
 ]

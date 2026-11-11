@@ -79,6 +79,13 @@
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
+    "heading": "## An automated non-Driver Codex hook-trust writer leaves release-verifiable plugins to the Driver",
+    "work_item": "livespec-75ttpw",
+    "first_seen": "2026-11-11"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "heading": "## An incident master failure takes immediate scoped recovery",
     "work_item": "livespec-3lwk4n",
     "first_seen": "2026-11-03"
