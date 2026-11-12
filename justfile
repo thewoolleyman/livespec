@@ -209,6 +209,7 @@ check:
         check-check-tools
         check-ci-gate-parity
         check-ci-matrix-completeness
+        check-ci-single-container-image
         check-claude-md-coverage
         check-codex-hook-reconcilable
         check-comment-line-anchors
@@ -1317,3 +1318,6 @@ check-rule-26-keep-out:
 
 check-delegated-job-authority-skip:
     uv run python -m livespec_dev_tooling.checks.delegated_job_authority_skip
+
+check-ci-single-container-image:
+    uv run python -m livespec_dev_tooling.checks.ci_single_container_image
