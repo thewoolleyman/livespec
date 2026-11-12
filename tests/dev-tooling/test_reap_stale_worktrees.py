@@ -318,18 +318,46 @@ def test_reaps_remote_gone_worktree_with_lingering_tracking_ref(*, tmp_path: Pat
     assert not wt.exists()
 
 
-def test_skips_dirty_worktree(*, tmp_path: Path) -> None:
-    """A worktree with uncommitted changes is SKIPPED even when its branch is done."""
+@pytest.mark.parametrize(
+    ("file_name", "initial_contents", "changed_contents"),
+    [
+        ("untracked.txt", None, "uncommitted\n"),
+        ("tracked.txt", "committed\n", "modified\n"),
+    ],
+)
+def test_skips_dirty_worktree_returned_by_detector(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    file_name: str,
+    initial_contents: str | None,
+    changed_contents: str,
+) -> None:
+    """A detector-returned worktree with tracked or untracked dirt is left intact."""
     module = _load_module()
     primary, origin = _init_primary_with_origin(tmp_path=tmp_path)
     wt = _add_worktree(primary=primary, name="wt-dirty", branch="feat-dirty")
+    if initial_contents is not None:
+        _ = (wt / file_name).write_text(initial_contents, encoding="utf-8")
+        _ = _git(cwd=wt, args=["add", file_name])
+        _ = _git(cwd=wt, args=["commit", "-q", "-m", "add tracked file"])
     _make_branch_done(primary=primary, push_from=wt, origin=origin, branch="feat-dirty")
-    _ = (wt / "dirty.txt").write_text("uncommitted\n", encoding="utf-8")
+    dirty_file = wt / file_name
+    _ = dirty_file.write_text(changed_contents, encoding="utf-8")
+
+    def _regressed_detect(*, repo_path: Path) -> list[object]:
+        _ = repo_path
+        return [module.GitWorktree(path=wt, branch="feat-dirty", prunable_reason=None)]
+
+    monkeypatch.setattr(module, "detect_stale_worktrees", _regressed_detect)
 
     reaped = module.reap_worktrees(repo=primary, dry_run=False)
 
     assert str(wt) not in reaped
     assert wt.is_dir()
+    assert dirty_file.read_text(encoding="utf-8") == changed_contents
+    assert "worktree is dirty; leaving it" in capsys.readouterr().err
 
 
 def test_skips_worktree_whose_remote_branch_exists(*, tmp_path: Path) -> None:

@@ -38,6 +38,9 @@ action-only safety skips on top of detection:
     a `(pid N)` token for a LIVE pid is in use by another session and is
     SKIPPED. A stale (dead-pid) lock is unlocked, then reaped. A lock
     with no parseable pid is treated as LIVE (conservative) and SKIPPED.
+  - DIRTY-WORKTREE skip: a non-prunable candidate whose `git status
+    --porcelain` has any entry is left intact. This action-time check
+    protects authored tracked or untracked changes if detection regresses.
   - NEVER-PUSHED skip: a non-prunable candidate whose branch carries NO
     local evidence of ever having been pushed is a dispatched agent's
     in-progress work (a fresh worktree at `origin/HEAD` is trivially
@@ -50,7 +53,7 @@ action-only safety skips on top of detection:
     via `git worktree prune` (its working directory is already gone).
 
 Safety + idempotency: the primary worktree is NEVER a candidate;
-current, live-locked, and never-pushed worktrees are skipped.
+current, live-locked, dirty, and never-pushed worktrees are skipped.
 `--dry-run` reports the would-reap set without mutating anything.
 
 This is a maintainer/Dispatcher action tool, invoked via
@@ -142,6 +145,12 @@ def _lock_blocks_reap(
     return False
 
 
+def _worktree_is_dirty(*, worktree_path: Path) -> bool:
+    """Return whether `worktree_path` has tracked or untracked changes."""
+    status = _run_git(repo=worktree_path, args=["status", "--porcelain"], check=True)
+    return status.stdout != ""
+
+
 def _action_reapable(
     *,
     repo: Path,
@@ -154,11 +163,12 @@ def _action_reapable(
 
     Applies the action-layer safety the detection seam deliberately
     omits: the current-working-directory skip, the default-branch skip,
-    the live-process-lock skip, and (for non-prunable candidates) the
-    never-pushed skip. A prunable candidate is always reapable (its
-    working directory is gone); a detached candidate with no branch is
-    reapable when it survives the current/lock skips (the seam only flags
-    a detached worktree when it is clean and its HEAD is merged).
+    the live-process-lock skip, the dirty-worktree skip, and (for
+    non-prunable candidates) the never-pushed skip. A prunable candidate
+    is always reapable (its working directory is gone); a detached
+    candidate with no branch is reapable when it survives the
+    current/lock/dirt skips (the seam only flags a detached worktree when
+    it is clean and its HEAD is merged).
     """
     path_str = str(candidate.path)
     if _is_current_worktree(worktree_path=candidate.path):
@@ -175,16 +185,18 @@ def _action_reapable(
         return False
     if _lock_blocks_reap(locked_reason=locked_reason, path=path_str, log=log):
         return False
-    if candidate.prunable_reason is not None:
-        return True
-    branch = candidate.branch
-    if branch is not None and not _branch_was_pushed(repo=repo, branch=branch):
-        log.info(
-            "branch never pushed (no upstream config, no remote-tracking ref); "
-            "in-progress work, skipping",
-            path=path_str,
-        )
-        return False
+    if candidate.prunable_reason is None:
+        if _worktree_is_dirty(worktree_path=candidate.path):
+            log.info("worktree is dirty; leaving it", path=path_str)
+            return False
+        branch = candidate.branch
+        if branch is not None and not _branch_was_pushed(repo=repo, branch=branch):
+            log.info(
+                "branch never pushed (no upstream config, no remote-tracking ref); "
+                "in-progress work, skipping",
+                path=path_str,
+            )
+            return False
     return True
 
 
@@ -237,6 +249,7 @@ def reap_worktrees(*, repo: Path, dry_run: bool) -> list[str]:
     WOULD be) reaped. Under `dry_run` no worktree is removed and no
     branch is deleted.
     """
+    structlog.reset_defaults()
     structlog.configure(
         processors=[
             structlog.processors.add_log_level,
