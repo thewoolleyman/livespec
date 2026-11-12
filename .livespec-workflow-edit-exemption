@@ -1,11 +1,2 @@
-# Workflow-edit exemption — one exemption binds to one reviewed change.
-#
-# The change: in .github/workflows/ci.yml, the check-per-file-coverage and
-# check-coverage jobs' runs-on lines read
-# vars.CI_COVERAGE_RUNNER_LABELS || vars.CI_RUNNER_LABELS || '["ubuntu-latest"]'
-# instead of vars.CI_RUNNER_LABELS alone, and those two jobs set LIVESPEC_CI_LANE,
-# UV_CONCURRENT_DOWNLOADS and UV_HTTP_TIMEOUT at job level from that same chain.
-# Header and inline comments say so. No other job changes. MODIFIED lines, so the
-# maintainer tier.
-work_item=livespec-e5vyyg
-reason=MAINTAINER tier (approval:workflow-edit) under the maintainer's standing ruling of 2026-11-03T15:00:49Z, recorded on livespec-dev-tooling-6tgd2z: "I approve all workflow edits, even if they are not strictly additive, I just need to be notified of what they are doing in your maintainer report to ack." Why: livespec's coverage rides CI_RUNNER_LABELS, so moving non-coverage CI to hosted runners (maintainer direction 2026-11-11) would move coverage too. With CI_COVERAGE_RUNNER_LABELS unset, every job routes exactly as before; no gate is removed and no job is added. Plan ci-runtime-and-cost (livespec-dev-tooling-ib3oe3).
+work_item=livespec-2l3b6w
+reason=incident-ci job and incident-label-ci workflow so this repository can run expedited incident mode; logically additive (ci-green and export-telemetry require more), coordinator GO under coordinator-duties section 12 and the maintainer ruling of 2026-11-03

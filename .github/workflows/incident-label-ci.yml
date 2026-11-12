@@ -1,0 +1,152 @@
+# Incident label events restart CI on the pull request's current head.
+#
+# Work-item livespec-dev-tooling-6xyc42 (plan expedited-incident-response-flag,
+# epic livespec-dev-tooling-bqnzcm). Authority: SPECIFICATION/contracts.md, its
+# expedited incident execution contract ("Head and mode changes MUST invalidate stale
+# verdicts") and its scenario ("label events reconcile mode before permitting
+# merge").
+#
+# ci.yml triggers on a bare `pull_request:` (opened, synchronize, reopened), so
+# adding or removing the `expedited-incident-response` label used to start no
+# run. A PR whose expedited aggregate had already passed kept that verdict on
+# its head after the label came off, and a PR that gained the label kept its
+# complete-policy verdict until its next push.
+#
+# On a label event for the incident label ONLY, this workflow:
+# 1. finds the newest pull_request CI run of THIS pull request (by PR number)
+#    on its current head. With none listed yet (a PR opened with the label
+#    already on it), it stops green: the run its open or push event starts
+#    reads the labels itself;
+# 2. HOLDS ci-green at once. It creates a `ci-green` check run, in progress, on
+#    the head, as the GitHub Actions app, which is the app the merge ruleset
+#    requires `ci-green` from. The ruleset requires every visible `ci-green` of
+#    that app to pass, so from this moment nothing can merge on the head,
+#    including a PR whose expedited run had already COMPLETED with a passing
+#    ci-green;
+# 3. stops the run if it has not finished (it may have read the old label
+#    set): the cancel is retried until GitHub accepts it, then the run is
+#    waited for;
+# 4. re-runs it. The re-run's incident-ci reads the labels afresh through an
+#    authenticated forge read (never the event payload);
+# 5. KEEPS the hold until the re-run attempt has COMPLETED, then releases it
+#    (completes it as neutral). Measured on livespec-dev-tooling#3911, both
+#    shortcuts fail. Released earlier, a re-running attempt shows no ci-green
+#    of its own until its needs finish, so the neutral release was the only
+#    required ci-green and the head read MERGEABLE. Never released, the hold
+#    blocks the head forever, even after the full run passed. Once the re-run
+#    has completed, its own ci-green decides. The release covers every hold of
+#    this label on the head up to this job's own (a hold of an earlier,
+#    cancelled job included) and never a newer job's.
+# A step that fails before the release leaves the hold in place: the head stays
+# unmergeable rather than green, and toggling the label again recovers it.
+#
+# auto-enable-merge.yml also reacts to `unlabeled`, and a `gh pr merge --auto`
+# on a PR that still looks clean merges at once. Its gate therefore skips the
+# unlabeled event of this label, so it cannot race this hold.
+#
+# Why not `types: [labeled, unlabeled]` on ci.yml: a run started by ANY label
+# (approval labels, do-not-merge, merge-hold) would either execute the whole
+# matrix again or, if its jobs were skipped, post a skipped-green ci-green that
+# overrides the head's real verdict. Here a non-incident label event skips the
+# only job at the job level, so it allocates no runner and starts no CI run.
+#
+# Fork pull requests are excluded: their token cannot re-run a workflow, and
+# the incident path itself refuses a head repository other than this one.
+name: incident label CI
+
+on:
+  pull_request:
+    types: [labeled, unlabeled]
+
+# ONLY incident label events of one PR share a group, so the LAST of them wins
+# (the newer run cancels the older, then re-reads the head and restarts CI
+# itself). Every other label event gets a group of its own run id, so a
+# do-not-merge, merge-hold or approval label added in the same edit can never
+# cancel an incident restart in flight.
+concurrency:
+  group: incident-label-ci-${{ github.event.pull_request.number }}-${{ github.event.label.name == 'expedited-incident-response' && 'incident' || github.run_id }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  restart-ci-on-head:
+    name: restart CI on the current head
+    if: ${{ github.event.label.name == 'expedited-incident-response' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 250
+    permissions:
+      actions: write
+      checks: write
+      pull-requests: read
+    steps:
+      - name: Hold ci-green, re-run the CI workflow on the pull request's current head, release on completion
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LABEL_ACTION: ${{ github.event.action }}
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          head="$(gh api "repos/${repo}/pulls/${PR_NUMBER}" --jq '.head.sha')"
+          runs="repos/${repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${head}&per_page=20"
+          run_id="$(gh api "$runs" --jq '[.workflow_runs[] | select(any(.pull_requests[]; .number == (env.PR_NUMBER | tonumber)))] | first | .id // empty')"
+          if [ -z "$run_id" ]; then
+            note="no CI run of PR #${PR_NUMBER} is listed on head ${head} yet; the run its open or push event starts reads the labels itself"
+            echo "::notice::${note}"
+            printf '## incident label CI\n\n%s.\n' "$note" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          hold_id="$(gh api -X POST "repos/${repo}/check-runs" \
+            -f name=ci-green -f head_sha="$head" -f status=in_progress \
+            -f "output[title]=held: expedited-incident-response ${LABEL_ACTION}" \
+            -f "output[summary]=The incident label changed, so the earlier ci-green on this head is stale. CI run ${run_id} is re-run on this head, and this hold stays until that re-run completes." \
+            --jq '.id')"
+          export HOLD_ID="$hold_id"
+          status="$(gh api "repos/${repo}/actions/runs/${run_id}" --jq '.status')"
+          if [ "$status" != "completed" ]; then
+            echo "CI run ${run_id} is ${status}; stopping it, because it may have read the label set before this event"
+            # A run that GitHub has not queued yet refuses cancellation (HTTP
+            # 409), so the cancel is retried until it is accepted.
+            for attempt in $(seq 1 30); do
+              if gh api -X POST "repos/${repo}/actions/runs/${run_id}/cancel" >/dev/null; then
+                break
+              fi
+              echo "cancel of CI run ${run_id} not accepted yet (try ${attempt}); retrying"
+              sleep 5
+            done
+            for _ in $(seq 1 60); do
+              status="$(gh api "repos/${repo}/actions/runs/${run_id}" --jq '.status')"
+              [ "$status" = "completed" ] && break
+              sleep 10
+            done
+            if [ "$status" != "completed" ]; then
+              echo "::error::CI run ${run_id} did not complete within 10 minutes of its cancellation; it cannot be re-run, and ci-green stays held"
+              exit 1
+            fi
+          fi
+          gh api -X POST "repos/${repo}/actions/runs/${run_id}/rerun" >/dev/null
+          echo "re-ran CI run ${run_id}; ci-green stays held until the re-run completes"
+          for poll in $(seq 1 460); do
+            sleep 30
+            status="$(gh api "repos/${repo}/actions/runs/${run_id}" --jq '.status')"
+            [ "$status" = "completed" ] && break
+            if [ $((poll % 20)) -eq 0 ]; then
+              echo "the re-run of CI run ${run_id} is still ${status} after ${poll} polls"
+            fi
+          done
+          if [ "$status" != "completed" ]; then
+            echo "::error::the re-run of CI run ${run_id} did not complete within about 230 minutes; ci-green stays held, and toggling the label again retries"
+            exit 1
+          fi
+          holds="repos/${repo}/commits/${head}/check-runs?check_name=ci-green&filter=all&per_page=100"
+          for id in $(gh api "$holds" --jq '.check_runs[] | select(.status != "completed" and ((.output.title // "") | startswith("held: expedited-incident-response")) and .id <= (env.HOLD_ID | tonumber)) | .id'); do
+            gh api -X PATCH "repos/${repo}/check-runs/${id}" \
+              -f status=completed -f conclusion=neutral \
+              -f "output[title]=released: CI run ${run_id} decides" \
+              -f "output[summary]=The re-run of CI run ${run_id} has completed on this head; its own ci-green decides." >/dev/null
+          done
+          note="label expedited-incident-response ${LABEL_ACTION} on PR #${PR_NUMBER}: held ci-green, re-ran CI run ${run_id} on head ${head}, and released the hold once the re-run completed, so ci-green on that head reflects the current label set"
+          echo "::notice::${note}"
+          printf '## incident label CI\n\n%s.\n' "$note" >> "$GITHUB_STEP_SUMMARY"
