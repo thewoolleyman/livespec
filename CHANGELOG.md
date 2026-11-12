@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.4](https://github.com/thewoolleyman/livespec/compare/v0.47.3...v0.47.4) (2026-11-12)
+
+
+### Bug Fixes
+
+* guard dirty stale-worktree candidates ([5b657be](https://github.com/thewoolleyman/livespec/commit/5b657be2040d9857622e2bed3715a3415beb9443))
+
 ## [0.47.3](https://github.com/thewoolleyman/livespec/compare/v0.47.2...v0.47.3) (2026-11-10)
 
 
