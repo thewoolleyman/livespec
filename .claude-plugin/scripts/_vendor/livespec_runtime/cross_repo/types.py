@@ -144,7 +144,12 @@ class CrossRepoTarget:
                        bare owner/name, non-github host) raises
                        `NonCanonicalGithubUrlError` at the provider
                        boundary.
-    `local_clone`    — OPTIONAL; filesystem path to a local clone. Held
+    `local_clone`    — OPTIONAL; filesystem path to a local clone. A
+                       leading `~` is expanded to the invoking user's
+                       home at parse time (JSON values are never
+                       shell-expanded), so one manifest value such as
+                       `~/workspace/<repo>` names the clone on every
+                       host whatever its checkout root. Held
                        on the typed manifest for consumer use (e.g.,
                        routing a `sibling_status_lookup` callback to a
                        local JSONL reader); the v1 runtime surface does
@@ -270,7 +275,7 @@ def _parse_cross_repo_target(*, slug: str, parsed: dict[str, Any]) -> CrossRepoT
             detail=f"cross_repo_targets[{slug!r}] missing required field 'github_url'",
         )
     local_clone_raw = parsed.get("local_clone")
-    local_clone = None if local_clone_raw is None else Path(local_clone_raw)
+    local_clone = None if local_clone_raw is None else Path(local_clone_raw).expanduser()
     default_branch = parsed.get("default_branch", "master")
     return CrossRepoTarget(
         github_url=parsed["github_url"],
