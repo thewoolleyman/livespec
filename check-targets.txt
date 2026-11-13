@@ -3,22 +3,27 @@
 # in the same order; the `check:` recipe refuses to run when the two differ.
 #
 # Every member carries an `incident-timing` class, read by livespec-dev-tooling's
-# expedited incident hooks (EXPEDITED_INCIDENT_RESPONSE) and nothing else; the
+# expedited incident hooks (EXPEDITED_INCIDENT_RESPONSE) and nothing else. The
 # aggregate's reader drops every comment, so annotations never change what
-# `just check` runs. Each recipe was run alone, in sequence, capped at 90 s, on
-# vps (vmi3006760, 18 cores) on 2026-11-13, at load 44-82, the method
-# livespec-dev-tooling used for its own inventory (livespec-dev-tooling-oqpw6t):
-# a member that took 45 s or more (a 25% margin under the hooks' 60 s per-gate
-# bound), or hit the cap, is `slow` and is deferred on the expedited path. A gate that encodes a normal-path precondition an incident
-# commit cannot meet by design is `not-applicable` and names that precondition.
-# A member whose first time was slow but within reach of the threshold was
-# re-timed alone at lower load, and the faster of the two runs classifies it,
-# because `slow` defers the gate and a fast gate that overruns 60 s is still
-# recorded as a deferred timeout: the faster reading is the safer one.
-# 85 are `fast`, 4 `slow` and 3 `not-applicable`. The expedited hooks
-# still enforce 60 s per fast gate, so a fast member that slows down is recorded
-# as a deferred timeout. A new member needs a measured class; a missing one is
-# unclassified and deferred.
+# `just check` runs.
+#
+# Each recipe was run alone, in sequence, capped at 90 s, on vps (vmi3006760,
+# 18 cores) on 2026-11-13, at load 48-82: the method livespec-dev-tooling
+# used for its own inventory (livespec-dev-tooling-oqpw6t). A member that took
+# 45 s or more, or hit the cap, is `slow` and is deferred on the expedited
+# path; 45 s leaves a 25% margin under the hooks' 60 s per-gate bound. A member
+# whose first time was slow but within reach of the threshold was re-timed
+# alone at lower load (44-49), and the faster run classifies it: `slow` defers the
+# gate, while a fast gate that overruns 60 s is still recorded as a deferred
+# timeout, so the faster reading is the safer one. A gate that encodes a
+# normal-path precondition an incident commit cannot meet by design is
+# `not-applicable` and names that precondition.
+# 85 are `fast`, 4 `slow` and 3 `not-applicable`. The slowest of the rest:
+# check-types 39.3 s; check-no-except-outside-io 29.0 s; check-copier-template-smoke 21.8 s.
+# `e2e-test-claude-code-mock` is not a `check-` slug, so the expedited
+# hooks never hand it to `just`; their reader parses 91 gates from these
+# 92 members.
+# A new member needs a measured class; a missing one is unclassified and deferred.
 check-agents-ai-references-resolve  # incident-timing: fast
 check-aggregate-completeness  # incident-timing: fast
 check-all-declared  # incident-timing: fast
