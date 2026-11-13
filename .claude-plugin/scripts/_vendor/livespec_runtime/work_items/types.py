@@ -78,6 +78,7 @@ FactorySafety = Literal[
     "needs-host-secrets",
     "mutates-host-machinery",
     "needs-privileged-host",
+    "needs-host-only-input",
 ]
 ReviewRequirement = Literal["human-before-merge"]
 
