@@ -1,13 +1,6 @@
 [
   {
     "spec_root": "SPECIFICATION",
-    "spec_file": "contracts.md",
-    "heading": "## Expedited incident response policy",
-    "work_item": "livespec-3lwk4n",
-    "first_seen": "2026-11-03"
-  },
-  {
-    "spec_root": "SPECIFICATION",
     "spec_file": "non-functional-requirements.md",
     "heading": "## Factory routing",
     "work_item": "livespec-6fb1",
@@ -17,7 +10,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A capacity value change passes on schema validation alone",
-    "work_item": "livespec-dev-tooling-mbmqvy",
+    "work_item": "livespec-ao7bzm",
     "first_seen": "2026-11-04"
   },
   {
@@ -31,14 +24,14 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A green pull request stays green after rebase-merge",
-    "work_item": "livespec-dev-tooling-yfqvqm",
+    "work_item": "livespec-gd2avc",
     "first_seen": "2026-10-15"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A hand change to a fleet host is refused outside the committed apply",
-    "work_item": "livespec-qurhq2",
+    "work_item": "livespec-og7v6o",
     "first_seen": "2026-10-10"
   },
   {
@@ -52,28 +45,28 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A red master heals by revert by default, or through a progressing fix-forward",
-    "work_item": "livespec-dev-tooling-dw7dzd",
+    "work_item": "livespec-oto36j",
     "first_seen": "2026-10-15"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A related regression resumes incident recovery after closure",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A released adopter is registered only after its wiring satisfies the sweep",
-    "work_item": "livespec-zyh7uo",
+    "work_item": "livespec-7tqzui",
     "first_seen": "2026-10-21"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## An authorized incident repair uses the inherited fast path",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
@@ -87,28 +80,28 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## An incident master failure takes immediate scoped recovery",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## An instruction-only adopter is held to plugin currency and to no other baseline concern",
-    "work_item": "livespec-zyh7uo",
+    "work_item": "livespec-7tqzui",
     "first_seen": "2026-10-21"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## An ordinary operation does not inherit an incident exemption",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## Collected incident failures require classified correction before another attempt",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
@@ -157,21 +150,21 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## Incident PR selection cannot weaken normal master validation",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## Incident enablement requires the repository's complete capability proof",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## Incident repayment uses the same item and complete original scope",
-    "work_item": "livespec-3lwk4n",
+    "work_item": "livespec-p5njbg",
     "first_seen": "2026-11-03"
   },
   {
