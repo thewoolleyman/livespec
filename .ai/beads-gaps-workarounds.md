@@ -754,11 +754,14 @@ beads repo** — clone at `/data/projects/beads` on branch
 
 ## Entries inherited from the Open Brain catalogue
 
-The following are documented in
-`dev-tooling/implementation/research/beads-problems.md` (vendored
-from Open Brain). Livespec inherits the workarounds via the
-adapted `setup-beads.sh` and `bd-doctor.sh`. Pointers for
-upstream:
+<!-- EXPEDITED_INCIDENT_RESPONSE flag: livespec-57r6qo -->
+
+The following are documented in `beads-problems.md` (vendored from
+Open Brain; retired from this repo at commit `4916bfa`, recoverable
+with `git show 4916bfa^:dev-tooling/implementation/research/beads-problems.md`).
+The `setup-beads.sh` and `bd-doctor.sh` scripts that carried these
+workarounds were retired at `ed2f379f`, so the entries below are
+history. Pointers for upstream:
 
 - **OB Problem 1 — `bd init` doesn't synthesize Dolt remote
   pointing at git origin.** Upstream issue:
