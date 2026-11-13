@@ -657,6 +657,67 @@ Scenario: A hazard-hinted reach through a shell expansion is denied
   And the denial reason names the unresolvable target as the cause
 ```
 
+## A wrong SSH route to a tailnet machine is refused with the documented one
+
+```gherkin
+Feature: Teach the documented route to a tailnet machine when a wrong one is typed
+
+Scenario: A tailscale ssh to a machine with no Tailscale SSH server is refused with the working command
+  Given a livespec-governed project whose Driver bundle carries the fleet route guard
+  And a tailnet record that documents machine `examplehost` with SSH account `opsuser`, an OpenSSH server and no Tailscale SSH server
+  And a local Tailscale client that reports the tailnet domain `example-tailnet.ts.net`
+  When the agent's shell tool attempts `tailscale ssh opsuser@examplehost true`
+  Then the Driver denies the call before it runs
+  And the denial reason names the working command `ssh opsuser@examplehost.example-tailnet.ts.net`
+  And the denial reason names the tailnet record as the place where each machine's SSH account and SSH server are documented
+
+Scenario: The same refusal with an unknown tailnet domain names the account and machine alone
+  Given the same project and record
+  And a local Tailscale client that reports no tailnet domain
+  When the agent's shell tool attempts `tailscale ssh opsuser@examplehost true`
+  Then the Driver denies the call before it runs
+  And the denial reason names the command `ssh opsuser@examplehost`
+  And the denial reason states that the tailnet domain could not be read
+
+Scenario: An ssh under the wrong account is refused with the documented account
+  Given the same project and record
+  And the caller's SSH configuration resolves the login account for that machine to `otheruser`
+  When the agent's shell tool attempts `ssh examplehost true`
+  Then the Driver denies the call before it runs
+  And the denial reason names the documented account `opsuser` and the tailnet record
+
+Scenario: The documented account and method pass through
+  Given the same project and record
+  And a local Tailscale client that reports the tailnet domain `example-tailnet.ts.net`
+  When the agent's shell tool attempts `ssh opsuser@examplehost.example-tailnet.ts.net true`
+  Then the Driver allows the call
+
+Scenario: A host the caller's SSH configuration maps to the documented account passes through
+  Given the same project and record
+  And the caller's SSH configuration resolves the login account for that machine to `opsuser`
+  When the agent's shell tool attempts `ssh examplehost true`
+  Then the Driver allows the call
+
+Scenario: An scp bandwidth limit is not read as an account
+  Given the same project and record
+  And the caller's SSH configuration resolves the login account for that machine to `opsuser`
+  When the agent's shell tool attempts `scp -l 8000 report.txt examplehost:/tmp/report.txt`
+  Then the Driver allows the call
+
+Scenario: A name under another domain is not a recorded machine
+  Given the same project and record
+  And a local Tailscale client that reports the tailnet domain `example-tailnet.ts.net`
+  When the agent's shell tool attempts `ssh otheruser@examplehost.elsewhere.example true`
+  Then the Driver allows the call
+
+Scenario: An unreadable tailnet record denies nothing and is recorded
+  Given a livespec-governed project whose Driver bundle carries the fleet route guard
+  And a tailnet record that cannot be read
+  When the agent's shell tool attempts `tailscale ssh opsuser@examplehost true`
+  Then the Driver allows the call
+  And the guard's telemetry record for the call states that no record answered
+```
+
 ## A red master heals by revert by default, or through a progressing fix-forward
 
 ```gherkin

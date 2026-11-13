@@ -72,6 +72,13 @@
   {
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
+    "heading": "## A wrong SSH route to a tailnet machine is refused with the documented one",
+    "work_item": "livespec-lhmjbd",
+    "first_seen": "2026-11-13"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
     "heading": "## An authorized incident repair uses the inherited fast path",
     "work_item": "livespec-3lwk4n",
     "first_seen": "2026-11-03"
