@@ -6,12 +6,16 @@
 # expedited incident hooks (EXPEDITED_INCIDENT_RESPONSE) and nothing else; the
 # aggregate's reader drops every comment, so annotations never change what
 # `just check` runs. Each recipe was run alone, in sequence, capped at 90 s, on
-# vps (vmi3006760, 18 cores) on 2026-11-13, at load 48-82, the method
+# vps (vmi3006760, 18 cores) on 2026-11-13, at load 44-82, the method
 # livespec-dev-tooling used for its own inventory (livespec-dev-tooling-oqpw6t):
 # a member that took 45 s or more (a 25% margin under the hooks' 60 s per-gate
 # bound), or hit the cap, is `slow` and is deferred on the expedited path. A gate that encodes a normal-path precondition an incident
 # commit cannot meet by design is `not-applicable` and names that precondition.
-# 83 are `fast`, 6 `slow` and 3 `not-applicable`. The expedited hooks
+# A member whose first time was slow but within reach of the threshold was
+# re-timed alone at lower load, and the faster of the two runs classifies it,
+# because `slow` defers the gate and a fast gate that overruns 60 s is still
+# recorded as a deferred timeout: the faster reading is the safer one.
+# 85 are `fast`, 4 `slow` and 3 `not-applicable`. The expedited hooks
 # still enforce 60 s per fast gate, so a fast member that slows down is recorded
 # as a deferred timeout. A new member needs a measured class; a missing one is
 # unclassified and deferred.
@@ -49,7 +53,7 @@ check-match-keyword-only  # incident-timing: fast
 check-newtype-domain-primitives  # incident-timing: fast
 check-no-direct-destructive-cli  # incident-timing: fast
 check-no-direct-tool-invocation  # incident-timing: fast
-check-no-except-outside-io  # incident-timing: slow
+check-no-except-outside-io  # incident-timing: fast
 check-no-fmt-directives  # incident-timing: fast
 check-no-inheritance  # incident-timing: fast
 check-no-lloc-soft-warnings  # incident-timing: fast
@@ -105,5 +109,5 @@ check-prompts  # incident-timing: slow
 check-schema-dataclass-pairing  # incident-timing: fast
 check-spec-governance-manifest  # incident-timing: fast
 check-spec-governance-template  # incident-timing: fast
-check-types  # incident-timing: slow
+check-types  # incident-timing: fast
 e2e-test-claude-code-mock  # incident-timing: slow
