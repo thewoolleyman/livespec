@@ -103,26 +103,31 @@ of two fixes restores green.
   livespec-dev-tooling) is the durable guard — prefer adding one when
   removing any rejected escape mechanism.
 
-### Agent-initiated reruns: the test, never the job
+### Agent-initiated flake retries: bounded, and each one recorded
 
-Maintainer ruling, 2026-11-02T18:38Z (livespec-dev-tooling epic
-`livespec-dev-tooling-6tgd2z`, comments `01a19d8e-2c33…` and
-`01a19d8e-38b4…`). It governs AGENTS; the reconciler's own automatic
-single rerun above is unchanged.
+Maintainer ruling, 2026-11-13 ~19:3xZ, "FLAKES MAY NOW BE RETRIED"
+(scope event on livespec-dev-tooling epic `livespec-dev-tooling-6tgd2z`).
+It supersedes the no-whole-job-rerun part of the 2026-11-02T18:38Z ruling
+(comments `01a19d8e-2c33…` and `01a19d8e-38b4…`). It governs AGENTS; the
+reconciler's own automatic single rerun above is unchanged.
 
-- An agent may retry ONLY an identified flake that has a linked root-fix
-  work item — at most 3 times, 60 seconds apart.
-- Rerun ONLY the failing test, never a whole CI job. GitHub's "re-run
-  failed jobs" is a whole-job rerun and is NOT authorized, and stays
-  unauthorized until test-level retry (`livespec-dev-tooling-crxcy4`) is live.
+- An agent may retry a flaky failure of a CI job, a suite, a local commit
+  or push gate, or a factory run, GitHub's "re-run failed jobs" included.
+- Back off between retries, and retry one failure at most 3 times.
+- Record each retry on a root-fix work item; search for an owning item
+  first and file one if none owns it.
+- Never disable or bypass a hook to retry, and relaunch a local gate only
+  after the previous run has ended.
+- A test the change itself touched is judged on its own failure first,
+  because its failure can be the change's own bug.
 - Admin-merging over a red check is never the remedy: it reduces a gate,
   which needs the maintainer directly.
 - The remedy for a recurring flake is its root fix, raised to breakage
   priority when it blocks other work.
 
-Recorded because on 2026-11-03 three different seats ran whole-job
-reruns (canary PR #4260 among them) without knowing the ruling, which
-then existed only as ledger comments.
+The 2026-11-02 ruling was first recorded here because on 2026-11-03
+three different seats ran whole-job reruns (canary PR #4260 among them)
+without knowing it, while it existed only as ledger comments.
 
 ## Restructuring work to get past a gate: the test for evasion vs. a false positive
 
