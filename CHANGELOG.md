@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.5](https://github.com/thewoolleyman/livespec/compare/v0.47.4...v0.47.5) (2026-11-13)
+
+
+### Bug Fixes
+
+* **doctor:** expand ~ in a sibling's local_clone in the cross-repo wiring readers ([a197092](https://github.com/thewoolleyman/livespec/commit/a19709290efa218fc68c052e68985df023ff44d9))
+
 ## [0.47.4](https://github.com/thewoolleyman/livespec/compare/v0.47.3...v0.47.4) (2026-11-12)
 
 
