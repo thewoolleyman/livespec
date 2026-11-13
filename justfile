@@ -309,6 +309,20 @@ check:
         check-types
         e2e-test-claude-code-mock
     )
+    # `check-targets.txt` is this aggregate's incident gate inventory: the same
+    # members, in the same order, each with the `incident-timing` class that
+    # livespec-dev-tooling's expedited incident hooks read. The shared checks
+    # (`check-aggregate-completeness` among them) read that file in place of
+    # this array whenever it exists, so the two MUST NOT drift: refuse to run
+    # when they differ, as livespec-dev-tooling's own aggregate does.
+    mapfile -t inventory_targets < <(
+        sed -E 's/[[:space:]]*#.*$//; s/^[[:space:]]+//; s/[[:space:]]+$//' check-targets.txt | grep -v '^$'
+    )
+    if [[ "${inventory_targets[*]}" != "${targets[*]}" ]]; then
+        echo "ERROR: check-targets.txt does not list exactly this aggregate's targets, in order" >&2
+        diff <(printf '%s\n' "${targets[@]}") <(printf '%s\n' "${inventory_targets[@]}") >&2
+        exit 1
+    fi
     failed=()
     ran=0
     for t in "${targets[@]}"; do

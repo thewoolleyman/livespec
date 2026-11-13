@@ -1,0 +1,109 @@
+# The `just check` aggregate inventory for livespec, in the aggregate's own order.
+# It MUST list exactly the members of the justfile `check:` recipe's targets,
+# in the same order; the `check:` recipe refuses to run when the two differ.
+#
+# Every member carries an `incident-timing` class, read by livespec-dev-tooling's
+# expedited incident hooks (EXPEDITED_INCIDENT_RESPONSE) and nothing else; the
+# aggregate's reader drops every comment, so annotations never change what
+# `just check` runs. Each recipe was run alone, in sequence, capped at 90 s, on
+# vps (vmi3006760, 18 cores) on 2026-11-13, at load 48-82, the method
+# livespec-dev-tooling used for its own inventory (livespec-dev-tooling-oqpw6t):
+# a member that took 45 s or more (a 25% margin under the hooks' 60 s per-gate
+# bound), or hit the cap, is `slow` and is deferred on the expedited path. A gate that encodes a normal-path precondition an incident
+# commit cannot meet by design is `not-applicable` and names that precondition.
+# 83 are `fast`, 6 `slow` and 3 `not-applicable`. The expedited hooks
+# still enforce 60 s per fast gate, so a fast member that slows down is recorded
+# as a deferred timeout. A new member needs a measured class; a missing one is
+# unclassified and deferred.
+check-agents-ai-references-resolve  # incident-timing: fast
+check-aggregate-completeness  # incident-timing: fast
+check-all-declared  # incident-timing: fast
+check-assert-never-exhaustiveness  # incident-timing: fast
+check-branch-protection-alignment  # incident-timing: fast
+check-canonical-recipe-fidelity  # incident-timing: fast
+check-check-coverage-incremental  # incident-timing: fast
+check-check-mutation  # incident-timing: fast
+check-check-tools  # incident-timing: fast
+check-ci-gate-parity  # incident-timing: fast
+check-ci-matrix-completeness  # incident-timing: fast
+check-ci-single-container-image  # incident-timing: fast
+check-claude-md-coverage  # incident-timing: fast
+check-codex-hook-reconcilable  # incident-timing: fast
+check-comment-line-anchors  # incident-timing: fast
+check-commit-pairs-source-and-test  # incident-timing: not-applicable # incident-precondition: a-staged-test-beside-each-staged-source-file
+check-delegated-gate-check-suite  # incident-timing: fast
+check-delegated-job-authority-skip  # incident-timing: fast
+check-file-lloc  # incident-timing: fast
+check-fleet-marketplace-relative-sources  # incident-timing: fast
+check-global-writes  # incident-timing: fast
+check-handoff-dispatch-routing  # incident-timing: fast
+check-heading-coverage  # incident-timing: fast
+check-heading-coverage-debt-register  # incident-timing: fast
+check-hook-trees-not-io-exempt  # incident-timing: fast
+check-keyword-only-args  # incident-timing: fast
+check-local-memory-drift-audit  # incident-timing: fast
+check-main-guard  # incident-timing: fast
+check-marketplace-ref-release-only  # incident-timing: fast
+check-master-ci-green  # incident-timing: not-applicable # incident-precondition: green-master-ci
+check-match-keyword-only  # incident-timing: fast
+check-newtype-domain-primitives  # incident-timing: fast
+check-no-direct-destructive-cli  # incident-timing: fast
+check-no-direct-tool-invocation  # incident-timing: fast
+check-no-except-outside-io  # incident-timing: slow
+check-no-fmt-directives  # incident-timing: fast
+check-no-inheritance  # incident-timing: fast
+check-no-lloc-soft-warnings  # incident-timing: fast
+check-no-raise-outside-io  # incident-timing: fast
+check-no-shadow-ledger-body-identical  # incident-timing: fast
+check-no-shadow-ledger-body-typechecks  # incident-timing: fast
+check-no-todo-registry  # incident-timing: fast
+check-no-write-direct  # incident-timing: fast
+check-partition-completeness  # incident-timing: fast
+check-pbt-coverage-pure-modules  # incident-timing: fast
+check-per-file-coverage  # incident-timing: slow
+check-plan-anchor-declared  # incident-timing: fast
+check-plan-epic-parity  # incident-timing: fast
+check-plan-no-live-handoff-file  # incident-timing: fast
+check-plan-no-tombstone  # incident-timing: fast
+check-plan-record-conformance  # incident-timing: fast
+check-plugin-resolution  # incident-timing: fast
+check-primary-checkout-commit-refuse-hook-installed  # incident-timing: fast
+check-private-calls  # incident-timing: fast
+check-public-api-result-typed  # incident-timing: fast
+check-red-green-replay  # incident-timing: not-applicable # incident-precondition: tdd-trailers-or-pull-request-event-admission
+check-required-role-keys-declared  # incident-timing: fast
+check-rop-pipeline-shape  # incident-timing: fast
+check-rule-26-keep-out  # incident-timing: fast
+check-self-hosted-routing  # incident-timing: fast
+check-self-hosted-uv-lane  # incident-timing: fast
+check-shell-quality  # incident-timing: fast
+check-skill-invocation-paths  # incident-timing: fast
+check-source-trees-scoped-to-consumer  # incident-timing: fast
+check-supervisor-discipline  # incident-timing: fast
+check-tests-mirror-pairing  # incident-timing: fast
+check-tests-no-subprocess-spawn  # incident-timing: fast
+check-tool-backed-check-completeness  # incident-timing: fast
+check-vendor-manifest  # incident-timing: fast
+check-work-item-interpolation-delimiters  # incident-timing: fast
+check-work-item-status-vocabulary  # incident-timing: fast
+check-wrapper-shape  # incident-timing: fast
+check-behavior-scenario-link  # incident-timing: fast
+check-canonical-slugs-projection  # incident-timing: fast
+check-cli-explicit-project-root  # incident-timing: fast
+check-codex-no-repo-local-adapters  # incident-timing: fast
+check-comment-no-historical-refs  # incident-timing: fast
+check-copier-template-smoke  # incident-timing: fast
+check-coverage  # incident-timing: slow
+check-doctor-static  # incident-timing: fast
+check-format  # incident-timing: fast
+check-gh-feature-surfaces  # incident-timing: fast
+check-imports-architecture  # incident-timing: fast
+check-lint  # incident-timing: fast
+check-no-renderer-vendoring  # incident-timing: fast
+check-no-workflow-edits  # incident-timing: fast
+check-prompts  # incident-timing: slow
+check-schema-dataclass-pairing  # incident-timing: fast
+check-spec-governance-manifest  # incident-timing: fast
+check-spec-governance-template  # incident-timing: fast
+check-types  # incident-timing: slow
+e2e-test-claude-code-mock  # incident-timing: slow
