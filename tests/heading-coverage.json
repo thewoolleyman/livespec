@@ -745,7 +745,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
-    "reason": "Ratifies the fleet-host mutation guard (epic livespec-qurhq2, closed). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is an integration-tier lockstep test in this repository asserting that the contracts.md clause, this scenario, and this coverage entry stay in step (the shape of tests.test_plugin_distribution.test_primary_checkout_playwright_guard_contract_is_ratified), while the executable deny and allow behavior is exercised by livespec-driver-claude's hook suite under livespec-ggs36t; livespec-og7v6o owns that test and replaces this TODO with its id.",
+    "reason": "A real test at the integration tier or above is owed for this heading; livespec-og7v6o owns it.",
     "work_item": "livespec-og7v6o"
   },
   {
@@ -753,7 +753,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
-    "reason": "Ratifies red-master self-healing (revert by default, progress-bounded fix-forward claim, proven-revert hard cap; plan red-master-self-healing, livespec-dev-tooling epic livespec-dev-tooling-zcp5vb). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is the reconciler's end-to-end drill on a throwaway branch (livespec-dev-tooling-yilv6p) over the shim distributed by livespec-dev-tooling-dw7dzd; livespec-oto36j owns that test in this tenant (livespec-dev-tooling-dw7dzd, which distributed the shim, is closed in its own tenant) and replaces this TODO with its id.",
+    "reason": "A real test at the integration tier or above is owed for this heading; livespec-oto36j owns it.",
     "work_item": "livespec-oto36j"
   },
   {
@@ -761,7 +761,7 @@
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "test": "TODO",
-    "reason": "Ratifies rebase-merge metadata invariance of fleet CI checks (plan red-master-self-healing, livespec-dev-tooling epic livespec-dev-tooling-zcp5vb). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is an integration-tier replay test that runs every shared check on a commit and on its rebase-merge replay differing only in SHA, committer date and committer timezone; livespec-gd2avc owns that test in this tenant (livespec-dev-tooling-yfqvqm, which made the checks invariant, is closed in its own tenant) and replaces this TODO with its id.",
+    "reason": "A real test at the integration tier or above is owed for this heading; livespec-gd2avc owns it.",
     "work_item": "livespec-gd2avc"
   },
   {
@@ -778,7 +778,7 @@
     "spec_file": "scenarios.md",
     "test": "TODO",
     "work_item": "livespec-7tqzui",
-    "reason": "Ratifies register-after-wiring for released adopters (proposal adopter-registration-posture-for-toolchain-less-repos). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling fleet-conformance sweep test over a fixture manifest; livespec-7tqzui owns that test and replaces this TODO with its id, taking over from closed epic livespec-zyh7uo."
+    "reason": "A real test at the integration tier or above is owed for this heading; livespec-7tqzui owns it."
   },
   {
     "heading": "## An instruction-only adopter is held to plugin currency and to no other baseline concern",
@@ -786,7 +786,7 @@
     "spec_file": "scenarios.md",
     "test": "TODO",
     "work_item": "livespec-7tqzui",
-    "reason": "Ratifies the adopter-only instruction-only profile (proposal adopter-registration-posture-for-toolchain-less-repos). A scenario describes end-to-end behavior, so its test MUST resolve to the integration tier or above: the mapped test is a livespec-dev-tooling fleet-conformance sweep test over a fixture manifest; livespec-7tqzui owns that test and replaces this TODO with its id, taking over from closed epic livespec-zyh7uo."
+    "reason": "A real test at the integration tier or above is owed for this heading; livespec-7tqzui owns it."
   },
   {
     "heading": "## A fleet member waives a canonical check with a committed reason",
