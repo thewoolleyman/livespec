@@ -293,8 +293,9 @@ def resolve_effective_local_clone(
          the CI path — the workflow clones siblings to a freshly-
          provisioned root and points the check at it via the env var.
       2. Otherwise, return `target.local_clone` when present and
-         non-empty (the local-dev path against
-         `/data/projects/<sibling>`).
+         non-empty (the local-dev path, e.g. `~/workspace/<sibling>`),
+         with a leading `~` expanded to the user's home: JSON values
+         are never shell-expanded, so the reader expands it.
       3. Otherwise, return `None` to signal Path A is unavailable.
 
     `env` defaults to `os.environ` — accepting an explicit dict
@@ -307,7 +308,7 @@ def resolve_effective_local_clone(
         return str(Path(clones_root) / sibling_slug)
     local_clone_raw = target.get("local_clone")
     if isinstance(local_clone_raw, str) and local_clone_raw != "":
-        return local_clone_raw
+        return str(Path(local_clone_raw).expanduser())
     return None
 
 
