@@ -356,32 +356,32 @@
   "cross_repo_targets": {
     "livespec": {
       "github_url": "https://github.com/thewoolleyman/livespec",
-      "local_clone": "/data/projects/livespec",
+      "local_clone": "~/workspace/livespec",
       "default_branch": "master"
     },
     "livespec-orchestrator-git-jsonl": {
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
-      "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
+      "local_clone": "~/workspace/livespec-orchestrator-git-jsonl",
       "default_branch": "master"
     },
     "livespec-orchestrator-beads-fabro": {
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-beads-fabro",
-      "local_clone": "/data/projects/livespec-orchestrator-beads-fabro",
+      "local_clone": "~/workspace/livespec-orchestrator-beads-fabro",
       "default_branch": "master"
     },
     "livespec-dev-tooling": {
       "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
-      "local_clone": "/data/projects/livespec-dev-tooling",
+      "local_clone": "~/workspace/livespec-dev-tooling",
       "default_branch": "master"
     },
     "livespec-console-beads-fabro": {
       "github_url": "https://github.com/thewoolleyman/livespec-console-beads-fabro",
-      "local_clone": "/data/projects/livespec-console-beads-fabro",
+      "local_clone": "~/workspace/livespec-console-beads-fabro",
       "default_branch": "master"
     },
     "livespec-overseer": {
       "github_url": "https://github.com/thewoolleyman/livespec-overseer",
-      "local_clone": "/data/projects/livespec-overseer",
+      "local_clone": "~/workspace/livespec-overseer",
       "default_branch": "master"
     }
   },
@@ -391,12 +391,12 @@
   "cross_repo_conformance_targets": {
     "livespec-orchestrator-git-jsonl": {
       "github_url": "https://github.com/thewoolleyman/livespec-orchestrator-git-jsonl",
-      "local_clone": "/data/projects/livespec-orchestrator-git-jsonl",
+      "local_clone": "~/workspace/livespec-orchestrator-git-jsonl",
       "default_branch": "master"
     },
     "livespec-dev-tooling": {
       "github_url": "https://github.com/thewoolleyman/livespec-dev-tooling",
-      "local_clone": "/data/projects/livespec-dev-tooling",
+      "local_clone": "~/workspace/livespec-dev-tooling",
       "default_branch": "master"
     }
   }
