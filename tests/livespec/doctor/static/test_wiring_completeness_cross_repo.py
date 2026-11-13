@@ -73,6 +73,7 @@ from livespec.context import DoctorContext
 from livespec.doctor.static import wiring_completeness_cross_repo
 from livespec.doctor.static._wiring_completeness_cross_repo_helpers import (
     CLONES_ROOT_ENV_VAR,
+    is_host_repo,
     resolve_effective_local_clone,
 )
 from livespec.io import proc as io_proc
@@ -2131,6 +2132,42 @@ def test_resolve_effective_local_clone_env_var_overrides_missing_manifest(
         env={CLONES_ROOT_ENV_VAR: str(clones_root)},
     )
     assert result == str(clones_root / "livespec-runtime")
+
+
+def test_resolve_effective_local_clone_expands_home_in_manifest_path(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A `~`-rooted manifest `local_clone` resolves under the user's home.
+
+    JSON values are never shell-expanded, so `~/workspace/<sibling>` has
+    to be expanded by the reader; otherwise one manifest value could not
+    name the clone on a host whose checkouts live in a real `~/workspace`.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    result = resolve_effective_local_clone(
+        sibling_slug="livespec-orchestrator-git-jsonl",
+        target={"local_clone": "~/workspace/livespec-orchestrator-git-jsonl"},
+        env={},
+    )
+    assert result == str(tmp_path / "workspace" / "livespec-orchestrator-git-jsonl")
+
+
+def test_host_repo_detected_when_manifest_path_is_home_relative(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A `~`-rooted manifest `local_clone` naming the project root is the host."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    project_root = tmp_path / "workspace" / "primary"
+    project_root.mkdir(parents=True)
+    assert is_host_repo(
+        sibling_slug="host",
+        target={"local_clone": "~/workspace/primary"},
+        project_root=project_root,
+    )
 
 
 def test_resolve_effective_local_clone_empty_env_var_falls_back_to_manifest() -> None:

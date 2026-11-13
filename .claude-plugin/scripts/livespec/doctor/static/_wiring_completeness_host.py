@@ -68,7 +68,7 @@ def is_host_repo(
     local_clone_raw = target.get("local_clone")
     if not isinstance(local_clone_raw, str) or local_clone_raw == "":
         return False
-    local_resolved = _raw_path_resolve(path=Path(local_clone_raw))
+    local_resolved = _raw_path_resolve(path=Path(local_clone_raw).expanduser())
     project_resolved = _raw_path_resolve(path=project_root)
     if not isinstance(local_resolved, Success) or not isinstance(project_resolved, Success):
         return False
