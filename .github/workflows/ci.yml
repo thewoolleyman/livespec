@@ -893,6 +893,11 @@ jobs:
             exit 1
           fi
           mode="$(printf '%s' "$plan" | "$RELEASED_PYTHON" -I -c 'import json, sys; print(json.load(sys.stdin)["mode"])')"
+          # Print ONLY the enablement reading the released plan recorded
+          # (livespec-dev-tooling-kg5qv4), so the run log carries the CI-plan
+          # vantage. Never print the whole plan: it carries an environment map.
+          enablement="$(printf '%s' "$plan" | "$RELEASED_PYTHON" -I -c 'import json, sys; print(json.dumps(json.load(sys.stdin).get("enablement"), sort_keys=True))')"
+          echo "incident-ci: the released plan recorded enablement ${enablement}"
           if [ "$mode" != "expedited-repair" ]; then
             note="PR #${PR_NUMBER} is unexpedited: the released plan selected the '${mode}' mode, so the retained livespec-incident-ci block is ignored, both incident flags are off, and the complete normal policy runs; no check executed by this job"
             echo "::notice::incident-ci: ${note}"
