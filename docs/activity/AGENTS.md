@@ -13,7 +13,7 @@ Prerequisites:
 - `git` and Python 3.10 or newer;
 - a local clone of every manifest `fleet` and `adopters` entry. The generator
   searches an explicit workspace root first, then the report checkout's parent,
-  `~/workspaces`, `~/workspace`, and `/data/projects`.
+  `~/workspaces`, and `~/workspace`.
 
 From the livespec repository root, run:
 
@@ -28,7 +28,7 @@ The following interfaces are stable for future refreshes:
 docs/activity/update-activity.sh \
   --since 2026-06-01 \
   --through 2026-09-09 \
-  --workspace-root /data/projects
+  --workspace-root "$HOME/workspace"
 ```
 
 The equivalent environment variables are `LIVESPEC_ACTIVITY_SINCE`,

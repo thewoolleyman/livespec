@@ -389,14 +389,14 @@ write still uses the worktree → PR → merge → cleanup path below.
    the structural test the commit-refuse hook itself uses):
 
    ```bash
-   git -C /data/projects/livespec rev-parse --git-dir --git-common-dir
-   git -C /data/projects/livespec status --short --branch
+   git -C "$HOME/workspace/livespec" rev-parse --git-dir --git-common-dir
+   git -C "$HOME/workspace/livespec" status --short --branch
    ```
 
 2. If the change will modify tracked files, create a dedicated worktree
    from the primary checkout's `master` and do all edits there. Every
    worktree lives under the per-user root `~/.worktrees/<repo>/<branch>`
-   — NEVER as a peer of the clones under `/data/projects`, so the
+   — NEVER as a peer of the clones under `~/workspace`, so the
    workspace holds only first-class clones. Create it with the
    worktree-discipline pack's recipe, which adds the worktree under that
    root, provisions the gitignored pack into it, and runs the hydrate
@@ -406,7 +406,7 @@ write still uses the worktree → PR → merge → cleanup path below.
    mise exec -- just worktree-create <branch>
    ```
 
-   A raw `mise exec -- git -C /data/projects/livespec worktree add -b <branch>
+   A raw `mise exec -- git -C "$HOME/workspace/livespec" worktree add -b <branch>
    "$HOME/.worktrees/livespec/<branch>" master` also yields a usable
    worktree — the pre-commit and pre-push hooks install the pack before
    any gate reads it, so the worktree can commit and push with no
@@ -423,7 +423,7 @@ write still uses the worktree → PR → merge → cleanup path below.
    failure.
 4. Open a PR, wait for required checks, and merge through the PR using
    the repo's rebase-merge discipline.
-5. After merge, refresh `/data/projects/livespec` to `origin/master`,
+5. After merge, refresh `~/workspace/livespec` to `origin/master`,
    remove the feature worktree, delete the local branch, and verify the
    primary checkout is clean on `master`.
 
@@ -477,7 +477,7 @@ clone connects to its beads tenant only when all of the following are present:
   A FLEET tenant shares the
   one fleet password (members of the single livespec 1Password Environment) via
   the livespec 1Password Environment wrapper `with-livespec-env.sh` (canonical
-  copy at `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an
+  copy at `~/workspace/1password-env-wrapper/with-livespec-env.sh`); an
   INDEPENDENT (non-fleet) tenant injects its own tenant password from its own
   1Password Environment via its own `with-<project>-env.sh` wrapper. Either way
   `bd` consumes the same bare var — there is NO per-tenant
@@ -1243,7 +1243,7 @@ contract diagram) and their rationale live in
   clean status — never leave the maintainer on a feature branch, including after
   `gh pr merge --auto`.
 - **Refresh the primary after a merge.** After any PR you drove lands,
-  `git -C /data/projects/<repo> pull --ff-only origin master` so the maintainer's
+  `git -C "$HOME/workspace/<repo>" pull --ff-only origin master` so the maintainer's
   session sees it (the workspace path reaches the same `.git`, so there's no
   separate clone to update).
 - **Force-push your OWN branch freely; never another session's.** Force-pushing
@@ -1386,12 +1386,14 @@ contract diagram) and their rationale live in
 
 ## Standing environment facts
 
-- **`/home/ubuntu/workspace` and `/home/ubuntu/projects` are single top-level
-  symlinks to `/data/projects`** — there are no per-repo bind-mounts. A workspace
-  repo path is the same `/data/projects/<repo>` `.git` reached through the
-  symlinked parent, so a repo path-move is a plain `mv` of `/data/projects/<repo>`
-  plus `git remote set-url` and a config edit — no unmount/remount/fstab/
-  privileged operation.
+- **`~/workspace` is where canonical project clones live, on every host.** On a
+  host whose data disk lives elsewhere, `~/workspace` is a single top-level
+  symlink to that location (on the VPS, `/home/ubuntu/workspace` and
+  `/home/ubuntu/projects` both point at `/data/projects`) — there are no per-repo
+  bind-mounts. A repo path is the same `~/workspace/<repo>` `.git` reached through
+  the symlinked parent, so a repo path-move is a plain `mv` of
+  `~/workspace/<repo>` plus `git remote set-url` and a config edit — no
+  unmount/remount/fstab/privileged operation.
 - **A Dolt `command denied to user '<tenant>'@'%'` error for `CALL
   DOLT_BACKUP(...)` is correct-by-design, not a fault.** `DOLT_BACKUP` needs
   SUPER, deliberately confined to one dedicated `backup`@localhost user; tenant

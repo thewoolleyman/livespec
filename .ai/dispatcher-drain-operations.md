@@ -71,7 +71,7 @@ import json, pathlib
 d = json.loads((pathlib.Path.home()/".claude/plugins/installed_plugins.json").read_text())
 key = "livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro"
 for e in d["plugins"][key]:
-    if e.get("projectPath") == "/data/projects/<target-repo>":
+    if pathlib.Path(e.get("projectPath", "")).resolve() == (pathlib.Path.home() / "workspace" / "<target-repo>").resolve():
         print(e["installPath"])
 PY
 ```

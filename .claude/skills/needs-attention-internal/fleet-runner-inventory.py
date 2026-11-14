@@ -72,8 +72,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 OWNER = "thewoolleyman"
-MANIFEST = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc")
-ARC_VALUES_DIR = Path("/data/projects/livespec-dev-tooling/ci-runner/k3s/phase2/arc")
+MANIFEST = Path.home() / "workspace" / "livespec" / ".livespec-fleet-manifest.jsonc"
+ARC_VALUES_DIR = (
+    Path.home() / "workspace" / "livespec-dev-tooling" / "ci-runner" / "k3s" / "phase2" / "arc"
+)
 
 # Every configured ARC scale set runs on the single-node k3s cluster on this
 # host. Stated once, here, so a reader never has to guess which machine to check

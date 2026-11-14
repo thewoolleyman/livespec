@@ -31,7 +31,7 @@ def is_host_repo(
        `sibling_slug` equals `project_root.name`, the target IS
        the host — regardless of any manifest `local_clone` value.
        This covers the CI case where the manifest's
-       `local_clone: /data/projects/<repo>` doesn't exist on the
+       `local_clone: ~/workspace/<repo>` doesn't exist on the
        runner, but the runner's checkout DOES sit at
        `/home/runner/work/<repo>/<repo>` whose basename matches
        the slug. Without this slug-keyed identity check, the host

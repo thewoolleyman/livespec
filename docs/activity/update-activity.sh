@@ -329,7 +329,6 @@ def clone_candidates(name: str, explicit_root: Path | None, report_root: Path) -
         report_root.parent,
         Path.home() / "workspaces",
         Path.home() / "workspace",
-        Path("/data/projects"),
     ]
     for root in roots:
         if root is None:
