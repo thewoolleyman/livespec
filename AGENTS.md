@@ -678,8 +678,8 @@ existing file):
   and before running `herdr pane send-text`, `herdr pane run`,
   `herdr agent prompt` or `tmux send-keys` against a pane you did not create.
   Claude sessions talk through `SendMessage` (across machines via Remote
-  Control), never by typing into each other's panes; a managed hook denies it
-  (maintainer ruling 2026-11-14).
+  Control), never by typing into each other's panes; a managed hook on the
+  interactive hosts denies it (maintainer ruling 2026-11-14).
 - **`.ai/adding-an-adopter.md`** — read BEFORE touching
   `.livespec-fleet-manifest.jsonc` to register a new adopter repo, and before
   planning or driving any adopter's onboarding (registration is
