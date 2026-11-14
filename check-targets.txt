@@ -56,6 +56,7 @@ check-marketplace-ref-release-only  # incident-timing: fast
 check-master-ci-green  # incident-timing: not-applicable # incident-precondition: green-master-ci
 check-match-keyword-only  # incident-timing: fast
 check-newtype-domain-primitives  # incident-timing: fast
+check-no-ambient-environment-loops
 check-no-direct-destructive-cli  # incident-timing: fast
 check-no-direct-tool-invocation  # incident-timing: fast
 check-no-except-outside-io  # incident-timing: fast
