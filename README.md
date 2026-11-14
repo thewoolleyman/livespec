@@ -1,5 +1,7 @@
 # livespec
 
+Built with [livespec](https://livespec-ai.org/)
+
 A system for governing a living natural-language specification —
 seeding, proposing changes, critiquing, revising, validating, and
 versioning. This repo is livespec CORE: the contract, the
