@@ -711,19 +711,16 @@ esac
 
 ## How to inspect and drive
 
-> **Superseded 2026-11-14 — the tmux typing recipes in this section are
-> retired history.** On the interactive hosts (vps, hetzner-xubuntu,
-> gamingpc-xubuntu) a managed hook denies literal-text tmux input
-> (`tmux send-keys` carrying text, and `tmux paste-buffer`) into every pane,
-> because tmux is a retired transport there. The worker in this thread may be
-> a `claude` process (see the HALT-first precondition above): send a Claude
-> worker its instructions with `SendMessage`, per the fleet's distributed
-> SendMessage protocol
-> (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md).
-> Drive a Codex or pi worker with `herdr pane send-text <pane> "<text>"`, then
-> `herdr pane send-keys <pane> Enter` in a separate call. Key-only input to
-> unblock a picker or dialog stays allowed. The `tmux send-keys` lines below
-> are kept only as the record of how this thread was driven.
+> **Prefer `SendMessage` for a Claude worker (maintainer ruling
+> 2026-11-14).** The worker in this thread may be a `claude` process (see the
+> HALT-first precondition above): send a Claude worker its instructions with
+> `SendMessage` (across machines via Remote Control), per the fleet's
+> distributed SendMessage protocol
+> (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md),
+> because text typed into its pane can interrupt the maintainer. Typing into
+> a pane is still allowed and nothing blocks it; the `tmux send-keys` lines
+> below remain usable when typing is necessary, such as for a slash command,
+> a picker, a session `SendMessage` cannot reach, or a Codex or pi worker.
 
 Re-measure the ledger anchor before carrying forward any filed status or
 acceptance claim:
