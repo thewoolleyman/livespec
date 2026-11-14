@@ -323,6 +323,26 @@ check:
         diff <(printf '%s\n' "${targets[@]}") <(printf '%s\n' "${inventory_targets[@]}") >&2
         exit 1
     fi
+    # Every member MUST carry a purity declaration: a shipped check in its own
+    # livespec_dev_tooling module, a repo-private one as a `# purity: <value>`
+    # annotation on its check-targets.txt line. An undeclared member counts as
+    # world-reading, so the green token never memoizes it and the saving shrinks
+    # with nobody noticing; refusing here, before any member runs, makes that
+    # default visible, as livespec-dev-tooling's own aggregate does. A malformed
+    # declaration refuses the same way (the audit exits non-zero). The audit
+    # takes the `check-` members only: the shared inventory reader parses only
+    # `check-` slugs, so `e2e-test-claude-code-mock` cannot be read as declared
+    # and keeps the world-reading default, which always runs it.
+    check_members=()
+    for t in "${targets[@]}"; do
+        [[ "$t" == check-* ]] && check_members+=("$t")
+    done
+    if ! undeclared_members=$(uv run python -m livespec_dev_tooling.green_token undeclared "${check_members[@]}"); then
+        printf 'ERROR: these check aggregate members carry no valid purity declaration: %s\n' \
+            "${undeclared_members//$'\n'/ }" >&2
+        printf 'Declare a repo-private member as a "# purity: tree-pure" or "# purity: world-reading" annotation on its check-targets.txt line.\n' >&2
+        exit 1
+    fi
     failed=()
     ran=0
     for t in "${targets[@]}"; do

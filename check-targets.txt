@@ -96,23 +96,43 @@ check-vendor-manifest  # incident-timing: fast
 check-work-item-interpolation-delimiters  # incident-timing: fast
 check-work-item-status-vocabulary  # incident-timing: fast
 check-wrapper-shape  # incident-timing: fast
-check-behavior-scenario-link  # incident-timing: fast
-check-canonical-slugs-projection  # incident-timing: fast
-check-cli-explicit-project-root  # incident-timing: fast
-check-codex-no-repo-local-adapters  # incident-timing: fast
-check-comment-no-historical-refs  # incident-timing: fast
-check-copier-template-smoke  # incident-timing: fast
-check-coverage  # incident-timing: slow
-check-doctor-static  # incident-timing: fast
-check-format  # incident-timing: fast
-check-gh-feature-surfaces  # incident-timing: fast
-check-imports-architecture  # incident-timing: fast
-check-lint  # incident-timing: fast
-check-no-renderer-vendoring  # incident-timing: fast
-check-no-workflow-edits  # incident-timing: fast
-check-prompts  # incident-timing: slow
-check-schema-dataclass-pairing  # incident-timing: fast
-check-spec-governance-manifest  # incident-timing: fast
-check-spec-governance-template  # incident-timing: fast
-check-types  # incident-timing: fast
-e2e-test-claude-code-mock  # incident-timing: slow
+
+# Repo-private block.
+#
+# Each line carries this member's PURITY DECLARATION as a `# purity: <value>`
+# annotation, read by `livespec_dev_tooling.check_purity`. The green token may
+# memoize a `tree-pure` member, whose verdict the committed tree alone decides
+# (pinned tools included, since uv.lock is in the tree), and may never memoize a
+# `world-reading` one, whose verdict can change while the tree does not. A
+# member with NO declaration counts as world-reading and fails `just check`
+# before any member runs, so the saving cannot shrink unnoticed. The block above
+# carries no purity annotations on purpose: livespec-dev-tooling ships those
+# checks and declares each one's purity in its own module, so the declaration
+# travels with the library. The four world-reading members here read, in order:
+# the LIVESPEC_BEHAVIOR_SCENARIO_LINK severity lever in the caller's
+# environment; the sibling repositories' justfiles through the GitHub API (the
+# doctor's cross-repo wiring check); the host's installed `gh` binary; and the
+# work-items ledger's workflow-edit authorizations. `e2e-test-claude-code-mock`
+# is declared for the record, but the shared reader parses only `check-` slugs,
+# so the aggregate's refusal audits the `check-` members and that one keeps the
+# world-reading default.
+check-behavior-scenario-link  # purity: world-reading # incident-timing: fast
+check-canonical-slugs-projection  # purity: tree-pure # incident-timing: fast
+check-cli-explicit-project-root  # purity: tree-pure # incident-timing: fast
+check-codex-no-repo-local-adapters  # purity: tree-pure # incident-timing: fast
+check-comment-no-historical-refs  # purity: tree-pure # incident-timing: fast
+check-copier-template-smoke  # purity: tree-pure # incident-timing: fast
+check-coverage  # purity: tree-pure # incident-timing: slow
+check-doctor-static  # purity: world-reading # incident-timing: fast
+check-format  # purity: tree-pure # incident-timing: fast
+check-gh-feature-surfaces  # purity: world-reading # incident-timing: fast
+check-imports-architecture  # purity: tree-pure # incident-timing: fast
+check-lint  # purity: tree-pure # incident-timing: fast
+check-no-renderer-vendoring  # purity: tree-pure # incident-timing: fast
+check-no-workflow-edits  # purity: world-reading # incident-timing: fast
+check-prompts  # purity: tree-pure # incident-timing: slow
+check-schema-dataclass-pairing  # purity: tree-pure # incident-timing: fast
+check-spec-governance-manifest  # purity: tree-pure # incident-timing: fast
+check-spec-governance-template  # purity: tree-pure # incident-timing: fast
+check-types  # purity: tree-pure # incident-timing: fast
+e2e-test-claude-code-mock  # purity: tree-pure # incident-timing: slow
