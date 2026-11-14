@@ -230,6 +230,7 @@ check:
         check-master-ci-green
         check-match-keyword-only
         check-newtype-domain-primitives
+        check-no-ambient-environment-loops
         check-no-direct-destructive-cli
         check-no-direct-tool-invocation
         check-no-except-outside-io
@@ -1335,3 +1336,6 @@ check-delegated-job-authority-skip:
 
 check-ci-single-container-image:
     uv run python -m livespec_dev_tooling.checks.ci_single_container_image
+
+check-no-ambient-environment-loops:
+    uv run python -m livespec_dev_tooling.checks.no_ambient_environment_loops
