@@ -711,6 +711,20 @@ esac
 
 ## How to inspect and drive
 
+> **Superseded 2026-11-14 — the tmux typing recipes in this section are
+> retired history.** On the interactive hosts (vps, hetzner-xubuntu,
+> gamingpc-xubuntu) a managed hook denies literal-text tmux input
+> (`tmux send-keys` carrying text, and `tmux paste-buffer`) into every pane,
+> because tmux is a retired transport there. The worker in this thread may be
+> a `claude` process (see the HALT-first precondition above): send a Claude
+> worker its instructions with `SendMessage`, per the fleet's distributed
+> SendMessage protocol
+> (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md).
+> Drive a Codex or pi worker with `herdr pane send-text <pane> "<text>"`, then
+> `herdr pane send-keys <pane> Enter` in a separate call. Key-only input to
+> unblock a picker or dialog stays allowed. The `tmux send-keys` lines below
+> are kept only as the record of how this thread was driven.
+
 Re-measure the ledger anchor before carrying forward any filed status or
 acceptance claim:
 

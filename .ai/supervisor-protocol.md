@@ -52,13 +52,19 @@ starts 40 lines back in history and also includes the visible pane; it does not
 mean "the last 40 lines." Do not pipe it to the invalid placeholder form
 `tail -N`.
 
-**A Claude worker is not driven by typing (superseded 2026-11-14).** Send a
-Claude worker its instructions with `SendMessage`, per the fleet's distributed
-SendMessage protocol (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/.ai/distributed-sendmessage-protocol.md);
-a managed hook denies literal-text `tmux send-keys` into a Claude pane. The
-typed-text procedure below applies only to a Codex or pi worker, which cannot
-receive `SendMessage`. Key-only input (Escape, Enter, a picker digit) to
-unblock a picker or dialog stays allowed for any worker.
+**The tmux typing recipes below are retired history (superseded 2026-11-14).**
+On the interactive hosts (vps, hetzner-xubuntu, gamingpc-xubuntu) a managed
+hook denies literal-text tmux input — `tmux send-keys` carrying text, and
+`tmux paste-buffer` — into EVERY pane, because tmux is a retired transport
+there. Send a Claude worker its instructions with `SendMessage`, per the
+fleet's distributed SendMessage protocol
+(https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md).
+Drive a Codex or pi worker, which cannot receive `SendMessage`, with
+`herdr pane send-text <pane> "<text>"` and then, in a separate call,
+`herdr pane send-keys <pane> Enter`. Key-only input (Escape, Enter, a picker
+digit) to unblock a picker or dialog stays allowed for any worker. The tmux
+send, paste and verify procedure below is kept as history: its verify-before-
+Enter reasoning still applies to a `herdr pane send-text` delivery.
 
 For a short instruction, send the text, verify that it landed, then send Enter
 in a separate tmux call. For longer text, load it from a file, paste it, verify
