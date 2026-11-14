@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.7](https://github.com/thewoolleyman/livespec/compare/v0.47.6...v0.47.7) (2026-11-14)
+
+
+### Bug Fixes
+
+* **manifest:** hetzner-xubuntu-info profile direction is dated 2026-11-14 UTC ([102df68](https://github.com/thewoolleyman/livespec/commit/102df6893541804fac25c1361be28349dca727e3))
+
 ## [0.47.6](https://github.com/thewoolleyman/livespec/compare/v0.47.5...v0.47.6) (2026-11-14)
 
 
