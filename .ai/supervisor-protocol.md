@@ -55,7 +55,7 @@ mean "the last 40 lines." Do not pipe it to the invalid placeholder form
 **Prefer `SendMessage` for a Claude worker (maintainer ruling 2026-11-14).**
 Send a Claude worker its instructions with `SendMessage` (across machines via
 Remote Control), per the fleet's distributed SendMessage protocol
-(https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md),
+(https://github.com/livespec-ai/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md),
 because text typed into its pane can interrupt the maintainer. Typing into a
 pane is still allowed and nothing blocks it; use it when necessary, such as
 for a slash command, a picker, a session `SendMessage` cannot reach, or a

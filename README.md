@@ -8,7 +8,7 @@ versioning. This repo is livespec CORE: the contract, the
 harness-neutral driving prose, the reference spec-side CLIs, the
 schemas, and the built-in templates. The interactive slash-command
 surface ships separately as a per-agent-runtime **Driver** plugin
-(the first is [livespec-driver-claude](https://github.com/thewoolleyman/livespec-driver-claude)
+(the first is [livespec-driver-claude](https://github.com/livespec-ai/livespec-driver-claude)
 for Claude Code).
 
 > **New here?** Start with the **[spec / implementation lifecycle
@@ -36,9 +36,9 @@ hooks) load **only** in that project — never machine-wide:
 ```jsonc
 {
   "extraKnownMarketplaces": {
-    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec", "ref": "release" } },
-    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude", "ref": "release" } },
-    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro", "ref": "release" } }
+    "livespec":               { "source": { "source": "github", "repo": "livespec-ai/livespec", "ref": "release" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "livespec-ai/livespec-driver-claude", "ref": "release" } },
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "livespec-ai/livespec-orchestrator-beads-fabro", "ref": "release" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
@@ -211,7 +211,7 @@ human gates, and GitHub pull requests — and surfaces what needs the
 human's attention. Two shipped realizations fill the role today, as
 peers (the fleet-manifest classes `console` and `control-plane-tool`):
 
-- [`livespec-console-beads-fabro`](https://github.com/thewoolleyman/livespec-console-beads-fabro)
+- [`livespec-console-beads-fabro`](https://github.com/livespec-ai/livespec-console-beads-fabro)
   — the reference **console**: a single Rust binary with a **TUI-first**
   operator experience. It runs operator-triggered bounded dispatch
   drains, and it is where an operator flips **full autonomous mode** on
@@ -220,12 +220,12 @@ peers (the fleet-manifest classes `console` and `control-plane-tool`):
   items back to the cockpit — a shipped, live-accepted capability.
   Launch the TUI with `livespec-console-beads-fabro serve`; see the
   console repo's
-  [README](https://github.com/thewoolleyman/livespec-console-beads-fabro#running-the-console-the-tui)
+  [README](https://github.com/livespec-ai/livespec-console-beads-fabro#running-the-console-the-tui)
   for the full launch command, prerequisites, keybindings, and the
   autonomous-mode enable flow. The console is intended to be a
   standalone downloadable binary; release-binary publishing is still
   being set up, so for now it is built from source.
-- [`livespec-overseer`](https://github.com/thewoolleyman/livespec-overseer)
+- [`livespec-overseer`](https://github.com/livespec-ai/livespec-overseer)
   — the **operator-tool** peer: a two-pane overseer (a deterministic
   daemon plus a thin operator surface) that runs bounded foreman and
   grooming loops and supervises plan-driven worker sessions.
@@ -315,7 +315,7 @@ Two paths:
   without re-installing. (The Driver's SKILL.md bindings resolve a
   local core checkout automatically when the governed project IS this
   repo; edit the bindings themselves in the
-  [livespec-driver-claude](https://github.com/thewoolleyman/livespec-driver-claude)
+  [livespec-driver-claude](https://github.com/livespec-ai/livespec-driver-claude)
   repo.)
 - **Marketplace install path** (verifies the published flow):
   use the install commands above (or

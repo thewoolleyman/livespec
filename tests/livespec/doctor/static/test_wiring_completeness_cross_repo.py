@@ -2128,7 +2128,7 @@ def test_resolve_effective_local_clone_env_var_overrides_missing_manifest(
     clones_root = tmp_path / "ci-clones"
     result = resolve_effective_local_clone(
         sibling_slug="livespec-runtime",
-        target={"github_url": "https://github.com/thewoolleyman/livespec-runtime"},
+        target={"github_url": "https://github.com/livespec-ai/livespec-runtime"},
         env={CLONES_ROOT_ENV_VAR: str(clones_root)},
     )
     assert result == str(clones_root / "livespec-runtime")

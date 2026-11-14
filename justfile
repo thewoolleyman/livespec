@@ -139,9 +139,9 @@ ensure-codex-plugins:
         echo "codex CLI not found; skipping host-wide Codex plugin install." >&2
         exit 0
     fi
-    codex plugin marketplace add thewoolleyman/livespec --ref release || exit $?
-    codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release || exit $?
-    codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release || exit $?
+    codex plugin marketplace add livespec-ai/livespec --ref release || exit $?
+    codex plugin marketplace add livespec-ai/livespec-driver-codex --ref release || exit $?
+    codex plugin marketplace add livespec-ai/livespec-orchestrator-beads-fabro --ref release || exit $?
     codex plugin marketplace upgrade livespec || exit $?
     codex plugin marketplace upgrade livespec-driver-codex || exit $?
     codex plugin marketplace upgrade livespec-orchestrator-beads-fabro || exit $?

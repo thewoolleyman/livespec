@@ -171,9 +171,9 @@ lines, or drop them if deferred:
 ```jsonc
 {
   "extraKnownMarketplaces": {
-    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec", "ref": "release" } },
-    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude", "ref": "release" } },
-    "livespec-orchestrator-beads-fabro": { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro", "ref": "release" } }
+    "livespec":               { "source": { "source": "github", "repo": "livespec-ai/livespec", "ref": "release" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "livespec-ai/livespec-driver-claude", "ref": "release" } },
+    "livespec-orchestrator-beads-fabro": { "source": { "source": "github", "repo": "livespec-ai/livespec-orchestrator-beads-fabro", "ref": "release" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
@@ -329,14 +329,14 @@ installed it.
 survey found already registered in `~/.codex/config.toml`:
 
 ```bash
-codex plugin marketplace add thewoolleyman/livespec --ref release
+codex plugin marketplace add livespec-ai/livespec --ref release
 codex plugin add livespec@livespec
 
-codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release
+codex plugin marketplace add livespec-ai/livespec-driver-codex --ref release
 codex plugin add livespec@livespec-driver-codex
 
 # only if the orchestrator choice was livespec-orchestrator-beads-fabro:
-codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release
+codex plugin marketplace add livespec-ai/livespec-orchestrator-beads-fabro --ref release
 codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
 ```
 
@@ -468,7 +468,7 @@ Phase-3 Codex registration:
   the released posture; there is nothing further to wire:
 
   ```bash
-  codex plugin marketplace add thewoolleyman/livespec --ref release
+  codex plugin marketplace add livespec-ai/livespec --ref release
   codex plugin add livespec@livespec
   ```
 
@@ -483,7 +483,7 @@ Phase-3 Codex registration:
   `release`:
 
   ```bash
-  codex plugin marketplace add thewoolleyman/livespec --ref <vX.Y.Z>
+  codex plugin marketplace add livespec-ai/livespec --ref <vX.Y.Z>
   ```
 
   Native auto-upgrade is a no-op on an immutable tag, so the build

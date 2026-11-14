@@ -4,7 +4,7 @@
 # BOTH copier entry points:
 #
 #   - the repo-root `copier.yml` (the consumer flow: `_src_path:
-#     gh:thewoolleyman/livespec` + `_subdirectory` routing) — copier
+#     gh:livespec-ai/livespec` + `_subdirectory` routing) — copier
 #     reads ONLY the config at the template ROOT, so without this
 #     include the consumer flow would see zero declared questions and
 #     `copier update` would silently DROP every recorded answer from

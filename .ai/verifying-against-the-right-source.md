@@ -1395,7 +1395,7 @@ discrepancy as unresolved and recommended nobody act on either number.
 
 **Neither number was wrong.** 75 was `livespec`'s row; 482 was the eight-repo
 fleet total; the eight rows sum to exactly 482. The query
-`gh api repos/thewoolleyman/livespec/actions/runners` is a **per-repository**
+`gh api repos/livespec-ai/livespec/actions/runners` is a **per-repository**
 endpoint, and its `total_count` field is named as though it were a total of
 something the reader chose. It is not — it totals that one repo. The right
 source for "how many runners does the FLEET have" is eight calls and a sum, or a
@@ -1471,12 +1471,12 @@ wrong, because the population being listed does not persist.
 
 A post-cutover audit asked whether ARC-provisioned CI runners can carry the
 labels the specification requires. It queried
-`repos/thewoolleyman/livespec-console-beads-fabro/actions/runners`, got back
+`repos/livespec-ai/livespec-console-beads-fabro/actions/runners`, got back
 sixteen podman-era runners and no ARC members, and concluded that **"ARC runners
 do not appear in the repository runners API at all"** — a structural claim, and
 the load-bearing evidence in a filed spec proposal.
 
-They do appear. Measured on `thewoolleyman/livespec` while a job was running:
+They do appear. Measured on `livespec-ai/livespec` while a job was running:
 
 ```json
 {"total_count":1,"runners":[{"id":31096,

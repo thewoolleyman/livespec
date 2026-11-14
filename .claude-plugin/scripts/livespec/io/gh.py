@@ -93,7 +93,7 @@ def get_repo_name_with_owner(
 
     Composes `gh repo view --json nameWithOwner --jq .nameWithOwner`
     with `cwd=project_root`. The result is the canonical
-    `owner/name` string (e.g., `thewoolleyman/livespec`) that
+    `owner/name` string (e.g., `livespec-ai/livespec`) that
     cleanup tooling templates into the
     `gh api -X DELETE repos/<owner>/<name>/git/refs/heads/<branch>`
     narration.

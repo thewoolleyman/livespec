@@ -71,7 +71,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-OWNER = "thewoolleyman"
+OWNER = "livespec-ai"
 MANIFEST = Path.home() / "workspace" / "livespec" / ".livespec-fleet-manifest.jsonc"
 ARC_VALUES_DIR = (
     Path.home() / "workspace" / "livespec-dev-tooling" / "ci-runner" / "k3s" / "phase2" / "arc"

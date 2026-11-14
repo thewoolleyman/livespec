@@ -183,7 +183,7 @@ def test_claude_skills_symlink_absent() -> None:
     assert not _CLAUDE_SKILLS_SYMLINK.is_symlink(), (
         f"{_CLAUDE_SKILLS_SYMLINK.relative_to(_REPO_ROOT)} is a symlink; remove it. "
         f"The /livespec:* skills MUST be loaded via the marketplace install mechanism "
-        f"(`/plugin marketplace add thewoolleyman/livespec-driver-claude` + "
+        f"(`/plugin marketplace add livespec-ai/livespec-driver-claude` + "
         f"`/plugin install livespec@livespec-driver-claude`) so "
         f"they receive the `livespec:` namespace prefix per the spec."
     )
