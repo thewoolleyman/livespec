@@ -42,7 +42,7 @@ Cross-boundary mechanism:
     `cross_repo_conformance_targets[<slug>].local_clone` field. CI sets the
     env var to a freshly-cloned siblings-root so the check passes
     on ephemeral GitHub Actions runners; local-dev usage leaves it
-    unset and reads from `/data/projects/<sibling>` via the
+    unset and reads from `~/workspace/<sibling>` via the
     manifest. Either way the read uses `git show HEAD:justfile`,
     so the read is git-db-backed and works on bare clones (the
     primary-checkout commit-refuse hook supersedes the bare-flag

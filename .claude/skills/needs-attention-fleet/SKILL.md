@@ -36,7 +36,7 @@ optional grouping, not a computed order.
 
 ## Step 1 — read the fleet manifest LIVE
 
-Read `/data/projects/livespec/.livespec-fleet-manifest.jsonc` at run time and
+Read `~/workspace/livespec/.livespec-fleet-manifest.jsonc` at run time and
 iterate its two arrays; do NOT hardcode the member list, so this skill stays
 correct as the manifest changes. Parse the JSONC by stripping `//` line comments
 (or use the vendored `jsoncomment`):
@@ -48,7 +48,7 @@ correct as the manifest changes. Parse the JSONC by stripping `//` line comments
   adopted the workflow but are not fleet — e.g. `openbrain`, `resume`). Adopters
   contribute **product `needs-attention` only**.
 
-Every checkout is `/data/projects/<repo>` by the workspace convention (there is
+Every checkout is `~/workspace/<repo>` by the workspace convention (there is
 no `path` field). Secrets are probe-only (`printenv NAME | wc -c`, never echo a
 value).
 
@@ -59,12 +59,12 @@ For every fleet member AND every adopter, invoke that repo's shipped product
 
 **Resolve BOTH per-repo facts from the target repo's OWN `.livespec.jsonc`.**
 Two facts drive the invocation, and both are read from
-`/data/projects/<repo>/.livespec.jsonc` — NOT from this repo's config, and NOT
+`~/workspace/<repo>/.livespec.jsonc` — NOT from this repo's config, and NOT
 hardcoded:
 
 1. **The orchestrator plugin** — named under `implementation.plugin` (one of
    `livespec-orchestrator-beads-fabro` or `livespec-orchestrator-git-jsonl`).
-   Each orchestrator has a source checkout at `/data/projects/<orchestrator>`
+   Each orchestrator has a source checkout at `~/workspace/<orchestrator>`
    that supplies the `needs_attention.py` CLI.
 2. **The credential wrapper** — the argv-prefix under the top-level
    `credential_wrapper` key (e.g.
@@ -87,17 +87,17 @@ credential wrapper the SAME per-repo way as the plugin — from each repo's own
 ```bash
 # beads-fabro–backed FLEET member — its OWN credential_wrapper (with-livespec-env.sh):
 /usr/local/bin/with-livespec-env.sh -- \
-  python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py \
-  --json --project-root /data/projects/livespec --repo-name livespec
+  python3 "$HOME/workspace/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py" \
+  --json --project-root "$HOME/workspace/livespec" --repo-name livespec
 
 # beads-fabro–backed INDEPENDENT-tenant adopter (openbrain) — its OWN wrapper (with-openbrain-env.sh):
-/data/projects/1password-env-wrapper/with-openbrain-env.sh -- \
-  python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py \
-  --json --project-root /data/projects/openbrain --repo-name openbrain
+"$HOME/workspace/1password-env-wrapper/with-openbrain-env.sh" -- \
+  python3 "$HOME/workspace/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/needs_attention.py" \
+  --json --project-root "$HOME/workspace/openbrain" --repo-name openbrain
 
 # git-jsonl–backed repo (git-backed store, NO credential_wrapper declared → invoke bare):
-python3 /data/projects/livespec-orchestrator-git-jsonl/.claude-plugin/scripts/bin/needs_attention.py \
-  --json --project-root /data/projects/<repo> --repo-name <repo>
+python3 "$HOME/workspace/livespec-orchestrator-git-jsonl/.claude-plugin/scripts/bin/needs_attention.py" \
+  --json --project-root "$HOME/workspace/<repo>" --repo-name <repo>
 ```
 
 The `--json` envelope is `{"attention": [ ...attention_item... ]}`. Collect its

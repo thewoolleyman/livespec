@@ -745,7 +745,7 @@ generalizing past the `open` baseline is the claim side:
 [#4164](https://github.com/gastownhall/beads/issues/4164) (open) /
 [PR #4334](https://github.com/gastownhall/beads/pull/4334) (open) make
 custom `active`-category statuses claimable. **PR to be driven from the
-beads repo** — clone at `/data/projects/beads` on branch
+beads repo** — clone at `~/workspace/beads` on branch
 `feat/create-status-flag` (off `upstream/main`); handoff prompt at
 `tmp/beads-create-status-pr/handoff.md` (gitignored). Upstream PR:
 [gastownhall/beads#4536](https://github.com/gastownhall/beads/pull/4536).

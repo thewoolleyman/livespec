@@ -47,7 +47,7 @@ This helpers module owns:
   of the manifest's `local_clone` field. CI sets the env var to a
   freshly-cloned siblings-root so the check passes against
   ephemeral GitHub Actions runners that do not have
-  `/data/projects/<sibling>/` populated.
+  `~/workspace/<sibling>/` populated.
 
 All functions in this module are pure (no I/O, no global state);
 the IO boundary lives in the parent module's `run()`. The env-var
@@ -94,7 +94,7 @@ __all__: list[str] = [
 # `local_clone` field. CI sets this to a fresh clones-root the
 # workflow populates with `git clone --depth 1` of each sibling at
 # its default branch; locally, the env var is normally unset and
-# the manifest's `local_clone` path (e.g. `/data/projects/<sibling>`)
+# the manifest's `local_clone` path (e.g. `~/workspace/<sibling>`)
 # is used directly.
 CLONES_ROOT_ENV_VAR: str = "LIVESPEC_SIBLING_CLONES_ROOT"
 

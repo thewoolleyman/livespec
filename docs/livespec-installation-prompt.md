@@ -418,9 +418,9 @@ realized by the marketplace `ref` PLUS that hook:
     project's record and still exit 0. Observed in the field:
 
     ```text
-    $ cd /data/projects/homelab      # no install record of its own
+    $ cd ~/workspace/homelab        # no install record of its own
     $ claude plugin update livespec-orchestrator-git-jsonl@... -s project
-    ✔ Plugin "..." updated ... for scope project (/data/projects/resume).
+    ✔ Plugin "..." updated ... for scope project (/home/ubuntu/workspace/resume).
     EXIT=0
     ```
 

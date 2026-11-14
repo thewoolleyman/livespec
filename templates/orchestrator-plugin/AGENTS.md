@@ -248,7 +248,7 @@ present:
   injected by THIS project's configured env wrapper. A FLEET tenant shares the
   one fleet password via the fleet 1Password Environment wrapper
   `with-livespec-env.sh` (canonical copy at
-  `/data/projects/1password-env-wrapper/with-livespec-env.sh`); an INDEPENDENT
+  `~/workspace/1password-env-wrapper/with-livespec-env.sh`); an INDEPENDENT
   (non-fleet) tenant injects its own tenant password from its own 1Password
   Environment via its own `with-<project>-env.sh` wrapper. Either way `bd`
   consumes the same bare var — there is NO per-tenant

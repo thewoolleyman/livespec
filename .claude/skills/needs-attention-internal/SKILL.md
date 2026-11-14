@@ -75,10 +75,10 @@ user have actionable control over it?**
 ## The ten internal signals and how to gather each
 
 Read the fleet member list LIVE from
-`/data/projects/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
+`~/workspace/livespec/.livespec-fleet-manifest.jsonc` (the `fleet` array of
 `{repo, class}` entries) — do NOT hardcode the member list, so this skill stays
 correct as the manifest changes. Parse the JSONC by stripping `//` line comments
-(or use the vendored `jsoncomment`). Every checkout is `/data/projects/<repo>`
+(or use the vendored `jsoncomment`). Every checkout is `~/workspace/<repo>`
 by the workspace convention. Keep every query LIGHTWEIGHT: prefer reading a
 workflow's last run status over re-running the heavy check itself.
 
@@ -140,7 +140,7 @@ workflows and reports a misleading green.
 >                 "first: 10) { totalCount nodes { number title updatedAt } }"),
 > }
 >
-> raw = Path("/data/projects/livespec/.livespec-fleet-manifest.jsonc").read_text()
+> raw = (Path.home() / "workspace/livespec/.livespec-fleet-manifest.jsonc").read_text()
 > txt = "\n".join(l for l in raw.splitlines() if not l.strip().startswith("//"))
 > members = json.loads(re.sub(r",(\s*[}\]])", r"\1", txt))["fleet"]
 > names = [m["repo"] if isinstance(m, dict) else m for m in members]
@@ -355,8 +355,8 @@ For each fleet member, run the standalone normalizer in DRY-RUN (it detects with
 mutating):
 
 ```bash
-python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
-  ledger-normalize --project-root /data/projects/<repo> --dry-run --json
+python3 "$HOME/workspace/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py" \
+  ledger-normalize --project-root "$HOME/workspace/<repo>" --dry-run --json
 ```
 
 The JSON is `{"dry_run": true, "remapped": [{item_id, from, to, reason}, …],
@@ -374,8 +374,8 @@ remappable drift is the SAME command WITHOUT `--dry-run` — it self-heals the
 auto-mappable items and re-reports any residual:
 
 ```bash
-python3 /data/projects/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py \
-  ledger-normalize --project-root /data/projects/<repo>
+python3 "$HOME/workspace/livespec-orchestrator-beads-fabro/.claude-plugin/scripts/bin/dispatcher.py" \
+  ledger-normalize --project-root "$HOME/workspace/<repo>"
 ```
 
 For a residual (non-auto-mappable) drift, the handoff is the `bd update <id>
@@ -503,12 +503,12 @@ Latest release of the shared library, and each member's pinned tag:
 
 ```bash
 # 1. the producer's newest RELEASE tag (pins track releases, not master)
-git -C /data/projects/livespec-dev-tooling fetch origin master --tags --quiet
-git -C /data/projects/livespec-dev-tooling tag --sort=-v:refname | head -1
+git -C "$HOME/workspace/livespec-dev-tooling" fetch origin master --tags --quiet
+git -C "$HOME/workspace/livespec-dev-tooling" tag --sort=-v:refname | head -1
 
 # 2. one member's pinned tag, read from committed state, NOT the working tree
-git -C /data/projects/<member> fetch origin master --quiet
-git -C /data/projects/<member> show origin/master:pyproject.toml \
+git -C "$HOME/workspace/<member>" fetch origin master --quiet
+git -C "$HOME/workspace/<member>" show origin/master:pyproject.toml \
   | grep -E '^livespec-dev-tooling = \{' \
   | grep -oE 'tag = "[^"]+"'
 ```
@@ -1041,7 +1041,7 @@ Normalize every fired signal into the shared shape (defined in
     `gh run view --repo thewoolleyman/<repo> <run-id>`,
     `gh pr merge --repo thewoolleyman/livespec <pr> --rebase`, or the per-repo
     doctor invocation). For a remappable ledger drift, `kind: "shell"` with the
-    `dispatcher.py ledger-normalize --project-root /data/projects/<repo>` command
+    `dispatcher.py ledger-normalize --project-root "$HOME/workspace/<repo>"` command
     (self-heals the auto-mappable items); for a residual ledger drift, the
     `bd update <id> --status <lifecycle>` the maintainer runs after choosing a lane.
     For an unroutable registration population, `kind: "shell"` with the inventory
