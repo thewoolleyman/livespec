@@ -1,7 +1,8 @@
 """incident-ci prints ONLY the enablement reading the released plan recorded.
 
-Work-item livespec-dev-tooling-kg5qv4 (plan expedited-incident-response-flag),
-the livespec follow-up to livespec-dev-tooling-ahl6vz:
+Work-item livespec-52hir3, this repository's mirror of livespec-dev-tooling-kg5qv4
+(plan expedited-incident-response-flag, the livespec follow-up to
+livespec-dev-tooling-ahl6vz):
 `.github/workflows/ci.yml`'s incident-ci step keeps the released plan in a shell
 variable, so the enablement reading the plan records (exdkra) could not be read
 back from a run. The step now prints that one field to its log. The plan also
