@@ -94,7 +94,7 @@
     { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
     // Host-specific interactive AI workstation that hosts the fleet's seats
     // (fleet-infra) and runs the orchestrator with its own tenant
-    // (orchestrator-plugin); maintainer direction 2026-11-15. Seed and released plugin
+    // (orchestrator-plugin); maintainer direction 2026-11-14. Seed and released plugin
     // wiring live in the adopter; its dedicated credentials and tenant are
     // established by its own first bootstrap plan, never by a fleet fallback.
     { "repo": "hetzner-xubuntu-info", "profile": ["baseline", "fleet-infra", "orchestrator-plugin"], "posture": "released" },
