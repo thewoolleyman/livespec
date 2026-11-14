@@ -20,7 +20,7 @@ The maintainer moved the fleet to the organization github.com/livespec-ai (GitHu
 
 ### Proposed Changes
 
-In SPECIFICATION/non-functional-requirements.md §"CI as a merge gate (branch protection)", make three edits.
+Make three edits to SPECIFICATION/non-functional-requirements.md: edits 1 and 2 in §"CI as a merge gate (branch protection)", and edit 3 under `## Scenarios`.
 
 1. In the `strict` rationale paragraph, replace the sentence that begins "The one case it would have caught" and the sentence that begins "The fleet deliberately does NOT substitute a merge queue" with:
 
@@ -31,6 +31,7 @@ In SPECIFICATION/non-functional-requirements.md §"CI as a merge gate (branch pr
 > - (b) Every path to `master` MUST enter through the queue, including auto-merge, factory merges and human merges. The one exception is the recovery bypass actor of `contracts.md` §"Expedited incident response policy", whose push still runs the full aggregate on `master`.
 > - (c) The queue's build concurrency MUST be at least 2.
 > - (d) The required-check set is still exactly the all-green gate job, and `strict` stays off, because the queue is what tests the composed tree.
+> - (e) The queue's merge method MUST be rebase. `master` accepts only rebase-merges (§"Commit and merge discipline"), so each PR's per-commit Red-Green-Replay TDD trailers survive the merge.
 >
 > A repository owned by a personal account cannot use the merge queue, and keeps the post-merge catch. The fleet still does NOT adopt a hand-rolled serialized auto-rebase driver: it would trade robust per-PR `gh pr merge --auto` for a fragile central loop that can orphan, mis-order or wedge PRs.
 
@@ -38,9 +39,8 @@ In SPECIFICATION/non-functional-requirements.md §"CI as a merge gate (branch pr
 
 > This rule introduces no `strict`, no serialized merge train, and no additional CI on the happy path. The merge queue permitted above for organization-owned repositories is the only queue, and it adds one full run per queued batch.
 
-3. Add a scenario at the end of the section:
+3. Under `## Scenarios`, after the scenario "A conforming self-hosted host carries a fleet gate without host-wide privilege", add this scenario in the section's plain-prose convention, one step per paragraph:
 
-```gherkin
 ### Scenario: A merge queue ejects the second of two pull requests that break CI only together
 
 Given an organization-owned fleet repository requires the merge queue on master
@@ -58,6 +58,3 @@ Then the queued batch containing A and B fails its merge_group run
 And the queue removes B from the queue without merging it
 
 And A lands, and master's head commit passes the full gating aggregate
-```
-
-The revise commit adds a `tests/heading-coverage.json` row for the new scenario, as a spec-first TODO at the integration tier or above. Its `work_item` is the plan's merge-queue cutover child, livespec-dev-tooling-o6eytb, whose semantic-conflict drill exercises the scenario.
