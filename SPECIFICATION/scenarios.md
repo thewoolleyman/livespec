@@ -768,6 +768,22 @@ Scenario: A revert that would clobber later work is refused
   When the master-health reconciler would open the revert
   Then it does not create the revert
   And it raises a needs-attention issue naming the obstructing commit
+
+Scenario: A cancelled master run is re-run before a culprit is named
+  Given a red `master` whose last green commit is followed by commits whose gating runs were cancelled before a verdict
+  When the master-health reconciler runs
+  Then it re-runs the gating run of the earliest unverdicted commit in that range, in a concurrency group of its own
+  And that re-run neither cancels nor is cancelled by the newest pending `master` push run
+  And it names no culprit and opens no revert until every commit up to the first red one has a completed verdict
+  And the culprit it then names is the earliest red commit whose parent is green
+
+Scenario: A re-run that is itself cancelled raises needs-attention instead of a culprit
+  Given a red `master` episode in which the reconciler has already re-run the cancelled gating run of an unverdicted commit in the suspect range
+  And that re-run was cancelled or ended without a completed verdict
+  When the master-health reconciler runs
+  Then it does not re-run that commit's gating run again in this episode
+  And it names no culprit and opens no revert
+  And it raises the needs-attention signal naming the unverdicted commit
 ```
 
 ## A green pull request stays green after rebase-merge
