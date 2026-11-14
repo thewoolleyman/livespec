@@ -754,8 +754,6 @@ beads repo** — clone at `~/workspace/beads` on branch
 
 ## Entries inherited from the Open Brain catalogue
 
-<!-- EXPEDITED_INCIDENT_RESPONSE flag: livespec-57r6qo -->
-
 The following are documented in `beads-problems.md` (vendored from
 Open Brain; retired from this repo at commit `4916bfa`, recoverable
 with `git show 4916bfa^:dev-tooling/implementation/research/beads-problems.md`).
