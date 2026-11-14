@@ -20,7 +20,7 @@ The maintainer ruled call 3 of plan stale-base-merge-options (note 005 §5; epic
 
 ### Proposed Changes
 
-In SPECIFICATION/non-functional-requirements.md §"Self-hosted CI runner host requirements", make three edits.
+Make three edits to SPECIFICATION/non-functional-requirements.md: edits 1 and 2 in §"Self-hosted CI runner host requirements", and edit 3 under `## Scenarios`.
 
 1. Replace the **Event routing** paragraph with:
 
@@ -36,15 +36,14 @@ In SPECIFICATION/non-functional-requirements.md §"Self-hosted CI runner host re
 > - (b) the workflow's first job runs on hosted capacity with a read-only token, and resolves every pull request in the merge group through the forge API;
 > - (c) every gating job's self-hosted route depends on that first job's output, and the output is true only when every one of those pull requests has a head repository equal to the base repository and an author on the repository's committed merge-queue author allowlist.
 >
-> Every other `merge_group` run MUST route its gating jobs to hosted capacity: a fork head, an author off the allowlist, or a guard that fails or cannot resolve a pull request. That fallback MUST NOT skip or shrink any gating job.
+> Every other `merge_group` run MUST route its gating jobs to hosted capacity: a fork head, an author off the allowlist, or a guard that fails or cannot resolve a pull request. That fallback MUST NOT skip or shrink any gating job. In particular, a guard job that fails or is cancelled MUST NOT cause a gating job that depends on it to be skipped: either each such gating job still runs, routed to hosted capacity, or the all-green gate job of §"CI as a merge gate (branch protection)" fails when a gating job of a `merge_group` run was skipped. A batch whose gating jobs did not run is never reported green.
 
 2. Append to the **Fork-exclusion precondition** paragraph:
 
 > The fork-pull-request approval setting does not cover a `merge_group` run, because the queue executes enqueued code in the base repository's context. Under this precondition, self-hosted `merge_group` capacity is therefore admitted only through the guard in **Event routing**.
 
-3. Add a scenario after "A conforming self-hosted host carries a fleet gate without host-wide privilege":
+3. Under `## Scenarios`, after the scenario "A conforming self-hosted host carries a fleet gate without host-wide privilege", add these two scenarios in the section's plain-prose convention, one step per paragraph:
 
-```gherkin
 ### Scenario: A merge group holding a fork pull request runs its gate on hosted capacity
 
 Given a fleet repository meets the Fork-exclusion precondition and routes merge-gating jobs to self-hosted capacity
@@ -58,6 +57,15 @@ Then the guard job resolves that pull request's head repository and reports the 
 And every gating job of that run executes on GitHub-hosted capacity
 
 And no gating job of that run is skipped
-```
 
-The revise commit adds a `tests/heading-coverage.json` row for the new scenario, as a spec-first TODO at the integration tier or above. Its `work_item` is livespec-dev-tooling-mvqo6h, the plan's specification-ratification child, which owns the dev-tooling guard and check change that exercises the scenario.
+### Scenario: A failed merge-group guard never yields a green batch
+
+Given a fleet repository routes guarded merge_group runs to self-hosted capacity
+
+And the guard job of a merge_group run fails before reporting its output
+
+When the run's gating jobs are scheduled
+
+Then each gating job either runs on GitHub-hosted capacity or the all-green gate job fails
+
+And the merge queue does not merge that batch on a green verdict from gating jobs that did not run
