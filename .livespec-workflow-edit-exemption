@@ -1,2 +1,4 @@
-work_item=livespec-2l3b6w
-reason=incident-ci job and incident-label-ci workflow so this repository can run expedited incident mode; logically additive (ci-green and export-telemetry require more), coordinator GO under coordinator-duties section 12 and the maintainer ruling of 2026-11-03
+work_item=livespec-52hir3
+change=additive
+ci_runtime=no-significant-increase
+reason=incident-ci prints ONLY the enablement reading the released plan recorded (one json.dumps of the plan's enablement field, then one echo), right after the step reads the plan's mode; five added lines, no existing workflow line deleted or modified, no job, trigger, permission, runner, concurrency group or required check changes, one in-process JSON read so CI runtime does not change; mirror of livespec-dev-tooling-kg5qv4 (fleet follow-up to livespec-dev-tooling-ahl6vz), maintainer approval of the additive one-field echo 2026-11-13 and coordinator authorization under coordinator-duties section 12 on 2026-11-14
