@@ -1,7 +1,7 @@
 ---
 proposal: merge-queue-on-organization-owned-fleet-repositories.md
 decision: accept
-revised_at: 2026-11-14T07:38:16Z
+revised_at: 2026-11-14T07:51:40Z
 author_human: Chad Woolley <thewoolleyman@gmail.com>
 author_llm: claude-opus-5-5
 ---
