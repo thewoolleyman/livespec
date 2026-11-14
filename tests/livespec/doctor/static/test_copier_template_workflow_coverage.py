@@ -70,7 +70,7 @@ def _seed_project(*, tmp_path: Path) -> tuple[Path, Path]:
     spec_root = project_root / "SPECIFICATION"
     spec_root.mkdir()
     _ = (project_root / ".copier-answers.yml").write_text(
-        "# fixture copier-answers marker\n_src_path: gh:thewoolleyman/livespec\n",
+        "# fixture copier-answers marker\n_src_path: gh:livespec-ai/livespec\n",
         encoding="utf-8",
     )
     return project_root, spec_root

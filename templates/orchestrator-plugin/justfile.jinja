@@ -224,8 +224,8 @@ bootstrap:
 # exposes the /livespec:* commands — both are required for the
 # spec-side surface.
 ensure-plugins:
-    claude plugin marketplace add --scope project thewoolleyman/livespec
-    claude plugin marketplace add --scope project thewoolleyman/livespec-driver-claude
+    claude plugin marketplace add --scope project livespec-ai/livespec
+    claude plugin marketplace add --scope project livespec-ai/livespec-driver-claude
     claude plugin marketplace add --scope project {{ github_owner }}/{{ github_repo }}
     claude plugin install -s project livespec@livespec
     claude plugin install -s project livespec@livespec-driver-claude
@@ -243,8 +243,8 @@ ensure-codex-plugins:
         echo "codex CLI not found; skipping host-wide Codex plugin install." >&2
         exit 0
     fi
-    codex plugin marketplace add thewoolleyman/livespec
-    codex plugin marketplace add thewoolleyman/livespec-driver-codex
+    codex plugin marketplace add livespec-ai/livespec
+    codex plugin marketplace add livespec-ai/livespec-driver-codex
     codex plugin marketplace add {{ github_owner }}/{{ github_repo }}
     codex plugin marketplace upgrade livespec
     codex plugin marketplace upgrade livespec-driver-codex

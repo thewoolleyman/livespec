@@ -200,7 +200,7 @@ def test_revise_decision_event_rejects_missing_required_fields(*, tmp_path: Path
 def test_spec_pr_merge_event_validates_and_appends(*, tmp_path: Path) -> None:
     event = {
         "event_type": "spec_pr_merge",
-        "pull_request_identity": "thewoolleyman/livespec#123",
+        "pull_request_identity": "livespec-ai/livespec#123",
         "proposal_stems": ["spec-pr-merge", "spec-pr-merge-2"],
         "effective_policy": "auto-on-green",
         "effective_source": "proposal",
@@ -240,7 +240,7 @@ def test_spec_pr_merge_event_rejects_invalid_fields(
 ) -> None:
     event = {
         "event_type": "spec_pr_merge",
-        "pull_request_identity": "thewoolleyman/livespec#123",
+        "pull_request_identity": "livespec-ai/livespec#123",
         "proposal_stems": ["spec-pr-merge"],
         "effective_policy": "auto-on-green",
         "effective_source": "global",
@@ -262,7 +262,7 @@ def test_spec_pr_merge_event_rejects_raw_content_and_missing_required_fields(
 ) -> None:
     event = {
         "event_type": "spec_pr_merge",
-        "pull_request_identity": "thewoolleyman/livespec#123",
+        "pull_request_identity": "livespec-ai/livespec#123",
         "proposal_stems": ["spec-pr-merge"],
         "effective_policy": "auto-on-green",
         "effective_source": "global",

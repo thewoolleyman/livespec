@@ -220,7 +220,7 @@ run on a schedule by the `Fleet conformance` workflow. Read its latest status
 rather than re-running the heavy assert:
 
 ```bash
-gh run list --repo thewoolleyman/livespec-dev-tooling --workflow "Fleet conformance" --branch master --limit 1
+gh run list --repo livespec-ai/livespec-dev-tooling --workflow "Fleet conformance" --branch master --limit 1
 ```
 
 A failed conclusion means a fleet repo has drifted from its per-class
@@ -234,9 +234,9 @@ files bump PRs when it finds staleness. Read both its status AND any open bump
 PRs it filed:
 
 ```bash
-gh run list --repo thewoolleyman/livespec --workflow "Pin freshness sweep" --branch master --limit 1
+gh run list --repo livespec-ai/livespec --workflow "Pin freshness sweep" --branch master --limit 1
 # open bump PRs, read by the bump-PR BRANCH convention (precise), not free text:
-gh pr list --repo thewoolleyman/livespec --state open \
+gh pr list --repo livespec-ai/livespec --state open \
   --json number,title,headRefName \
   --jq '.[] | select(.headRefName | test("^chore/(freshness-)?bump-"))'
 ```
@@ -764,7 +764,7 @@ the generator above, against real fleet state:
 - **Short-circuiting.** Ten repos returned (matching the manifest's control
   count), zero queued check runs fleet-wide → no step 1b, no cluster call.
 - **Firing.** Re-run while this signal's own pull request was queuing, it
-  returned exactly one hit — `thewoolleyman/livespec` PR #2454,
+  returned exactly one hit — `livespec-ai/livespec` PR #2454,
   `check-metadata-batch`. Step 1b on that run returned nine jobs at
   `status=queued` with empty `runner_name` and `labels=livespec-local-ci-k3s`.
   Classification: `livespec-local-ci-k3s` IS in the live scale-set list, so not
@@ -1039,7 +1039,7 @@ Normalize every fired signal into the shared shape (defined in
   - `kind: "livespec-op"` for the `/livespec:doctor` drift handoff.
   - `command` is a ready-to-run string for the maintainer (e.g.
     `gh run view --repo thewoolleyman/<repo> <run-id>`,
-    `gh pr merge --repo thewoolleyman/livespec <pr> --rebase`, or the per-repo
+    `gh pr merge --repo livespec-ai/livespec <pr> --rebase`, or the per-repo
     doctor invocation). For a remappable ledger drift, `kind: "shell"` with the
     `dispatcher.py ledger-normalize --project-root "$HOME/workspace/<repo>"` command
     (self-heals the auto-mappable items); for a residual ledger drift, the

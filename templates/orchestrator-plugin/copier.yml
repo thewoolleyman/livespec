@@ -7,7 +7,7 @@
 #   §"Project-local orchestration layer"
 #
 # Every livespec-impl-* repo MUST be generated from this template via:
-#   copier copy gh:thewoolleyman/livespec <target> --vcs-ref=master
+#   copier copy gh:livespec-ai/livespec <target> --vcs-ref=master
 #
 # Generated repos MUST carry a .copier-answers.yml at the repo root tracking
 # the template version they were last generated from, and SHOULD re-sync via
@@ -20,7 +20,7 @@
 #
 # NOTE: this file is the template config ONLY when copier is pointed
 # directly at templates/orchestrator-plugin/ (the smoke-check flow). The consumer
-# flow (`_src_path: gh:thewoolleyman/livespec`) reads the repo-root
+# flow (`_src_path: gh:livespec-ai/livespec`) reads the repo-root
 # copier.yml instead, which routes here via `_subdirectory`. The question
 # set is single-sourced in copier-questions.yml and !include'd by both
 # configs.

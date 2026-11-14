@@ -28,7 +28,7 @@ __all__: list[str] = []
 
 _STEM = "some-topic"
 _HISTORY_PATH = f"SPECIFICATION/history/v202/proposed_changes/{_STEM}.md"
-_REPO = "thewoolleyman/livespec"
+_REPO = "livespec-ai/livespec"
 _PULL_REQUEST = 2200
 
 

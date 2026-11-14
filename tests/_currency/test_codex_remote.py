@@ -21,7 +21,7 @@ _LIVESPEC_CONFIG = (
     'last_updated = "2026-07-08T00:11:07Z"\n'
     'last_revision = "abcdef1234567890abcdef1234567890abcdef12"\n'
     'source_type = "git"\n'
-    'source = "https://github.com/thewoolleyman/livespec.git"\n'
+    'source = "https://github.com/livespec-ai/livespec.git"\n'
     'ref = "release"\n'
     "\n"
     "[marketplaces.other]\n"
@@ -54,7 +54,7 @@ def test_config_section_reads_only_the_target_marketplace_block(
         "last_updated": "2026-07-08T00:11:07Z",
         "last_revision": "abcdef1234567890abcdef1234567890abcdef12",
         "source_type": "git",
-        "source": "https://github.com/thewoolleyman/livespec.git",
+        "source": "https://github.com/livespec-ai/livespec.git",
         "ref": "release",
     }
 

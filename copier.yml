@@ -1,7 +1,7 @@
 # Root copier manifest for the livespec monorepo.
 #
 # The orchestrator-plugin template lives at templates/orchestrator-plugin/. This file
-# routes `copier copy gh:thewoolleyman/livespec` and
+# routes `copier copy gh:livespec-ai/livespec` and
 # `copier update --vcs-ref=master` to that subdirectory so _src_path in
 # generated repos can use the repo root URL rather than a non-standard
 # `gh:owner/repo/subdir` path (which copier parses as owner/repo=

@@ -120,8 +120,8 @@ Unpack[TypeVarTuple(...)]]` variadic-generics usage on Python
 
 ## `livespec_runtime`
 
-- **Upstream:** thewoolleyman/livespec-runtime
-  (https://github.com/thewoolleyman/livespec-runtime)
+- **Upstream:** livespec-ai/livespec-runtime
+  (https://github.com/livespec-ai/livespec-runtime)
 - **License:** MIT (per upstream pyproject.toml `[project].license`
   declaration; upstream ships no top-level LICENSE file at the
   vendored tag, so the verbatim MIT text with attribution to the

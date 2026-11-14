@@ -26,14 +26,14 @@ From the root of the project you want governed:
 the file by reference:
 
 ```text
-Fetch https://raw.githubusercontent.com/thewoolleyman/livespec/master/docs/livespec-installation-prompt.md
+Fetch https://raw.githubusercontent.com/livespec-ai/livespec/master/docs/livespec-installation-prompt.md
 and follow the instructions below its horizontal rule.
 ```
 
 **OpenAI Codex** — paste the prompt into the TUI, or run it headless:
 
 ```bash
-codex exec "$(curl -fsSL https://raw.githubusercontent.com/thewoolleyman/livespec/master/docs/livespec-installation-prompt.md)"
+codex exec "$(curl -fsSL https://raw.githubusercontent.com/livespec-ai/livespec/master/docs/livespec-installation-prompt.md)"
 ```
 
 Those are the two supported harnesses today; a new Driver plugin adds

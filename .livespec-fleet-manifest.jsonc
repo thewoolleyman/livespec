@@ -56,7 +56,7 @@
 // non-functional-requirements.md, "Every manifest consumer MUST resolve an adopter's repository as
 // <adopter.owner or adopter_owner or owner>/<repo>").
 {
-  "owner": "thewoolleyman",
+  "owner": "livespec-ai",
   "adopter_owner": "thewoolleyman",
   "fleet": [
     { "repo": "livespec", "class": "core" },

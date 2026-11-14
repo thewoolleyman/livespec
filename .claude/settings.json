@@ -55,28 +55,28 @@
     "livespec": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec",
+        "repo": "livespec-ai/livespec",
         "ref": "release"
       }
     },
     "livespec-driver-claude": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-driver-claude",
+        "repo": "livespec-ai/livespec-driver-claude",
         "ref": "release"
       }
     },
     "livespec-orchestrator-beads-fabro": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-orchestrator-beads-fabro",
+        "repo": "livespec-ai/livespec-orchestrator-beads-fabro",
         "ref": "release"
       }
     },
     "livespec-overseer": {
       "source": {
         "source": "github",
-        "repo": "thewoolleyman/livespec-overseer",
+        "repo": "livespec-ai/livespec-overseer",
         "ref": "release"
       }
     }

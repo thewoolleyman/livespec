@@ -7,7 +7,7 @@ schemas, and the built-in templates, distributed as the `livespec`
 Claude Code plugin (an artifact carrier — it exposes no slash
 commands itself). The interactive `/livespec:*` surface ships from
 the per-agent-runtime Driver plugin repo
-[`livespec-driver-claude`](https://github.com/thewoolleyman/livespec-driver-claude).
+[`livespec-driver-claude`](https://github.com/livespec-ai/livespec-driver-claude).
 The repo dogfoods its own design: livespec's own spec lives at
 `SPECIFICATION/` and is itself maintained via the `/livespec:*`
 slash commands.
@@ -119,9 +119,9 @@ machine-wide:
 ```jsonc
 {
   "extraKnownMarketplaces": {
-    "livespec":               { "source": { "source": "github", "repo": "thewoolleyman/livespec", "ref": "release" } },
-    "livespec-driver-claude": { "source": { "source": "github", "repo": "thewoolleyman/livespec-driver-claude", "ref": "release" } },
-    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "thewoolleyman/livespec-orchestrator-beads-fabro", "ref": "release" } }
+    "livespec":               { "source": { "source": "github", "repo": "livespec-ai/livespec", "ref": "release" } },
+    "livespec-driver-claude": { "source": { "source": "github", "repo": "livespec-ai/livespec-driver-claude", "ref": "release" } },
+    "livespec-orchestrator-beads-fabro":    { "source": { "source": "github", "repo": "livespec-ai/livespec-orchestrator-beads-fabro", "ref": "release" } }
   },
   "enabledPlugins": {
     "livespec@livespec": true,
@@ -237,15 +237,15 @@ governed project's orchestrator plugin host-wide:
 
 ```bash
 # Core (artifact carrier — ships prose/wrappers, no skills of its own):
-codex plugin marketplace add thewoolleyman/livespec --ref release
+codex plugin marketplace add livespec-ai/livespec --ref release
 codex plugin add livespec@livespec
 
 # The Codex Driver (supplies the /livespec:* operation surface):
-codex plugin marketplace add thewoolleyman/livespec-driver-codex --ref release
+codex plugin marketplace add livespec-ai/livespec-driver-codex --ref release
 codex plugin add livespec@livespec-driver-codex
 
 # The selected orchestrator plugin (supplies its own Codex skills):
-codex plugin marketplace add thewoolleyman/livespec-orchestrator-beads-fabro --ref release
+codex plugin marketplace add livespec-ai/livespec-orchestrator-beads-fabro --ref release
 codex plugin add livespec-orchestrator-beads-fabro@livespec-orchestrator-beads-fabro
 ```
 
@@ -318,9 +318,9 @@ governed project's orchestrator plugin, project-scoped, into the
 governed project:
 
 ```bash
-pi install git:github.com/thewoolleyman/livespec@release -l --approve                            # core, artifact carrier
-pi install git:github.com/thewoolleyman/livespec-driver-pi@release -l --approve                  # the Driver's eight skills
-pi install git:github.com/thewoolleyman/livespec-orchestrator-beads-fabro@release -l --approve   # the orchestrator plugin's skills
+pi install git:github.com/livespec-ai/livespec@release -l --approve                            # core, artifact carrier
+pi install git:github.com/livespec-ai/livespec-driver-pi@release -l --approve                  # the Driver's eight skills
+pi install git:github.com/livespec-ai/livespec-orchestrator-beads-fabro@release -l --approve   # the orchestrator plugin's skills
 ```
 
 Each command writes into the project's committed `.pi/settings.json` and
@@ -658,7 +658,7 @@ existing file):
   cross-cutting discipline (TDD red-green-replay, the worktree → PR flow, the
   1Password secret-wrapper, no-local-memory), and for the session-end
   plan-anchor print rule.
-- **The fleet's distributed SendMessage protocol** (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md) — read BEFORE
+- **The fleet's distributed SendMessage protocol** (https://github.com/livespec-ai/livespec-dev-tooling/blob/master/%2Eai/distributed-sendmessage-protocol.md) — read BEFORE
   messaging, asking, directing or answering another agent session on any host,
   and before running `herdr pane send-text`, `herdr pane run`,
   `herdr agent prompt` or `tmux send-keys` against a pane you did not create.

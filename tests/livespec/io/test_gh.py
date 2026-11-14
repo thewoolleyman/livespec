@@ -74,13 +74,13 @@ def test_get_repo_name_with_owner_returns_iosuccess_on_zero_exit(
     """`gh repo view --json nameWithOwner` returns the owner/name string."""
     _install_fake(
         monkeypatch=monkeypatch,
-        factory=lambda _argv, _cwd: _completed(stdout="thewoolleyman/livespec\n"),
+        factory=lambda _argv, _cwd: _completed(stdout="livespec-ai/livespec\n"),
     )
     result = gh.get_repo_name_with_owner(project_root=tmp_path)
     unwrapped = unsafe_perform_io(result)
     match unwrapped:
         case Success(value):
-            assert value == "thewoolleyman/livespec"
+            assert value == "livespec-ai/livespec"
         case _:
             raise AssertionError(f"expected IOSuccess(<str>), got {result!r}")
 
@@ -248,7 +248,7 @@ def test_list_pull_request_files_parses_status_and_filename_pairs(
     )
     result = gh.list_pull_request_files(
         project_root=tmp_path,
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
     unwrapped = unsafe_perform_io(result)
@@ -285,10 +285,10 @@ def test_list_pull_request_files_names_the_repository_explicitly(
     _install_fake(monkeypatch=monkeypatch, factory=factory)
     _ = gh.list_pull_request_files(
         project_root=tmp_path,
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
-    assert "repos/thewoolleyman/livespec/pulls/2200/files" in observed[0]
+    assert "repos/livespec-ai/livespec/pulls/2200/files" in observed[0]
 
 
 def test_list_pull_request_files_returns_iofailure_on_nonzero_exit(
@@ -303,7 +303,7 @@ def test_list_pull_request_files_returns_iofailure_on_nonzero_exit(
     )
     result = gh.list_pull_request_files(
         project_root=tmp_path,
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
     unwrapped = unsafe_perform_io(result)
@@ -326,7 +326,7 @@ def test_list_pull_request_files_returns_iofailure_on_a_malformed_row(
     )
     result = gh.list_pull_request_files(
         project_root=tmp_path,
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
     unwrapped = unsafe_perform_io(result)
@@ -366,7 +366,7 @@ def test_gh_facade_passes_project_root_as_cwd(
     _ = gh.list_merged_pull_request_head_refs(project_root=tmp_path)
     _ = gh.list_pull_request_files(
         project_root=tmp_path,
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
     assert observed == [tmp_path, tmp_path, tmp_path, tmp_path]

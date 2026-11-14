@@ -31,7 +31,7 @@ def _gather(*, project_root: Path) -> IOResult[Observations, LivespecError]:
         spec_root=_SPEC_ROOT,
         base_sha="base",
         head_sha="head",
-        repo="thewoolleyman/livespec",
+        repo="livespec-ai/livespec",
         pull_request_number=2200,
     )
 
