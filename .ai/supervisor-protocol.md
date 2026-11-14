@@ -52,6 +52,14 @@ starts 40 lines back in history and also includes the visible pane; it does not
 mean "the last 40 lines." Do not pipe it to the invalid placeholder form
 `tail -N`.
 
+**A Claude worker is not driven by typing (superseded 2026-11-14).** Send a
+Claude worker its instructions with `SendMessage`, per the fleet's distributed
+SendMessage protocol (https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/.ai/distributed-sendmessage-protocol.md);
+a managed hook denies literal-text `tmux send-keys` into a Claude pane. The
+typed-text procedure below applies only to a Codex or pi worker, which cannot
+receive `SendMessage`. Key-only input (Escape, Enter, a picker digit) to
+unblock a picker or dialog stays allowed for any worker.
+
 For a short instruction, send the text, verify that it landed, then send Enter
 in a separate tmux call. For longer text, load it from a file, paste it, verify
 that it landed, then send Enter separately. Never use a one-shot form that
