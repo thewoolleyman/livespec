@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.47.6](https://github.com/thewoolleyman/livespec/compare/v0.47.5...v0.47.6) (2026-11-14)
+
+
+### Bug Fixes
+
+* **docs:** stop citing retired beads files as present in beads-gaps-workarounds ([835858a](https://github.com/thewoolleyman/livespec/commit/835858a44ae3120f887ee29d772482a1d0b3331a))
+* name ~/workspace as the clone root in livespec instructions, skills and scripts ([4954ee4](https://github.com/thewoolleyman/livespec/commit/4954ee4b4a923bfe25e341e20689887c444f2dc8))
+
 ## [0.47.5](https://github.com/thewoolleyman/livespec/compare/v0.47.4...v0.47.5) (2026-11-13)
 
 
