@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.47.10](https://github.com/thewoolleyman/livespec/compare/v0.47.9...v0.47.10) (2026-11-15)
+
+
+### Bug Fixes
+
+* derive adopter URLs from adopter owner ([93fef75](https://github.com/thewoolleyman/livespec/commit/93fef75e29570f68e92a0c82a3178b1ee0e9e197))
+* keep the URL-matching owner when merging a registry target ([b44ec3b](https://github.com/thewoolleyman/livespec/commit/b44ec3bb131101a888269ea7903990891236b43a))
+* prefer adopter entry owner for registry URLs ([5d0b597](https://github.com/thewoolleyman/livespec/commit/5d0b597d24095def7209479f27318f1449770d52))
+
 ## [0.47.9](https://github.com/thewoolleyman/livespec/compare/v0.47.8...v0.47.9) (2026-11-15)
 
 
