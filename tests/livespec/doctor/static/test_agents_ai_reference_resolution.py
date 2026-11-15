@@ -121,6 +121,29 @@ def test_run_ignores_placeholder_and_tail_token(
     assert mod.run(ctx=_ctx(tmp_path=tmp_path)) == IOSuccess(_pass_finding(tmp_path=tmp_path))
 
 
+def test_run_ignores_reference_inside_a_url(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """run(ctx) does not treat a `.ai/` path inside a URL as a local reference.
+
+    A fleet AGENTS.md links another repository's guidance by URL
+    (`https://github.com/<owner>/<repo>/blob/master/.ai/<topic>.md`). That
+    path lives in the other repository, so it must not be resolved against
+    this one; a relative `.ai/` reference on the same line still is.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".ai").mkdir()
+    _ = (tmp_path / ".ai" / "local.md").write_text("x\n", encoding="utf-8")
+    _ = (tmp_path / "AGENTS.md").write_text(
+        "Read https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/"
+        ".ai/distributed-sendmessage-protocol.md and `.ai/local.md`.\n",
+        encoding="utf-8",
+    )
+    assert mod.run(ctx=_ctx(tmp_path=tmp_path)) == IOSuccess(_pass_finding(tmp_path=tmp_path))
+
+
 def test_run_ignores_dangling_reference_in_archive(
     *,
     tmp_path: Path,
