@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.8](https://github.com/thewoolleyman/livespec/compare/v0.47.7...v0.47.8) (2026-11-15)
+
+
+### Bug Fixes
+
+* doctor-agents-ai-reference-resolution ignores .ai/ paths inside URLs ([9be4a10](https://github.com/thewoolleyman/livespec/commit/9be4a10cba881e4806143f1bcaad4f698cb5d3df))
+
 ## [0.47.7](https://github.com/thewoolleyman/livespec/compare/v0.47.6...v0.47.7) (2026-11-14)
 
 
