@@ -7,11 +7,46 @@ critique flow lives at SKILL.md prose level, not in the wrapper.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
+import pytest
 from livespec.commands import critique
+from livespec.errors import LivespecError
+from livespec.io import proc
+from returns.io import IOResult
 
 __all__: list[str] = []
+
+
+_DoctorRun = IOResult[subprocess.CompletedProcess[str], LivespecError]
+
+
+@pytest.fixture(autouse=True)
+def lifecycle_doctor_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    """Answer the delegated propose-change's doctor runs with a passing document.
+
+    critique delegates to propose_change, which wraps its write in the
+    pre-/post-step doctor static lifecycle. The fixtures here build bare
+    `SPECIFICATION/` trees the real doctor would reject, so doctor runs
+    are faked and recorded (the railway spawns no other subprocess).
+    """
+    calls: list[list[str]] = []
+
+    def _run(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        calls.append(argv)
+        return IOResult.from_value(
+            subprocess.CompletedProcess(
+                args=argv,
+                returncode=0,
+                stdout='{"findings": []}',
+                stderr="",
+            ),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _run)
+    return calls
 
 
 def test_critique_main_exists_and_returns_int() -> None:

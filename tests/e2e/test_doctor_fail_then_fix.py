@@ -149,6 +149,7 @@ def test_doctor_fail_then_fix(  # noqa: PLR0915
             str(tmp_path / "SPECIFICATION"),
             "--project-root",
             str(tmp_path),
+            "--skip-pre-check",
             "fix-shall-case",
         ],
         # Invoked from the fixture's own project root, as an operator
@@ -162,7 +163,15 @@ def test_doctor_fail_then_fix(  # noqa: PLR0915
         text=True,
         check=False,
     )
-    assert propose_result.returncode == 0, f"propose-change failed: {propose_result.stderr!r}"
+    # `--skip-pre-check` bypasses the pre-step doctor so the proposal can be
+    # filed against the known-bad spec. The post-step doctor still runs
+    # after the write and still sees the unfixed spec, so propose-change
+    # exits 3 with the proposal already on disk (SPECIFICATION/spec.md, sub-command
+    # lifecycle); the revise step below is what fixes the spec.
+    assert (
+        propose_result.returncode == 3
+    ), f"propose-change: expected post-step exit 3; stderr={propose_result.stderr!r}"
+    assert (tmp_path / "SPECIFICATION" / "proposed_changes" / "fix-shall-case.md").is_file()
 
     resulting_files = [{"path": "spec.md", "content": _FIXED_SPEC_CONTENT}]
     revise_payload: dict[str, object] = {
