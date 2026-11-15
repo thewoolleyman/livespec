@@ -44,6 +44,7 @@ from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
 from livespec.commands import propose_change
+from livespec.commands._doctor_lifecycle import add_pre_check_flags
 from livespec.errors import LivespecError
 from livespec.io import cli, fs
 from livespec.parse import jsonc
@@ -65,13 +66,17 @@ def build_parser() -> argparse.ArgumentParser:
     `argparse.ArgumentError` rather than `SystemExit`. The
     parser exposes `--findings-json <path>` (required), and the
     same optional `--author`, `--spec-target`, `--project-root`
-    flags propose_change takes.
+    flags propose_change takes, plus the mutually exclusive
+    `--skip-pre-check` / `--run-pre-check` pair per
+    `SPECIFICATION/contracts.md` (pre-step skip control)
+    (passing both is an argparse usage error, exit 2).
     """
     parser = argparse.ArgumentParser(prog="critique", exit_on_error=False)
     _ = parser.add_argument("--findings-json", required=True)
     _ = parser.add_argument("--author", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
+    add_pre_check_flags(parser=parser)
     return parser
 
 
@@ -119,7 +124,11 @@ def _build_delegated_argv(
     short-circuits at step 1 and matches critique's resolved
     value exactly. `--spec-target` and `--project-root` are
     forwarded when present so the delegation routes against the
-    same target.
+    same target. The pre-check flag the caller chose is forwarded
+    as-is, so the delegated propose-change resolves the pre-step
+    skip (flag, then `pre_step_skip_static_checks` config) and runs
+    the pre-step and post-step doctor static phases around the
+    single write: critique and propose-change share one lifecycle.
     """
     argv: list[str] = [
         "--findings-json",
@@ -132,6 +141,10 @@ def _build_delegated_argv(
         argv.extend(["--spec-target", str(namespace.spec_target)])
     if namespace.project_root is not None:
         argv.extend(["--project-root", str(namespace.project_root)])
+    if namespace.skip_pre_check:
+        argv.append("--skip-pre-check")
+    if namespace.run_pre_check:
+        argv.append("--run-pre-check")
     argv.append(resolved_author)
     return argv
 
