@@ -9,11 +9,62 @@ proposed-change file from the findings, write it to
 from __future__ import annotations
 
 import json
+import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 from livespec.commands import propose_change
+from livespec.errors import LivespecError
+from livespec.io import proc
+from returns.io import IOResult
 
 __all__: list[str] = []
+
+
+_DoctorRun = IOResult[subprocess.CompletedProcess[str], LivespecError]
+
+
+def _doctor_stub(
+    *,
+    stdout: str,
+    calls: list[list[str]],
+    on_call: Callable[[], None] | None = None,
+) -> Callable[..., _DoctorRun]:
+    """Build a `proc.run_subprocess` stand-in that answers the lifecycle doctor runs.
+
+    The propose-change railway spawns no subprocess other than
+    `bin/doctor_static.py`, so every call is recorded and answered.
+    """
+
+    def _run(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        calls.append(argv)
+        if on_call is not None:
+            on_call()
+        return IOResult.from_value(
+            subprocess.CompletedProcess(args=argv, returncode=0, stdout=stdout, stderr=""),
+        )
+
+    return _run
+
+
+@pytest.fixture(autouse=True)
+def lifecycle_doctor_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    """Answer every pre-/post-step doctor run with a passing findings document.
+
+    The file-shaping tests in this module build bare `SPECIFICATION/`
+    fixtures that the real doctor would reject, so the lifecycle doctor
+    is stubbed by default. Lifecycle tests re-stub it to observe or
+    fail the runs.
+    """
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        proc,
+        "run_subprocess",
+        _doctor_stub(stdout='{"findings": []}', calls=calls),
+    )
+    return calls
 
 
 def _write_valid_findings_payload(*, tmp_path: Path) -> Path:
@@ -61,6 +112,183 @@ def test_propose_change_main_returns_usage_exit_code_on_missing_required_flag() 
     """
     exit_code = propose_change.main(argv=[])
     assert exit_code == 2
+
+
+def _lifecycle_argv(*, tmp_path: Path, extra: list[str]) -> list[str]:
+    """Argv for a propose-change run rooted at tmp_path, plus extra flags."""
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    (tmp_path / "SPECIFICATION").mkdir(exist_ok=True)
+    return [
+        "--findings-json",
+        str(payload_path),
+        "--project-root",
+        str(tmp_path),
+        "--spec-target",
+        str(tmp_path / "SPECIFICATION"),
+        *extra,
+        "demo-topic",
+    ]
+
+
+def _write_config(*, tmp_path: Path, skip: bool) -> None:
+    """Write a `.livespec.jsonc` carrying `pre_step_skip_static_checks`."""
+    _ = (tmp_path / ".livespec.jsonc").write_text(
+        json.dumps({"pre_step_skip_static_checks": skip}),
+        encoding="utf-8",
+    )
+
+
+def _skipped_finding_emitted(*, out: str) -> bool:
+    """True when stdout carries the canonical pre-step-skipped document."""
+    return '"check_id": "pre-step-skipped"' in out
+
+
+def test_propose_change_runs_pre_step_doctor_before_write_and_post_step_after(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With neither flag and no config, doctor runs before AND after the write.
+
+    Per contracts.md (pre-step skip control) and spec.md
+    (sub-command lifecycle): the pre-step doctor static runs before
+    the write (skip defaults to false) and the post-step doctor static
+    runs after it, both against the resolved project root.
+    """
+    proposal = tmp_path / "SPECIFICATION" / "proposed_changes" / "demo-topic.md"
+    proposal_present_at_call: list[bool] = []
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        proc,
+        "run_subprocess",
+        _doctor_stub(
+            stdout='{"findings": []}',
+            calls=calls,
+            on_call=lambda: proposal_present_at_call.append(proposal.is_file()),
+        ),
+    )
+    exit_code = propose_change.main(argv=_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert proposal_present_at_call == [False, True]
+    assert all(call[-2:] == ["--project-root", str(tmp_path)] for call in calls)
+
+
+def test_propose_change_skip_pre_check_emits_skipped_finding_and_runs_only_post_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--skip-pre-check` emits the pre-step-skipped finding; only post-step runs."""
+    exit_code = propose_change.main(
+        argv=_lifecycle_argv(tmp_path=tmp_path, extra=["--skip-pre-check"]),
+    )
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "findings": [
+            {
+                "check_id": "pre-step-skipped",
+                "status": "skipped",
+                "message": "pre-step checks skipped by user config or --skip-pre-check",
+            },
+        ],
+    }
+    assert len(lifecycle_doctor_calls) == 1
+
+
+def test_propose_change_config_key_true_skips_pre_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """With neither flag, `pre_step_skip_static_checks: true` skips the pre-step."""
+    _write_config(tmp_path=tmp_path, skip=True)
+    exit_code = propose_change.main(argv=_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert _skipped_finding_emitted(out=capsys.readouterr().out)
+    assert len(lifecycle_doctor_calls) == 1
+
+
+def test_propose_change_run_pre_check_overrides_config_key_true(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--run-pre-check` forces the pre-step even when config says skip."""
+    _write_config(tmp_path=tmp_path, skip=True)
+    exit_code = propose_change.main(
+        argv=_lifecycle_argv(tmp_path=tmp_path, extra=["--run-pre-check"]),
+    )
+    assert exit_code == 0
+    assert not _skipped_finding_emitted(out=capsys.readouterr().out)
+    assert len(lifecycle_doctor_calls) == 2
+
+
+def test_propose_change_config_key_false_runs_pre_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """With neither flag, `pre_step_skip_static_checks: false` runs the pre-step."""
+    _write_config(tmp_path=tmp_path, skip=False)
+    exit_code = propose_change.main(argv=_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert not _skipped_finding_emitted(out=capsys.readouterr().out)
+    assert len(lifecycle_doctor_calls) == 2
+
+
+def test_propose_change_rejects_both_pre_check_flags_with_usage_exit(
+    *,
+    tmp_path: Path,
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """Both flags together are an argparse usage error: exit 2, nothing runs."""
+    exit_code = propose_change.main(
+        argv=_lifecycle_argv(
+            tmp_path=tmp_path,
+            extra=["--skip-pre-check", "--run-pre-check"],
+        ),
+    )
+    assert exit_code == 2
+    assert lifecycle_doctor_calls == []
+    assert list((tmp_path / "SPECIFICATION").iterdir()) == []
+
+
+def test_propose_change_pre_step_doctor_fail_aborts_before_write(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A fail finding from the pre-step doctor exits 3 and writes nothing."""
+    failing = '{"findings": [{"check_id": "x", "status": "fail", "message": "m"}]}'
+    calls: list[list[str]] = []
+    monkeypatch.setattr(proc, "run_subprocess", _doctor_stub(stdout=failing, calls=calls))
+    exit_code = propose_change.main(argv=_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 3
+    assert len(calls) == 1
+    assert list((tmp_path / "SPECIFICATION").iterdir()) == []
+    assert json.loads(capsys.readouterr().out)["findings"][0]["status"] == "fail"
+
+
+def test_propose_change_post_step_doctor_fail_exits_three_after_write(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A fail finding from the post-step doctor exits 3; the file is already written."""
+    failing = '{"findings": [{"check_id": "x", "status": "fail", "message": "m"}]}'
+    calls: list[list[str]] = []
+    monkeypatch.setattr(proc, "run_subprocess", _doctor_stub(stdout=failing, calls=calls))
+    exit_code = propose_change.main(
+        argv=_lifecycle_argv(tmp_path=tmp_path, extra=["--skip-pre-check"]),
+    )
+    assert exit_code == 3
+    assert len(calls) == 1
+    assert (tmp_path / "SPECIFICATION" / "proposed_changes" / "demo-topic.md").is_file()
 
 
 def test_propose_change_main_returns_precondition_exit_code_on_missing_findings_path(
