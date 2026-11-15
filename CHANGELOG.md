@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.9](https://github.com/thewoolleyman/livespec/compare/v0.47.8...v0.47.9) (2026-11-15)
+
+
+### Bug Fixes
+
+* a .ai/ URL ends at markdown or table punctuation (review of livespec[#3238](https://github.com/thewoolleyman/livespec/issues/3238)) ([3bcbb72](https://github.com/thewoolleyman/livespec/commit/3bcbb721f89ea940e382d7f098a9e7a75f94c180))
+
 ## [0.47.8](https://github.com/thewoolleyman/livespec/compare/v0.47.7...v0.47.8) (2026-11-15)
 
 
