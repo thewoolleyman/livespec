@@ -27,8 +27,9 @@ In `non-functional-requirements.md`, immediately after the **CI as a merge gate*
 
 - An EXTERNAL failure is one whose cause lies outside the repository and its own configuration and which the repository cannot fix now. Examples: a forge API or service failure (rate limit or quota exhaustion, a 5xx response, an outage); the network being unreachable (DNS failure, connect failure or timeout to a host the fleet does not run); a third-party service or tool the repository depends on being down. A failure of a credential or permission the fleet itself configures (a 401 or 403 on its own token or App), a test, lint or type failure, and a failure of the repository's own configuration MUST NOT be classified external; each is a DEFECT.
 - The classification MUST be keyed on structured evidence that the transport or HTTP layer produced at the moment of failure, recorded as `{dependency, kind, evidence}`. It MUST NOT be keyed on a flag, environment variable, label, comment or any other input an agent can set.
+- The evidence the gate reads MUST come from `master`'s own gating push run of its HEAD commit, the same run the merge gate's required check reads; the newest workflow run on `master`, or a run of the same commit on another branch, is not evidence, and a gate that cannot read that run MUST block as it does without this rule.
 - The master-green gate MUST fail closed: a red gating job on `master` that carries no external-cause record is a DEFECT, and the gate MUST block exactly as it does without this rule.
-- While every red gating job on `master`'s newest completed run carries an external-cause record, the gate MUST warn, naming each dependency and kind, and MUST NOT block a commit or push, for every change, not only for a repair. The red verdict of each failing job and of the all-green gate job MUST remain red on `master`; the tolerance changes only the local gate's decision, so nothing passes vacuously. Each pull request's own required checks MUST still bind its merge.
+- While every red gating job of `master`'s own gating push run of its HEAD commit carries an external-cause record, the gate MUST warn, naming each dependency and kind, and MUST NOT block a commit or push, for every change, not only for a repair. The red verdict of each failing job and of the all-green gate job MUST remain red on `master`; the tolerance changes only the local gate's decision, so nothing passes vacuously. Each pull request's own required checks MUST still bind its merge.
 - The tolerance MUST end when `master`'s gating push run reads green, or when `master` has been red with external-only causes continuously for 24 hours, whichever comes first. At the 24-hour limit the gate MUST block again and the maintainer MUST be alerted through the repository's needs-attention signal, so a long outage is surfaced and never silent.
 - This rule does not change the master-health reconciler's own flake-or-infrastructure classification, which governs reverts, not the local gate.
 
@@ -39,7 +40,7 @@ Add to `scenarios.md`, beside "A red master heals by revert by default, or throu
 ## The master-green gate admits work while master is red only for an external cause
 
 ```gherkin
-Given the newest completed run on master is red
+Given master's own gating push run of its HEAD commit is red
 And every failing gating job carries a transport-layer external-cause record naming its dependency and kind
 When an agent commits or pushes any change
 Then the master-green gate warns, naming each external dependency and kind, and does not block
@@ -50,7 +51,7 @@ And each pull request's own required checks still bind its merge
 ## The master-green gate blocks a red master with no external-cause record
 
 ```gherkin
-Given the newest completed run on master is red
+Given master's own gating push run of its HEAD commit is red
 And one failing gating job carries no external-cause record
 When an agent commits or pushes any change
 Then the master-green gate blocks, naming that job as a defect
