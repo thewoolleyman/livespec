@@ -1,11 +1,2 @@
-# Workflow-edit exemption — one exemption binds to one reviewed change.
-#
-# The change (plan stale-base-merge-options, note 005 §3 Phase 1 step 7; the held
-# org-cutover PR): every .github/workflows/ reference to thewoolleyman/<fleet-repo>
-# and ghcr.io/thewoolleyman/ moves to livespec-ai (uses: refs, repository: checkouts, container image names). Logically additive: the
-# same jobs run, not significantly slower. Authorized by legacy-coordinator-agent
-# under the coordinator-duties §12 additive delegation, 2026-11-15 ~00:5xZ. The
-# line-diff guard reads modified lines as the maintainer tier, so the item carries
-# approval:workflow-edit; the edit stays logically additive (§12).
-work_item=livespec-kkd7pb
-reason=Held org-cutover PR: rewrite workflow owner refs and GHCR names to livespec-ai (note 005 Phase 1 step 7); logically additive, coordinator-authorized 2026-11-15. Also: auto-enable-merge.yml additively admits livespec-ai-factory-bot[bot] beside thewoolleyman-factory-bot[bot] (kept), release-please-- branch restriction preserved (throughput-plans-coordinator ruling 2026-11-15 09:15Z, logically additive, independent pre-transfer review finding).
+work_item=livespec-4bykes
+reason=livespec-dev-tooling pin bump v1.208.0 to v1.213.0, ref and tag bumps only (bump-pin-from-dispatch.yml, ci.yml, master-health-reconcile.yml, pin-freshness.yml, release-dispatch.yml, release-lane-watch.yml, release-park.yml, release-please.yml), plus one added check-metadata-batch step running check-no-ambient-environment-loops (logically additive), plus the local-gate-scope.sh lockstep lines; authorized by throughput-plans-coordinator 2026-11-15 18:5xZ under coordinator-duties section 12.

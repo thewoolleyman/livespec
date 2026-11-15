@@ -630,7 +630,7 @@ preserving unrelated content, and record each as "already present" /
    materialized, never committed. The installer also writes a generated
    `dev-tooling/.gitignore` that ignores each file in place, so a
    missing root entry is drift rather than an untracked-file risk — but
-   it is drift the fleet reports, so add all six:
+   it is drift the fleet reports, so add all seven:
 
    ```gitignore
    /dev-tooling/worktree-lib.sh
@@ -639,6 +639,7 @@ preserving unrelated content, and record each as "already present" /
    /dev-tooling/check-no-workflow-edits.sh
    /dev-tooling/worktree.just
    /dev-tooling/branch-protection.just
+   /dev-tooling/local-gate-scope.sh
    ```
 
 4. **`lefthook.yml` — install the pack FIRST in both gated hooks.**
