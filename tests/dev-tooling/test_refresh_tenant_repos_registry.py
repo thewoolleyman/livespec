@@ -104,6 +104,59 @@ def test_adopters_without_an_owner_use_the_manifest_adopter_owner() -> None:
     ]
 
 
+def test_an_adopter_owner_overrides_the_manifest_adopter_owner() -> None:
+    module = _load_module()
+
+    resolution = module.resolve_targets(
+        livespec_config={},
+        fleet_manifest={
+            "owner": "fleet-owner",
+            "adopter_owner": "adopter-org",
+            "fleet": [],
+            "adopters": [{"repo": "independent-adopter", "owner": "independent-org"}],
+        },
+    )
+
+    assert resolution.conflicts == ()
+    assert (
+        resolution.targets[0].github_url == "https://github.com/independent-org/independent-adopter"
+    )
+
+
+def test_adopters_fall_back_to_the_manifest_owner_without_adopter_owners() -> None:
+    module = _load_module()
+
+    resolution = module.resolve_targets(
+        livespec_config={},
+        fleet_manifest={
+            "owner": "fleet-owner",
+            "fleet": [],
+            "adopters": [{"repo": "legacy-adopter"}],
+        },
+    )
+
+    assert resolution.conflicts == ()
+    assert resolution.targets[0].github_url == "https://github.com/fleet-owner/legacy-adopter"
+
+
+def test_fleet_members_always_use_the_manifest_owner() -> None:
+    module = _load_module()
+
+    resolution = module.resolve_targets(
+        livespec_config={},
+        fleet_manifest={
+            "owner": "fleet-owner",
+            "adopter_owner": "adopter-org",
+            "fleet": [{"repo": "fleet-member"}],
+            "adopters": [{"repo": "adopter", "owner": "independent-org"}],
+        },
+    )
+
+    assert resolution.conflicts == ()
+    by_repo = {target.repo: target for target in resolution.targets}
+    assert by_repo["fleet-member"].github_url == "https://github.com/fleet-owner/fleet-member"
+
+
 def test_disagreeing_github_urls_are_a_conflict() -> None:
     module = _load_module()
 
