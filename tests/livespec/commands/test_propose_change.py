@@ -9,9 +9,14 @@ proposed-change file from the findings, write it to
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
+import pytest
 from livespec.commands import propose_change
+from livespec.errors import PreconditionError
+from livespec.io import proc
+from returns.io import IOResult
 
 __all__: list[str] = []
 
@@ -61,6 +66,68 @@ def test_propose_change_main_returns_usage_exit_code_on_missing_required_flag() 
     """
     exit_code = propose_change.main(argv=[])
     assert exit_code == 2
+
+
+def test_propose_change_runs_the_pre_and_post_doctor_lifecycle(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The pre-check flags control one pre-step and one post-step doctor run."""
+    spec_target = tmp_path / "SPECIFICATION"
+    spec_target.mkdir()
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    observed_proposal_presence: list[bool] = []
+
+    def _passing_doctor(
+        *,
+        argv: list[str],
+        cwd: Path | None = None,
+    ) -> IOResult[subprocess.CompletedProcess[str], PreconditionError]:
+        del argv, cwd
+        observed_proposal_presence.append(
+            (spec_target / "proposed_changes" / "demo-topic.md").is_file(),
+        )
+        return IOResult.from_value(
+            subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout='{"findings": []}',
+                stderr="",
+            ),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _passing_doctor)
+    assert (
+        propose_change.main(
+            argv=[
+                "--findings-json",
+                str(payload_path),
+                "--project-root",
+                str(tmp_path),
+                "--skip-pre-check",
+                "demo-topic",
+            ],
+        )
+        == 0
+    )
+    assert observed_proposal_presence == [True]
+    assert json.loads(capsys.readouterr().out)["findings"][0]["check_id"] == "pre-step-skipped"
+    assert (
+        propose_change.main(
+            argv=[
+                "--findings-json",
+                str(payload_path),
+                "--project-root",
+                str(tmp_path),
+                "--skip-pre-check",
+                "--run-pre-check",
+                "demo-topic",
+            ],
+        )
+        == 2
+    )
 
 
 def test_propose_change_main_returns_precondition_exit_code_on_missing_findings_path(
@@ -230,7 +297,7 @@ def test_propose_change_appends_reserve_suffix_to_canonical_topic(
             "Foo Bar",
         ],
     )
-    assert exit_code == 0
+    assert exit_code == 3
     out = spec_target / "proposed_changes" / "foo-bar-critique.md"
     assert out.exists(), f"expected {out} to be written"
 
@@ -574,9 +641,9 @@ def test_propose_change_main_defaults_spec_target_to_cwd_specification_when_no_f
     payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
     monkeypatch.chdir(project_root)
     exit_code = propose_change.main(
-        argv=["--findings-json", str(payload_path), "demo-topic"],
+        argv=["--findings-json", str(payload_path), "--skip-pre-check", "demo-topic"],
     )
-    assert exit_code == 0
+    assert exit_code == 3
     out = project_root / "SPECIFICATION" / "proposed_changes" / "demo-topic.md"
     assert out.exists(), f"expected {out} to be written"
 
@@ -617,11 +684,12 @@ def test_propose_change_resolves_relative_spec_target_against_cwd_not_project_ro
             str(project_root),
             "--spec-target",
             "alt-spec",
+            "--skip-pre-check",
             "demo-topic",
         ],
     )
 
-    assert exit_code == 0
+    assert exit_code == 3
     cwd_out = cwd_spec_target / "proposed_changes" / "demo-topic.md"
     project_root_out = project_root_spec_target / "proposed_changes" / "demo-topic.md"
     assert cwd_out.exists(), f"expected cwd-relative {cwd_out} to be written"
