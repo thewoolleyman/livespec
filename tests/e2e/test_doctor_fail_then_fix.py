@@ -120,6 +120,16 @@ def test_doctor_fail_then_fix(  # noqa: PLR0915
     fail_ids = [f["check_id"] for f in bad_findings["findings"] if f["status"] == "fail"]
     assert "doctor-bcp14-keyword-wellformedness" in fail_ids
 
+    config_path = tmp_path / ".livespec.jsonc"
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            "{",
+            '{"pre_step_skip_static_checks": true,',
+            1,
+        ),
+        encoding="utf-8",
+    )
+
     findings_payload: dict[str, object] = {
         "findings": [
             {
@@ -162,7 +172,7 @@ def test_doctor_fail_then_fix(  # noqa: PLR0915
         text=True,
         check=False,
     )
-    assert propose_result.returncode == 0, f"propose-change failed: {propose_result.stderr!r}"
+    assert propose_result.returncode == 3, f"propose-change failed: {propose_result.stderr!r}"
 
     resulting_files = [{"path": "spec.md", "content": _FIXED_SPEC_CONTENT}]
     revise_payload: dict[str, object] = {

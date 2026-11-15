@@ -40,6 +40,12 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._doctor_lifecycle import (
+    emit_pre_step_skipped_finding,
+    resolve_pre_step_skip,
+    run_post_step_doctor,
+    run_pre_step_doctor,
+)
 from livespec.commands._propose_change_write import (
     _resolve_spec_target as _resolve_spec_target_impl,
 )
@@ -75,6 +81,9 @@ def build_parser() -> argparse.ArgumentParser:
     _ = parser.add_argument("--reserve-suffix", default=None)
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
+    pre_check_group = parser.add_mutually_exclusive_group()
+    _ = pre_check_group.add_argument("--skip-pre-check", action="store_true")
+    _ = pre_check_group.add_argument("--run-pre-check", action="store_true")
     return parser
 
 
@@ -115,7 +124,8 @@ def main(*, argv: list[str] | None = None) -> int:
     parse_result = cli.parse_argv(parser=parser, argv=resolved_argv)
     railway: IOResult[Any, LivespecError] = parse_result.bind(
         lambda namespace: (  # pyright: ignore[reportArgumentType]
-            fs.read_text(path=Path(namespace.findings_json))
+            _run_pre_step(namespace=namespace)
+            .bind(lambda _none: fs.read_text(path=Path(namespace.findings_json)))
             .bind(
                 lambda text: IOResult.from_result(jsonc.loads(text=text)),  # pyright: ignore[reportArgumentType]
             )
@@ -126,6 +136,12 @@ def main(*, argv: list[str] | None = None) -> int:
                     namespace=namespace,
                 ),
             )
+            .bind(
+                lambda findings: run_post_step_doctor(
+                    project_root=_resolve_project_root(namespace=namespace),
+                    value=findings,
+                ),
+            )
         ),
     )
     return _pattern_match_io_result(io_result=railway)
@@ -134,6 +150,32 @@ def main(*, argv: list[str] | None = None) -> int:
 def _resolve_spec_target(*, namespace: argparse.Namespace) -> Path:
     """Compatibility wrapper for tests around the extracted helper."""
     return _resolve_spec_target_impl(namespace=namespace)
+
+
+def _resolve_project_root(*, namespace: argparse.Namespace) -> Path:
+    """Resolve the lifecycle doctor project root from the common CLI flag."""
+    if namespace.project_root is None:
+        return Path.cwd()
+    return Path(namespace.project_root)
+
+
+def _run_pre_step(*, namespace: argparse.Namespace) -> IOResult[None, LivespecError]:
+    """Run or report the configured pre-step static-doctor phase."""
+    project_root = _resolve_project_root(namespace=namespace)
+    return resolve_pre_step_skip(
+        namespace=namespace,
+        project_root=project_root,
+    ).bind(
+        lambda skip: _dispatch_pre_step(skip=skip, project_root=project_root),
+    )
+
+
+def _dispatch_pre_step(*, skip: bool, project_root: Path) -> IOResult[None, LivespecError]:
+    """Emit the skip finding or invoke static doctor before the write."""
+    if skip:
+        emit_pre_step_skipped_finding()
+        return IOResult.from_value(None)
+    return run_pre_step_doctor(project_root=project_root)
 
 
 def _validate_payload(*, payload: dict[str, Any]) -> IOResult[Any, LivespecError]:
