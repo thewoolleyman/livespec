@@ -156,7 +156,7 @@ def resolve_targets(*, livespec_config: object, fleet_manifest: object) -> Targe
             continue
         merged[target.repo] = RepoTarget(
             repo=target.repo,
-            owner=owner,
+            owner=target.owner,
             github_url=target.github_url,
             default_branch=existing.default_branch or target.default_branch,
         )

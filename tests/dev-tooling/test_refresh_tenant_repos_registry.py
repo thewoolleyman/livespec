@@ -157,6 +157,29 @@ def test_fleet_members_always_use_the_manifest_owner() -> None:
     assert by_repo["fleet-member"].github_url == "https://github.com/fleet-owner/fleet-member"
 
 
+def test_a_merged_adopter_keeps_the_owner_its_url_was_derived_from() -> None:
+    module = _load_module()
+
+    resolution = module.resolve_targets(
+        livespec_config={
+            "cross_repo_targets": {
+                "shared-adopter": {"github_url": "https://github.com/adopter-org/shared-adopter"},
+            },
+        },
+        fleet_manifest={
+            "owner": "fleet-owner",
+            "adopter_owner": "adopter-org",
+            "fleet": [],
+            "adopters": [{"repo": "shared-adopter"}],
+        },
+    )
+
+    assert resolution.conflicts == ()
+    assert len(resolution.targets) == 1
+    assert resolution.targets[0].github_url == "https://github.com/adopter-org/shared-adopter"
+    assert resolution.targets[0].owner == "adopter-org"
+
+
 def test_disagreeing_github_urls_are_a_conflict() -> None:
     module = _load_module()
 
