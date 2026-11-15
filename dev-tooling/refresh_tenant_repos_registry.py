@@ -11,12 +11,14 @@ registries, two per file:
     adopters.
 
 The two mapping registries DECLARE a `github_url` (and optionally a
-`default_branch`); the two manifest arrays declare only a repo name, so
-their GitHub URL is DERIVED from the manifest's `owner`. A repo named by
-several registries merges into one target, and the merge is where both
-refusal conditions live: registries that DISAGREE about a repo's GitHub
-URL or default branch, and a repo name that is not a single safe path
-segment (so a name can never escape the peer root it gets joined onto).
+`default_branch`); the manifest arrays declare a repo name, so their
+GitHub URL is DERIVED from the applicable manifest owner. Fleet members
+use the manifest's `owner`; adopters use `adopter_owner`, then `owner`.
+A repo named by several registries merges into one target, and the merge
+is where both refusal conditions live:
+registries that DISAGREE about a repo's GitHub URL or default branch,
+and a repo name that is not a single safe path segment (so a name can
+never escape the peer root it gets joined onto).
 Each surfaces as a conflict the caller refuses on BEFORE any mutation,
 rather than as a mid-run failure with some repos already touched.
 
@@ -128,7 +130,10 @@ def resolve_targets(*, livespec_config: object, fleet_manifest: object) -> Targe
         *_from_mapping(block=config.get("cross_repo_targets", {}), owner=owner),
         *_from_mapping(block=config.get("cross_repo_conformance_targets", {}), owner=owner),
         *_from_array(block=manifest.get("fleet", []), owner=owner),
-        *_from_array(block=manifest.get("adopters", []), owner=owner),
+        *_from_array(
+            block=manifest.get("adopters", []),
+            owner=cast(str | None, manifest.get("adopter_owner")) or owner,
+        ),
     ]
     merged: dict[str, RepoTarget] = {}
     conflicts: list[str] = []
