@@ -51,8 +51,13 @@
 // explicitly.
 // `adopters` is empty until the first adopter registers. See
 // non-functional-requirements.md §"Fleet membership contract" → "Adopters".
+// `owner` names the owner of the `fleet` members only. `adopter_owner` is the default owner of
+// adopter repositories, and a per-adopter `owner` overrides it (livespec v247,
+// non-functional-requirements.md, "Every manifest consumer MUST resolve an adopter's repository as
+// <adopter.owner or adopter_owner or owner>/<repo>").
 {
   "owner": "thewoolleyman",
+  "adopter_owner": "thewoolleyman",
   "fleet": [
     { "repo": "livespec", "class": "core" },
     { "repo": "livespec-dev-tooling", "class": "enforcement-suite" },
@@ -91,7 +96,7 @@
     // App, beads tenant, per-tenant Fabro server) is DEFERRED to the post-seed
     // onboarding pass (the repo itself existed first, per the
     // registration-last birth rule).
-    { "repo": "homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
+    { "repo": "homelab", "owner": "mi-homelab", "profile": ["baseline", "orchestrator-plugin", "app"], "posture": "released" },
     // Host-specific interactive AI workstation that hosts the fleet's seats
     // (fleet-infra) and runs the orchestrator with its own tenant
     // (orchestrator-plugin); maintainer direction 2026-11-14. Seed and released plugin
