@@ -119,7 +119,7 @@
     // that surface round-trips the file through json.dumps and silently strips
     // every comment here while reporting green — tracked as bd-ib-lmi5.
     "dispatcher": {
-      "implement": { "mechanical_targets": ["check-file-lloc", "check-format", "check-keyword-only-args", "check-lint", "check-no-lloc-soft-warnings", "check-per-file-coverage"] },
+      "implement": { "mechanical_targets": ["check-check-coverage-incremental", "check-file-lloc", "check-format", "check-keyword-only-args", "check-lint", "check-no-lloc-soft-warnings", "check-per-file-coverage"] },
       // CLAIM TOKENS (2026-11-12, coordinator P1 order so expedited incident mode can
       // publish genesis here). With this key true every claim writer of this tenant
       // (every Dispatcher, intake, the human valves and reconciliation) changes an
