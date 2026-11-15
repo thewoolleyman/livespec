@@ -458,3 +458,150 @@ def test_critique_module_declares_hkt_erosion_pragma() -> None:
         "reportUnknownVariableType=none, "
         "reportUnknownArgumentType=none\n",
     ), "commands/critique.py must declare the HKT-erosion pragma as its first line"
+
+
+def _critique_lifecycle_argv(*, tmp_path: Path, extra: list[str]) -> list[str]:
+    """Argv for a critique run rooted at tmp_path, plus extra pre-check flags."""
+    (tmp_path / "SPECIFICATION").mkdir(exist_ok=True)
+    payload_path = _write_valid_findings_payload(tmp_path=tmp_path)
+    return [
+        "--findings-json",
+        str(payload_path),
+        "--project-root",
+        str(tmp_path),
+        "--author",
+        "demo-llm",
+        *extra,
+    ]
+
+
+def _critique_output(*, tmp_path: Path) -> Path:
+    return tmp_path / "SPECIFICATION" / "proposed_changes" / "demo-llm-critique.md"
+
+
+def _write_skip_config(*, tmp_path: Path, skip: bool) -> None:
+    import json
+
+    _ = (tmp_path / ".livespec.jsonc").write_text(
+        json.dumps({"pre_step_skip_static_checks": skip}),
+        encoding="utf-8",
+    )
+
+
+_SKIPPED_DOCUMENT = (
+    '{"findings": [{"check_id": "pre-step-skipped", "status": "skipped", '
+    '"message": "pre-step checks skipped by user config or --skip-pre-check"}]}\n'
+)
+
+
+def test_critique_runs_pre_step_doctor_before_write_and_post_step_after(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Neither flag, no config: doctor static runs before AND after the one write.
+
+    Per contracts.md (pre-step skip control) and spec.md
+    (sub-command lifecycle): critique has both pre-step and post-step
+    doctor static, run against the resolved project root.
+    """
+    output_present_at_call: list[bool] = []
+
+    def _run(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        assert argv[-2:] == ["--project-root", str(tmp_path)]
+        output_present_at_call.append(_critique_output(tmp_path=tmp_path).is_file())
+        return IOResult.from_value(
+            subprocess.CompletedProcess(args=argv, returncode=0, stdout='{"findings": []}'),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _run)
+    exit_code = critique.main(argv=_critique_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert output_present_at_call == [False, True]
+
+
+def test_critique_skip_pre_check_emits_skipped_finding_and_runs_only_post_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--skip-pre-check` emits the single pre-step-skipped finding; post-step still runs."""
+    exit_code = critique.main(
+        argv=_critique_lifecycle_argv(tmp_path=tmp_path, extra=["--skip-pre-check"]),
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out == _SKIPPED_DOCUMENT
+    assert len(lifecycle_doctor_calls) == 1
+    assert _critique_output(tmp_path=tmp_path).is_file()
+
+
+def test_critique_config_key_true_skips_pre_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """Neither flag: `pre_step_skip_static_checks: true` skips the pre-step."""
+    _write_skip_config(tmp_path=tmp_path, skip=True)
+    exit_code = critique.main(argv=_critique_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert capsys.readouterr().out == _SKIPPED_DOCUMENT
+    assert len(lifecycle_doctor_calls) == 1
+
+
+def test_critique_run_pre_check_overrides_config_key_true(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--run-pre-check` forces the pre-step even when config says skip."""
+    _write_skip_config(tmp_path=tmp_path, skip=True)
+    exit_code = critique.main(
+        argv=_critique_lifecycle_argv(tmp_path=tmp_path, extra=["--run-pre-check"]),
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out == ""
+    assert len(lifecycle_doctor_calls) == 2
+
+
+def test_critique_rejects_both_pre_check_flags_with_usage_exit(
+    *,
+    tmp_path: Path,
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """Both flags together are an argparse usage error: exit 2, nothing runs."""
+    exit_code = critique.main(
+        argv=_critique_lifecycle_argv(
+            tmp_path=tmp_path,
+            extra=["--skip-pre-check", "--run-pre-check"],
+        ),
+    )
+    assert exit_code == 2
+    assert lifecycle_doctor_calls == []
+    assert list((tmp_path / "SPECIFICATION").iterdir()) == []
+
+
+def test_critique_pre_step_doctor_fail_aborts_before_write(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A fail finding from the pre-step doctor exits 3 and writes nothing."""
+
+    def _failing(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        return IOResult.from_value(
+            subprocess.CompletedProcess(
+                args=argv,
+                returncode=3,
+                stdout='{"findings": [{"check_id": "x", "status": "fail", "message": "m"}]}',
+            ),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _failing)
+    exit_code = critique.main(argv=_critique_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 3
+    assert list((tmp_path / "SPECIFICATION").iterdir()) == []
