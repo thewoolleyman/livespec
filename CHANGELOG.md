@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.47.11](https://github.com/thewoolleyman/livespec/compare/v0.47.10...v0.47.11) (2026-11-15)
+
+
+### Bug Fixes
+
+* accept the pre-check flag pair in critique and forward it into the doctor lifecycle ([ee6152a](https://github.com/thewoolleyman/livespec/commit/ee6152a68e7e6c98c71a134afd23e165fdb63fad))
+* run the pre-step doctor in revise behind the pre-check flag pair ([4aef25f](https://github.com/thewoolleyman/livespec/commit/4aef25f198be27dd67cbead0240f98236425d1d4))
+* wrap propose-change in the pre/post doctor lifecycle with the pre-check flag pair ([570e0fe](https://github.com/thewoolleyman/livespec/commit/570e0fe2181a0e4c2c829b093a0a07c51c2959d9))
+
 ## [0.47.10](https://github.com/thewoolleyman/livespec/compare/v0.47.9...v0.47.10) (2026-11-15)
 
 
