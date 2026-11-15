@@ -84,6 +84,26 @@ def test_target_set_is_the_union_of_all_four_registries() -> None:
     assert by_repo["planning-only"].default_branch is None
 
 
+def test_adopters_without_an_owner_use_the_manifest_adopter_owner() -> None:
+    module = _load_module()
+
+    resolution = module.resolve_targets(
+        livespec_config={},
+        fleet_manifest={
+            "owner": "fleet-owner",
+            "adopter_owner": "adopter-org",
+            "fleet": [],
+            "adopters": [{"repo": "first-adopter"}, {"repo": "second-adopter"}],
+        },
+    )
+
+    assert resolution.conflicts == ()
+    assert [target.github_url for target in resolution.targets] == [
+        "https://github.com/adopter-org/first-adopter",
+        "https://github.com/adopter-org/second-adopter",
+    ]
+
+
 def test_disagreeing_github_urls_are_a_conflict() -> None:
     module = _load_module()
 
