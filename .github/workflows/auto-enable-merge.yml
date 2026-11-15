@@ -118,7 +118,7 @@ jobs:
       && !contains(github.event.pull_request.labels.*.name, 'do-not-merge')
       && (
       contains(fromJSON('["thewoolleyman"]'), github.event.pull_request.user.login)
-      || (github.event.pull_request.user.login == 'thewoolleyman-factory-bot[bot]'
+      || (contains(fromJSON('["thewoolleyman-factory-bot[bot]", "livespec-ai-factory-bot[bot]"]'), github.event.pull_request.user.login)
       && startsWith(github.event.pull_request.head.ref, 'release-please--'))
       )
     steps:

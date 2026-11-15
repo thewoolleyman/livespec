@@ -8,4 +8,4 @@
 # line-diff guard reads modified lines as the maintainer tier, so the item carries
 # approval:workflow-edit; the edit stays logically additive (§12).
 work_item=livespec-kkd7pb
-reason=Held org-cutover PR: rewrite workflow owner refs and GHCR names to livespec-ai (note 005 Phase 1 step 7); logically additive, coordinator-authorized 2026-11-15.
+reason=Held org-cutover PR: rewrite workflow owner refs and GHCR names to livespec-ai (note 005 Phase 1 step 7); logically additive, coordinator-authorized 2026-11-15. Also: auto-enable-merge.yml additively admits livespec-ai-factory-bot[bot] beside thewoolleyman-factory-bot[bot] (kept), release-please-- branch restriction preserved (throughput-plans-coordinator ruling 2026-11-15 09:15Z, logically additive, independent pre-transfer review finding).
