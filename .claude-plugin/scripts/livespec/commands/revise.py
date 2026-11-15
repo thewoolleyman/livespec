@@ -45,6 +45,7 @@ from returns.result import Failure, Success
 from returns.unsafe import unsafe_perform_io
 from typing_extensions import assert_never
 
+from livespec.commands._doctor_lifecycle import add_pre_check_flags, run_pre_step
 from livespec.commands._revise_decision import enforce_revise_decisions
 from livespec.commands._revise_doctor import (
     _run_post_step_doctor,
@@ -136,6 +137,13 @@ def build_parser() -> argparse.ArgumentParser:
     user to resolve the named findings, then re-run doctor to
     verify resolution. SKILL.md prose passes the flag on every
     production invocation; file-shaping unit tests omit it.
+
+    `--skip-pre-check` / `--run-pre-check` are the mutually
+    exclusive pre-step pair per `SPECIFICATION/contracts.md`
+    (pre-step skip control): the resolved skip value decides
+    whether the pre-step doctor static phase runs before any
+    payload work, or the single `pre-step-skipped` finding is
+    emitted instead. Passing both is a usage error (exit 2).
     """
     parser = argparse.ArgumentParser(
         prog="revise",
@@ -165,6 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     _ = parser.add_argument("--spec-target", default=None)
     _ = parser.add_argument("--project-root", default=None)
     _ = parser.add_argument("--post-step-doctor", action="store_true")
+    add_pre_check_flags(parser=parser)
     stale_branch_group = parser.add_mutually_exclusive_group()
     _ = stale_branch_group.add_argument("--skip-stale-branch-check", action="store_true")
     _ = stale_branch_group.add_argument("--run-stale-branch-check", action="store_true")
@@ -203,7 +212,8 @@ def _pattern_match_io_result(
 def main(*, argv: list[str] | None = None) -> int:
     """Revise supervisor entry point. Returns the process exit code.
 
-    Threads argv through `parse_argv` -> `fs.read_text` ->
+    Threads argv through `parse_argv` -> the pre-step doctor
+    lifecycle (`_doctor_lifecycle.run_pre_step`) -> `fs.read_text` ->
     `jsonc.loads` -> `validate_payload` -> `io_git.get_git_user`
     -> `_process_decisions` (in `_revise_railway_emits`), then
     pattern-matches the final IOResult onto an exit code per
@@ -215,7 +225,11 @@ def main(*, argv: list[str] | None = None) -> int:
     revised_at = _now_utc_iso8601()
     railway: IOResult[Any, LivespecError] = parse_result.bind(
         lambda namespace: (  # pyright: ignore[reportArgumentType]
-            fs.read_text(path=Path(namespace.revise_json))
+            run_pre_step(
+                namespace=namespace,
+                project_root=_resolve_project_root(namespace=namespace),
+            )
+            .bind(lambda _none: fs.read_text(path=Path(namespace.revise_json)))
             .bind(
                 lambda text: IOResult.from_result(jsonc.loads(text=text)),  # pyright: ignore[reportArgumentType]
             )

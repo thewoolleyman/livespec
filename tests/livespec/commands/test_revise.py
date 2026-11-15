@@ -10,12 +10,47 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 from livespec.commands import revise
+from livespec.errors import LivespecError
+from livespec.io import proc
+from returns.io import IOResult
 
 __all__: list[str] = []
+
+
+_DoctorRun = IOResult[subprocess.CompletedProcess[str], LivespecError]
+
+
+@pytest.fixture(autouse=True)
+def lifecycle_doctor_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    """Answer the pre-step doctor static run with a passing findings document.
+
+    revise runs the pre-step doctor static phase before any payload
+    work unless the resolved skip is true. The file-shaping fixtures in
+    this module build bare spec trees the real doctor would reject, so
+    doctor runs are faked and recorded (the railway spawns no other
+    subprocess). Tests that observe or fail the doctor re-stub it.
+    """
+    calls: list[list[str]] = []
+
+    def _run(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        calls.append(argv)
+        return IOResult.from_value(
+            subprocess.CompletedProcess(
+                args=argv,
+                returncode=0,
+                stdout='{"findings": []}',
+                stderr="",
+            ),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _run)
+    return calls
 
 
 def test_revise_module_reexports_private_helpers_for_paired_tests() -> None:
@@ -2120,6 +2155,7 @@ def test_revise_main_exits_3_when_post_step_doctor_reports_fail(
             "--project-root",
             str(tmp_path),
             "--post-step-doctor",
+            "--skip-pre-check",
         ],
     )
     assert exit_code == 3, f"expected exit 3 on post-step fail, got {exit_code}"
@@ -2316,3 +2352,160 @@ def test_revise_main_snapshot_excludes_history_proposed_changes_and_templates(
     # a snapshot of the working proposed_changes/ contents.
     assert (version_dir / "proposed_changes" / "demo.md").is_file()
     assert (version_dir / "proposed_changes" / "demo-revision.md").is_file()
+
+
+def _revise_lifecycle_argv(*, tmp_path: Path, extra: list[str]) -> list[str]:
+    """A reject-decision revise run rooted at tmp_path, with post-step doctor on."""
+    spec_target = tmp_path / "spec-root"
+    (spec_target / "history" / "v001").mkdir(parents=True)
+    (spec_target / "proposed_changes").mkdir()
+    _ = (spec_target / "proposed_changes" / "demo.md").write_text(
+        "## Proposal: demo\nContent.\n",
+        encoding="utf-8",
+    )
+    revise_path = _write_valid_revise_payload(tmp_path=tmp_path)
+    return [
+        "--revise-json",
+        str(revise_path),
+        "--spec-target",
+        str(spec_target),
+        "--project-root",
+        str(tmp_path),
+        "--post-step-doctor",
+        *extra,
+    ]
+
+
+def _cut_version(*, tmp_path: Path) -> Path:
+    return tmp_path / "spec-root" / "history" / "v002"
+
+
+def _write_skip_config(*, tmp_path: Path, skip: bool) -> None:
+    _ = (tmp_path / ".livespec.jsonc").write_text(
+        json.dumps({"pre_step_skip_static_checks": skip}),
+        encoding="utf-8",
+    )
+
+
+_SKIPPED_DOCUMENT = (
+    '{"findings": [{"check_id": "pre-step-skipped", "status": "skipped", '
+    '"message": "pre-step checks skipped by user config or --skip-pre-check"}]}\n'
+)
+
+
+@pytest.mark.usefixtures("deterministic_git_identity")
+def test_revise_runs_pre_step_doctor_before_write_and_post_step_after(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Neither flag, no config: doctor static runs before the cut AND after it.
+
+    Per contracts.md (pre-step skip control) and spec.md
+    (sub-command lifecycle): revise has both pre-step and post-step
+    doctor static, run against the resolved project root.
+    """
+    cut_present_at_call: list[bool] = []
+
+    def _run(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        assert argv[-2:] == ["--project-root", str(tmp_path)]
+        cut_present_at_call.append(_cut_version(tmp_path=tmp_path).is_dir())
+        return IOResult.from_value(
+            subprocess.CompletedProcess(args=argv, returncode=0, stdout='{"findings": []}'),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _run)
+    exit_code = revise.main(argv=_revise_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert cut_present_at_call == [False, True]
+
+
+@pytest.mark.usefixtures("deterministic_git_identity")
+def test_revise_skip_pre_check_emits_skipped_finding_and_runs_only_post_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--skip-pre-check` emits the single pre-step-skipped finding; post-step still runs."""
+    exit_code = revise.main(
+        argv=_revise_lifecycle_argv(tmp_path=tmp_path, extra=["--skip-pre-check"]),
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out == _SKIPPED_DOCUMENT
+    assert len(lifecycle_doctor_calls) == 1
+    assert _cut_version(tmp_path=tmp_path).is_dir()
+
+
+@pytest.mark.usefixtures("deterministic_git_identity")
+def test_revise_config_key_true_skips_pre_step(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """Neither flag: `pre_step_skip_static_checks: true` skips the pre-step."""
+    _write_skip_config(tmp_path=tmp_path, skip=True)
+    exit_code = revise.main(argv=_revise_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 0
+    assert capsys.readouterr().out == _SKIPPED_DOCUMENT
+    assert len(lifecycle_doctor_calls) == 1
+
+
+@pytest.mark.usefixtures("deterministic_git_identity")
+def test_revise_run_pre_check_overrides_config_key_true(
+    *,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """`--run-pre-check` forces the pre-step even when config says skip."""
+    _write_skip_config(tmp_path=tmp_path, skip=True)
+    exit_code = revise.main(
+        argv=_revise_lifecycle_argv(tmp_path=tmp_path, extra=["--run-pre-check"]),
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out == ""
+    assert len(lifecycle_doctor_calls) == 2
+
+
+def test_revise_rejects_both_pre_check_flags_with_usage_exit(
+    *,
+    tmp_path: Path,
+    lifecycle_doctor_calls: list[list[str]],
+) -> None:
+    """Both flags together are an argparse usage error: exit 2, nothing runs."""
+    exit_code = revise.main(
+        argv=_revise_lifecycle_argv(
+            tmp_path=tmp_path,
+            extra=["--skip-pre-check", "--run-pre-check"],
+        ),
+    )
+    assert exit_code == 2
+    assert lifecycle_doctor_calls == []
+    assert not _cut_version(tmp_path=tmp_path).exists()
+
+
+def test_revise_pre_step_doctor_fail_aborts_before_write(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A fail finding from the pre-step doctor exits 3 and cuts nothing."""
+
+    def _failing(*, argv: list[str], cwd: Path | None = None) -> _DoctorRun:
+        del cwd
+        return IOResult.from_value(
+            subprocess.CompletedProcess(
+                args=argv,
+                returncode=3,
+                stdout='{"findings": [{"check_id": "x", "status": "fail", "message": "m"}]}',
+            ),
+        )
+
+    monkeypatch.setattr(proc, "run_subprocess", _failing)
+    exit_code = revise.main(argv=_revise_lifecycle_argv(tmp_path=tmp_path, extra=[]))
+    assert exit_code == 3
+    assert not _cut_version(tmp_path=tmp_path).exists()
+    assert (tmp_path / "spec-root" / "proposed_changes" / "demo.md").is_file()
