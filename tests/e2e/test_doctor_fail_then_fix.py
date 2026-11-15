@@ -208,6 +208,7 @@ def test_doctor_fail_then_fix(  # noqa: PLR0915
             str(spec_target),
             "--project-root",
             str(tmp_path),
+            "--skip-pre-check",
         ],
         # Same working-directory scoping as the propose-change step
         # above: `bin/revise.py` records the operator identity its
