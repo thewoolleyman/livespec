@@ -72,6 +72,13 @@ SLUG: CheckId = CheckId("doctor-agents-ai-reference-resolution")
 # a real file.
 _AI_REFERENCE = re.compile(r"(?<![\w-])\.ai/[A-Za-z0-9._/-]+\.md")
 
+# A URL (`scheme://...` up to the next whitespace). A `.ai/` match that
+# falls inside one names a file in ANOTHER repository (a fleet AGENTS.md
+# linking a sibling's guidance by GitHub URL), so it is not resolved
+# against this repository. Relative references, including
+# `sub/.ai/x.md`, are still checked.
+_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
+
 # Path segments whose presence anywhere in a file's path excludes it
 # from the scan: vendored third-party code, byte-cache dirs, the git
 # db, node deps, the project virtualenv, and frozen historical
@@ -152,7 +159,10 @@ def _iter_ai_references(*, text: str) -> Iterator[tuple[int, str]]:
     grammar excludes the angle brackets.
     """
     for line_number, line in enumerate(text.splitlines(), start=1):
+        url_spans = [url.span() for url in _URL.finditer(line)]
         for match in _AI_REFERENCE.finditer(line):
+            if any(start <= match.start() < end for start, end in url_spans):
+                continue
             yield (line_number, match.group(0))
 
 
