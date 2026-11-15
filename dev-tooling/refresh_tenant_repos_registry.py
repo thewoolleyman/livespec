@@ -13,9 +13,9 @@ registries, two per file:
 The two mapping registries DECLARE a `github_url` (and optionally a
 `default_branch`); the manifest arrays declare a repo name, so their
 GitHub URL is DERIVED from the applicable manifest owner. Fleet members
-use the manifest's `owner`; adopters use `adopter_owner`, then `owner`.
-A repo named by several registries merges into one target, and the merge
-is where both refusal conditions live:
+use the manifest's `owner`; adopters use their own `owner`, then
+`adopter_owner`, then `owner`. A repo named by several registries merges
+into one target, and the merge is where both refusal conditions live:
 registries that DISAGREE about a repo's GitHub URL or default branch,
 and a repo name that is not a single safe path segment (so a name can
 never escape the peer root it gets joined onto).
@@ -83,18 +83,22 @@ def _from_mapping(*, block: object, owner: str) -> list[RepoTarget]:
     ]
 
 
-def _from_array(*, block: object, owner: str) -> list[RepoTarget]:
+def _from_array(*, block: object, owner: str, use_entry_owner: bool = False) -> list[RepoTarget]:
     """Targets from a `[{repo: ...}]` manifest block, URL derived from `owner`."""
     rows = cast(list[dict[str, str]], block)
-    return [
-        RepoTarget(
-            repo=row["repo"],
-            owner=owner,
-            github_url=f"https://github.com/{owner}/{row['repo']}",
-            default_branch=None,
+    targets: list[RepoTarget] = []
+    for row in rows:
+        effective_owner = row.get("owner") if use_entry_owner else None
+        effective_owner = effective_owner or owner
+        targets.append(
+            RepoTarget(
+                repo=row["repo"],
+                owner=effective_owner,
+                github_url=f"https://github.com/{effective_owner}/{row['repo']}",
+                default_branch=None,
+            )
         )
-        for row in rows
-    ]
+    return targets
 
 
 def _conflict(*, existing: RepoTarget, incoming: RepoTarget) -> str | None:
@@ -133,6 +137,7 @@ def resolve_targets(*, livespec_config: object, fleet_manifest: object) -> Targe
         *_from_array(
             block=manifest.get("adopters", []),
             owner=cast(str | None, manifest.get("adopter_owner")) or owner,
+            use_entry_owner=True,
         ),
     ]
     merged: dict[str, RepoTarget] = {}
