@@ -27,7 +27,9 @@ segment named `archive`, `_vendor`, `__pycache__`, `.git`, `.venv`, or
 each one, and resolves every CONCRETE `.ai/<topic>.md` reference it
 carries relative to that `AGENTS.md`'s own directory.
 
-A concrete reference is the literal `.ai/<some-path>.md` form. The
+A concrete reference is the literal `.ai/<some-path>.md` form outside a
+URL; a `.ai/` path inside a URL names another repository's file and is
+skipped. The
 placeholder `.ai/<topic>.md` (with angle-bracketed `<topic>`) that the
 convention prose uses to DESCRIBE the pattern is NOT a concrete
 reference — the angle brackets are excluded from the reference grammar
@@ -72,12 +74,12 @@ SLUG: CheckId = CheckId("doctor-agents-ai-reference-resolution")
 # a real file.
 _AI_REFERENCE = re.compile(r"(?<![\w-])\.ai/[A-Za-z0-9._/-]+\.md")
 
-# A URL (`scheme://...` up to the next whitespace). A `.ai/` match that
-# falls inside one names a file in ANOTHER repository (a fleet AGENTS.md
-# linking a sibling's guidance by GitHub URL), so it is not resolved
-# against this repository. Relative references, including
-# `sub/.ai/x.md`, are still checked.
-_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
+# A URL (`scheme://...`), ending at whitespace or at markdown and table
+# punctuation (`)`, `>`, a quote, a backtick, `|`) so a local reference
+# glued to it is not swallowed. A `.ai/` match that falls inside one names
+# a file in ANOTHER repository (a fleet AGENTS.md linking a sibling's
+# guidance by GitHub URL), so it is not resolved against this repository.
+_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s)>\"'`|]+")
 
 # Path segments whose presence anywhere in a file's path excludes it
 # from the scan: vendored third-party code, byte-cache dirs, the git
@@ -154,9 +156,10 @@ def _is_excluded(*, path: Path, spec_root: Path) -> bool:
 def _iter_ai_references(*, text: str) -> Iterator[tuple[int, str]]:
     """Yield `(1-indexed line, reference)` for every concrete `.ai/` reference.
 
-    Scans `text` line by line and surfaces each `_AI_REFERENCE` match;
-    the placeholder `.ai/<topic>.md` produces no match because the
-    grammar excludes the angle brackets.
+    Scans `text` line by line and surfaces each `_AI_REFERENCE` match
+    that does not start inside a `_URL` span; the placeholder
+    `.ai/<topic>.md` produces no match because the grammar excludes the
+    angle brackets.
     """
     for line_number, line in enumerate(text.splitlines(), start=1):
         url_spans = [url.span() for url in _URL.finditer(line)]

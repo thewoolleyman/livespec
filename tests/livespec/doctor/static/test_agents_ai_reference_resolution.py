@@ -144,6 +144,26 @@ def test_run_ignores_reference_inside_a_url(
     assert mod.run(ctx=_ctx(tmp_path=tmp_path)) == IOSuccess(_pass_finding(tmp_path=tmp_path))
 
 
+def test_run_still_fails_on_dangling_reference_glued_to_a_url(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A dangling relative `.ai/` reference right after a URL still fails.
+
+    The URL ends at markdown or table punctuation (`)` or `|`), so a local
+    reference that follows it with no whitespace is not hidden inside it.
+    """
+    monkeypatch.chdir(tmp_path)
+    _ = (tmp_path / "AGENTS.md").write_text(
+        "| https://github.com/o/r/blob/master/.ai/a.md|.ai/missing.md |\n",
+        encoding="utf-8",
+    )
+    finding = _run_and_unwrap(ctx=_ctx(tmp_path=tmp_path))
+    assert finding.status == "fail"
+    assert ".ai/missing.md" in finding.message
+
+
 def test_run_ignores_dangling_reference_in_archive(
     *,
     tmp_path: Path,
