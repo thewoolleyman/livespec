@@ -113,7 +113,7 @@
   // Swapping secret backends is a credential_wrapper edit, not a code change.
   // To enable it, add it as a real key above (a comma after the `harnesses`
   // block); the fleet reference default injects BEADS_DOLT_PASSWORD via the
-  // 1Password Environment wrapper:
+  // reference credential wrapper:
   //   "credential_wrapper": ["/usr/local/bin/with-<id>-env.sh", "--"]
   // Backend alternatives (same opaque prefix-array contract):
   //   "credential_wrapper": ["aws-vault", "exec", "<id>", "--"]

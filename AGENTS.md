@@ -470,22 +470,7 @@ clone connects to its beads tenant only when all of the following are present:
   fleet tenants force TCP (not the unix socket): `/var/lib/doltdb/` is `0750
   dolt:dolt` and untraversable by the sandboxed caller, so `.beads/config.yaml`
   carries `dolt.*` host/port keys with NO `socket` key.
-- **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
-  injected by THIS project's configured `credential_wrapper` (the `.livespec.jsonc`
-  key naming the project's conforming credential-injection wrapper; the fleet
-  reference default is the 1Password Environment wrapper `with-livespec-env.sh`).
-  A FLEET tenant shares the
-  one fleet password (members of the single livespec 1Password Environment) via
-  the livespec 1Password Environment wrapper `with-livespec-env.sh` (canonical
-  copy at `~/workspace/1password-env-wrapper/with-livespec-env.sh`); an
-  INDEPENDENT (non-fleet) tenant injects its own tenant password from its own
-  1Password Environment via its own `with-<project>-env.sh` wrapper. Either way
-  `bd` consumes the same bare var — there is NO per-tenant
-  `BEADS_DOLT_PASSWORD_<tenant>` suffix and NO per-tenant→bare mapping. Real
-  isolation comes from the per-tenant SQL user + DB-scoped grant, not from
-  password distinctness or wrapper identity. Secrets are probe-only — `printenv
-  NAME | wc -c`, never echo values — and NEVER committed to `.livespec.jsonc` or
-  `.beads/`.
+- **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** is injected by this project’s configured `credential_wrapper` in `.livespec.jsonc`. A livespec-family tenant shares the family password through `/usr/local/bin/with-livespec-env.sh --`; an independent tenant uses its own configured wrapper and tenant password. `bd` consumes the same bare variable, with no `BEADS_DOLT_PASSWORD_<tenant>` suffix or per-tenant-to-bare mapping. Isolation comes from the per-tenant SQL user and DB-scoped grant, not wrapper identity. Probe only for presence or length; never echo values or commit them to `.livespec.jsonc` or `.beads/`.
 - **The `.beads/` pointer files** in the repo: `config.yaml` (committed; carries
   the `dolt.*` server keys) and `metadata.json` (gitignored). `metadata.json` is
   REGENERABLE — `project_id` is server-stable, so re-running `bd init --server …`

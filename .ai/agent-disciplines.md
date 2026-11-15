@@ -106,10 +106,7 @@ Two rules follow:
 
 ## Ledger-write economy under a shared secret wrapper
 
-Every `with-<id>-env.sh` invocation is an `op run`, and the 1Password **daily
-quota is shared account-wide across every tenant** — not per-repo and not
-per-session. Exhausting it blocks `git push` and every ledger write fleet-wide,
-for every other session too, until it recovers.
+For wrappers still backed by a 1Password Environment, including the homelab Environment and livespec installations until their own conversion, credential fetches use `op run` and share the 1Password account’s daily quota across those consumers; a cache hit need not issue another `op run`. Exhausting that quota can block pushes and ledger operations that need a fresh 1Password fetch. These 1Password quota diagnostics do not describe a livespec wrapper after its host converts to Parameter Store; unrelated Environments retain their existing backend and quota constraints.
 
 - **Batch ledger reads.** One `bd list --json -n 0` cached to a scratch file,
   then parsed locally as many times as needed, instead of one call per question.
