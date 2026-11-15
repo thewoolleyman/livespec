@@ -1,4 +1,11 @@
-work_item=livespec-52hir3
-change=additive
-ci_runtime=no-significant-increase
-reason=incident-ci prints ONLY the enablement reading the released plan recorded (one json.dumps of the plan's enablement field, then one echo), right after the step reads the plan's mode; five added lines, no existing workflow line deleted or modified, no job, trigger, permission, runner, concurrency group or required check changes, one in-process JSON read so CI runtime does not change; mirror of livespec-dev-tooling-kg5qv4 (fleet follow-up to livespec-dev-tooling-ahl6vz), maintainer approval of the additive one-field echo 2026-11-13 and coordinator authorization under coordinator-duties section 12 on 2026-11-14
+# Workflow-edit exemption — one exemption binds to one reviewed change.
+#
+# The change (plan stale-base-merge-options, note 005 §3 Phase 1 step 7; the held
+# org-cutover PR): every .github/workflows/ reference to thewoolleyman/<fleet-repo>
+# and ghcr.io/thewoolleyman/ moves to livespec-ai (uses: refs, repository: checkouts, container image names). Logically additive: the
+# same jobs run, not significantly slower. Authorized by legacy-coordinator-agent
+# under the coordinator-duties §12 additive delegation, 2026-11-15 ~00:5xZ. The
+# line-diff guard reads modified lines as the maintainer tier, so the item carries
+# approval:workflow-edit; the edit stays logically additive (§12).
+work_item=livespec-kkd7pb
+reason=Held org-cutover PR: rewrite workflow owner refs and GHCR names to livespec-ai (note 005 Phase 1 step 7); logically additive, coordinator-authorized 2026-11-15.
