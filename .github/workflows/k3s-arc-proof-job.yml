@@ -8,7 +8,7 @@
 # runs-on references a gating self-hosted label, and
 # "livespec-local-ci-k3s" matches the "local-ci" gating substring.
 # See livespec-s43svm.16 for the full disposition of the closed PR
-# (https://github.com/thewoolleyman/livespec/pull/2352).
+# (https://github.com/livespec-ai/livespec/pull/2352).
 #
 # This attempt uses `pull_request` instead — the check's own docstring
 # states pull_request is ALLOWED, since same-repo fork safety is

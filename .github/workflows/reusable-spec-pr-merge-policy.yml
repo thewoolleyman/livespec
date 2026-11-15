@@ -7,7 +7,7 @@
 # pull-request auto-merge requirement. Together they establish that livespec
 # publishes reusable workflows at .github/workflows/reusable-<name>.yml, that
 # consumers invoke them as
-#   uses: thewoolleyman/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z
+#   uses: livespec-ai/livespec/.github/workflows/reusable-<name>.yml@vX.Y.Z
 # and that the derivation itself lives in ONE core-shipped script every caller
 # executes. Two independent copies of that derivation are PROHIBITED, which is
 # why nothing below re-spells a diff flag, a status filter or a fold rule.
@@ -41,7 +41,7 @@
 #
 # IT DOES NOT RESOLVE. Measured 2026-08-12 on GitHub-hosted runners, from BOTH
 # a same-repository caller and a genuine cross-repository caller
-# (thewoolleyman/livespec-orchestrator-git-jsonl): `github.job_workflow_sha`
+# (livespec-ai/livespec-orchestrator-git-jsonl): `github.job_workflow_sha`
 # is the EMPTY STRING and `GITHUB_JOB_WORKFLOW_SHA` is unset. Neither
 # neighbouring context substitutes for it — `github.workflow_sha` and
 # `github.workflow_ref` both describe the CALLER's entry workflow, so in a
@@ -119,7 +119,7 @@ jobs:
           # empty string instead of a jq error, so the named diagnostic below
           # is what the operator sees rather than a parse failure.
           core_sha=$(gh api "repos/$RUN_REPO/actions/runs/$RUN_ID" \
-            --jq '[.referenced_workflows[]? | select(.path | startswith("thewoolleyman/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@")) | .sha] | first // ""') || {
+            --jq '[.referenced_workflows[]? | select(.path | startswith("livespec-ai/livespec/.github/workflows/reusable-spec-pr-merge-policy.yml@")) | .sha] | first // ""') || {
             echo "::error::cannot read this run's referenced workflows; grant the calling job actions: read"
             exit 1
           }
@@ -142,7 +142,7 @@ jobs:
       - name: Checkout livespec at that revision
         uses: actions/checkout@v4
         with:
-          repository: thewoolleyman/livespec
+          repository: livespec-ai/livespec
           ref: ${{ steps.pin.outputs.core-sha }}
           path: .livespec-core
 

@@ -52,7 +52,7 @@ jobs:
         run: |
           if [ -z "${ANTHROPIC_API_KEY_LIVESPEC_E2E}" ]; then
             echo "::error::ANTHROPIC_API_KEY_LIVESPEC_E2E repo secret is required for e2e-real runs."
-            echo "Set it via: gh secret set ANTHROPIC_API_KEY_LIVESPEC_E2E --repo thewoolleyman/livespec"
+            echo "Set it via: gh secret set ANTHROPIC_API_KEY_LIVESPEC_E2E --repo livespec-ai/livespec"
             exit 1
           fi
           echo "ANTHROPIC_API_KEY_LIVESPEC_E2E is set (length=${#ANTHROPIC_API_KEY_LIVESPEC_E2E})."
