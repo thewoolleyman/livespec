@@ -346,6 +346,13 @@
     ],
     "openbrain": [
       "SPECIFICATION/constraints.md §\"Merged-branch cleanup\""
+    ],
+    // Cited by non-functional-requirements.md §"Fleet secrets — Parameter Store as
+    // canonical source" (v249, overseer-iyfjbo): homelab owns the shared credential service.
+    "homelab": [
+      "SPECIFICATION/spec.md §\"Shared GitOps credential service\"",
+      "SPECIFICATION/spec.md §\"Secrets\"",
+      "SPECIFICATION/contracts.md §\"Shared credential consumer contract\""
     ]
   },
   // Planning/work-item-resolution registry. These targets are the repo slugs
