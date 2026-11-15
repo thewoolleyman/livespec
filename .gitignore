@@ -17,6 +17,7 @@ tmp/
 /dev-tooling/check-no-workflow-edits.sh
 /dev-tooling/worktree.just
 /dev-tooling/branch-protection.just
+/dev-tooling/local-gate-scope.sh
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/

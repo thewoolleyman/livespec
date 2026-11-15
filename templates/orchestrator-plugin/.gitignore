@@ -21,6 +21,7 @@
 /dev-tooling/check-no-workflow-edits.sh
 /dev-tooling/worktree.just
 /dev-tooling/branch-protection.just
+/dev-tooling/local-gate-scope.sh
 
 # Playwright MCP browser-tool scratch (page snapshots, console logs) —
 # per-session, never durable state.
