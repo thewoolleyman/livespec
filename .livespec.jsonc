@@ -82,7 +82,11 @@
   // invocation self-heals its tenant secret (BEADS_DOLT_PASSWORD) by re-exec — per
   // SPECIFICATION/non-functional-requirements.md §"Fleet secrets". An opaque argv prefix;
   // swapping the secret backend (aws-vault/chamber/…) is a config edit, not code.
-  "credential_wrapper": ["/usr/local/bin/with-livespec-env.sh", "--"],
+  // livespec-ai org cutover (stale-base-merge-options note 009): host-side GitHub
+  // App mints for this repository use the org App livespec-ai-factory-bot (5761962),
+  // which the wrapper projects as GITHUB_APP_ID_ORG / GITHUB_PRIVATE_KEY_ORG; the
+  // /bin/sh hop maps that pair onto the runtime's GITHUB_APP_ID / GITHUB_PRIVATE_KEY.
+  "credential_wrapper": ["/usr/local/bin/with-livespec-env.sh", "--", "/bin/sh", "-c", "GITHUB_APP_ID=\"$GITHUB_APP_ID_ORG\" GITHUB_PRIVATE_KEY=\"$GITHUB_PRIVATE_KEY_ORG\" exec \"$@\"", "sh"],
   "livespec-orchestrator-beads-fabro": {
     "format": "beads",
     "compat": { "livespec": ">=0.1.0,<1.0.0", "pinned": "v0.47.6" },
@@ -325,7 +329,13 @@
           // factory-python: the toolchain-named catalog id (livespec-dev-tooling
           // SPECIFICATION, "Factory sandbox environment naming"). Its provider, not
           // this id, says where the sandbox runs, so a provider move changes nothing here.
-          "environment": "factory-python"
+          "environment": "factory-python",
+          // The org App pair in petri's vault (livespec-dev-tooling gmktec-xubuntu host_vars),
+          // so factory runs for this repository publish as livespec-ai-factory-bot.
+          "github_app": {
+            "app_id_secret": "ORG_GITHUB_APP_ID",
+            "private_key_secret": "/livespec-ai/github/livespec-ai-factory-bot/private-key"
+          }
         }
       },
       "default_factory": "petri"
