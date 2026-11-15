@@ -244,19 +244,7 @@ present:
 - **A running Dolt `sql-server`** reachable over **TCP `127.0.0.1:3307`**. Fleet
   tenants force TCP (not the unix socket); `.beads/config.yaml` carries `dolt.*`
   host/port keys with NO `socket` key.
-- **The tenant password** in env as a single **bare `BEADS_DOLT_PASSWORD`** —
-  injected by THIS project's configured env wrapper. A FLEET tenant shares the
-  one fleet password via the fleet 1Password Environment wrapper
-  `with-livespec-env.sh` (canonical copy at
-  `~/workspace/1password-env-wrapper/with-livespec-env.sh`); an INDEPENDENT
-  (non-fleet) tenant injects its own tenant password from its own 1Password
-  Environment via its own `with-<project>-env.sh` wrapper. Either way `bd`
-  consumes the same bare var — there is NO per-tenant
-  `BEADS_DOLT_PASSWORD_<tenant>` variable and NO per-tenant→bare mapping. Real
-  isolation comes from the per-tenant SQL user + DB-scoped grant, not from
-  password distinctness or wrapper identity. Secrets are probe-only — `printenv
-  NAME | wc -c`, never echo values — and NEVER committed to `.livespec.jsonc` or
-  `.beads/`.
+- **The tenant password** is injected as the single bare `BEADS_DOLT_PASSWORD` by this project’s configured credential wrapper. Livespec-family tenants share the family password through `/usr/local/bin/with-livespec-env.sh --`; independent adopters keep their own wrapper and password. `bd` consumes the bare variable without per-tenant suffixes or mapping. Isolation comes from the per-tenant SQL user and DB-scoped grant. Probe secrets without printing values, and never commit them to `.livespec.jsonc` or `.beads/`.
 - **The `.beads/` pointer files**: `config.yaml` (committed; the `dolt.*` server
   keys) and `metadata.json` (gitignored, regenerable). NEVER run `bd init` inside
   a primary checkout or worktree — it auto-commits and clobbers `.beads/`.
