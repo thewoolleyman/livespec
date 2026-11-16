@@ -30,7 +30,7 @@ on:
 
 jobs:
   bump:
-    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-bump-pin-from-dispatch.yml@v1.214.0
+    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-bump-pin-from-dispatch.yml@v1.215.0
     secrets: inherit
     with:
       source_repo: ${{ github.event.client_payload.source_repo }}
