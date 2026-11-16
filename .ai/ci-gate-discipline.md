@@ -124,6 +124,13 @@ reconciler's own automatic single rerun above is unchanged.
   which needs the maintainer directly.
 - The remedy for a recurring flake is its root fix, raised to breakage
   priority when it blocks other work.
+- Retry applies to work already in progress, so its work is not wasted.
+  Maintainer ruling, 2026-11-16 ~07:0xZ (livespec-dev-tooling epics
+  `livespec-dev-tooling-6tgd2z` and `livespec-dev-tooling-r7iuj6`): "Okay, I think the retry rule is recorded wrong.  Flakes can be retried if they are already in progress, so their work isn't wasted.  But outside of an incident, if there is a flake, then nothing new should get prioritized to enter the factory or the merge train ahead of the fix.  Things can go in parallel next to a flaky fix, but the flaky fix always must get priority as soon as it is found. Does this make sense?  If so, make a sweep to update this rule everywhere."
+  Outside an incident, from the moment a flake is found its root fix has top
+  priority for factory dispatch and the merge queue: nothing new is
+  prioritized ahead of it, though other work may run in parallel beside it.
+  During an incident, EXPEDITED_INCIDENT_RESPONSE governs.
 
 The 2026-11-02 ruling was first recorded here because on 2026-11-03
 three different seats ran whole-job reruns (canary PR #4260 among them)
