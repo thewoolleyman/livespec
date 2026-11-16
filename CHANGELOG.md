@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.2](https://github.com/livespec-ai/livespec/compare/v0.48.1...v0.48.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* **pytest:** a passing test's tmp_path and tmp_path_factory files are removed so a suite run cannot exhaust a host's /tmp inodes (livespec-dev-tooling-jxhi63) ([993d5ad](https://github.com/livespec-ai/livespec/commit/993d5ad939040ec89b2495675dad061095150d8a))
+
 ## [0.48.1](https://github.com/livespec-ai/livespec/compare/v0.48.0...v0.48.1) (2026-11-16)
 
 
