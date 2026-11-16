@@ -131,6 +131,23 @@
     // that surface round-trips the file through json.dumps and silently strips
     // every comment here while reporting green — tracked as bd-ib-lmi5.
     "dispatcher": {
+      // The Claude credential policy (livespec-orchestrator-beads-fabro v382,
+      // R01 bd-ib-tvcbmc, plan epic overseer-iyfjbo line 6). The factory pool is
+      // ONLY these declared numbered slots that the credential wrapper injects
+      // non-empty; undeclared slots and the unnumbered CLAUDE_CODE_OAUTH_TOKEN are
+      // never assessed or projected. INTERIM narrowing: until the central factory
+      // pick (overseer-shojan) replaces local slot ranking, this keeps local
+      // ranking, which does not read caam's protection floors, off anthropic-0 and
+      // off the interactive accounts. When the central pick lands, the declaration
+      // widens to every managed slot the central pick may name.
+      // Committed-only and variable names only.
+      "claude_credential_policy": {
+        "mode": "numbered-slots",
+        "slots": [
+          "CLAUDE_CODE_OAUTH_TOKEN__ANTHROPIC_4",
+          "CLAUDE_CODE_OAUTH_TOKEN__ANTHROPIC_5"
+        ]
+      },
       "implement": { "mechanical_targets": ["check-check-coverage-incremental", "check-file-lloc", "check-format", "check-keyword-only-args", "check-lint", "check-no-lloc-soft-warnings", "check-per-file-coverage"] },
       // CLAIM TOKENS (2026-11-12, coordinator P1 order so expedited incident mode can
       // publish genesis here). With this key true every claim writer of this tenant
