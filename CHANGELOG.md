@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.48.0](https://github.com/livespec-ai/livespec/compare/v0.47.11...v0.48.0) (2026-11-16)
+
+
+### Features
+
+* **config:** petri client moves to the 0.393 bbe693847 carrier build ([471d2d0](https://github.com/livespec-ai/livespec/commit/471d2d011149a7d4f3fbfb19ccf75ec04bed2b73))
+* **config:** route petri runs and host mints through the livespec-ai org App ([e9b801f](https://github.com/livespec-ai/livespec/commit/e9b801f7e1129eca69cf1c056057bb82501ec1a0))
+
 ## [0.47.11](https://github.com/thewoolleyman/livespec/compare/v0.47.10...v0.47.11) (2026-11-15)
 
 
