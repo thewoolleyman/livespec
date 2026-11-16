@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.1](https://github.com/livespec-ai/livespec/compare/v0.48.0...v0.48.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **coverage:** the suite coverage omits the test modules and measures first-party source (livespec-luesll) ([a285d11](https://github.com/livespec-ai/livespec/commit/a285d118256d541c531013c0986b3ff1f7357c96))
+
 ## [0.48.0](https://github.com/livespec-ai/livespec/compare/v0.47.11...v0.48.0) (2026-11-16)
 
 
