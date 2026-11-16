@@ -720,6 +720,7 @@ existing file):
   document that makes it, and that independent review cannot catch because the
   reviewers are exactly the population sharing the vocabulary. Each is drawn from
   a defect that actually shipped.
+- **`.ai/spec-scope-criteria.md`** — read BEFORE filing a `/livespec:propose-change`, accepting a `tier: spec-change` classification, or holding work for a spec change: the criteria and 6-question decision procedure for what belongs in `SPECIFICATION/` or non-functional-requirements versus code plus tests versus `.ai/` guidance, and why a `tier: spec-change` line is a record, not a hold.
 - **`.ai/gitops-deployment-discipline.md`** — read BEFORE any deployment,
   Ansible, GitOps, host-provisioning, `kubectl`, or ssh-to-a-fleet-host action,
   in this or any fleet repository. The fleet-canonical statement of the six
