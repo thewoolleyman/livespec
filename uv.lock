@@ -495,8 +495,8 @@ dev = [
     { name = "hypothesis", specifier = "==6.122.3" },
     { name = "hypothesis-jsonschema", specifier = "==0.23.1" },
     { name = "import-linter", specifier = "==2.1" },
-    { name = "livespec-dev-tooling", git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.214.0" },
-    { name = "livespec-runtime", git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.31.1" },
+    { name = "livespec-dev-tooling", git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.214.0" },
+    { name = "livespec-runtime", git = "https://github.com/livespec-ai/livespec-runtime.git?tag=v0.31.1" },
     { name = "mutmut", specifier = "==3.2.3" },
     { name = "nodejs-wheel-binaries", specifier = "==24.19.0" },
     { name = "pyright", specifier = "==1.1.391" },
@@ -511,7 +511,7 @@ dev = [
 [[package]]
 name = "livespec-dev-tooling"
 version = "1.214.0"
-source = { git = "https://github.com/thewoolleyman/livespec-dev-tooling.git?tag=v1.214.0#da53a1f65ee2bfe53320ff6860cf2a39dd7f49ef" }
+source = { git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.214.0#da53a1f65ee2bfe53320ff6860cf2a39dd7f49ef" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions" },
@@ -520,7 +520,7 @@ dependencies = [
 [[package]]
 name = "livespec-runtime"
 version = "0.31.1"
-source = { git = "https://github.com/thewoolleyman/livespec-runtime.git?tag=v0.31.1#9f4c16ed81be6b87cef557cb603ca4528ec6871c" }
+source = { git = "https://github.com/livespec-ai/livespec-runtime.git?tag=v0.31.1#9f4c16ed81be6b87cef557cb603ca4528ec6871c" }
 dependencies = [
     { name = "returns" },
     { name = "typing-extensions" },

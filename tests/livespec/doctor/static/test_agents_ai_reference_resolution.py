@@ -137,7 +137,7 @@ def test_run_ignores_reference_inside_a_url(
     (tmp_path / ".ai").mkdir()
     _ = (tmp_path / ".ai" / "local.md").write_text("x\n", encoding="utf-8")
     _ = (tmp_path / "AGENTS.md").write_text(
-        "Read https://github.com/thewoolleyman/livespec-dev-tooling/blob/master/"
+        "Read https://github.com/livespec-ai/livespec-dev-tooling/blob/master/"
         ".ai/distributed-sendmessage-protocol.md and `.ai/local.md`.\n",
         encoding="utf-8",
     )
