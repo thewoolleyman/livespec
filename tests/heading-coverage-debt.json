@@ -190,6 +190,48 @@
   },
   {
     "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate admits work while master is red only for an external cause",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate blocks a red master with no external-cause record",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate reads only master's own push run, never a scratch-branch run",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate treats a job with an external record and a defect finding as a defect",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate's external clock does not restart on a new head",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "heading": "## The master-green gate's external tolerance ends after one day",
+    "work_item": "livespec-xzxsqb",
+    "first_seen": "2026-11-16"
+  },
+  {
+    "spec_root": "SPECIFICATION",
     "spec_file": "spec.md",
     "heading": "## Spec-tree path closure",
     "work_item": "livespec-6fb1",
