@@ -937,5 +937,53 @@
     "test": "TODO",
     "reason": "A real test at the integration tier or above is owed for this heading: the fleet route guard's refusals and allowances at the hook boundary. livespec-lhmjbd owns it.",
     "work_item": "livespec-lhmjbd"
+  },
+  {
+    "heading": "## The master-green gate admits work while master is red only for an external cause",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
+  },
+  {
+    "heading": "## The master-green gate blocks a red master with no external-cause record",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
+  },
+  {
+    "heading": "## The master-green gate treats a job with an external record and a defect finding as a defect",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
+  },
+  {
+    "heading": "## The master-green gate reads only master's own push run, never a scratch-branch run",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
+  },
+  {
+    "heading": "## The master-green gate's external clock does not restart on a new head",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
+  },
+  {
+    "heading": "## The master-green gate's external tolerance ends after one day",
+    "spec_root": "SPECIFICATION",
+    "spec_file": "scenarios.md",
+    "test": "TODO",
+    "reason": "A real test at the integration tier or above is owed for this heading: the fleet-shared master-green gate's behaviour on an external red, read from the ratified non-functional-requirements.md paragraph and the realizing livespec-dev-tooling contract. livespec-xzxsqb owns it.",
+    "work_item": "livespec-xzxsqb"
   }
 ]

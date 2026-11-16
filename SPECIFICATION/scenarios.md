@@ -786,6 +786,61 @@ Scenario: A re-run that is itself cancelled raises needs-attention instead of a 
   And it raises the needs-attention signal naming the unverdicted commit
 ```
 
+## The master-green gate admits work while master is red only for an external cause
+
+```gherkin
+Given master's own gating push run of its HEAD commit is red
+And every failing gating job published that every failed step ended on a transport-layer external-cause record and that it found no defect
+When an agent commits or pushes any change
+Then the master-green gate warns, naming each external dependency and kind, and does not block
+And the failing jobs and the all-green gate job still read red on master
+And each pull request's own required checks still bind its merge
+```
+
+## The master-green gate blocks a red master with no external-cause record
+
+```gherkin
+Given master's own gating push run of its HEAD commit is red
+And one failing gating job carries no external-cause record
+When an agent commits or pushes any change
+Then the master-green gate blocks, naming that job as a defect
+```
+
+## The master-green gate treats a job with an external record and a defect finding as a defect
+
+```gherkin
+Given master's own gating push run of its HEAD commit is red
+And one failing gating job carries an external-cause record for a forge rate limit and also reports one defect finding
+When an agent commits or pushes any change
+Then the master-green gate blocks, naming that job as a defect
+```
+
+## The master-green gate reads only master's own push run, never a scratch-branch run
+
+```gherkin
+Given master's own gating push run of its HEAD commit is red for a defect
+And a run of the same commit on another branch published an external verdict
+When an agent commits or pushes any change
+Then the master-green gate blocks, reading only master's own push run
+```
+
+## The master-green gate's external clock does not restart on a new head
+
+```gherkin
+Given master's gating push runs have read external in an unbroken sequence across several HEAD commits, with no completed run whose gate job read success between them
+When the earliest run of that sequence completed more than 24 hours ago
+Then the clock is measured from that earliest run, and the newest HEAD commit has not restarted it
+```
+
+## The master-green gate's external tolerance ends after one day
+
+```gherkin
+Given master's gating push runs have been red with only external causes in an unbroken sequence for 24 hours, measured from the earliest such run's completion, with no completed green run between
+When an agent commits or pushes any change
+Then the master-green gate blocks
+And the repository's CI publishing step has raised the needs-attention signal once for that episode
+```
+
 ## A green pull request stays green after rebase-merge
 
 ```gherkin
