@@ -62,8 +62,8 @@
     {
       "name": "livespec_runtime",
       "upstream_url": "https://github.com/livespec-ai/livespec-runtime",
-      "upstream_ref": "v0.30.4",
-      "vendored_at": "2026-11-13T18:24:37Z"
+      "upstream_ref": "v0.31.1",
+      "vendored_at": "2026-11-16T06:04:08Z"
     }
   ]
 }
