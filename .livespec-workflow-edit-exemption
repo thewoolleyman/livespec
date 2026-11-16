@@ -1,2 +1,2 @@
-work_item=livespec-4bykes
-reason=livespec-dev-tooling pin bump v1.208.0 to v1.213.0, ref and tag bumps only (bump-pin-from-dispatch.yml, ci.yml, master-health-reconcile.yml, pin-freshness.yml, release-dispatch.yml, release-lane-watch.yml, release-park.yml, release-please.yml), plus one added check-metadata-batch step running check-no-ambient-environment-loops (logically additive), plus the local-gate-scope.sh lockstep lines; authorized by throughput-plans-coordinator 2026-11-15 18:5xZ under coordinator-duties section 12.
+work_item=livespec-ac6gn5
+reason=adds the guarded merge_group trigger and merge-group-guard job to ci.yml and conditions each existing runs-on on the guard output with the existing expression kept as the trusted arm; org merge-queue cutover, maintainer ruling on livespec-dev-tooling-xowhol 2026-11-16, carrier livespec-dev-tooling-frkuef; ruled logically additive and authorized by throughput-plans-coordinator under coordinator-duties section 12.
