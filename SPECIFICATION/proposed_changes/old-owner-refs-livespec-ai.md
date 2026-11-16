@@ -32,6 +32,6 @@ Affected locations (line numbers at master 8ee26b47):
 - SPECIFICATION/non-functional-requirements.md: lines 526, 528, 538, 544, 545, 573, 577, 587, 839, 869, 895, 1271.
 - SPECIFICATION/spec.md: lines 232, 246, 248, 252, 299, 392 through 400, 458.
 
-NOT changed by this proposal: the bot and account identifiers `thewoolleyman-factory-bot` and `human:thewoolleyman` (non-NFR line 1224, 1369, 1371 carry them), which are identities, not repository owners. Frozen `SPECIFICATION/history/` and `archive/` are untouched.
+NOT changed by this proposal: the personal email address that non-functional-requirements.md line 1224 and contracts.md line 64 carry, and the bot account `thewoolleyman-factory-bot` (non-functional-requirements.md lines 1369 and 1371); these are identities, not repository owners. No `human:thewoolleyman` identifier exists in the live spec. Frozen `SPECIFICATION/history/` and `archive/` are untouched.
 
 Verification after revise: `git grep -nE 'thewoolleyman/(livespec[a-z-]*)' -- SPECIFICATION/*.md` returns no match.
