@@ -94,7 +94,7 @@ pytestmark = pytest.mark.integration
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PROVISIONING_SLUG = "livespec-dev-tooling"
 _PRODUCER_SPEC = "SPECIFICATION/non-functional-requirements.md"
-_PRODUCER_FORGE = "https://github.com/thewoolleyman/livespec-dev-tooling.git"
+_PRODUCER_FORGE = "https://github.com/livespec-ai/livespec-dev-tooling.git"
 _CLAUSE_TITLE = (
     "A host carrying fleet CI MUST be rebuildable from bare metal by a committed procedure"
 )
