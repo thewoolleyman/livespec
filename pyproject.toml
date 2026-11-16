@@ -687,6 +687,9 @@ omit = [
     # livespec-driver-claude repo together with the skill bindings.)
     "tests/e2e/*",
     "tests/prompts/*",
+    # Test scaffolding is not first-party source: the fleet coverage policy
+    # omits all of tests/ through this blocklist (livespec-luesll).
+    "tests/*",
     # pytest tmp_path fixture directories — test helpers written into
     # /tmp/pytest-*/... (Linux) or /private/var/folders/.../T/pytest-*/...
     # (macOS) are test scaffolding, not first-party code.
