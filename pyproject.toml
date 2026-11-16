@@ -99,6 +99,11 @@ livespec-runtime = { git = "https://github.com/thewoolleyman/livespec-runtime.gi
 # SPECIFICATION/non-functional-requirements.md §"Destructive-default
 # CLI wrapping".
 [tool.livespec_dev_tooling]
+# The merge queue's trusted authors (org merge-queue cutover, carrier
+# livespec-dev-tooling-frkuef). ci.yml's merge-group-guard reads this list at the
+# merge group's BASE commit and routes the group to hosted capacity unless every
+# queued PR is same-repository and authored by a name on it.
+merge_queue_author_allowlist = ["thewoolleyman", "thewoolleyman-factory-bot", "livespec-ai-factory-bot", "livespec-ai-factory-bot[bot]"]
 # Phase-2 file_lloc FLIP (fleet-check-coverage epic livespec-i5ebqd, track
 # livespec-9bym). Core is SPECIAL: `.claude-plugin/scripts/livespec/` is the
 # hardcoded legacy hardfail tree, so >250 files THERE already error. With this
