@@ -603,6 +603,12 @@ reportPrivateUsage = "none"
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# A suite run writes many files under pytest's basetemp on /tmp; kept pytest-N
+# directories exhausted a seat host's tmpfs inodes (2026-11-16,
+# livespec-dev-tooling-jxhi63). Keep only a failed test's tmp_path directory,
+# and only the latest run's basetemp.
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
 # `_bootstrap.bootstrap()` sets up sys.path at runtime for the
 # shebang wrappers (adds .claude-plugin/scripts and
 # .claude-plugin/scripts/_vendor). Pytest needs the same paths
