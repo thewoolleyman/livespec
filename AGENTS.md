@@ -324,7 +324,7 @@ pi install git:github.com/livespec-ai/livespec-orchestrator-beads-fabro@release 
 ```
 
 Each command writes into the project's committed `.pi/settings.json` and
-clones the package under `.pi/git/github.com/thewoolleyman/<repo>/`
+clones the package under `.pi/git/github.com/livespec-ai/<repo>/`
 (project scope) — this repo commits that file the same way the Claude
 path commits `.claude/settings.json`. The `--approve` flag (or an
 equivalent pre-seeded trust decision) is REQUIRED for any unattended pi
@@ -893,7 +893,7 @@ existing file):
   in another. When citing any file, PR, branch, or commit the maintainer might
   look up — a review handoff, a gate presentation, a status report — state the
   owning repository explicitly and prefer a full clickable GitHub URL
-  (`https://github.com/thewoolleyman/<repo>/blob/<branch>/<path>`) over a bare
+  (`https://github.com/livespec-ai/<repo>/blob/<branch>/<path>`) over a bare
   repo-relative path; "on master" is meaningless without the repo. When the
   maintainer will review locally, name which clone to pull. Never assume the
   session's cwd repo is the reader's mental default. **NEVER abbreviate a repo to

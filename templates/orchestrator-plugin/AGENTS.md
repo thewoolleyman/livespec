@@ -206,7 +206,7 @@ codex plugin marketplace add livespec-ai/livespec-driver-codex
 codex plugin add livespec@livespec-driver-codex
 
 # This repo's orchestrator plugin (ships its OWN cross-runtime Codex surface):
-codex plugin marketplace add thewoolleyman/<orchestrator-plugin>
+codex plugin marketplace add livespec-ai/<orchestrator-plugin>
 codex plugin add <orchestrator-plugin>@<orchestrator-plugin>
 ```
 

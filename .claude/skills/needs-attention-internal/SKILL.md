@@ -91,7 +91,7 @@ latest run on `master` is a real broken state. For each fleet member, read the
 latest master CI conclusion:
 
 ```bash
-gh run list --repo thewoolleyman/<repo> --workflow CI --branch master --limit 1
+gh run list --repo <OWNER>/<repo> --workflow CI --branch master --limit 1
 ```
 
 A `completed  success` conclusion is healthy — emit nothing. A `failure`,
@@ -120,7 +120,7 @@ workflows and reports a misleading green.
 > import json, re, sys
 > from pathlib import Path
 >
-> OWNER = "thewoolleyman"
+> OWNER = "livespec-ai"
 > QUEUED_RUNS = ("checkSuites(first: 5) { nodes { createdAt "
 >                "checkRuns(first: 30, filterBy: {status: QUEUED}) { nodes { name } } } }")
 > SELECTIONS = {
@@ -404,7 +404,7 @@ For each fleet member, read whether the repo actually routes gating jobs to
 self-hosted capacity:
 
 ```bash
-gh api repos/thewoolleyman/<repo>/actions/variables/CI_RUNNER_LABELS --jq '.value'
+gh api repos/<OWNER>/<repo>/actions/variables/CI_RUNNER_LABELS --jq '.value'
 ```
 
 A 404 (variable absent), or a value whose every label is hosted (each entry
@@ -453,7 +453,7 @@ not how often you expect it to.
 Only when the value names a non-hosted label, read the tier:
 
 ```bash
-gh api repos/thewoolleyman/<repo>/actions/permissions/fork-pr-contributor-approval --jq '.approval_policy'
+gh api repos/<OWNER>/<repo>/actions/permissions/fork-pr-contributor-approval --jq '.approval_policy'
 ```
 
 `all_external_contributors` is the strict tier — healthy, emit nothing. Anything
@@ -544,7 +544,7 @@ work_item: null}`. `handoff` is `kind: "shell"` with the command that shows why
 the member did not take the bump:
 
 ```
-gh run list --repo thewoolleyman/<repo> --workflow "Bump pin from sibling dispatch" --limit 5
+gh run list --repo <OWNER>/<repo> --workflow "Bump pin from sibling dispatch" --limit 5
 ```
 
 That handoff is deliberately the EVENT query: the signal detects the state
@@ -613,9 +613,9 @@ queued.
 **STEP 1b — AGE AND POOL, per firing repo only.** For each repo step 1 named:
 
 ```bash
-gh api "repos/thewoolleyman/<repo>/actions/runs?status=queued&per_page=20" \
+gh api "repos/<OWNER>/<repo>/actions/runs?status=queued&per_page=20" \
   --jq '.workflow_runs[] | "\(.id) \(.name) \(.run_started_at)"'
-gh api "repos/thewoolleyman/<repo>/actions/runs/<run-id>/jobs" \
+gh api "repos/<OWNER>/<repo>/actions/runs/<run-id>/jobs" \
   --jq '.jobs[] | select(.status != "completed") | {name, status, started_at, runner_name, labels}'
 ```
 
@@ -1038,7 +1038,7 @@ Normalize every fired signal into the shared shape (defined in
     failed run, merge the bump PR).
   - `kind: "livespec-op"` for the `/livespec:doctor` drift handoff.
   - `command` is a ready-to-run string for the maintainer (e.g.
-    `gh run view --repo thewoolleyman/<repo> <run-id>`,
+    `gh run view --repo <OWNER>/<repo> <run-id>`,
     `gh pr merge --repo livespec-ai/livespec <pr> --rebase`, or the per-repo
     doctor invocation). For a remappable ledger drift, `kind: "shell"` with the
     `dispatcher.py ledger-normalize --project-root "$HOME/workspace/<repo>"` command
