@@ -336,3 +336,5 @@ The livespec fleet dogfoods its own telemetry. CI runs, Red→Green commit-gate 
 - See [AGENTS.md](AGENTS.md) for repo orientation.
 - See [SPECIFICATION/](SPECIFICATION/) for the live livespec specification (dogfooded).
 - See [archive/](archive/) for bootstrap-process history.
+
+Pull requests land on master through the livespec-ai merge queue (ruleset master-incident-recovery-bypass); ci-green is the required check.
