@@ -1188,7 +1188,7 @@ because it asks about the wrong state.
 Watching a cross-repo pin fan-out, the watcher polled every 120 seconds:
 
 ```sh
-gh pr list -R "thewoolleyman/$repo" --state open --limit 10 --json number,title
+gh pr list -R "livespec-ai/$repo" --state open --limit 10 --json number,title
 ```
 
 The question it was built to answer was **"did a bump happen?"** The question it
