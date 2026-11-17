@@ -495,7 +495,7 @@ dev = [
     { name = "hypothesis", specifier = "==6.122.3" },
     { name = "hypothesis-jsonschema", specifier = "==0.23.1" },
     { name = "import-linter", specifier = "==2.1" },
-    { name = "livespec-dev-tooling", git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.215.0" },
+    { name = "livespec-dev-tooling", git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.216.0" },
     { name = "livespec-runtime", git = "https://github.com/livespec-ai/livespec-runtime.git?tag=v0.32.0" },
     { name = "mutmut", specifier = "==3.2.3" },
     { name = "nodejs-wheel-binaries", specifier = "==24.19.0" },
@@ -510,8 +510,8 @@ dev = [
 
 [[package]]
 name = "livespec-dev-tooling"
-version = "1.215.0"
-source = { git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.215.0#706bbf3bc0dd6fa9c8874193e5921eb6dbe9341c" }
+version = "1.216.0"
+source = { git = "https://github.com/livespec-ai/livespec-dev-tooling.git?tag=v1.216.0#d218abf3985922bed4e3743495a83702cbb1ad26" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions" },
