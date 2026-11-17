@@ -2,7 +2,7 @@
 
 Paste everything below the horizontal rule into an agent session
 (Claude Code or OpenAI Codex) running in the root of the project you
-want livespec to govern. See `installation.md` for the one-liner per
+want livespec to govern. See [`installation.md`](installation.md) for the one-liner per
 harness. The prompt is idempotent — re-running it skips whatever is
 already set up and repairs whatever is missing or broken.
 
