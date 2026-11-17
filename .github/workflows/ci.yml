@@ -1158,9 +1158,11 @@ jobs:
   #
   # NO NEW REQUIRED CONTEXT, which deferral D2 forbids. This job joins
   # `ci-green.needs` — the existing sole required context. On every ordinary PR
-  # the `if:` below skips it, and a SKIPPED dependency is not a failure to
-  # ci-green, so ordinary PRs are completely unaffected. Only a release PR is
-  # made stricter.
+  # every step's `if:` skips its work (the condition sits on the STEPS, not the
+  # job, so the job itself always runs and ends success, which lets the merge-group
+  # tree-equality skip read it as a success leg; livespec-7cfjnj), so ordinary
+  # PRs are completely unaffected. Only a release PR is made stricter: its steps
+  # run and can fail.
   #
   # It runs the release levers (mutation testing, heading-coverage TODO
   # hard-fail, LLOC soft-warning hard-fail) that the ordinary check-python-batch
@@ -1174,7 +1176,6 @@ jobs:
   # not be able to stall every release.
   release-gate-pre-tag:
     name: release-gate-pre-tag
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     # The same per-check levers release-tag.yml sets. Without them these targets
     # warn-and-pass (or skip) and the gate would gate nothing.
@@ -1191,15 +1192,19 @@ jobs:
           - check-no-lloc-soft-warnings
     steps:
       - name: Checkout
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
         uses: actions/checkout@v5
 
       - name: Install pinned binaries via mise
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
         uses: jdx/mise-action@v4
 
       - name: Install Python dev deps via uv
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
         run: uv sync --all-groups
 
       - name: just ${{ matrix.target }}
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') }}
         run: just ${{ matrix.target }}
 
   # fleet-ci-aggregate-coverage (epic livespec-cf4bcu) slice 5: the single

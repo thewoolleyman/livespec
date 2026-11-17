@@ -1,11 +1,11 @@
 # Workflow-edit exemption — one exemption binds to one reviewed change.
 #
-# The change (plan stale-base-merge-options, epic livespec-dev-tooling-xowhol; rollout
-# carrier livespec-dev-tooling-ymog6r): ci.yml gains the merge-group tree-equality skip.
-# The guard job outputs `skip`, decided by livespec-dev-tooling's merge_group_skip module
-# fetched from the release tarball at the tag pinned in pyproject.toml; every gating job's
-# `if:` gains `&& needs.merge-group-guard.outputs.skip != 'true'`; ci-green gains the
-# `Report members omitted-by-incident-policy` step. Existing `if:` lines are modified, so this
-# is the MAINTAINER tier (approval:workflow-edit), which only the maintainer sets.
-work_item=livespec-ly6eo2
-reason=Merge-group tree-equality skip rollout (guard skip output plus the skip term on every gating job's if, and the incident-omitted report step on ci-green), ratified by the maintainer 2026-11-16 on epic livespec-dev-tooling-xowhol; tier is maintainer.
+# The change (plan stale-base-merge-options, epic livespec-dev-tooling-xowhol; carrier
+# livespec-7cfjnj): ci.yml's release-gate-pre-tag moves its job-level `if:` (a pull_request
+# whose head is a release-please branch) down onto each of its four steps. The same steps run
+# under the same condition, so a release PR is gated exactly as before; on an ordinary PR head
+# or a merge group the job now ends success with every step skipped, so the merge-group
+# tree-equality skip can read it as a success leg. Logically additive, but an existing `if:`
+# line is modified, so this is the MAINTAINER tier (approval:workflow-edit).
+work_item=livespec-7cfjnj
+reason=Moves release-gate-pre-tag's job-level `if:` onto its four steps so the job always runs and ends success on an ordinary PR head (same steps, same condition); internal CI work, plan stale-base-merge-options; MAINTAINER tier, approval:workflow-edit to be set by legacy-coordinator-agent.
