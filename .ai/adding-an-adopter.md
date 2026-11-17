@@ -27,7 +27,7 @@ Adding an adopter is TWO jobs in two different places:
    here): everything else — plugin enablement, `/livespec:seed`,
    config, credentials, tenant, conformance wiring — is END-USER
    work, driven from inside the adopter repo by livespec's published
-   install surface: **`docs/installation.md`** (this repo) points the
+   install surface: [**`docs/installation.md`**](../docs/installation.md) (this repo) points the
    user's agent at the paste-able idempotent installation prompt
    **`docs/livespec-installation-prompt.md`**. Run that prompt in the
    adopter repo exactly as any end user would. Do NOT plan an
