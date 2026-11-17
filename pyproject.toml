@@ -76,7 +76,7 @@ dev = [
 # surface". Bump-pin PRs follow the same shape as livespec-dev-tooling.
 [tool.uv.sources]
 livespec-dev-tooling = { git = "https://github.com/livespec-ai/livespec-dev-tooling.git", tag = "v1.215.0" }
-livespec-runtime = { git = "https://github.com/livespec-ai/livespec-runtime.git", tag = "v0.31.1" }
+livespec-runtime = { git = "https://github.com/livespec-ai/livespec-runtime.git", tag = "v0.32.0" }
 
 # ---------------------------------------------------------------------------
 # livespec-dev-tooling — shared-suite configuration (epic li-scetier).
