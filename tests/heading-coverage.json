@@ -768,9 +768,8 @@
     "heading": "## Factory routing",
     "spec_root": "SPECIFICATION",
     "spec_file": "non-functional-requirements.md",
-    "test": "TODO",
-    "reason": "Ratifies factory-routing (coordinator rulings R318/R320, plan petri-factory-on-gmktec, epic bd-ib-fyozyd, filed in the livespec-orchestrator-beads-fabro tenant): this repository's committed dispatcher.factories table is registry-backed and names no machine. No test exercises this heading yet; a separate registry-switch work-item filed in this repository's own livespec tenant changes .livespec.jsonc, and its proof is a host-captured dispatch.",
-    "work_item": "livespec-6fb1"
+    "test": "tests.test_factory_routing.test_committed_factories_are_registry_backed_and_name_no_machine",
+    "reason": "The unit-tier test reads the committed .livespec.jsonc with the production JSONC parser and asserts every dispatcher.factories entry declares literal registry: true while carrying neither server nor docker_host, so committed routing names no machine."
   },
   {
     "heading": "## A released adopter is registered only after its wiring satisfies the sweep",
