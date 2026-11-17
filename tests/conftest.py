@@ -57,11 +57,12 @@ import pytest
 __all__: list[str] = []
 
 
-_GIT_ENV_PASSTHROUGH_VARS: tuple[str, ...] = (
+GIT_ENV_PASSTHROUGH_VARS: tuple[str, ...] = (
     "GIT_DIR",
     "GIT_WORK_TREE",
     "GIT_INDEX_FILE",
     "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_COMMON_DIR",
     "GIT_NAMESPACE",
     "GIT_LITERAL_PATHSPECS",
@@ -77,11 +78,16 @@ _GIT_ENV_PASSTHROUGH_VARS: tuple[str, ...] = (
 _LIVESPEC_ENV_PASSTHROUGH_VARS: tuple[str, ...] = ("LIVESPEC_CURRENCY_GATE",)
 
 
+def scrub_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove every inherited ambient git variable, repo-locating ones included."""
+    for var in GIT_ENV_PASSTHROUGH_VARS:
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture(autouse=True)
 def _scrub_inherited_git_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove inherited ambient env vars for every test."""
-    for var in _GIT_ENV_PASSTHROUGH_VARS:
-        monkeypatch.delenv(var, raising=False)
+    scrub_git_env(monkeypatch)
     for var in _LIVESPEC_ENV_PASSTHROUGH_VARS:
         monkeypatch.setenv(var, "warn")
 
