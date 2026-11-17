@@ -9,7 +9,8 @@ harness-neutral driving prose, the reference spec-side CLIs, the
 schemas, and the built-in templates. The interactive slash-command
 surface ships separately as a per-agent-runtime **Driver** plugin
 (the first is [livespec-driver-claude](https://github.com/livespec-ai/livespec-driver-claude)
-for Claude Code).
+for Claude Code; [livespec-driver-codex](https://github.com/livespec-ai/livespec-driver-codex)
+serves OpenAI Codex).
 
 > **New here?** Start with the **[spec / implementation lifecycle
 > diagram](SPECIFICATION/spec.md#tool-agnostic-workflow--spec--implementation-lifecycle)**
