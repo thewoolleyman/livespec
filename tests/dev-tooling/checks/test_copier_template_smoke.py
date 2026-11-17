@@ -40,7 +40,7 @@ def test_generated_auto_merge_uses_current_github_app_token_action(*, tmp_path: 
         "plugin_namespace=livespec-impl-smoketest",
         "author_name=Smoke Test",
         "author_email=smoke@example.invalid",
-        "github_owner=thewoolleyman",
+        "github_owner=livespec-ai",
         "github_repo=livespec-impl-smoketest",
         "python_version=3.13",
         "livespec_release_tag=v0.1.0",
@@ -442,6 +442,25 @@ def test_expected_files_pin_generated_copier_answers_file() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert ".copier-answers.yml" in module._EXPECTED_FILES  # noqa: SLF001
+
+
+def test_stock_answers_name_the_organization_as_github_owner() -> None:
+    """The smoke check's stock `github_owner` answer is the livespec-ai organization.
+
+    The fleet moved from the maintainer's personal account to the livespec-ai
+    organization, so the fixture owner a rendered smoke tree is born with
+    MUST name the organization, never the retired owner.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "copier_template_smoke_for_github_owner_test",
+        str(_COPIER_TEMPLATE_SMOKE),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert dict(module._STOCK_ANSWERS)["github_owner"] == "livespec-ai"  # noqa: SLF001
 
 
 def test_expected_files_includes_ai_agent_disciplines() -> None:

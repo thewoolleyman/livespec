@@ -71,7 +71,7 @@ _STOCK_ANSWERS: tuple[tuple[str, str], ...] = (
     ("plugin_namespace", "livespec-impl-smoketest"),
     ("author_name", "Smoke Test"),
     ("author_email", "smoke@example.invalid"),
-    ("github_owner", "thewoolleyman"),
+    ("github_owner", "livespec-ai"),
     ("github_repo", "livespec-impl-smoketest"),
     ("python_version", "3.13"),
     ("livespec_release_tag", "v0.1.0"),
