@@ -15,7 +15,7 @@
 # integer ids (deterministic, unique, valid hex).
 #
 # Required environment:
-#   REPO    - owner/name (e.g. thewoolleyman/<repo>)
+#   REPO    - owner/name (e.g. livespec-ai/<repo>)
 #   RUN_ID  - this workflow run's id (github.run_id)
 #   GH_TOKEN - gh auth token with actions:read (the workflow's GITHUB_TOKEN)
 #   HONEYCOMB_GITHUB_CI_INGEST_KEY_LIVESPEC - write-only Honeycomb ingest key
