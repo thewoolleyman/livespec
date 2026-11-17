@@ -151,10 +151,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: read
+      checks: read
       contents: read
       pull-requests: read
     outputs:
       trusted: ${{ steps.guard.outputs.trusted }}
+      skip: ${{ steps.skip.outputs.skip || 'false' }}
     steps:
       - name: Resolve the merge group's pull requests against the allowlist
         id: guard
@@ -231,6 +234,58 @@ jobs:
           fi
           echo "trusted=true" >> "$GITHUB_OUTPUT"
 
+      # THE TREE-EQUALITY SKIP (livespec-dev-tooling-ymog6r rollout; plan
+      # stale-base-merge-options, epic livespec-dev-tooling-xowhol, maintainer ruling
+      # 2026-11-16). `skip` is true ONLY for a one-entry merge group whose head tree equals
+      # its pull request head's tree, on a base the head contains, whose head's required
+      # Actions check runs ALL read success on the forge and whose head ci-green reported no
+      # incident-omitted set; every other case, any error included, is false and the whole
+      # job graph runs. The decision code is NOT in this repo's tree: it is fetched from the
+      # livespec-dev-tooling release tarball at the tag this repo pins in pyproject.toml
+      # [tool.uv.sources], read AT THE GROUP'S BASE COMMIT, never the enqueued tree, so a
+      # pull request cannot change how its own group is judged. A pinned release that does
+      # not carry the module (or any unreadable pin or tarball) answers false. The step is
+      # best-effort (`continue-on-error`) and event-guarded in the SHELL, as the allowlist
+      # step above is. The kill switch is the repository variable
+      # LIVESPEC_MERGE_GROUP_SKIP_DISABLED=true, which forces skip=false.
+      - name: Decide the tree-equality skip from the forge (merge_group only)
+        id: skip
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MG_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          MG_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MG_BASE_REF: ${{ github.event.merge_group.base_ref }}
+          LIVESPEC_MERGE_GROUP_SKIP_DISABLED: ${{ vars.LIVESPEC_MERGE_GROUP_SKIP_DISABLED }}
+        run: |
+          skip=false
+          if [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            base_dir="${RUNNER_TEMP}/skip-base"
+            mkdir -p "$base_dir"
+            tag="$(gh api -H 'Accept: application/vnd.github.raw' "repos/${GITHUB_REPOSITORY}/contents/pyproject.toml?ref=${MG_BASE_SHA}" | python3 -c 'import sys, tomllib; print(tomllib.loads(sys.stdin.read())["tool"]["uv"]["sources"]["livespec-dev-tooling"]["tag"])' || true)"
+            case "$tag" in
+              v[0-9]*) ;;
+              *) tag="" ;;
+            esac
+            if [ -n "$tag" ] && gh api "repos/livespec-ai/livespec-dev-tooling/tarball/${tag}" | tar -xz --strip-components=1 -C "$base_dir" --wildcards '*/livespec_dev_tooling/*'; then
+              pythonpath="$base_dir"
+              if ! python3 -c 'import typing_extensions' 2>/dev/null; then
+                if python3 -m pip install --quiet --disable-pip-version-check --target "${RUNNER_TEMP}/skip-deps" 'typing_extensions==4.15.0'; then
+                  pythonpath="${pythonpath}:${RUNNER_TEMP}/skip-deps"
+                fi
+              fi
+              out="$(PYTHONPATH="$pythonpath" python3 -m livespec_dev_tooling.merge_group_skip || true)"
+              printf '%s\n' "$out" | sed 's/^/merge_group_skip: /' || true
+              printf '%s\n' "$out"
+              if printf '%s\n' "$out" | grep -qx 'skip=true'; then
+                skip=true
+              fi
+            else
+              echo "::warning::merge-group-guard: the pinned dev-tooling release's decision code was unreadable; running the full suite"
+            fi
+          fi
+          echo "skip=${skip}" >> "$GITHUB_OUTPUT"
+
   check-python:
     name: ${{ matrix.target }}
     # Routing per the header block: CI_RUNNER_LABELS when set, hosted capacity
@@ -239,7 +294,7 @@ jobs:
     # required gate. The container is the SAME tag the Fabro sandbox runs, so
     # "green in CI" and "green in sandbox" mean the same environment.
     needs: [merge-group-guard]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
       image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.216.0
@@ -363,7 +418,7 @@ jobs:
     # CI_RUNNER_LABELS can send every other job to hosted capacity while
     # coverage stays on the self-hosted pool. Unset, it routes as before.
     needs: [merge-group-guard]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_COVERAGE_RUNNER_LABELS || vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
       image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.216.0
@@ -443,7 +498,7 @@ jobs:
   check-coverage:
     name: ${{ matrix.target }}
     needs: [merge-group-guard, check-per-file-coverage]
-    if: ${{ !cancelled() && needs.check-per-file-coverage.result == 'success' }}
+    if: ${{ !cancelled() && needs.check-per-file-coverage.result == 'success' && needs.merge-group-guard.outputs.skip != 'true' }}
     # Coverage reads CI_COVERAGE_RUNNER_LABELS first (see the header), so
     # CI_RUNNER_LABELS can send every other job to hosted capacity while
     # coverage stays on the self-hosted pool. Unset, it routes as before.
@@ -514,7 +569,7 @@ jobs:
   check-python-batch:
     name: check-python-batch
     needs: [merge-group-guard]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
       image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.216.0
@@ -579,7 +634,7 @@ jobs:
     # Same baked image and same routing as check-python; the fallback MUST stay
     # in lockstep with that job's and with LIVESPEC_CI_LANE.
     needs: [merge-group-guard]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
       image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.216.0
@@ -790,7 +845,7 @@ jobs:
   check-metadata-batch:
     name: check-metadata-batch
     needs: [merge-group-guard]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
       image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.216.0
@@ -1163,6 +1218,17 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      # The tree-equality skip reads this step's conclusion on a PR head's ci-green: `skipped`
+      # means no incident-omitted set. It names every member an expedited incident PR omitted,
+      # as the released incident controller's passed aggregate published them (livespec-dev-tooling
+      # merge_group_skip._OMITTED_STEP). Silent on every other run.
+      - name: Report members omitted-by-incident-policy
+        if: ${{ needs.incident-ci.result == 'success' && needs.incident-ci.outputs.omitted != '' }}
+        env:
+          OMITTED: ${{ needs.incident-ci.outputs.omitted }}
+        run: |
+          echo "ci-green: omitted-by-incident-policy ${OMITTED}. These members were not executed; the released incident controller's passed aggregate (job incident-ci) defers them for this pull request head. Every other required job ran in full." | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: All required checks passed
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: exit 1

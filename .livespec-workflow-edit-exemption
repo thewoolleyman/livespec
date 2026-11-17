@@ -1,2 +1,11 @@
-work_item=livespec-4ti7qr
-reason=repoints the sibling-clone URL at ci.yml:691 from the old owner to livespec-ai (one modified line, same steps run); DoD 7 owner-swap residual D of livespec-dev-tooling-xowhol; ruled logically additive and authorized by throughput-plans-coordinator 2026-11-17; MAINTAINER tier (modifies a line), approval:workflow-edit set by legacy-coordinator-agent.
+# Workflow-edit exemption — one exemption binds to one reviewed change.
+#
+# The change (plan stale-base-merge-options, epic livespec-dev-tooling-xowhol; rollout
+# carrier livespec-dev-tooling-ymog6r): ci.yml gains the merge-group tree-equality skip.
+# The guard job outputs `skip`, decided by livespec-dev-tooling's merge_group_skip module
+# fetched from the release tarball at the tag pinned in pyproject.toml; every gating job's
+# `if:` gains `&& needs.merge-group-guard.outputs.skip != 'true'`; ci-green gains the
+# `Report members omitted-by-incident-policy` step. Existing `if:` lines are modified, so this
+# is the MAINTAINER tier (approval:workflow-edit), which only the maintainer sets.
+work_item=livespec-ly6eo2
+reason=Merge-group tree-equality skip rollout (guard skip output plus the skip term on every gating job's if, and the incident-omitted report step on ci-green), ratified by the maintainer 2026-11-16 on epic livespec-dev-tooling-xowhol; tier is maintainer.
