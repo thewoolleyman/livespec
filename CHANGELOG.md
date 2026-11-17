@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.2](https://github.com/livespec-ai/livespec/compare/v0.49.1...v0.49.2) (2026-11-17)
+
+
+### Bug Fixes
+
+* **ci:** read the PR body via issues and the head sha via GraphQL, avoiding the pulls 422 (livespec-n2jvev) ([d67aa9d](https://github.com/livespec-ai/livespec/commit/d67aa9d1998111c08ea59478be08861a166c6733))
+
 ## [0.49.1](https://github.com/livespec-ai/livespec/compare/v0.49.0...v0.49.1) (2026-11-17)
 
 
