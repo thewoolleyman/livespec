@@ -1,13 +1,6 @@
 [
   {
     "spec_root": "SPECIFICATION",
-    "spec_file": "non-functional-requirements.md",
-    "heading": "## Factory routing",
-    "work_item": "livespec-6fb1",
-    "first_seen": "2026-10-20"
-  },
-  {
-    "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
     "heading": "## A capacity value change passes on schema validation alone",
     "work_item": "livespec-ao7bzm",
