@@ -688,7 +688,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/sibling-clones"
           for sibling in livespec-orchestrator-git-jsonl livespec-dev-tooling livespec-runtime; do
-            git clone --depth 1 "https://github.com/thewoolleyman/$sibling.git" \
+            git clone --depth 1 "https://github.com/livespec-ai/$sibling.git" \
               "$RUNNER_TEMP/sibling-clones/$sibling"
             # Record each clone's HEAD so a failure artifact (work-item
             # livespec-s9il) pins exactly which sibling state the
