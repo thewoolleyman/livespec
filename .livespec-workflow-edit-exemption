@@ -1,2 +1,2 @@
-work_item=livespec-ac6gn5
-reason=adds the guarded merge_group trigger and merge-group-guard job to ci.yml and conditions each existing runs-on on the guard output with the existing expression kept as the trusted arm; org merge-queue cutover, maintainer ruling on livespec-dev-tooling-xowhol 2026-11-16, carrier livespec-dev-tooling-frkuef; ruled logically additive and authorized by throughput-plans-coordinator under coordinator-duties section 12.
+work_item=livespec-n2jvev
+reason=modifies two workflow lines, not additive: the ci.yml incident-ci select step reads the PR body from issues/<n> instead of pulls/<n>, and incident-label-ci.yml reads the head sha through GraphQL headRefOid instead of pulls/<n>, because the REST pulls read answers a transient 422 too many files changed right after a force-push (livespec-dev-tooling#4889, fix livespec-dev-tooling#4899); maintainer-tier approval:workflow-edit requested from legacy-coordinator-agent.
