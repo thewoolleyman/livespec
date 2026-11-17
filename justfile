@@ -1,4 +1,5 @@
 # justfile — livespec dev-tooling task runner.
+# DoD 12 equal-tree proof marker (livespec-dev-tooling-xowhol): comment-only, no behaviour.
 #
 # `just` is the single source of truth for every dev-tooling
 # invocation; lefthook.yml and .github/workflows/*.yml only
