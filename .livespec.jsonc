@@ -141,11 +141,12 @@
       // off the interactive accounts. When the central pick lands, the declaration
       // widens to every managed slot the central pick may name.
       // Committed-only and variable names only.
+      // 2026-11-17: widened to anthropic-2 (anthropic-5 below the 10% reserve); ruling 6tgd2z
       "claude_credential_policy": {
         "mode": "numbered-slots",
         "slots": [
           "CLAUDE_CODE_OAUTH_TOKEN__ANTHROPIC_4",
-          "CLAUDE_CODE_OAUTH_TOKEN__ANTHROPIC_5"
+          "CLAUDE_CODE_OAUTH_TOKEN__ANTHROPIC_2"
         ]
       },
       "implement": { "mechanical_targets": ["check-check-coverage-incremental", "check-file-lloc", "check-format", "check-keyword-only-args", "check-lint", "check-no-lloc-soft-warnings", "check-per-file-coverage"] },
