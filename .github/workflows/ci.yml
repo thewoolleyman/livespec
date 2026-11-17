@@ -934,7 +934,7 @@ jobs:
         run: |
           block=absent
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
-            body="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.body // ""')"
+            body="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" --jq '.body // ""')"
             if grep -qE '^<!-- livespec-incident-ci[[:space:]]*$' <<< "$body"; then
               block=present
             fi
