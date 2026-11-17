@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1](https://github.com/livespec-ai/livespec/compare/v0.49.0...v0.49.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* the copier smoke check's stock github_owner answer names livespec-ai (stale-base-merge-options DoD 7) ([98d60ea](https://github.com/livespec-ai/livespec/commit/98d60eab73319d15c06fee1f6b878b2ddec909bd))
+
 ## [0.49.0](https://github.com/livespec-ai/livespec/compare/v0.48.2...v0.49.0) (2026-11-17)
 
 
