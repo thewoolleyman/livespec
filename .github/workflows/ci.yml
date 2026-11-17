@@ -297,7 +297,7 @@ jobs:
     if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       # The image installs the pinned tools under /root (build-time HOME), but
       # container-hooks run steps with a DIFFERENT HOME — so mise's default data
@@ -421,7 +421,7 @@ jobs:
     if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_COVERAGE_RUNNER_LABELS || vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       # The lane and uv fetch knobs follow THIS job's runner, not the
       # workflow-level CI_RUNNER_LABELS reading; same fall-through as runs-on.
@@ -472,7 +472,7 @@ jobs:
 
       - name: Publish the flake-retry records for the host-side reader
         if: ${{ !cancelled() }}
-        uses: livespec-ai/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.218.0
+        uses: livespec-ai/livespec-dev-tooling/.github/actions/publish-flake-retries@v1.219.1
 
       # include-hidden-files is REQUIRED: upload-artifact@v4 excludes dotfiles
       # by default and `.coverage` is one; without it the upload silently ships
@@ -504,7 +504,7 @@ jobs:
     # coverage stays on the self-hosted pool. Unset, it routes as before.
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_COVERAGE_RUNNER_LABELS || vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       # The lane and uv fetch knobs follow THIS job's runner, not the
       # workflow-level CI_RUNNER_LABELS reading; same fall-through as runs-on.
@@ -572,7 +572,7 @@ jobs:
     if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -637,7 +637,7 @@ jobs:
     if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       # Point mise at the baked data dir so `mise install` is a no-op (see
       # check-python — avoids the concurrent-install rate-limit failure).
@@ -848,7 +848,7 @@ jobs:
     if: ${{ !cancelled() && needs.merge-group-guard.outputs.skip != 'true' }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     env:
       MISE_DATA_DIR: /root/.local/share/mise
       MISE_NOT_FOUND_AUTO_INSTALL: "0"
@@ -962,7 +962,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ${{ needs.merge-group-guard.outputs.trusted == 'true' && fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') || 'ubuntu-latest' }}
     container:
-      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.218.0
+      image: ghcr.io/livespec-ai/livespec-fabro-sandbox:python-v1.219.1
     permissions:
       contents: read
       pull-requests: read
