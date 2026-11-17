@@ -99,6 +99,13 @@ livespec-runtime = { git = "https://github.com/livespec-ai/livespec-runtime.git"
 # SPECIFICATION/non-functional-requirements.md §"Destructive-default
 # CLI wrapping".
 [tool.livespec_dev_tooling]
+# Org merge-queue cutover (plan stale-base-merge-options, epic
+# livespec-dev-tooling-xowhol). The incident recovery principal's GitHub App
+# id, the ONLY bypass actor branch_protection_alignment admits on a
+# queue-required repository's default-branch rulesets: the
+# livespec-ai-incident-recovery org App's Integration id. An App id is not a
+# secret.
+recovery_bypass_integration_id = 5761967
 # The merge queue's trusted authors (org merge-queue cutover, carrier
 # livespec-dev-tooling-frkuef). ci.yml's merge-group-guard reads this list at the
 # merge group's BASE commit and routes the group to hosted capacity unless every
