@@ -917,9 +917,8 @@
     "heading": "## An automated non-Driver Codex hook-trust writer leaves release-verifiable plugins to the Driver",
     "spec_root": "SPECIFICATION",
     "spec_file": "scenarios.md",
-    "test": "TODO",
-    "reason": "Integration-tier: a real test at the integration tier or above is owed for this heading. The behaviour is exercised end-to-end on the dev host against the live Codex app-server by thewoolleyman/vps-info services/codex-config/ (vps-info#77); no livespec-core integration test drives a third-party Codex trust writer yet (proposal vps-info-hook-trust-stopgap). livespec-thg7b3 owns it.",
-    "work_item": "livespec-thg7b3"
+    "test": "tests.integration.test_non_driver_codex_hook_trust_writer.test_fixture_automated_writer_defers_plugin_trust_to_the_installed_driver",
+    "reason": "Integration-tier: the test is under the `tests.integration` node-id prefix and declares `pytestmark = pytest.mark.integration`. It drives a fixture automatic non-Driver writer against an installed-Driver interface, verifies that release-verifiable marketplace hooks receive no trust records, and verifies that an unavailable Driver consultation leaves every plugin hook untouched while preserving permitted user-hook trust. The private vps-info writer remains host-captured (livespec-thg7b3)."
   },
   {
     "heading": "## Scenario — a hand commit's passing delegated pre-commit verdict stands in at the pre-push gate",
