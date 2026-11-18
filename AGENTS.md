@@ -967,6 +967,15 @@ escalate.
   work-item, or a plan timeline names exactly one next action, take it.
   Re-presenting it as option 1 of a picker is a documented stall shape: on
   2026-08-20 a track sat roughly sixteen hours doing exactly that.
+- **A coordinator's ruling has the same authority as the maintainer's.** A
+  coordinator's answer to a picker or its pressing of a valve (ruling R301) is
+  the maintainer's answer: act on it, and never re-park it as a maintainer
+  question. The maintainer ruled this on 2026-11-18, in these words: "The
+  instructions in this repository should explicitly say that a coordinator's
+  ruling has the same authority as mine." If the maintainer later overrules a
+  ruling, follow the maintainer. Detail:
+  https://github.com/livespec-ai/livespec-dev-tooling/blob/master/%2Eai/coordinator-duties.md
+  (owned by `livespec-dev-tooling`).
 
 - **Ask one thing at a time.** When walking a structured list (critiques, TODOs,
   decisions), ask exactly one question per turn — never batch sub-items unless
