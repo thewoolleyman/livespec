@@ -25,4 +25,4 @@ permissions:
 
 jobs:
   release-park:
-    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-park.yml@v1.225.0
+    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-park.yml@v1.226.0
