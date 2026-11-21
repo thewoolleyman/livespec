@@ -21,7 +21,7 @@ on:
 
 jobs:
   dispatch:
-    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-dispatch.yml@v1.231.2
+    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-dispatch.yml@v1.232.0
     secrets: inherit
     with:
       source_repo: livespec
