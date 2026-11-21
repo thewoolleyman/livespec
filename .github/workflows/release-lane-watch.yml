@@ -35,6 +35,6 @@ jobs:
       actions: read
       contents: read
       issues: write
-    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-lane-watch.yml@v1.231.1
+    uses: livespec-ai/livespec-dev-tooling/.github/workflows/reusable-release-lane-watch.yml@v1.231.2
     with:
       workflows: "release-tag.yml release-readiness.yml"
